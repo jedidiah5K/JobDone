@@ -1016,11 +1016,12 @@ function hourglass(p, paused) {
     ${p < 1 && !paused ? '<line x1="40" y1="58" x2="40" y2="106" class="hg-stream"/>' : ''}</svg>`;
 }
 let audioCtx = null;
-// Short synth sounds (no files). On iPhone these follow the ring/silent switch and mix with music.
+// Short synth sounds (no files). Cheers play even on silent and briefly duck music; dial clicks follow the silent switch.
 function tones(notes, type = 'sine', vol = .22) {
   if (S && S.profile && S.profile.sound === false) return;
   try {
-    if (navigator.audioSession) navigator.audioSession.type = 'ambient';
+    if (navigator.audioSession) navigator.audioSession.type = type === 'tick' ? 'ambient' : 'transient';
+    if (type === 'tick') type = 'sine';
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const t0 = audioCtx.currentTime;
@@ -1031,12 +1032,15 @@ function tones(notes, type = 'sine', vol = .22) {
     }
   } catch (e) {}
 }
+// iPhone only allows audio after a tap, so wake the audio engine on the first touch (needed for dial clicks that fire while scrolling).
+document.addEventListener('touchend', function unlock() { try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {} document.removeEventListener('touchend', unlock); }, { passive: true });
 const SOUNDS = {
   low: () => tones([[392, 0, .22], [330, .16, .3]], 'triangle', .18),
   nice: () => tones([[659, 0, .2], [880, .1, .3]]),
   great: () => tones([[523, 0], [659, .09], [784, .18, .35]], 'triangle'),
   amazing: () => tones([[523, 0], [659, .08], [784, .16], [1047, .26, .5], [1319, .26, .5]], 'triangle', .2),
   next: () => tones([[784, 0, .12], [988, .1, .12], [1175, .2, .12], [1568, .3, .45]], 'square', .08),
+  tick: () => tones([[1800, 0, .025]], 'tick', .05),
   rest: () => tones([[880, 0, .15], [880, .2, .15], [1175, .42, .4]]),
 };
 // What a finished set says, by reps.
@@ -1162,8 +1166,8 @@ function showRecap(id, fresh) {
       <div class="rc-st"><b>${d.sets}</b><span>sets</span></div>
       <div class="rc-st"><b>${d.reps}</b><span>reps</span></div>
     </div>
-    <div class="card rc-fun"><span class="rc-emoji" aria-hidden="true">🏋️</span><div>That's like lifting <b>${esc(d.heavy)}</b>.${d.dv != null ? `<div class="cap" style="margin-top:2px">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% volume vs your last ${esc(d.w.splitName || 'workout')}</div>` : ''}</div></div>
-    ${d.prs.length ? `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true">🥇</span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
+    <div class="card rc-fun"><span class="rc-emoji" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span><div>That's like lifting <b>${esc(d.heavy)}</b>.${d.dv != null ? `<div class="cap" style="margin-top:2px">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% volume vs your last ${esc(d.w.splitName || 'workout')}</div>` : ''}</div></div>
+    ${d.prs.length ? `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/><path d="M9.5 15l1.7 1.7L14.8 13" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
     <div class="card"><div class="eyebrow" style="margin-bottom:10px">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n % 1 ? n.toFixed(1) : n} sets</em></div>`).join('')}</div>
     <div class="card"><div class="eyebrow" style="margin-bottom:4px">Exercises</div><div class="list">${d.w.ex.map(e => { const t = topSet(e.sets); return `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><span class="num sec">${t ? 'best ' + setStr(t) : ''}</span></div>`; }).join('')}</div></div>
     <div class="cap" style="text-align:center">${esc(streakText())}</div>
@@ -1194,7 +1198,7 @@ async function shareRecap(d) {
   const sec = (title, rows) => { if (!rows.length || y > H - 200) return; g.font = F(900, 34); g.fillStyle = v('--text2') || '#5F5A69'; g.fillText(title, 72, y); y += 66;
     for (const [a, b] of rows) { if (y > H - 140) break; g.fillStyle = v('--text') || '#221E2B'; g.font = F(800, 42); g.fillText(a.length > 28 ? a.slice(0, 27) + '…' : a, 72, y); g.textAlign = 'right'; g.fillText(b, W - 72, y); g.textAlign = 'left'; y += 66; } y += 30; };
   const prn = new Set(d.prs.map(p => p.ex));
-  sec('PERSONAL RECORDS', d.prs.slice(0, 4).map(p => ['🥇 ' + p.ex, setStr(p.set)]));
+  sec('PERSONAL RECORDS', d.prs.slice(0, 4).map(p => [p.ex, setStr(p.set)]));
   sec('BEST SETS', d.w.ex.filter(e => !prn.has(e.name)).map(e => [e.name, setStr(topSet(e.sets))]));
   g.fillStyle = v('--muted') || '#98929F'; g.font = F(900, 36); g.fillText('JobDone', 72, H - 72);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
@@ -1209,7 +1213,13 @@ const PLATE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" 
 const PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5] };
 const PLATE_COL = { 25: '#D8312B', 20: '#2F62C9', 15: '#E8B524', 10: '#2E8B4E', 5: '#F2F0EA', 2.5: '#B4302B', 1.25: '#9EA3AA', 45: '#2F62C9', 35: '#E8B524' };
 const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 104 * Math.sqrt(w / m)); };
-function openPlates(target, onUse) {
+// Weight entry starts on the plate loader; "Dial / keypad" switches to the number pad.
+function openSetPlates(ei, si) {
+  const e = A.ex[ei], s = e.sets[si];
+  openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
+    { title: `${e.name} · set ${si + 1}`, alt: () => openKeypad(ei, si, 'w') });
+}
+function openPlates(target, onUse, o = {}) {
   const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
   let bar = S.profile.barW != null ? S.profile.barW : 0; if (U() === 'lb' && S.profile.barW === 0) bar = 0;
   let side = [], fresh = -1;
@@ -1227,14 +1237,14 @@ function openPlates(target, onUse) {
     return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/><rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/><rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
   };
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
-  const sh = openSheet(`<div class="stack" style="gap:12px"><div class="row between"><div><div class="eyebrow">Plate loader</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
+  const sh = openSheet(`<div class="stack" style="gap:12px"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
     <div class="cap" id="pl-msg"></div>
     <div class="bar-wrap" id="pl-bar"></div>
     <div class="field"><span class="lbl">Bar</span><div class="seg" id="pl-barw">${bars.map(b => `<button data-b="${b}" class="${b === bar ? 'on' : ''}">${b ? b + ' ' + U() : 'Plates only'}</button>`).join('')}</div></div>
     <div><span class="lbl">Drag a plate onto the bar, or tap it. Tap a plate on the bar to take it off.</span><div class="plate-tray" id="pl-tray">${tray()}</div></div>
     <div class="row" style="gap:8px"><input class="input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})" style="flex:1"><button class="btn" id="pl-cadd">Add plate</button></div>
     <div class="row" style="gap:8px"><input class="input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}" style="flex:1"><button class="btn" id="pl-auto">Load it</button></div>
-    ${onUse ? `<button class="btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}</button>` : ''}
+    ${onUse ? `<div class="row" style="gap:8px">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Dial / keypad</button>` : ''}<button class="btn primary block" id="pl-use" style="flex:1">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
   </div>`, { label: 'Plate loader', mount: b => {
     const draw = () => {
       b.querySelector('#pl-bar').innerHTML = svg(); fresh = -1;
@@ -1249,7 +1259,8 @@ function openPlates(target, onUse) {
     b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; S.profile.barW = bar; persist('jd/meta'); b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
     b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); };
     b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
-    const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { onUse(total()); closeSheet(sh); };
+    const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { closeSheet(sh); onUse(total()); };
+    const al = b.querySelector('#pl-alt'); if (al) al.onclick = () => { closeSheet(sh); o.alt(); };
     // drag from tray: a ghost plate follows the finger; drop over the bar to load it
     const trayEl = b.querySelector('#pl-tray'), barEl = b.querySelector('#pl-bar');
     let drag = null;
@@ -1311,7 +1322,7 @@ function openKeypad(ei, si, f) {
       requestAnimationFrame(() => { inner.style.padding = `0 ${r.clientWidth / 2 - D.px / 2}px`; dialTo(); });
       r.addEventListener('scroll', () => {
         if (raf || performance.now() < quiet) return;
-        raf = requestAnimationFrame(() => { raf = null; const i = Math.round(r.scrollLeft / D.px); if (i !== lastI) { lastI = i; const v = i * D.step; buf = f === 'w' ? trim(v) : String(v); show(); buzz(3); } });
+        raf = requestAnimationFrame(() => { raf = null; const i = Math.round(r.scrollLeft / D.px); if (i !== lastI) { lastI = i; const v = i * D.step; buf = f === 'w' ? trim(v) : String(v); show(); buzz(3); SOUNDS.tick(); } });
       }, { passive: true });
       b.onclick = ev => {
         const k = ev.target.closest('[data-k]'), qq = ev.target.closest('[data-q]'), kf = ev.target.closest('[data-kf]');
@@ -1320,7 +1331,7 @@ function openKeypad(ei, si, f) {
         else if (k) {
           const key = k.dataset.k;
           if (key === 'done') { closeSheet(sh); return; }
-          if (key === 'plates') { openPlates(parseFloat(cur()) || 0, v => { buf = trim(v); show(); dialTo(); }); return; }
+          if (key === 'plates') { commit(); closeSheet(sh); openSetPlates(ei, si); return; }
           if (key === 'next') { commit(); closeSheet(sh); if (f === 'w') openKeypad(ei, si, 'r'); else if (si + 1 < e.sets.length) openKeypad(ei, si + 1, 'w'); return; }
           if (key === 'del') buf = (buf == null ? cur() : buf).slice(0, -1);
           else { if (buf == null) buf = ''; if (key === '.' && buf.includes('.')) return; if (buf.length < 6) buf += key; }
@@ -1358,7 +1369,7 @@ function openWeighIn(date, prompt) {
       const scrollTo = (smooth) => r.scrollTo({ left: Math.round((val - lo) * 10) * 12, behavior: smooth ? 'smooth' : 'auto' });
       requestAnimationFrame(() => { setPad(); scrollTo(false); });
       let raf = null, lastI = null;
-      r.addEventListener('scroll', () => { if (raf) return; raf = requestAnimationFrame(() => { raf = null; const i = Math.round(r.scrollLeft / 12); if (i !== lastI) { lastI = i; val = Math.round((lo + i / 10) * 10) / 10; show(); buzz(3); } }); }, { passive: true });
+      r.addEventListener('scroll', () => { if (raf) return; raf = requestAnimationFrame(() => { raf = null; const i = Math.round(r.scrollLeft / 12); if (i !== lastI) { lastI = i; val = Math.round((lo + i / 10) * 10) / 10; show(); buzz(3); SOUNDS.tick(); } }); }, { passive: true });
       b.querySelectorAll('[data-wd]').forEach(x => x.onclick = () => { val = Math.round((val + 0.1 * x.dataset.wd) * 10) / 10; show(); scrollTo(true); });
       b.querySelector('#wi-save').onclick = () => {
         const d = (b.querySelector('#wi-date') || {}).value || date;
@@ -1832,7 +1843,7 @@ const ACT = {
   sumBack: () => { A.view = 'log'; touchA(); },
   saveWk: () => saveWorkout(),
   energy: el => { A.energy = +el.dataset.k; touchA(); },
-  key: el => openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
+  key: el => el.dataset.f === 'w' ? openSetPlates(+el.dataset.e, +el.dataset.s) : openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
   done: el => logSet(+el.dataset.e, +el.dataset.s),
   setType: el => { const s = A.ex[+el.dataset.e].sets[+el.dataset.s]; const o = ['work', 'warm', 'drop', 'fail']; s.t = o[(o.indexOf(s.t) + 1) % o.length]; touchA(); },
   addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },

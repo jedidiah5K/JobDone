@@ -7,9 +7,8 @@ seed_script = os.path.join(here, 'personal', 'build_seed.py')
 seed = subprocess.check_output([sys.executable, seed_script, os.path.join(here, '..', 'prompts', 'workout-log-may-oct-2026.csv')]).decode() if os.path.exists(seed_script) else None
 src_js = open(os.path.join(here, 'app.js')).read()
 css = open(os.path.join(here, 'styles.css')).read()
-# Nunito (SIL Open Font License, fonts/Nunito-OFL.txt) is inlined so the rounded type works offline and inside the artifact.
 import base64
-css = css.replace('/*FONT*/', ''.join("@font-face { font-family: 'Nunito'; font-style: normal; font-weight: %d; font-display: swap; src: url(data:font/woff2;base64,%s) format('woff2'); }" % (w, base64.b64encode(open(os.path.join(here, 'fonts', 'nunito-latin-%d-normal.woff2' % w), 'rb').read()).decode()) for w in (600, 700, 800, 900)))
+css = css.replace('/*FONT*/', '')  # Oct 2026: system font (SF Pro on iPhone) instead of the rounded Nunito
 # The Claude artifact carries Job's log; the public website does not (data comes from a backup file).
 def fill(t, with_seed):
     app = src_js.replace('/*SEED*/{ log: [], weights: [], moved: [], noname: null, assumptions: [], today: null, profile: {} }', seed.strip()) if with_seed else src_js
