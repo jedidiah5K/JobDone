@@ -311,7 +311,7 @@ function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(y
       defs += `<linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".28"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient>`;
       body += `<path d="${d} L${pts[pts.length - 1].px} ${h - pb} L${pts[0].px} ${h - pb} Z" fill="url(#${id}g)" stroke="none"/>`;
     }
-    if (!s.dotsOnly) body += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="4 4"' : ''} opacity="${s.opacity || 1}"/>`;
+    if (!s.dotsOnly) body += `<path ${s.dash ? '' : 'class="draw" pathLength="1"'} d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="4 4"' : ''} opacity="${s.opacity || 1}"/>`;
     if (s.dots) for (const p of pts) body += p.hollow ? `<circle cx="${p.px}" cy="${p.py}" r="3" fill="var(--surface)" stroke="${s.color}" stroke-width="1.5"/>` : `<circle cx="${p.px}" cy="${p.py}" r="2.6" fill="${s.color}" stroke="none"/>`;
     const L = pts[pts.length - 1];
     if (!s.noEnd) body += `<circle cx="${L.px}" cy="${L.py}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`;
@@ -432,6 +432,7 @@ function render() {
   if (top) html = ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights })[top.v](top);
   else html = ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
   scr.innerHTML = resolveVars(html);
+  if (!NAV.keepScroll) enter(scr);
   if (NAV.keepScroll) scr.scrollTop = keep; else scr.scrollTop = 0;
   NAV.keepScroll = false;
   const tab = (k, label, ic) => `<button class="tab ${NAV.tab === k ? 'on' : ''}" data-a="tab" data-k="${k}" aria-label="${label}" ${NAV.tab === k ? 'aria-current="page"' : ''}>${ic}<span>${label}</span></button>`;
@@ -439,6 +440,24 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}</button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
+}
+// Screen entrance: panels rise in, charts draw, headline numbers count up.
+function enter(scr) {
+  scr.classList.remove('enter'); void scr.offsetWidth; scr.classList.add('enter');
+  clearTimeout(enter.t); enter.t = setTimeout(() => scr.classList.remove('enter'), 1700);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for (const el of scr.querySelectorAll('.big, .kpi b, .mid')) {
+    const n = el.firstChild; if (!n || n.nodeType !== 3) continue;
+    const m = n.nodeValue.match(/^([−-]?)([\d,]*\.?\d+)$/); if (!m) continue;
+    const dec = (m[2].split('.')[1] || '').length, target = parseFloat(m[2].replace(/,/g, '')), comma = m[2].includes(',');
+    const t0 = performance.now(), dur = 900;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3), v = target * e;
+      let txt = v.toFixed(dec); if (comma) txt = Number(txt).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+      n.nodeValue = m[1] + txt; if (k < 1 && n.isConnected) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 }
 const VARC = {};
 function resolveVars(html) {
@@ -470,16 +489,16 @@ function viewToday() {
     if (trained) done++;
     const cls = trained ? 'done' : skipped ? 'miss' : d > t ? 'future' : d === t ? 'today' : '';
     const sp = wk.find(w => !w.skipped);
-    return `<div class="d"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></div>`;
+    return `<div class="d"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color};--glow:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></div>`;
   }).join('');
   const prs = ix().prs.slice(-3).reverse();
   return `<div class="stack">
   <div class="top"><div><div class="eyebrow">${esc(fmtDate(t, { wd: true }).replace(/^(\w+) /, (m, d) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[d] + ', ')))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>
   ${A ? `<button class="card row between" data-a="resume" style="text-align:left;border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 style="margin-top:4px">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
-  <div class="card" style="border-top:0;padding-top:4px">
+  <div class="card glow-edge" style="--split:${nx ? nx.color : 'var(--accent)'}">
     <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero" style="color:${nx.color}">${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      <button class="btn primary block" style="margin-top:16px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
+      <button class="btn primary block pulse" style="margin-top:18px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
       <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="cap" style="padding-top:10px">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
       : `<div class="empty">Create a split to get started.</div>`}
   </div>
@@ -531,7 +550,7 @@ function viewSplits() {
   const card = sp => {
     const l = lastOfSplit(sp);
     const vols = ix().ws.filter(w => !w.skipped && (w.splitId === sp.id || (!w.splitId && w.splitName === sp.name))).slice(-8).map(wVol);
-    return `<button class="card split" data-a="openSplit" data-id="${sp.id}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="row" style="gap:8px"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="cap" style="margin-top:3px">${sp.ex.length} exercises · ${l ? relDay(l.date) : 'never done'}</div></div>${sparkline(vols, sp.color)}${I.right}</button>`;
+    return `<button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="row" style="gap:8px"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="cap" style="margin-top:3px">${sp.ex.length} exercises · ${l ? relDay(l.date) : 'never done'}</div></div>${sparkline(vols, sp.color)}${I.right}</button>`;
   };
   return `<div class="stack">
   <div class="top"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
@@ -1588,6 +1607,7 @@ function skeleton() {
 new MutationObserver(() => { for (const el of document.querySelectorAll('button[aria-label]:not([title])')) el.title = el.getAttribute('aria-label'); })
   .observe(document.documentElement, { childList: true, subtree: true });
 async function boot() {
+  if (!document.getElementById('bg')) document.body.insertAdjacentHTML('afterbegin', '<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="grid"></div><div class="noise"></div></div>');
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
     $('#app').innerHTML = `<div class="splash"><div class="wordmark">Job<span>Done</span></div></div>`;
