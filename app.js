@@ -48,12 +48,13 @@ Stiff-Leg Deadlift|Hamstrings|barbell;Romanian Deadlift|Hamstrings|barbell;Dumbb
 Hip Thrust|Glutes|barbell;Glute Bridge|Glutes|barbell;Cable Kickback|Glutes|cable;Abductor|Glutes|machine;Glute Drive|Glutes|machine;Adductor|Adductors|machine;Copenhagen Plank|Adductors|bodyweight;
 Calf Raise|Calves|machine;Seated Calf Raise|Calves|machine;Standing Calf Raise|Calves|machine;Leg Press Calf Raise|Calves|machine;Donkey Calf Raise|Calves|machine`;
 const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [name, muscle, equip] = s.split('|'); return { name, muscle, equip }; });
+const EQUIP = ['barbell', 'dumbbell', 'machine', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
 const baseName = n => n.replace(/\s*\((L|R)\)$/, '');
 const sideOf = n => (n.match(/\((L|R)\)$/) || [])[1] || null;
 function exInfo(name) {
   const b = baseName(name);
-  return LIB.find(e => e.name === b) || (S.customEx || []).find(e => e.name === b) || { name: b, muscle: 'Other', equip: 'other' };
+  return (S.customEx || []).find(e => e.name === b) || LIB.find(e => e.name === b) || { name: b, muscle: 'Other', equip: 'other' };
 }
 
 // ---------- seed data (section 4 + section 10 of the build prompt) ----------
@@ -600,13 +601,19 @@ function prRow(p) {
 }
 
 // ---------- Splits ----------
+// The muscle groups a split hits most, as small labels.
+function splitMuscles(sp, n = 3) {
+  const c = {}; for (const e of sp.ex) { const m = exInfo(e.name).muscle; if (m !== 'Other') c[m] = (c[m] || 0) + (e.sets || 1); }
+  const top = Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, n);
+  return top.length ? `<div class="mus">${top.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : '';
+}
 function viewSplits() {
   const act = S.splits.filter(s => !s.archived), arc = S.splits.filter(s => s.archived);
   const nx = nextSplit();
   const card = sp => {
     const l = lastOfSplit(sp);
     const vols = ix().ws.filter(w => !w.skipped && (w.splitId === sp.id || (!w.splitId && w.splitName === sp.name))).slice(-8).map(wVol);
-    return `<button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="row" style="gap:8px"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="cap" style="margin-top:3px">${sp.ex.length} exercises · ${l ? relDay(l.date) : 'never done'}</div></div>${sparkline(vols, sp.color)}${I.right}</button>`;
+    return `<button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="row" style="gap:8px"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="cap" style="margin-top:3px">${sp.ex.length} exercises · ${l ? relDay(l.date) : 'never done'}</div>${splitMuscles(sp)}</div>${sparkline(vols, sp.color)}${I.right}</button>`;
   };
   return `<div class="stack">
   <div class="top"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
@@ -784,7 +791,7 @@ function viewExercise(v) {
   const histSessions = sel.flatMap(n => (h[n] || []).map(s => ({ ...s, n }))).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.n < b.n ? -1 : 1);
   const info = exInfo(b);
   return `<div class="stack">${backBtn()}
-  <div class="top" style="padding-top:0"><div><div class="eyebrow">${esc(info.muscle)} · ${esc(info.equip)}</div><h1>${esc(b)}</h1></div></div>
+  <div class="top" style="padding-top:0"><div><button class="eyebrow" data-a="exCat" data-k="${esc(b)}" style="min-height:28px">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set vol</span></div></div>
   ${bw && B.e1 ? `<div class="cap" style="margin-top:10px">Strength-to-weight: e1RM is <b class="num" style="color:var(--text)">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
@@ -826,6 +833,7 @@ function viewMe() {
   <div class="card stack">
     <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
     <div class="row between"><span>Sounds</span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
+    <button class="row between" data-a="myEx" style="width:100%;min-height:44px;text-align:left"><span>My exercises and muscle groups</span>${I.right}</button>
     <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
     <label class="row between"><span>Daily step goal</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
     <label class="row between"><span>Workouts per week</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-week" data-in="prof" data-f="weeklyTarget" value="${p.weeklyTarget}"></label>
@@ -1301,6 +1309,13 @@ function pickExercise(onPick, opts = {}) {
   };
   const rows = () => {
     const l = list(); const exact = l.some(e => e.name.toLowerCase() === q.trim().toLowerCase());
+    if (!q.trim() && !mf) {
+      const all2 = all(), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
+      const row = e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}</div></div></button>`;
+      return `<button class="li" data-pick-new="1"><div class="grow"><div class="t">New exercise</div><div class="s">Name it and pick its muscle group</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>`
+        + (rec.length ? `<div class="grp">Recent</div>` + rec.map(row).join('') : '')
+        + MUSCLES.map(m => { const g = all2.filter(e => e.muscle === m).sort((a, b) => a.name.localeCompare(b.name)); return g.length ? `<div class="grp">${esc(m)} <span>${g.length}</span></div>` + g.map(row).join('') : ''; }).join('');
+    }
     return (q.trim() && !exact ? `<button class="li" data-pick-new="1"><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Custom exercise${mf ? ' · ' + esc(mf) : ''}</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>` : '') +
       l.slice(0, 80).map(e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}${recent.includes(e.name) ? ' · used before' : ''}</div></div></button>`).join('');
   };
@@ -1317,7 +1332,7 @@ function pickExercise(onPick, opts = {}) {
         const p = ev.target.closest('[data-pick]'), nw = ev.target.closest('[data-pick-new]');
         let name = null;
         if (p) name = p.dataset.pick;
-        if (nw) { name = q.trim().replace(/\s+/g, ' '); if (!S.customEx.find(e => e.name === name)) { S.customEx.push({ name, muscle: mf || 'Other', equip: 'other' }); persist('jd/meta'); } }
+        if (nw) { const sides = b.querySelector('#pk-side').checked; openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: n => { closeSheet(sh); if (sides) { onPick(n + ' (L)'); onPick(n + ' (R)'); } else onPick(n); } }); return; }
         if (!name) return;
         const sides = b.querySelector('#pk-side').checked;
         closeSheet(sh);
@@ -1325,6 +1340,43 @@ function pickExercise(onPick, opts = {}) {
       };
     },
   });
+}
+
+// Create a custom exercise, or change any exercise's muscle group and equipment.
+function openExForm(name, o = {}) {
+  const cur = name ? exInfo(name) : null, known = name && (LIB.some(e => e.name === name) || (S.customEx || []).some(e => e.name === name));
+  let mu = o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : 'other';
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">${known ? 'Exercise group' : 'New exercise'}</div>
+    <div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(name || '')}" placeholder="e.g. Hammer Curl" ${known ? 'disabled' : ''}></div>
+    <div class="field"><span class="lbl">Muscle group</span><div class="chips wrap" id="ef-m">${MUSCLES.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>
+    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${EQUIP.map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>
+    <button class="btn primary block" id="ef-ok">Save</button>
+    ${known && (S.customEx || []).some(e => e.name === name) && !LIB.some(e => e.name === name) ? '' : ''}
+    <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: 'Exercise', mount: b => {
+    const pick = (id, set) => b.querySelector(id).onclick = ev => { const c = ev.target.closest('[data-m]'); if (!c) return; set(c.dataset.m); b.querySelectorAll(id + ' .chip').forEach(x => x.classList.toggle('on', x === c)); };
+    pick('#ef-m', v => mu = v); pick('#ef-e', v => eq = v);
+    b.querySelector('#ef-ok').onclick = () => {
+      const n = (b.querySelector('#ef-n').value || '').trim().replace(/\s+/g, ' ');
+      if (!n) { toast('Give it a name'); return; }
+      if (!mu) { toast('Pick a muscle group'); return; }
+      S.customEx = (S.customEx || []).filter(e => e.name !== n); S.customEx.push({ name: n, muscle: mu, equip: eq });
+      persist('jd/meta'); invalidate(); closeSheet(sh);
+      if (o.onSave) o.onSave(n); else { rerender(); toast(`${esc(n)} · ${esc(mu)}`); }
+    };
+  } });
+}
+// Me → My exercises: everything you've logged or made, grouped by muscle, tap to re-group.
+function openMyExercises() {
+  const names = new Set((S.customEx || []).map(e => e.name)); for (const w of ix().ws) for (const e of w.ex) names.add(baseName(e.name));
+  for (const sp of S.splits) for (const e of sp.ex) names.add(baseName(e.name));
+  const list = [...names].map(exInfo);
+  const other = list.filter(e => e.muscle === 'Other').length;
+  const sh = openSheet(`<div class="stack"><div class="row between"><div class="eyebrow">My exercises</div><button class="btn sm" id="me-new">New exercise</button></div>
+    ${other ? `<div class="cap">${other} still in “Other”. Tap one to give it a group.</div>` : ''}
+    <div class="list">${['Other', ...MUSCLES.filter(m => m !== 'Other')].map(m => { const g = list.filter(e => e.muscle === m).sort((a, b) => a.name.localeCompare(b.name)); return g.length ? `<div class="grp">${esc(m)} <span>${g.length}</span></div>` + g.map(e => `<button class="li" data-ex="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.equip)}</div></div>${I.right}</button>`).join('') : ''; }).join('')}</div></div>`, { label: 'My exercises', mount: b => {
+    b.querySelector('#me-new').onclick = () => { closeSheet(sh); openExForm('', { onSave: () => { rerender(); openMyExercises(); } }); };
+    b.onclick = ev => { const x = ev.target.closest('[data-ex]'); if (!x) return; closeSheet(sh); openExForm(x.dataset.ex, { onSave: () => { rerender(); openMyExercises(); } }); };
+  } });
 }
 
 // ---------- start sheet ----------
@@ -1609,6 +1661,8 @@ const ACT = {
   exSel: el => { NAV.stack[NAV.stack.length - 1].sel = el.dataset.k; rerender(); },
   exMetric: el => { NAV.stack[NAV.stack.length - 1].metric = el.dataset.k; rerender(); },
   rotation: () => openRotation(),
+  exCat: el => openExForm(el.dataset.k),
+  myEx: () => openMyExercises(),
   newSplit: () => { const id = 'sp-' + uid(); S.splits.push({ id, name: 'New split', color: PALETTE[S.splits.length % PALETTE.length], archived: false, ex: [] }); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); },
   spColor: el => { splitById(el.dataset.id).color = el.dataset.c; persist('jd/meta'); rerender(); },
   spMove: el => { const sp = splitById(el.dataset.id), i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= sp.ex.length) return; [sp.ex[i], sp.ex[j]] = [sp.ex[j], sp.ex[i]]; persist('jd/meta'); rerender(); },
@@ -1832,7 +1886,7 @@ new MutationObserver(() => { for (const el of document.querySelectorAll('button[
 // The skeleton art is drawn by tools/skeleton.py and inlined by build.py.
 function livingBackground() {
   if (document.getElementById('bg')) return;
-  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="noise"></div><i class="sky-stars"></i><i class="sky-sun"></i><i class="land"></i><i class="tint"></i></div>`);
+  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="noise"></div><i class="sky-stars"></i><i class="sky-sun"></i><i class="l1"></i><i class="land"></i><i class="tint"></i><i class="l2"></i></div>`);
 }
 async function boot() {
   applyTheme();
