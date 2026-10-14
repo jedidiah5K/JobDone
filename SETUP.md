@@ -13,15 +13,8 @@ About 20 minutes, all free. You need two free accounts: **Supabase** (sign-in an
    ```
    The anon key is meant to be public. Your data is protected by the rule from step 2.
 
-## 2. Turn on email codes
-1. In Supabase, open **Authentication → Emails → Templates → Magic Link**.
-2. Set the subject to `Your JobDone code` and replace the body with:
-   ```html
-   <h2>Your JobDone sign-in code</h2>
-   <p style="font-size:28px;letter-spacing:4px"><b>{{ .Token }}</b></p>
-   <p>It expires in one hour. If you didn't ask for it, ignore this email.</p>
-   ```
-3. Save. Supabase's built-in mailer only sends a few emails an hour. To send from your own address with no limit, add an email service such as Resend under **Authentication → Emails → SMTP Settings** (optional).
+## 2. Sign-in needs no setup
+JobDone uses email and password, which Supabase's Email provider handles out of the box.
 
 ## 3. Put the site online (Vercel or Netlify)
 Pick one. Both are free and both give you an https link that works for the home-screen app.
@@ -43,10 +36,9 @@ In Supabase, open **Authentication → URL Configuration**:
 - **Site URL:** your site link, e.g. `https://jobdone-job.vercel.app` or `https://jobdone-job.netlify.app`
 - **Redirect URLs:** add the same link. If you move hosts later, update both.
 
-## 5. Sign-in
-JobDone signs in with email and password. Supabase's **Email** provider (on by default) covers this.
+## 5. How sign-in works
 New accounts get one confirmation email; tap its link, then sign in. "Forgot password?" emails a
-link that opens JobDone to set a new one.
+link that opens JobDone to set a new one. Signed in already? **Me → Set or change password**.
 
 ## 6. Install it on your iPhone
 1. Open your site link in **Safari**.
