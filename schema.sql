@@ -15,3 +15,14 @@ create policy "Own data only" on public.jobdone_docs
   for all to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Step sync keys: an Apple Shortcut posts steps to the "steps" edge function with this key.
+-- Only the sha256 of the key is stored.
+create table if not exists public.jobdone_sync_keys (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  key_hash text not null unique,
+  created_at timestamptz not null default now()
+);
+alter table public.jobdone_sync_keys enable row level security;
+create policy "Own key only" on public.jobdone_sync_keys
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);

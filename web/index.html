@@ -1081,16 +1081,20 @@ function viewMe() {
   </div>
   <h2>Steps from QWatch</h2>
   <div class="card stack">
-    <p class="sec" style="margin:0;font-size:14px">Your QWatch steps reach Apple Health, but a web app can’t read Apple Health directly. So steps come in two ways for now: type them on Today, or copy them from an Apple Shortcut and paste them here. Live automatic sync and writing weight back to Health need the native iPhone version of JobDone.</p>
-    <details><summary class="link">Set up the Steps shortcut (one time)</summary>
+    ${HOSTED && USER ? `<p class="sec" style="margin:0;font-size:14px">QWatch Pro sends your steps to Apple Health. An evening Apple Shortcut then sends them from Health to JobDone by itself, with no app opening. It needs a sync key, which you make once here.</p>
+    <button class="btn block" data-a="syncKey">Create sync key</button>
+    <details><summary class="link">Set up the evening Shortcut (one time)</summary>
       <ol class="sec" style="font-size:14px;padding-left:20px;display:flex;flex-direction:column;gap:6px;margin:6px 0 0">
+        <li>Make a sync key above and copy it.</li>
         <li>Open Shortcuts, tap +, and name it “JobDone steps”.</li>
-        <li>Add <b>Find Health Samples</b>: Type is Steps, Start Date is in the last 7 days, Group By Day.</li>
+        <li>Add <b>Find Health Samples</b>: Type is Steps, Start Date is in the last 3 days, Group By Day.</li>
         <li>Add <b>Repeat with Each</b>. Inside it, add <b>Text</b> containing the item’s Start Date (format: Custom, <span class="num">yyyy-MM-dd</span>), a space, then the item’s Value.</li>
-        <li>After the repeat, add <b>Combine Text</b> with New Lines, then <b>Copy to Clipboard</b>.</li>
-        <li>Run it, open JobDone, tap Steps on Today, and paste.</li>
-      </ol></details>
-    <button class="btn block" data-a="steps">Add or paste steps</button>
+        <li>After the repeat, add <b>Combine Text</b> with New Lines.</li>
+        <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
+        <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
+        <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “JobDone steps”.</li>
+      </ol></details>` : `<p class="sec" style="margin:0;font-size:14px">Your QWatch steps reach Apple Health. Type them on Today, or copy them from an Apple Shortcut and paste them here. Sign in on the JobDone website to have a Shortcut send them automatically every evening.</p>`}
+    <button class="btn ${HOSTED && USER ? 'ghost ' : ''}block" data-a="steps">Add or paste steps by hand</button>
   </div>
   ${HOSTED && USER ? `<h2>Account</h2><div class="card stack"><div class="row between"><div class="grow"><div class="cap">Signed in as</div><div style="font-weight:600;overflow-wrap:anywhere">${esc(USER.email || 'your account')}</div></div><button class="btn sm" data-a="signOut">Sign out</button></div></div>` : ''}
   <h2>Your data</h2>
@@ -1358,6 +1362,33 @@ function parseStepText(txt) {
     if (d && nm) { const v = Math.round(parseFloat(nm[1].replace(/,/g, ''))); if (v >= 0 && v < 200000) out[d] = (out[d] || 0) + v; }
   }
   return out;
+}
+function openSyncKey() {
+  const url = CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/steps';
+  openSheet(`<div class="stack"><div class="eyebrow">Steps sync key</div>
+    <p class="sec" style="margin:0;font-size:14px">A new key replaces any key you made before, so an old Shortcut stops working until you paste the new key in. JobDone shows the key only once.</p>
+    <div id="sk-out"></div>
+    <button class="btn primary block" id="sk-make">Create key</button>
+    <button class="btn ghost block" data-a="closeSheet">Close</button></div>`, { label: 'Steps sync key', mount: el => {
+  el.querySelector('#sk-make').onclick = async ev => {
+    const b = ev.currentTarget; b.disabled = true;
+    try {
+      const raw = crypto.getRandomValues(new Uint8Array(32));
+      const key = btoa(String.fromCharCode(...raw)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
+      const key_hash = [...new Uint8Array(h)].map(x => x.toString(16).padStart(2, '0')).join('');
+      const { error } = await SB.from('jobdone_sync_keys').upsert({ user_id: USER.id, key_hash, created_at: new Date().toISOString() });
+      if (error) throw error;
+      b.remove();
+      el.querySelector('#sk-out').innerHTML = `<div class="stack" style="gap:10px">
+        <div class="field"><label>Your key</label><textarea class="input num" readonly rows="2" style="min-height:0">${esc(key)}</textarea></div>
+        <button class="btn block" data-copy="${esc(key)}">Copy key</button>
+        <div class="field"><label>Shortcut address</label><textarea class="input num" readonly rows="2" style="min-height:0">${esc(url)}</textarea></div>
+        <button class="btn block" data-copy="${esc(url)}">Copy address</button></div>`;
+      for (const c of el.querySelectorAll('[data-copy]')) c.onclick = async () => { try { await navigator.clipboard.writeText(c.dataset.copy); toast('Copied'); } catch (e) { toast('Press and hold the text to copy it'); } };
+    } catch (e) { b.disabled = false; toast('Could not create the key. Check your connection and try again.'); }
+  };
+  } });
 }
 function openSteps() {
   const t = today();
@@ -1690,6 +1721,7 @@ const ACT = {
   weighDate: el => openWeighIn(el.dataset.d || null, false),
   weights: () => go({ v: 'weights' }),
   steps: () => openSteps(),
+  syncKey: () => openSyncKey(),
   prog: el => { NAV.tab = 'progress'; NAV.stack = []; NAV.prog = el.dataset.k; render(); },
   range: el => { NAV.range = el.dataset.k; rerender(); },
   startSplit: el => startWorkout(el.dataset.id),
