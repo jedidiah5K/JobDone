@@ -453,10 +453,10 @@ function render() {
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
 // and in localStorage (so the right colours show before the data loads).
 const THEMES = [
-  { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(90deg, #6FB3E6 0% 20%, #F6C9A8 20% 40%, #8A5A40 40% 60%, #1F7A99 60% 80%, #FFF9F2 80% 100%)' },
-  { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(90deg, #EFEBE5 0% 20%, #6C3FD6 20% 40%, #F4B728 40% 60%, #2E8B4E 60% 80%, #E0412F 80% 100%)' },
-  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'linear-gradient(90deg, #050507 0% 25%, #1C1D26 25% 50%, #6C7AA8 50% 75%, #F4F5FA 75% 100%)' },
-  { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(90deg, #0D1A45 0% 25%, #15275F 25% 50%, #E2231A 50% 75%, #FFFFFF 75% 100%)' },
+  { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0% 20%, #F6C9A8 20% 40%, #8A5A40 40% 60%, #1F7A99 60% 80%, #FFF9F2 80% 100%)' },
+  { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0% 20%, #6C3FD6 20% 40%, #F4B728 40% 60%, #2E8B4E 60% 80%, #E0412F 80% 100%)' },
+  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'linear-gradient(180deg, #050507 0% 25%, #1C1D26 25% 50%, #6C7AA8 50% 75%, #F4F5FA 75% 100%)' },
+  { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0% 25%, #15275F 25% 50%, #E2231A 50% 75%, #FFFFFF 75% 100%)' },
 ];
 const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
 // Cliffs sky follows the local clock: night, sunrise, day, sunset. Colours blend between these stops.
