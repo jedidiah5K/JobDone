@@ -17,4 +17,4 @@ A personal strength and body tracker, built for iPhone: custom splits, two-tap s
 No personal training data is stored in this repository. Your log lives in your own Supabase account; bring it in with **Me → Restore from a backup**.
 
 ## Design
-The look is a dark "night-session HUD": a still background: a soft volt and cool-blue glow on black with an X-ray skeleton (drawn by `tools/skeleton.py`), frosted-glass panels, a floating glass tab bar, condensed uppercase display type, monospace labels, and motion (panels rise in, numbers count up, charts draw in, the Start button breathes). Motion turns off when the phone asks for reduced motion. The display font is Bebas Neue (SIL Open Font License), inlined at build time from `fonts/`.
+The look is quiet and consistent: a still near-black background with a faint cool glow, soft frosted panels that share one surface, border and radius on every screen, clean system type in normal case, and one soft lime accent kept for Start, finished sets and PRs. Motion is short (screens fade up a few pixels, charts draw in) and turns off when the phone asks for reduced motion.

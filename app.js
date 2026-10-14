@@ -444,20 +444,7 @@ function render() {
 // Screen entrance: panels rise in, charts draw, headline numbers count up.
 function enter(scr) {
   scr.classList.remove('enter'); void scr.offsetWidth; scr.classList.add('enter');
-  clearTimeout(enter.t); enter.t = setTimeout(() => scr.classList.remove('enter'), 1700);
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  for (const el of scr.querySelectorAll('.big, .kpi b, .mid')) {
-    const n = el.firstChild; if (!n || n.nodeType !== 3) continue;
-    const m = n.nodeValue.match(/^([−-]?)([\d,]*\.?\d+)$/); if (!m) continue;
-    const dec = (m[2].split('.')[1] || '').length, target = parseFloat(m[2].replace(/,/g, '')), comma = m[2].includes(',');
-    const t0 = performance.now(), dur = 900;
-    const step = now => {
-      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3), v = target * e;
-      let txt = v.toFixed(dec); if (comma) txt = Number(txt).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-      n.nodeValue = m[1] + txt; if (k < 1 && n.isConnected) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }
+  clearTimeout(enter.t); enter.t = setTimeout(() => scr.classList.remove('enter'), 700);
 }
 const VARC = {};
 function resolveVars(html) {
@@ -489,16 +476,16 @@ function viewToday() {
     if (trained) done++;
     const cls = trained ? 'done' : skipped ? 'miss' : d > t ? 'future' : d === t ? 'today' : '';
     const sp = wk.find(w => !w.skipped);
-    return `<div class="d"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color};--glow:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></div>`;
+    return `<div class="d"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></div>`;
   }).join('');
   const prs = ix().prs.slice(-3).reverse();
   return `<div class="stack">
   <div class="top"><div><div class="eyebrow">${esc(fmtDate(t, { wd: true }).replace(/^(\w+) /, (m, d) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[d] + ', ')))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>
   ${A ? `<button class="card row between" data-a="resume" style="text-align:left;border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 style="margin-top:4px">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
-  <div class="card glow-edge" style="--split:${nx ? nx.color : 'var(--accent)'}">
+  <div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'}">
     <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
-    ${nx ? `<div class="hero" style="color:${nx.color}">${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      <button class="btn primary block pulse" style="margin-top:18px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
+    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+      <button class="btn primary block" style="margin-top:18px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
       <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="cap" style="padding-top:10px">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
       : `<div class="empty">Create a split to get started.</div>`}
   </div>
@@ -961,7 +948,7 @@ function openKeypad(ei, si, f) {
   let buf = null; // null = untouched
   const cur = () => buf != null ? buf : (f === 'w' ? (s.w == null ? '' : dw(s.w)) : (s.r == null ? '' : String(s.r)));
   const q = f === 'w' ? (U() === 'lb' ? [-5, 5, -2.5, 2.5] : [-2.5, 2.5, -1.25, 1.25]) : [-1, 1, -2, 2];
-  const html = () => `<div class="stack" style="gap:14px"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" style="font-size:56px" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div><div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
+  const html = () => `<div class="stack" style="gap:14px"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div><div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
     <div class="keys">
       ${['1', '2', '3'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[0]}">${q[0]}</button>
       ${['4', '5', '6'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[1]}">+${q[1]}</button>
@@ -1009,7 +996,7 @@ function openWeighIn(date, prompt) {
   const isToday = date === today();
   const sh = openSheet(`<div class="stack" style="gap:14px">
     <div><div class="eyebrow">${isToday ? 'Morning weigh-in' : 'Weight entry'}</div>${isToday ? '' : `<input class="input" type="date" id="wi-date" value="${date}" style="margin-top:8px">`}</div>
-    <div class="row between"><button class="icon-btn" data-wd="-1" aria-label="Decrease by 0.1" style="font-size:24px;background:var(--surface)">−</button><div class="big" style="font-size:56px;text-align:center" id="wi-val">${val.toFixed(1)}<span class="unit">${U()}</span></div><button class="icon-btn" data-wd="1" aria-label="Increase by 0.1" style="font-size:24px;background:var(--surface)">+</button></div>
+    <div class="row between"><button class="icon-btn" data-wd="-1" aria-label="Decrease by 0.1" style="font-size:24px;background:var(--surface)">−</button><div class="big" style="text-align:center" id="wi-val">${val.toFixed(1)}<span class="unit">${U()}</span></div><button class="icon-btn" data-wd="1" aria-label="Increase by 0.1" style="font-size:24px;background:var(--surface)">+</button></div>
     <div style="position:relative"><div class="ruler" id="wi-ruler"><div class="ruler-in">${ticks}</div></div><span class="ruler-mark"></span></div>
     <button class="btn primary block" id="wi-save">Save</button>
     ${prompt ? `<button class="btn ghost block" id="wi-skip">Skip today</button>` : ex ? `<button class="btn ghost block danger" id="wi-del">Delete this entry</button>` : `<button class="btn ghost block" data-a="closeSheet">Cancel</button>`}
@@ -1608,10 +1595,9 @@ new MutationObserver(() => { for (const el of document.querySelectorAll('button[
   .observe(document.documentElement, { childList: true, subtree: true });
 // ---------- Background: a still X-ray skeleton over a soft volt and blue glow ----------
 // The skeleton art is drawn by tools/skeleton.py and inlined by build.py.
-const SKELETON_SVG = '/*SKELETON*/';
 function livingBackground() {
   if (document.getElementById('bg')) return;
-  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="xray">${SKELETON_SVG}</div><div class="vig"></div><div class="noise"></div></div>`);
+  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="noise"></div></div>`);
 }
 async function boot() {
   livingBackground();
