@@ -1060,10 +1060,10 @@ function render() {
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
 // and in localStorage (so the right colours show before the data loads).
 const THEMES = [
-  { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0% 20%, #F6C9A8 20% 40%, #8A5A40 40% 60%, #1F7A99 60% 80%, #FFF9F2 80% 100%)' },
-  { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0% 20%, #6C3FD6 20% 40%, #F4B728 40% 60%, #2E8B4E 60% 80%, #E0412F 80% 100%)' },
-  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'linear-gradient(180deg, #050507 0% 25%, #1C1D26 25% 50%, #6C7AA8 50% 75%, #F4F5FA 75% 100%)' },
-  { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0% 25%, #15275F 25% 50%, #E2231A 50% 75%, #FFFFFF 75% 100%)' },
+  { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
+  { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
+  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'linear-gradient(180deg, #050507 0.0% 33.3%, #6C7AA8 33.3% 66.7%, #F4F5FA 66.7% 100.0%)' },
+  { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
 ];
 const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
 // Cliffs sky follows the local clock: night, sunrise, day, sunset. Colours blend between these stops.
@@ -1440,7 +1440,7 @@ function viewMe() {
   <h2>Settings</h2>
   <div class="card stack">
     <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
-    <div class="row between"><span>Sounds</span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
+    <div class="row between"><span>Sounds <button class="link" data-a="soundTest" style="margin-left:8px;font-size:14px">Test</button></span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
     <button class="row between" data-a="plates" style="width:100%;min-height:44px;text-align:left"><span>Plate loader</span>${I.right}</button>
     <button class="row between" data-a="myEx" style="width:100%;min-height:44px;text-align:left"><span>My exercises and muscle groups</span>${I.right}</button>
     <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
@@ -1627,10 +1627,8 @@ let audioCtx = null;
 function tones(notes, type = 'sine', vol = .22) {
   if (S && S.profile && S.profile.sound === false) return;
   try {
-    if (navigator.audioSession) navigator.audioSession.type = type === 'tick' ? 'ambient' : 'transient';
     if (type === 'tick') type = 'sine';
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    audioOn();
     const t0 = audioCtx.currentTime;
     for (const [f, at, len = .18] of notes) {
       const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = type; o.frequency.value = f;
@@ -1639,8 +1637,16 @@ function tones(notes, type = 'sine', vol = .22) {
     }
   } catch (e) {}
 }
-// iPhone only allows audio after a tap, so wake the audio engine on the first touch (needed for dial clicks that fire while scrolling).
-document.addEventListener('touchend', function unlock() { try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {} document.removeEventListener('touchend', unlock); }, { passive: true });
+// iPhone only plays web audio after a tap: on each tap until it's running, start the engine and play a silent blip.
+// 'transient' lets sounds play with the silent switch on and briefly lowers music instead of stopping it.
+function audioOn() {
+  try {
+    if (navigator.audioSession && navigator.audioSession.type !== 'transient') navigator.audioSession.type = 'transient';
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state !== 'running') { audioCtx.resume(); const b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); src.buffer = b; src.connect(audioCtx.destination); src.start(0); }
+  } catch (e) {}
+}
+['touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (!audioCtx || audioCtx.state !== 'running') audioOn(); }, { passive: true, capture: true }));
 const SOUNDS = {
   low: () => tones([[392, 0, .22], [330, .16, .3]], 'triangle', .18),
   nice: () => tones([[659, 0, .2], [880, .1, .3]]),
@@ -2462,6 +2468,7 @@ const ACT = {
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
+  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; SOUNDS.amazing(); S.profile.sound = was; toast(audioCtx ? `Sound engine: ${audioCtx.state}. Turn the volume up if you heard nothing.` : 'No sound engine on this browser'); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };
 document.addEventListener('click', ev => {
