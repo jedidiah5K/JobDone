@@ -569,3 +569,10 @@ h2, h3, .hero, .wkname { font-weight: 700; letter-spacing: -.02em; }
 .rc-hero h1 { font-size: 40px; }
 .rc-emoji { color: var(--accent); display: flex; }
 .rc-medal { display: flex; color: var(--muted); }
+
+/* Cards are 90% solid so each theme's scenery shows through a little (Job, Oct 2026) */
+.card:not(.nextup) { background: color-mix(in srgb, var(--surface-solid, var(--surface)) 90%, transparent); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); }
+:root[data-theme="mono"] .card:not(.nextup) { background: linear-gradient(165deg, rgba(23,24,32,.9) 0%, rgba(13,13,18,.9) 60%); }
+.card.nextup { opacity: 1; }
+.sheet .card { background: var(--raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.theme-opt i { border: 1px solid var(--border); }
