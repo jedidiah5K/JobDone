@@ -423,6 +423,8 @@ function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }
 function render() {
   if (!ready) return;
   // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
+  // Oct 2026: Job removed the Miles theme; anyone on it moves to Cliffs.
+  if (S && S.profile && S.profile.theme === 'miles') { S.profile.theme = 'cliffs'; persist('jd/meta'); }
   if (S && S.profile && !S.profile.cliffs1) { S.profile.theme = 'cliffs'; S.profile.cliffs1 = true; persist('jd/meta'); }
   if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
@@ -453,9 +455,8 @@ function render() {
 const THEMES = [
   { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0 40%, #F6C9A8 40% 55%, #8A5A40 55% 80%, #1F6F8B 80%)' },
   { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'radial-gradient(circle at 25% 35%, #6C3FD6 0 7px, transparent 8px), radial-gradient(circle at 60% 65%, #F4B728 0 7px, transparent 8px), radial-gradient(circle at 82% 30%, #2E8B4E 0 6px, transparent 7px), #EFEBE5' },
-  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'radial-gradient(circle at 70% 40%, #F4F5FA 0 9px, transparent 10px), radial-gradient(ellipse 18px 6px at 40% 70%, #F4F5FA 0 90%, transparent), linear-gradient(160deg, #1C1D26, #050507)' },
+  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'url(data:image/svg+xml;utf8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20120%2044%27%20preserveAspectRatio=%27xMidYMid%20slice%27%3E%3Crect%20width=%27120%27%20height=%2744%27%20fill=%27%23050507%27/%3E%3Cpath%20d=%27M0%200H120V7Q112%209%20110%2022Q108%209%20100%208Q94%209%2092%2016Q90%209%2080%208Q70%2010%2068%2026Q66%2010%2056%208Q46%209%2044%2014Q42%209%2030%208Q22%209%2020%2020Q18%209%2010%208Q4%208%200%209Z%27%20fill=%27%231F2233%27/%3E%3Cpath%20d=%27M22%2022Q60%2044%2098%2022Q60%2034%2022%2022Z%27%20fill=%27%23F4F5FA%27/%3E%3Cpath%20d=%27M26%2024L30%2030L34%2026L38%2033L43%2028L48%2035L53%2029L58%2036L63%2029L68%2035L73%2028L78%2033L83%2026L88%2031L94%2024%27%20fill=%27none%27%20stroke=%27%23050507%27%20stroke-width=%271.6%27%20stroke-linejoin=%27round%27/%3E%3Cpath%20d=%27M30%2013Q38%209%2046%2015Q38%2017%2030%2013ZM90%2013Q82%209%2074%2015Q82%2017%2090%2013Z%27%20fill=%27%23F4F5FA%27/%3E%3C/svg%3E) center / cover' },
   { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(135deg, #E2231A 55%, #0D1A45 55%)' },
-  { k: 'miles', name: 'Miles', bar: '#08080B', sw: 'linear-gradient(120deg, transparent 46%, #FFE94D 46% 50%, transparent 50%), linear-gradient(135deg, #08080B 58%, #E3262E 58%)' },
 ];
 const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
 // Cliffs sky follows the local clock: night, sunrise, day, sunset. Colours blend between these stops.
