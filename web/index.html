@@ -877,6 +877,8 @@ function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }
 function render() {
   if (!ready) return;
   if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
+  // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
+  if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
   const app = $('#app');
   if (!S || !S.imported && !S.splits.length) { renderWelcome(); return; }
   if (!$('#screen') || !$('#tabs')) {
