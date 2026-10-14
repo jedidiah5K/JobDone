@@ -43,20 +43,15 @@ In Supabase, open **Authentication → URL Configuration**:
 - **Site URL:** your site link, e.g. `https://jobdone-job.vercel.app` or `https://jobdone-job.netlify.app`
 - **Redirect URLs:** add the same link. If you move hosts later, update both.
 
-## 5. Make the sign-in email show just the code
-In Supabase, open **Authentication → Emails**. In both the **Magic Link** and **Confirm signup** templates, set the subject to `Your JobDone code` and replace the body with:
-
-```html
-<h2>Your JobDone code</h2>
-<p>Type this code in JobDone to sign in:</p>
-<p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{ .Token }}</p>
-<p>It works once and expires soon. If you didn't ask for it, ignore this email.</p>
-```
+## 5. Sign-in
+JobDone signs in with email and password. Supabase's **Email** provider (on by default) covers this.
+New accounts get one confirmation email; tap its link, then sign in. "Forgot password?" emails a
+link that opens JobDone to set a new one.
 
 ## 6. Install it on your iPhone
 1. Open your site link in **Safari**.
 2. Tap **Share → Add to Home Screen → Add**. JobDone opens full screen with its own icon, like a normal app.
-3. Sign in with an email code.
+3. Sign in with your email and password.
 4. Bring your data over: in the Claude version of JobDone, go to **Me → Export JSON** and save the file (to iCloud Drive or Files). On the website's welcome screen, tap **Choose backup or CSV file** and pick it. Your workouts, weights, steps and splits all come across.
 
 The website itself contains none of your training data. It only lives in your Supabase account, which only you can sign in to.

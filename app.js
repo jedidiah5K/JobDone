@@ -778,7 +778,7 @@ function viewMe() {
       </ol></details>` : `<p class="sec" style="margin:0;font-size:14px">Your QWatch steps reach Apple Health. Type them on Today, or copy them from an Apple Shortcut and paste them here. Sign in on the JobDone website to have a Shortcut send them automatically every evening.</p>`}
     <button class="btn ${HOSTED && USER ? 'ghost ' : ''}block" data-a="steps">Add or paste steps by hand</button>
   </div>
-  ${HOSTED && USER ? `<h2>Account</h2><div class="card stack"><div class="row between"><div class="grow"><div class="cap">Signed in as</div><div style="font-weight:600;overflow-wrap:anywhere">${esc(USER.email || 'your account')}</div></div><button class="btn sm" data-a="signOut">Sign out</button></div></div>` : ''}
+  ${HOSTED && USER ? `<h2>Account</h2><div class="card stack"><div class="row between"><div class="grow"><div class="cap">Signed in as</div><div style="font-weight:600;overflow-wrap:anywhere">${esc(USER.email || 'your account')}</div></div><button class="btn sm" data-a="signOut">Sign out</button></div><button class="btn block" data-a="setPassword">Set or change password</button></div>` : ''}
   <h2>Your data</h2>
   <div class="card stack">
     <div class="note">${HOSTED ? (mode === 'cloud' ? 'Saved to your JobDone account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div>
@@ -1404,6 +1404,7 @@ const ACT = {
   weights: () => go({ v: 'weights' }),
   steps: () => openSteps(),
   syncKey: () => openSyncKey(),
+  setPassword: () => openSetPassword(),
   prog: el => { NAV.tab = 'progress'; NAV.stack = []; NAV.prog = el.dataset.k; render(); },
   range: el => { NAV.range = el.dataset.k; rerender(); },
   startSplit: el => startWorkout(el.dataset.id),
@@ -1539,47 +1540,58 @@ function supaDB() {
 function renderSignIn(stage = 'start', email = '', msg = '') {
   ready = false; S = null; A = null;
   $('#wk').hidden = true;
+  const make = stage === 'create';
   $('#app').innerHTML = `<main id="screen" style="padding-bottom:32px"><div class="stack" style="gap:18px;padding-top:40px;max-width:420px;margin:0 auto">
     <div class="wordmark">Job<span>Done</span></div>
-    <div><h1>${stage === 'code' ? 'Check your email' : 'Sign in'}</h1><p class="sec" style="margin:8px 0 0">${stage === 'code' ? `We sent a 6-digit code to <b style="color:var(--text)">${esc(email)}</b>. Enter it below.` : 'Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.'}</p></div>
-    ${stage === 'code' ? `
-      <div class="field"><label for="si-code">Code</label><input class="input num" id="si-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="font-size:24px;letter-spacing:.2em;min-height:56px"></div>
-      <button class="btn primary block" id="si-verify">Verify and sign in</button>
-      <div class="row between"><button class="link" id="si-resend">Send a new code</button><button class="link" id="si-back">Use a different email</button></div>`
-    : `
-      <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
-      <button class="btn primary block" id="si-send">Email me a sign-in code</button>`}
+    <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="sec" style="margin:8px 0 0">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
+    <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
+    <div class="field"><label for="si-pw">Password</label><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 6 characters' : ''}"></div>
+    <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
+    <div class="row between"><button class="link" id="si-switch">${make ? 'I have an account' : 'Create account'}</button>${make ? '' : '<button class="link" id="si-forgot">Forgot password?</button>'}</div>
     <div class="cap" id="si-msg" role="alert" style="min-height:18px;color:var(--neg)">${esc(msg)}</div>
   </div></main>`;
-  const m = t => { $('#si-msg').textContent = t; };
-  const busy = (b, on, label) => { b.disabled = on; if (label) b.textContent = label; };
-  if (stage === 'code') {
-    const go = async () => {
-      const token = $('#si-code').value.replace(/\D/g, ''); if (token.length < 6) { m('Enter the 6-digit code from the email.'); return; }
-      const b = $('#si-verify'); busy(b, true, 'Checking…');
-      const { error } = await SB.auth.verifyOtp({ email, token, type: 'email' });
-      if (error) { busy(b, false, 'Verify and sign in'); m(/expired|invalid/i.test(error.message) ? 'That code is wrong or has expired. Check the newest email, or send a new code.' : error.message); }
+  const m = (t, ok) => { const e = $('#si-msg'); e.textContent = t; e.style.color = ok ? 'var(--text2)' : 'var(--neg)'; };
+  const emailOk = () => { const em = $('#si-email').value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { m('Enter your email address.'); return null; } return em; };
+  const go = async () => {
+    const em = emailOk(); if (!em) return;
+    const pw = $('#si-pw').value; if (pw.length < 6) { m('Passwords are at least 6 characters.'); return; }
+    const b = $('#si-go'); b.disabled = true; b.textContent = make ? 'Creating…' : 'Signing in…';
+    const { data, error } = make ? await SB.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: location.origin + location.pathname } }) : await SB.auth.signInWithPassword({ email: em, password: pw });
+    if (error) {
+      b.disabled = false; b.textContent = make ? 'Create account' : 'Sign in';
+      return m(/invalid login/i.test(error.message) ? 'Wrong email or password. If you used to sign in with a code, tap Forgot password? to set one.' : /not confirmed/i.test(error.message) ? 'Confirm your email first: open the link Supabase emailed you, then sign in here.' : /rate/i.test(error.message) ? 'Too many tries. Wait a minute, then try again.' : error.message);
+    }
+    if (make && !data.session) { b.textContent = 'Create account'; b.disabled = false; m('Almost done: open the confirmation email, tap its link, then sign in here.', true); }
+  };
+  $('#si-go').onclick = go;
+  for (const id of ['#si-email', '#si-pw']) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#si-switch').onclick = () => renderSignIn(make ? 'start' : 'create', $('#si-email').value.trim());
+  if (!make) $('#si-forgot').onclick = async () => {
+    const em = emailOk(); if (!em) return;
+    const { error } = await SB.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+    m(error ? (/rate/i.test(error.message) ? 'Too many emails sent. Wait a while, then try again.' : error.message) : 'Check your email and tap the link. It opens JobDone, where you set a new password.', !error);
+  };
+}
+function openSetPassword(title = 'Set a password') {
+  openSheet(`<div class="stack"><div class="eyebrow">${esc(title)}</div>
+    <p class="sec" style="margin:0;font-size:14px">Use this with your email to sign in on any device.</p>
+    <div class="field"><label for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+    <button class="btn primary block" id="pw-save">Save password</button><div class="cap" id="pw-msg" style="color:var(--neg)"></div>
+    <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: title, mount: el => {
+    el.querySelector('#pw-save').onclick = async ev => {
+      const pw = el.querySelector('#pw-new').value; if (pw.length < 6) { el.querySelector('#pw-msg').textContent = 'At least 6 characters.'; return; }
+      ev.currentTarget.disabled = true;
+      const { error } = await SB.auth.updateUser({ password: pw });
+      if (error) { ev.currentTarget.disabled = false; el.querySelector('#pw-msg').textContent = error.message; return; }
+      closeSheet(); toast('Password saved');
     };
-    $('#si-verify').onclick = go; $('#si-code').onkeydown = e => { if (e.key === 'Enter') go(); };
-    $('#si-code').focus();
-    $('#si-back').onclick = () => renderSignIn('start', email);
-    $('#si-resend').onclick = async () => { const { error } = await SB.auth.signInWithOtp({ email }); m(error ? error.message : ''); if (!error) toast('New code sent'); };
-  } else {
-    const send = async () => {
-      const em = $('#si-email').value.trim();
-      if (!/^\S+@\S+\.\S+$/.test(em)) { m('Enter your email address.'); return; }
-      const b = $('#si-send'); busy(b, true, 'Sending…');
-      const { error } = await SB.auth.signInWithOtp({ email: em, options: { shouldCreateUser: true } });
-      if (error) { busy(b, false, 'Email me a sign-in code'); m(/rate/i.test(error.message) ? 'Too many codes sent. Wait a minute, then try again.' : error.message); return; }
-      renderSignIn('code', em);
-    };
-    $('#si-send').onclick = send; $('#si-email').onkeydown = e => { if (e.key === 'Enter') send(); };
-  }
+  } });
 }
 async function startHosted() {
-  SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } });
+  SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' } });
   SB.auth.onAuthStateChange((ev, session) => {
     if (ev === 'SIGNED_IN' && session && (!USER || USER.id !== session.user.id)) { USER = session.user; openData(); }
+    if (ev === 'PASSWORD_RECOVERY') setTimeout(() => openSetPassword('Set a new password'), 600);
     if (ev === 'SIGNED_OUT') { USER = null; openedFor = null; DB = null; mode = 'local'; renderSignIn(); }
   });
   const { data } = await SB.auth.getSession();
