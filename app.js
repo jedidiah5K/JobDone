@@ -87,7 +87,7 @@ let welcomeOv = {};   // assumption overrides on the welcome screen
 function freshState() {
   return {
     v: 1,
-    profile: Object.assign({ name: firstName(), heightCm: null, unit: 'kg', stepGoal: 10000, weeklyTarget: 4, defaultRest: 120 }, SEED.profile),
+    profile: Object.assign({ name: firstName(), heightCm: null, unit: 'kg', stepGoal: 10000, weeklyTarget: 4, defaultRest: 300, sound: true }, SEED.profile),
     splits: [], rotation: [], customEx: [], weights: {}, steps: {}, workouts: {}, imported: false, created: Date.now(),
   };
 }
@@ -786,10 +786,11 @@ function viewMe() {
   <h2>Settings</h2>
   <div class="card stack">
     <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
+    <div class="row between"><span>Sounds</span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
     <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
     <label class="row between"><span>Daily step goal</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
     <label class="row between"><span>Workouts per week</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-week" data-in="prof" data-f="weeklyTarget" value="${p.weeklyTarget}"></label>
-    <label class="row between"><span>Default rest (seconds)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-rest" data-in="prof" data-f="defaultRest" value="${p.defaultRest}"></label>
+    <label class="row between"><span>Rest timer (seconds)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-rest" data-in="prof" data-f="defaultRest" value="${p.defaultRest}"></label>
     <label class="row between"><span>Height (cm)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-h" data-in="prof" data-f="heightCm" value="${p.heightCm || ''}" placeholder="170"></label>
   </div>
   <h2>Steps from QWatch</h2>
@@ -889,7 +890,7 @@ function exCardHTML(e, ei) {
   else if (last && /marked UP/i.test(last.note || '')) sugg = `You marked this UP last time. Try ${dw(last.top ? last.top.w + 2.5 : 0)} ${U()}.`;
   const dsets = e.sets.filter(s => s.done);
   const cmp = dsets.length && last ? `<div class="cmp"><span class="sec">vs last:</span><span>top ${delta(topSet(dsets) ? topSet(dsets).w : null, last.top ? last.top.w : null, v => dw(v))}</span><span>vol ${delta(exVol(dsets), exVol(last.sets.slice(0, dsets.length)), v => dvol(v))}</span><span class="sec">(${dsets.length} set${dsets.length > 1 ? 's' : ''})</span></div>` : '';
-  return `<section class="card tight" aria-label="${esc(e.name)}">
+  return `<section class="card tight" id="ex-${ei}" aria-label="${esc(e.name)}">
     <div class="row between"><div class="grow"><div class="ex-name">${esc(e.name)}</div>${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}</div><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${sugg ? `<div class="cap" style="margin:4px 0 2px;color:var(--text)">↗ ${esc(sugg)}</div>` : ''}
     ${e.note ? `<div class="cap" style="font-style:italic">${esc(e.note)}</div>` : ''}
@@ -905,11 +906,70 @@ function exCardHTML(e, ei) {
     ${cmp}
   </section>`;
 }
+function restLeft() { return REST ? Math.max(0, REST.paused ? REST.left : (REST.end - Date.now()) / 1000) : 0; }
 function restHTML() {
-  const left = Math.max(0, (REST.end - Date.now()) / 1000);
-  return `<div class="restpill" role="timer" aria-label="Rest timer"><button class="icon-btn" data-a="rest" data-d="-15" aria-label="Rest 15 seconds less">−15</button><span class="t" data-rest>${clock(left)}</span><button class="icon-btn" data-a="rest" data-d="15" aria-label="Rest 15 seconds more">+15</button><button class="icon-btn" data-a="rest" data-d="0" aria-label="Skip rest">${I.x}</button><span class="bar"><i data-restbar style="width:${left / REST.total * 100}%"></i></span></div>`;
+  const left = restLeft(), p = 1 - left / REST.total;
+  if (REST.min) return `<button class="restpill" data-a="restOpen" aria-label="Show rest timer"><span class="hg-mini">${hourglass(p, REST.paused)}</span><span class="t" data-rest>${clock(left)}</span></button>`;
+  return `<div class="restpop ${REST.paused ? 'paused' : ''}" role="timer" aria-label="Rest timer">
+    <div class="row between"><span class="eyebrow">${REST.paused ? 'Paused' : 'Rest'}</span><button class="icon-btn" data-a="restMin" aria-label="Shrink rest timer">${I.down}</button></div>
+    <div class="hg" data-hg style="--p:${p.toFixed(4)}">${hourglass(p, REST.paused)}</div>
+    <div class="t" data-rest>${clock(left)}</div>
+    <div class="row" style="gap:8px;justify-content:center"><button class="btn sm" data-a="rest" data-d="-30">−30s</button><button class="btn sm primary" data-a="restPause">${REST.paused ? 'Resume' : 'Pause'}</button><button class="btn sm" data-a="rest" data-d="30">+30s</button></div>
+    <button class="link" data-a="rest" data-d="0" style="align-self:center">Skip rest</button>
+  </div>`;
+}
+// Sand drains from the top bulb into the bottom one as the rest runs out.
+function hourglass(p, paused) {
+  const top = 46 * (1 - p), bot = 46 * p;
+  return `<svg viewBox="0 0 80 120" aria-hidden="true"><defs><clipPath id="hgT"><path d="M14 12h52c0 22-18 32-24 46h-4C32 44 14 34 14 12z"/></clipPath><clipPath id="hgB"><path d="M38 62h4c6 14 24 24 24 46H14c0-22 18-32 24-46z"/></clipPath></defs>
+    <rect x="8" y="4" width="64" height="8" rx="4" class="hg-cap"/><rect x="8" y="108" width="64" height="8" rx="4" class="hg-cap"/>
+    <path d="M14 12h52c0 22-18 32-24 48 6 16 24 26 24 48H14c0-22 18-32 24-48C32 44 14 34 14 12z" class="hg-glass"/>
+    <rect x="10" y="${(58 - top).toFixed(1)}" width="60" height="${top.toFixed(1)}" clip-path="url(#hgT)" class="hg-sand"/>
+    <rect x="10" y="${(108 - bot).toFixed(1)}" width="60" height="${bot.toFixed(1)}" clip-path="url(#hgB)" class="hg-sand"/>
+    ${p < 1 && !paused ? '<line x1="40" y1="58" x2="40" y2="106" class="hg-stream"/>' : ''}</svg>`;
 }
 let audioCtx = null;
+// Short synth sounds (no files). On iPhone these follow the ring/silent switch and mix with music.
+function tones(notes, type = 'sine', vol = .22) {
+  if (S && S.profile && S.profile.sound === false) return;
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = 'ambient';
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    for (const [f, at, len = .18] of notes) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t0 + at); g.gain.exponentialRampToValueAtTime(vol, t0 + at + .015); g.gain.exponentialRampToValueAtTime(.0001, t0 + at + len);
+      o.connect(g).connect(audioCtx.destination); o.start(t0 + at); o.stop(t0 + at + len + .05);
+    }
+  } catch (e) {}
+}
+const SOUNDS = {
+  low: () => tones([[392, 0, .22], [330, .16, .3]], 'triangle', .18),
+  nice: () => tones([[659, 0, .2], [880, .1, .3]]),
+  great: () => tones([[523, 0], [659, .09], [784, .18, .35]], 'triangle'),
+  amazing: () => tones([[523, 0], [659, .08], [784, .16], [1047, .26, .5], [1319, .26, .5]], 'triangle', .2),
+  next: () => tones([[784, 0, .12], [988, .1, .12], [1175, .2, .12], [1568, .3, .45]], 'square', .08),
+  rest: () => tones([[880, 0, .15], [880, .2, .15], [1175, .42, .4]]),
+};
+// What a finished set says, by reps.
+function setVerdict(r) {
+  if (r <= 4) return { k: 'low', title: 'Easy, champ', sub: 'Drop the weight a little. Good form beats ego lifting.', bits: 0 };
+  if (r <= 6) return { k: 'nice', title: 'Nice!', sub: 'Solid set.', bits: 24 };
+  if (r <= 8) return { k: 'great', title: 'Great set!', sub: 'Almost time to move up.', bits: 45 };
+  return { k: 'amazing', title: 'Amazing!', sub: 'Time to add weight next session.', bits: 90 };
+}
+function celebrate(v, delay = 0) {
+  setTimeout(() => {
+    document.querySelectorAll('.cele').forEach(c => c.remove());
+    const c = document.createElement('div'); c.className = 'cele cele-' + v.k; c.setAttribute('role', 'status');
+    c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>`;
+    document.body.appendChild(c); setTimeout(() => c.remove(), v.ms || 2200);
+    if (v.bits) confetti(v.bits);
+    (SOUNDS[v.k] || (() => {}))();
+  }, delay);
+}
+
 function beep() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -919,10 +979,10 @@ function beep() {
 function tick() {
   document.querySelectorAll('[data-elapsed]').forEach(n => { if (A) n.textContent = fmtDur(Date.now() - A.start); });
   if (REST) {
-    const left = (REST.end - Date.now()) / 1000;
-    if (left <= 0) { REST = null; beep(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); return; }
+    const left = restLeft();
+    if (left <= 0) { REST = null; SOUNDS.rest(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); return; }
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
-    const b = $('[data-restbar]'); if (b) b.style.width = (left / REST.total * 100) + '%';
+    const hg = $('.restpop .hg, .restpill .hg-mini'); if (hg && !REST.paused) hg.innerHTML = hourglass(1 - left / REST.total, false);
   }
 }
 function logSet(ei, si) {
@@ -931,9 +991,19 @@ function logSet(ei, si) {
   if (s.done) {
     buzz(10);
     const pr = livePR(e)[si];
-    REST = { end: Date.now() + e.rest * 1000, total: e.rest };
+    const secs = S.profile.defaultRest || 300;
+    REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     touchA();
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
+    if (s.t !== 'warm' && s.r > 0) {
+      const v = setVerdict(s.r); celebrate(v);
+      const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
+      if (doneN === work.length && work.length) {
+        const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
+        celebrate({ k: 'next', title: 'Woohoo!', sub: nx ? 'On to ' + nx.name + '.' : 'Every set done. Finish when you’re ready.', bits: 50, ms: 2600 }, 1500);
+        if (nx) setTimeout(() => { const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
+      }
+    }
     if (pr.length) { buzz([20, 40, 60]); confetti(); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
   } else touchA();
 }
@@ -1477,7 +1547,11 @@ const ACT = {
   exMenu: el => exMenu(+el.dataset.e),
   wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }), 50); }),
   wkDiscard: () => confirmSheet({ title: 'Discard this workout?', body: 'Nothing from it will be saved.', ok: 'Discard', danger: true, onOk: () => { A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); } }),
-  rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { REST.end += d * 1000; REST.total = Math.max(REST.total + d, 1); } renderWorkout(); },
+  rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
+  restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
+  restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
+  restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
+  soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };
 document.addEventListener('click', ev => {
   if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}

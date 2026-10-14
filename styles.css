@@ -381,3 +381,46 @@ tr.pop td { animation: rowFlash .7s ease-out; }
 .theme-opt:active { transform: scale(.94); }
 .theme-opt.on { border-color: var(--accent); color: var(--text); }
 .theme-opt i { width: 100%; height: 44px; border-radius: 12px; display: block; }
+
+/* ---------- Rest timer: hourglass pop-up ---------- */
+.restpop { position: fixed; z-index: 45; left: 12px; right: 12px; max-width: 420px; margin: 0 auto; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 6px; border-radius: 28px; background: var(--surface); border: 1px solid var(--edge); box-shadow: 0 20px 50px -16px rgba(0,0,0,.5); animation: popUp .55s var(--spring); }
+@keyframes popUp { from { transform: translateY(60%) scale(.85); opacity: 0; } }
+.restpop .hg { width: 84px; height: 126px; margin: -6px auto 0; animation: flip .8s var(--spring); }
+@keyframes flip { from { transform: rotate(180deg); } }
+.restpop .t { text-align: center; font-size: 46px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+.restpop.paused .t { animation: blink 1.2s steps(2, start) infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.restpop.paused .hg { transform: rotate(90deg); transition: transform .5s var(--spring); }
+.hg svg, .hg-mini svg { width: 100%; height: 100%; overflow: visible; }
+.hg-cap { fill: var(--text); }
+.hg-glass { fill: color-mix(in srgb, var(--text) 6%, transparent); stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; }
+.hg-sand { fill: var(--yellow); transition: y .9s linear, height .9s linear; }
+:root[data-theme="spidey"] .hg-sand { fill: var(--accent); }
+.hg-stream { stroke: var(--yellow); stroke-width: 2.5; stroke-dasharray: 3 5; animation: stream .5s linear infinite; }
+:root[data-theme="spidey"] .hg-stream { stroke: var(--accent); }
+@keyframes stream { to { stroke-dashoffset: -8; } }
+.restpill { padding: 6px 16px 6px 8px; gap: 8px; }
+.hg-mini { width: 22px; height: 34px; display: block; }
+.restpill .hg-cap, .restpill .hg-glass { stroke: #fff; } .restpill .hg-cap { fill: #fff; }
+:root[data-theme="mono"] .restpill .hg-cap, :root[data-theme="spidey"] .restpill .hg-cap { fill: var(--text); }
+:root[data-theme="mono"] .restpill .hg-glass, :root[data-theme="spidey"] .restpill .hg-glass { stroke: var(--text); }
+
+/* ---------- Set-complete celebration ---------- */
+.cele { position: fixed; z-index: 85; left: 50%; top: 38%; transform: translate(-50%, -50%); width: min(300px, calc(100% - 48px)); display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 18px 20px; border-radius: 26px; background: var(--surface); border: 3px solid var(--accent); box-shadow: 0 6px 0 var(--accent-dark), 0 24px 50px -16px rgba(0,0,0,.5); pointer-events: none; animation: celeIn .6s var(--spring) both, celeOut .35s ease-in 1.85s forwards; }
+.cele b { font-size: 34px; font-weight: 900; line-height: 1.05; }
+.cele span { font-size: 15px; font-weight: 700; color: var(--text2); }
+.cele-low { border-color: var(--blue); box-shadow: 0 6px 0 color-mix(in srgb, var(--blue) 70%, #000), 0 24px 50px -16px rgba(0,0,0,.5); }
+.cele-low b { font-size: 26px; }
+.cele-nice { border-color: var(--green); box-shadow: 0 6px 0 color-mix(in srgb, var(--green) 70%, #000), 0 24px 50px -16px rgba(0,0,0,.5); }
+.cele-great { border-color: var(--yellow); box-shadow: 0 6px 0 color-mix(in srgb, var(--yellow) 70%, #000), 0 24px 50px -16px rgba(0,0,0,.5); }
+.cele-amazing { background: var(--accent); color: #fff; border-color: var(--yellow); }
+.cele-amazing span { color: inherit; opacity: .85; }
+.cele-amazing b { animation: wiggle .6s .3s var(--spring) 2; }
+.cele-next { background: var(--yellow); color: #221E2B; border-color: #221E2B; box-shadow: 0 6px 0 #221E2B, 0 24px 50px -16px rgba(0,0,0,.5); animation: celeIn .6s var(--spring) both, celeOut .35s ease-in 2.25s forwards; }
+.cele-next span { color: inherit; }
+:root[data-theme="mono"] .cele-amazing { color: #0B0B0C; }
+@keyframes celeIn { from { transform: translate(-50%, -50%) scale(.3) rotate(-8deg); opacity: 0; } }
+@keyframes celeOut { to { transform: translate(-50%, -80%) scale(.9); opacity: 0; } }
+@keyframes wiggle { 25% { transform: rotate(-6deg) scale(1.08); } 75% { transform: rotate(6deg) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .cele { animation: none; } }
+#wk:has(.restpop) .wk-body { padding-bottom: calc(330px + env(safe-area-inset-bottom, 0px)); }
