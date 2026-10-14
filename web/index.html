@@ -1120,9 +1120,9 @@ function viewMe() {
     <label class="row between"><span>Default rest (seconds)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-rest" data-in="prof" data-f="defaultRest" value="${p.defaultRest}"></label>
     <label class="row between"><span>Height (cm)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-h" data-in="prof" data-f="heightCm" value="${p.heightCm || ''}" placeholder="170"></label>
   </div>
-  <h2>Apple Health and Apple Watch</h2>
+  <h2>Steps from QWatch</h2>
   <div class="card stack">
-    <p class="sec" style="margin:0;font-size:14px">A web app can’t read Apple Health directly, so steps come in two ways for now: type them on Today, or copy them from an Apple Shortcut and paste them here. Live Apple Watch sync and writing weight back to Health need the native iPhone version of JobDone.</p>
+    <p class="sec" style="margin:0;font-size:14px">Your QWatch steps reach Apple Health, but a web app can’t read Apple Health directly. So steps come in two ways for now: type them on Today, or copy them from an Apple Shortcut and paste them here. Live automatic sync and writing weight back to Health need the native iPhone version of JobDone.</p>
     <details><summary class="link">Set up the Steps shortcut (one time)</summary>
       <ol class="sec" style="font-size:14px;padding-left:20px;display:flex;flex-direction:column;gap:6px;margin:6px 0 0">
         <li>Open Shortcuts, tap +, and name it “JobDone steps”.</li>
