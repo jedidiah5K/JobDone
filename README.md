@@ -15,3 +15,6 @@ A personal strength and body tracker, built for iPhone: custom splits, two-tap s
 | `build.py` | `python3 build.py` rebuilds `web/index.html` from the source |
 
 No personal training data is stored in this repository. Your log lives in your own Supabase account; bring it in with **Me → Restore from a backup**.
+
+## Design
+The look follows Nike's design language (from the VoltAgent awesome-design-md references), turned dark: a black canvas, white pill buttons, sections split by thin lines instead of cards, condensed uppercase display type for key numbers, and volt green kept for PRs and finished sets. The display font is Bebas Neue (SIL Open Font License), inlined at build time from `fonts/`.

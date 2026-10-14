@@ -7,6 +7,10 @@ seed_script = os.path.join(here, 'personal', 'build_seed.py')
 seed = subprocess.check_output([sys.executable, seed_script, os.path.join(here, '..', 'prompts', 'workout-log-may-oct-2026.csv')]).decode() if os.path.exists(seed_script) else None
 src_js = open(os.path.join(here, 'app.js')).read()
 css = open(os.path.join(here, 'styles.css')).read()
+# Bebas Neue (SIL Open Font License) is inlined so the display type works offline and inside the artifact.
+import base64
+font = base64.b64encode(open(os.path.join(here, 'fonts', 'bebas-neue-latin.woff2'), 'rb').read()).decode()
+css = css.replace('/*FONT*/', "@font-face { font-family: 'Bebas Neue'; font-style: normal; font-weight: 400; font-display: swap; src: url(data:font/woff2;base64," + font + ") format('woff2'); }")
 # The Claude artifact carries Job's log; the public website does not (data comes from a backup file).
 def fill(t, with_seed):
     app = src_js.replace('/*SEED*/{ log: [], weights: [], moved: [], noname: null, assumptions: [], today: null, profile: {} }', seed.strip()) if with_seed else src_js

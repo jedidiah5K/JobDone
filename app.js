@@ -476,6 +476,13 @@ function viewToday() {
   return `<div class="stack">
   <div class="top"><div><div class="eyebrow">${esc(fmtDate(t, { wd: true }).replace(/^(\w+) /, (m, d) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[d] + ', ')))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>
   ${A ? `<button class="card row between" data-a="resume" style="text-align:left;border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 style="margin-top:4px">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
+  <div class="card" style="border-top:0;padding-top:4px">
+    <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
+    ${nx ? `<div class="hero" style="color:${nx.color}">${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+      <button class="btn primary block" style="margin-top:16px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
+      <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="cap" style="padding-top:10px">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
+      : `<div class="empty">Create a split to get started.</div>`}
+  </div>
   <button class="card" data-a="weigh" style="text-align:left;width:100%">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
@@ -483,13 +490,6 @@ function viewToday() {
     <div class="kpis" style="margin-top:14px"><div class="kpi"><b>${a7 ? bw(a7) : '—'}</b><span>7-day avg</span></div><div class="kpi"><b>${since == null ? '—' : bw(since, true)}</b><span>since ${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${(() => { const r = ratePerMonth(); return r == null ? '—' : bw(r, true); })()}</b><span>per month</span></div></div>
     <div style="margin-top:12px">${wchart}</div>
   </button>
-  <div class="card">
-    <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
-    ${nx ? `<div class="row between"><div class="grow"><div class="mid">${esc(nx.name)}</div><div class="cap" style="margin-top:4px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div></div>
-      <button class="btn primary" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start</button></div>
-      <div class="list" style="margin-top:8px">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between" style="font-size:14px;padding:5px 0"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="cap" style="padding-top:4px">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
-      : `<div class="empty">Create a split to get started.</div>`}
-  </div>
   <div class="grid2">
     <button class="card" data-a="steps" style="text-align:left">
       <div class="eyebrow">Steps</div>
@@ -826,7 +826,7 @@ function renderWorkout() {
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div style="text-align:center" class="grow"><div style="font-weight:650">${esc(A.splitName)}</div><div class="cap num" data-elapsed>${fmtDur(Date.now() - A.start)}</div></div>
+      <div style="text-align:center" class="grow"><div class="wkname">${esc(A.splitName)}</div><div class="cap num" data-elapsed>${fmtDur(Date.now() - A.start)}</div></div>
       <button class="btn sm primary" data-a="finish">Finish</button></div>
     <div class="row between" style="margin-top:8px;font-size:13px"><span class="sec"><b class="num" style="color:var(--text)">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="num" style="color:var(--text)">${doneSets}</b> / ${totalSets} sets</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' to match last'}</span>` : ''}</div>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
@@ -1563,7 +1563,7 @@ async function openData() {
   const cached = lsLoad();
   ready = false; S = null; A = null; invalidate();
   if (cached && cached.S) { S = cached.S; A = cached.A || null; UI = cached.UI || UI; ready = true; $('#app').innerHTML = ''; render(); maybePrompt(); }
-  else $('#app').innerHTML = `<div class="splash"><div class="wordmark">Job<span>Done</span></div><div class="cap">Loading your log…</div></div>`;
+  else $('#app').innerHTML = skeleton();
   await connect(supaDB());
 }
 async function connect(db) {
@@ -1580,6 +1580,13 @@ async function connect(db) {
     toast('Couldn’t reach your account. Working offline on this device for now.', 4000);
   }
 }
+function skeleton() {
+  const b = (w, h, m = 0) => `<i style="width:${w};height:${h}px;margin-top:${m}px"></i>`;
+  return `<div class="skel" aria-busy="true" aria-label="Loading your log">${b('38%', 12, 8)}${b('80%', 44)}${b('62%', 96, 18)}${b('40%', 14)}${b('100%', 48, 4)}<hr>${b('30%', 12)}${b('48%', 80)}${b('100%', 70)}<hr>${b('100%', 40)}</div>`;
+}
+// Icon-only buttons get a tooltip from their label (shows on hover and long-press on desktop).
+new MutationObserver(() => { for (const el of document.querySelectorAll('button[aria-label]:not([title])')) el.title = el.getAttribute('aria-label'); })
+  .observe(document.documentElement, { childList: true, subtree: true });
 async function boot() {
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -1592,7 +1599,7 @@ async function boot() {
   }
   const cached = lsLoad();
   if (cached && cached.S) { S = cached.S; A = cached.A || null; UI = cached.UI || UI; ready = true; render(); maybePrompt(); }
-  else $('#app').innerHTML = `<div class="splash"><div class="wordmark">Job<span>Done</span></div><div class="cap">Loading your log…</div></div>`;
+  else $('#app').innerHTML = skeleton();
   let db = null;
   try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
   try { DL = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { DL = null; }
