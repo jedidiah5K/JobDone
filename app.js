@@ -394,7 +394,7 @@ function openSheet(html, opts = {}) {
 // Pull a sheet down to close it, like iOS sheets.
 function dragToDismiss(sh) {
   const el = sh.el.querySelector('.sheet'); let y0 = null, x0 = 0, dy = 0, on = false;
-  el.addEventListener('touchstart', e => { if (el.scrollTop > 0 || e.target.closest('.ruler, textarea, input')) { y0 = null; return; } y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; on = false; }, { passive: true });
+  el.addEventListener('touchstart', e => { if (el.scrollTop > 0 || e.target.closest('.ruler, textarea, input, .plate-tray, .bar-wrap')) { y0 = null; return; } y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; on = false; }, { passive: true });
   el.addEventListener('touchmove', e => {
     if (y0 == null) return; const t = e.touches[0]; dy = t.clientY - y0;
     if (!on && (dy < 8 || Math.abs(t.clientX - x0) > dy)) { if (dy < -4) y0 = null; return; }
@@ -810,7 +810,7 @@ function viewWorkout(v) {
   const w = S.workouts[v.id]; if (!w) return backBtn();
   const pr = new Map(ix().prs.filter(p => p.wid === w.id).map(p => [p.ex, p]));
   const ed = !!v.edit;
-  return `<div class="stack"><div class="row between">${backBtn()}<button class="btn sm" data-a="wkEdit">${ed ? 'Done' : 'Edit'}</button></div>
+  return `<div class="stack"><div class="row between">${backBtn()}<div class="row" style="gap:8px">${!ed && !w.skipped ? '<button class="btn sm" data-a="recap">Recap</button>' : ''}<button class="btn sm" data-a="wkEdit">${ed ? 'Done' : 'Edit'}</button></div></div>
   <div class="top" style="padding-top:0"><div><div class="eyebrow">${esc(fmtDate(w.date, { wd: true, y: true }))}${w.src === 'import' ? ' · imported' : ''}</div><h1>${esc(w.splitName || 'Workout')}</h1></div></div>
   ${ed ? `<div class="grid2"><div class="field"><label for="wk-date">Date</label><input class="input" type="date" id="wk-date" data-in="wkDate" value="${w.date}"></div><div class="field"><label for="wk-split">Split</label><select class="input" id="wk-split" data-in="wkSplit">${S.splits.map(s => `<option value="${s.id}" ${wSplit(w) === s ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div></div>` : ''}
   ${w.skipped ? `<div class="card"><div class="empty">This session was skipped.</div></div>` : `<div class="card"><div class="kpis"><div class="kpi"><b>${dvol(wVol(w))}</b><span>${U()} volume</span></div><div class="kpi"><b>${wSets(w)}</b><span>sets</span></div><div class="kpi"><b>${w.end && w.start ? fmtDur(w.end - w.start) : '—'}</b><span>duration</span></div></div>${w.energy ? `<div class="cap" style="margin-top:10px">Energy ${w.energy}/5</div>` : ''}${w.note ? `<div class="note" style="margin-top:10px">${esc(w.note)}</div>` : ''}</div>`}
@@ -833,6 +833,7 @@ function viewMe() {
   <div class="card stack">
     <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
     <div class="row between"><span>Sounds</span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
+    <button class="row between" data-a="plates" style="width:100%;min-height:44px;text-align:left"><span>Plate loader</span>${I.right}</button>
     <button class="row between" data-a="myEx" style="width:100%;min-height:44px;text-align:left"><span>My exercises and muscle groups</span>${I.right}</button>
     <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
     <label class="row between"><span>Daily step goal</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
@@ -1129,7 +1130,148 @@ function saveWorkout() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   persist(monthPath(w.date), 'jd/active', ...(metaChanged ? ['jd/meta'] : []));
   NAV.tab = 'today'; NAV.stack = []; render();
-  toast(`Saved. ${d.prs ? d.prs + ' PR' + (d.prs > 1 ? 's' : '') + ' today.' : 'Nice work.'}`);
+  showRecap(w.id, true);
+}
+
+// ---------- Job Done recap (after saving, or from a past workout) ----------
+const HEAVY = [[20000, 'a city bus', 12000], [5000, 'an elephant', 5000], [1500, 'a car', 1500], [600, 'a polar bear', 600], [300, 'a grand piano', 300], [0, 'a fridge', 100]];
+function recapData(id) {
+  const w = S.workouts[id], I2 = ix(), ws = I2.ws.filter(x => !x.skipped);
+  const num = ws.findIndex(x => x.id === id) + 1;
+  const prev = ws.slice(0, Math.max(0, num - 1)).reverse().find(x => (w.splitId && x.splitId === w.splitId) || (!w.splitId && x.splitName === w.splitName));
+  const vol = wVol(w), sets = w.ex.reduce((a, e) => a + e.sets.filter(x => x.t !== 'warm').length, 0), reps = w.ex.reduce((a, e) => a + e.sets.reduce((b, x) => b + (x.t !== 'warm' && x.r ? x.r : 0), 0), 0);
+  const prs = I2.prs.filter(p => p.wid === id);
+  const mus = {}; for (const e of w.ex) { const m = exInfo(e.name).muscle, n = e.sets.filter(x => x.t !== 'warm').length * (sideOf(e.name) ? .5 : 1); mus[m] = (mus[m] || 0) + n; }
+  const musL = Object.entries(mus).sort((a, b) => b[1] - a[1]);
+  const kg = vol, h = HEAVY.find(x => kg >= x[0]) || HEAVY[HEAVY.length - 1], times = Math.max(1, Math.round(kg / h[2] * 10) / 10);
+  const dur = w.end && w.start ? w.end - w.start : 0;
+  return { w, num, prev, vol, sets, reps, prs, musL, dur, heavy: `${times % 1 ? times.toFixed(1) : times}× ${h[1]}`, dv: prev ? (vol - wVol(prev)) / Math.max(1, wVol(prev)) : null };
+}
+function showRecap(id, fresh) {
+  const d = recapData(id); if (!d.w) return;
+  const old = document.getElementById('recap'); if (old) old.remove();
+  const el = document.createElement('div'); el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Workout recap');
+  const pr = new Map(d.prs.map(p => [p.ex, p])), mx = d.musL.length ? d.musL[0][1] : 1;
+  el.innerHTML = `<div class="rc-body">
+    <div class="rc-hero"><div class="rc-check">${fresh ? '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>' : '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>'}</div>
+      <div class="eyebrow">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1><div class="sec">${esc(d.w.splitName || 'Workout')}${d.prs.length ? ` · <b style="color:var(--text)">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</b>` : ''}</div></div>
+    <div class="rc-stats">
+      <div class="rc-st"><b>${d.dur ? fmtDur(d.dur) : '—'}</b><span>time</span></div>
+      <div class="rc-st"><b>${dvol(d.vol)}</b><span>${U()} lifted</span></div>
+      <div class="rc-st"><b>${d.sets}</b><span>sets</span></div>
+      <div class="rc-st"><b>${d.reps}</b><span>reps</span></div>
+    </div>
+    <div class="card rc-fun"><span class="rc-emoji" aria-hidden="true">🏋️</span><div>That's like lifting <b>${esc(d.heavy)}</b>.${d.dv != null ? `<div class="cap" style="margin-top:2px">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% volume vs your last ${esc(d.w.splitName || 'workout')}</div>` : ''}</div></div>
+    ${d.prs.length ? `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true">🥇</span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
+    <div class="card"><div class="eyebrow" style="margin-bottom:10px">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n % 1 ? n.toFixed(1) : n} sets</em></div>`).join('')}</div>
+    <div class="card"><div class="eyebrow" style="margin-bottom:4px">Exercises</div><div class="list">${d.w.ex.map(e => { const t = topSet(e.sets); return `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><span class="num sec">${t ? 'best ' + setStr(t) : ''}</span></div>`; }).join('')}</div></div>
+    <div class="cap" style="text-align:center">${esc(streakText())}</div>
+    <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  const close = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('#rc-done').onclick = close;
+  el.querySelector('#rc-share').onclick = () => shareRecap(d);
+  if (fresh) { confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
+}
+// Draw the recap as a 1080x1350 image in the current theme's colours and hand it to the share sheet.
+async function shareRecap(d) {
+  const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  const F = (wt, px) => `${wt} ${px}px Nunito, system-ui, sans-serif`;
+  try { await document.fonts.ready; } catch (e) {}
+  const bg = /^#|^rgb/.test(v('--surface-solid')) ? v('--surface-solid') : '#FFFDFA';
+  g.fillStyle = v('--bg') || '#EFEBE5'; g.fillRect(0, 0, W, H);
+  g.fillStyle = v('--accent') || '#6C3FD6'; g.fillRect(0, 0, W, 360);
+  g.fillStyle = v('--accent-ink') || '#fff'; g.font = F(900, 44); g.fillText(`WORKOUT #${d.num} · ${fmtDate(d.w.date, { wd: true, y: true }).toUpperCase()}`, 72, 110);
+  g.font = F(900, 150); g.fillText('Job done!', 64, 260);
+  g.font = F(800, 52); g.fillText(`${d.w.splitName || 'Workout'}${d.prs.length ? ` · ${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}` : ''}`, 72, 330);
+  const st = [[d.dur ? fmtDur(d.dur) : '—', 'time'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.reps), 'reps']];
+  st.forEach(([a, b], i) => { const x = 56 + i * 246; g.fillStyle = bg; g.beginPath(); g.roundRect(x, 400, 226, 190, 36); g.fill(); g.fillStyle = v('--text') || '#221E2B'; g.font = F(900, 58); g.fillText(a, x + 26, 490); g.fillStyle = v('--text2') || '#5F5A69'; g.font = F(800, 34); g.fillText(b, x + 26, 548); });
+  let y = 680; g.fillStyle = v('--text') || '#221E2B'; g.font = F(800, 40); g.fillText(`That's like lifting ${d.heavy}.`, 72, y); y += 80;
+  const sec = (title, rows) => { if (!rows.length || y > H - 200) return; g.font = F(900, 34); g.fillStyle = v('--text2') || '#5F5A69'; g.fillText(title, 72, y); y += 66;
+    for (const [a, b] of rows) { if (y > H - 140) break; g.fillStyle = v('--text') || '#221E2B'; g.font = F(800, 42); g.fillText(a.length > 28 ? a.slice(0, 27) + '…' : a, 72, y); g.textAlign = 'right'; g.fillText(b, W - 72, y); g.textAlign = 'left'; y += 66; } y += 30; };
+  const prn = new Set(d.prs.map(p => p.ex));
+  sec('PERSONAL RECORDS', d.prs.slice(0, 4).map(p => ['🥇 ' + p.ex, setStr(p.set)]));
+  sec('BEST SETS', d.w.ex.filter(e => !prn.has(e.name)).map(e => [e.name, setStr(topSet(e.sets))]));
+  g.fillStyle = v('--muted') || '#98929F'; g.font = F(900, 36); g.fillText('JobDone', 72, H - 72);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
+  const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+// ---------- plate loader ----------
+// Bar with sleeves; plates slide on from the ends, mirrored on both sides. Drag (or tap) plates from the tray.
+const PLATE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>';
+const PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5] };
+const PLATE_COL = { 25: '#D8312B', 20: '#2F62C9', 15: '#E8B524', 10: '#2E8B4E', 5: '#F2F0EA', 2.5: '#B4302B', 1.25: '#9EA3AA', 45: '#2F62C9', 35: '#E8B524' };
+const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 104 * Math.sqrt(w / m)); };
+function openPlates(target, onUse) {
+  const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
+  let bar = S.profile.barW != null ? S.profile.barW : 0; if (U() === 'lb' && S.profile.barW === 0) bar = 0;
+  let side = [], fresh = -1;
+  const total = () => Math.round((bar + 2 * side.reduce((a, b) => a + b, 0)) * 1000) / 1000;
+  const auto = t => { side = []; let r = Math.max(0, (t - bar) / 2); for (const p of den) while (r >= p - 1e-9) { side.push(p); r = Math.round((r - p) * 1000) / 1000; } return r; };
+  let left = target ? auto(target) : 0;
+  const custom = () => (S.profile.customPlates || []).filter(x => x > 0);
+  const svg = () => {
+    const W = 340, cx = W / 2, H = 170, cy = H / 2;
+    let xR = cx + 62, xL = cx - 62, out = '';
+    side.forEach((p, i) => { const h = plateH(p), w = p >= (U() === 'lb' ? 25 : 10) ? 15 : 10, col = PLATE_COL[p] || 'var(--accent)', nw = i === fresh ? ' new' : '';
+      out += `<g class="pl R${nw}" data-i="${i}"><rect x="${xR}" y="${cy - h / 2}" width="${w}" height="${h}" rx="4" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xR + 2}" y="${cy - h / 2 + 4}" width="3" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
+      out += `<g class="pl L${nw}" data-i="${i}"><rect x="${xL - w}" y="${cy - h / 2}" width="${w}" height="${h}" rx="4" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xL - w + 2}" y="${cy - h / 2 + 4}" width="3" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
+      xR += w + 2; xL -= w + 2; });
+    return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/><rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/><rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
+  };
+  const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
+  const sh = openSheet(`<div class="stack" style="gap:12px"><div class="row between"><div><div class="eyebrow">Plate loader</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
+    <div class="cap" id="pl-msg"></div>
+    <div class="bar-wrap" id="pl-bar"></div>
+    <div class="field"><span class="lbl">Bar</span><div class="seg" id="pl-barw">${bars.map(b => `<button data-b="${b}" class="${b === bar ? 'on' : ''}">${b ? b + ' ' + U() : 'Plates only'}</button>`).join('')}</div></div>
+    <div><span class="lbl">Drag a plate onto the bar, or tap it. Tap a plate on the bar to take it off.</span><div class="plate-tray" id="pl-tray">${tray()}</div></div>
+    <div class="row" style="gap:8px"><input class="input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})" style="flex:1"><button class="btn" id="pl-cadd">Add plate</button></div>
+    <div class="row" style="gap:8px"><input class="input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}" style="flex:1"><button class="btn" id="pl-auto">Load it</button></div>
+    ${onUse ? `<button class="btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}</button>` : ''}
+  </div>`, { label: 'Plate loader', mount: b => {
+    const draw = () => {
+      b.querySelector('#pl-bar').innerHTML = svg(); fresh = -1;
+      b.querySelector('#pl-tot').firstChild.textContent = trim(total());
+      const u = b.querySelector('#pl-use-v'); if (u) u.textContent = trim(total());
+      b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · ${trim(left * 2)} ${U()} short of your target` : ''}` : (bar ? `Empty ${bar} ${U()} bar` : 'Add plates to start');
+    };
+    const add = p => { side.push(p); side.sort((a, c) => c - a); fresh = side.lastIndexOf(p); left = 0; buzz(8); draw(); };
+    draw();
+    b.querySelector('#pl-bar').onclick = ev => { const g = ev.target.closest('.pl'); if (!g) return; side.splice(+g.dataset.i, 1); left = 0; buzz(5); draw(); };
+    b.querySelector('#pl-clear').onclick = () => { side = []; left = 0; draw(); };
+    b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; S.profile.barW = bar; persist('jd/meta'); b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
+    b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); };
+    b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
+    const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { onUse(total()); closeSheet(sh); };
+    // drag from tray: a ghost plate follows the finger; drop over the bar to load it
+    const trayEl = b.querySelector('#pl-tray'), barEl = b.querySelector('#pl-bar');
+    let drag = null;
+    trayEl.addEventListener('pointerdown', ev => {
+      const chip = ev.target.closest('[data-p]'); if (!chip) return;
+      drag = { p: +chip.dataset.p, x0: ev.clientX, y0: ev.clientY, moved: false, ghost: null };
+      chip.setPointerCapture(ev.pointerId);
+    });
+    trayEl.addEventListener('pointermove', ev => {
+      if (!drag) return; const dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      if (!drag.moved) { drag.moved = true; const g = document.createElement('div'); g.className = 'plate-ghost'; g.style.cssText = `--pc:${PLATE_COL[drag.p] || 'var(--accent)'};--ph:${plateH(drag.p) * .7}px`; g.textContent = trim(drag.p); document.body.appendChild(g); drag.ghost = g; }
+      drag.ghost.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`;
+      const r = barEl.getBoundingClientRect(); barEl.classList.toggle('hot', ev.clientY > r.top - 30 && ev.clientY < r.bottom + 30);
+    });
+    const end = ev => {
+      if (!drag) return; const d0 = drag; drag = null; barEl.classList.remove('hot');
+      if (d0.ghost) d0.ghost.remove();
+      if (!d0.moved) { add(d0.p); return; }
+      const r = barEl.getBoundingClientRect(); if (ev.clientY > r.top - 30 && ev.clientY < r.bottom + 30) add(d0.p);
+    };
+    trayEl.addEventListener('pointerup', end); trayEl.addEventListener('pointercancel', () => { if (drag && drag.ghost) drag.ghost.remove(); drag = null; barEl.classList.remove('hot'); });
+  } });
 }
 
 // ---------- keypad ----------
@@ -1142,7 +1284,7 @@ function openKeypad(ei, si, f) {
   const D = f === 'w' ? { step: U() === 'lb' ? 2.5 : 1.25, every: U() === 'lb' ? 4 : 8, px: 12 } : { step: 1, every: 5, px: 24 };
   D.n = Math.round(Math.max(f === 'w' ? (U() === 'lb' ? 400 : 180) : 40, (parseFloat(cur()) || 0) * 1.5) / D.step) + 1;
   const dialHTML = () => { let t = ''; for (let i = 0; i < D.n; i++) { const m = i % D.every === 0; t += `<i class="${m ? 'm' : ''}">${m ? `<b>${trim(i * D.step)}</b>` : ''}</i>`; } return `<div style="position:relative"><div class="ruler" id="kp-dial" style="--tw:${D.px}px"><div class="ruler-in">${t}</div></div><span class="ruler-mark"></span></div>`; };
-  const html = () => `<div class="stack" style="gap:14px"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div><div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
+  const html = () => `<div class="stack" style="gap:14px"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div>${f === 'w' ? `<button class="btn sm" data-k="plates" style="margin-right:8px">${PLATE_ICON} Plates</button>` : ''}<div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
     ${dialHTML()}
     <div class="keys">
       ${['1', '2', '3'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[0]}">${q[0]}</button>
@@ -1177,6 +1319,7 @@ function openKeypad(ei, si, f) {
         else if (k) {
           const key = k.dataset.k;
           if (key === 'done') { closeSheet(sh); return; }
+          if (key === 'plates') { openPlates(parseFloat(cur()) || 0, v => { buf = trim(v); show(); dialTo(); }); return; }
           if (key === 'next') { commit(); closeSheet(sh); if (f === 'w') openKeypad(ei, si, 'r'); else if (si + 1 < e.sets.length) openKeypad(ei, si + 1, 'w'); return; }
           if (key === 'del') buf = (buf == null ? cur() : buf).slice(0, -1);
           else { if (buf == null) buf = ''; if (key === '.' && buf.includes('.')) return; if (buf.length < 6) buf += key; }
@@ -1661,6 +1804,8 @@ const ACT = {
   exSel: el => { NAV.stack[NAV.stack.length - 1].sel = el.dataset.k; rerender(); },
   exMetric: el => { NAV.stack[NAV.stack.length - 1].metric = el.dataset.k; rerender(); },
   rotation: () => openRotation(),
+  plates: () => openPlates(0, null),
+  recap: () => showRecap(NAV.stack[NAV.stack.length - 1].id),
   exCat: el => openExForm(el.dataset.k),
   myEx: () => openMyExercises(),
   newSplit: () => { const id = 'sp-' + uid(); S.splits.push({ id, name: 'New split', color: PALETTE[S.splits.length % PALETTE.length], archived: false, ex: [] }); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); },
