@@ -421,6 +421,8 @@ function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }
 // ---------- render shell ----------
 function render() {
   if (!ready) return;
+  // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
+  if (S && S.profile && !S.profile.cliffs1) { S.profile.theme = 'cliffs'; S.profile.cliffs1 = true; persist('jd/meta'); }
   if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
@@ -448,15 +450,50 @@ function render() {
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
 // and in localStorage (so the right colours show before the data loads).
 const THEMES = [
+  { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0 40%, #F6C9A8 40% 55%, #8A5A40 55% 80%, #1F6F8B 80%)' },
   { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'radial-gradient(circle at 25% 35%, #6C3FD6 0 7px, transparent 8px), radial-gradient(circle at 60% 65%, #F4B728 0 7px, transparent 8px), radial-gradient(circle at 82% 30%, #2E8B4E 0 6px, transparent 7px), #EFEBE5' },
-  { k: 'mono', name: 'Dark mono', bar: '#0B0B0C', sw: 'linear-gradient(135deg, #0B0B0C 50%, #3A3A3E 50% 75%, #F2F2F2 75%)' },
+  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'radial-gradient(circle at 70% 40%, #F4F5FA 0 9px, transparent 10px), radial-gradient(ellipse 18px 6px at 40% 70%, #F4F5FA 0 90%, transparent), linear-gradient(160deg, #1C1D26, #050507)' },
   { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(135deg, #E2231A 55%, #0D1A45 55%)' },
+  { k: 'miles', name: 'Miles', bar: '#08080B', sw: 'linear-gradient(120deg, transparent 46%, #FFE94D 46% 50%, transparent 50%), linear-gradient(135deg, #08080B 58%, #E3262E 58%)' },
 ];
-const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'climb';
+const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
+// Cliffs sky follows the local clock: night, sunrise, day, sunset. Colours blend between these stops.
+const SKY = [
+  [0, '#070B1E', '#121A3A', '#1E2A50', [10, 16, 48, .62], 1],
+  [5, '#1B1F4A', '#5B4F7E', '#E59A7A', [60, 40, 110, .35], .4],
+  [6.5, '#7FB2DE', '#F6C9A8', '#F7A982', [255, 150, 90, .14], 0],
+  [9, '#6FB3E6', '#A9D4EE', '#DCEEF6', [255, 255, 255, 0], 0],
+  [16.5, '#6FB3E6', '#A9D4EE', '#E7F0EE', [255, 255, 255, 0], 0],
+  [18, '#3E5C9A', '#F08E5C', '#FBC47A', [230, 110, 60, .22], 0],
+  [19.5, '#1A2152', '#6A3E78', '#C0607A', [50, 25, 85, .42], .3],
+  [21, '#070B1E', '#121A3A', '#1E2A50', [10, 16, 48, .62], 1],
+  [24, '#070B1E', '#121A3A', '#1E2A50', [10, 16, 48, .62], 1],
+];
+function skyNow(h) {
+  let i = 0; while (i < SKY.length - 2 && SKY[i + 1][0] <= h) i++;
+  const a = SKY[i], b = SKY[i + 1], f = (h - a[0]) / (b[0] - a[0]);
+  const hx = x => [1, 3, 5].map(j => parseInt(x.substr(j, 2), 16));
+  const mix = (p, q) => p.map((v, j) => v + (q[j] - v) * f);
+  const col = (p, q) => '#' + mix(hx(p), hx(q)).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+  const t = mix(a[4], b[4]);
+  return { s1: col(a[1], b[1]), s2: col(a[2], b[2]), s3: col(a[3], b[3]), tint: `rgba(${t.slice(0, 3).map(Math.round).join(',')},${t[3].toFixed(2)})`, stars: a[5] + (b[5] - a[5]) * f };
+}
+function applySky() {
+  const R = document.documentElement; if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
+  const n = new Date(), h = n.getHours() + n.getMinutes() / 60, k = skyNow(h), st = R.style;
+  st.setProperty('--sky1', k.s1); st.setProperty('--sky2', k.s2); st.setProperty('--sky3', k.s3); st.setProperty('--tint', k.tint); st.setProperty('--stars', k.stars.toFixed(2));
+  const day = h >= 6 && h < 19, p = day ? (h - 6) / 13 : ((h + 24 - 19) % 24) / 11;
+  st.setProperty('--sunx', (10 + p * 80).toFixed(1) + '%'); st.setProperty('--suny', (58 - Math.sin(Math.PI * p) * 46).toFixed(1) + '%');
+  const sun = document.querySelector('#bg .sky-sun'); if (sun) sun.classList.toggle('moon', !day);
+  R.dataset.tod = h >= 19.5 || h < 5.5 ? 'night' : 'day';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = k.s1;
+  clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3);
+}
 function applyTheme(k = theme()) {
   const t = THEMES.find(x => x.k === k) || THEMES[0];
   if (t.k === 'climb') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t.k;
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t.bar;
+  applySky();
   try { localStorage.setItem('jobdone-theme', t.k); } catch (e) {}
   for (const v in VARC) delete VARC[v];
 }
@@ -470,7 +507,7 @@ function inkOn(hex) {
 // A burst of hold-coloured confetti for PRs and finished workouts.
 function confetti(n = 60) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const cols = ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
+  const cols = ({ mono: ['#F4F5FA', '#6C7AA8', '#1C1D26'], spidey: ['#E2231A', '#FFFFFF', '#5B8CFF'], miles: ['#E3262E', '#FFE94D', '#FFFFFF', '#7FD8FF'], cliffs: ['#1F7A99', '#F2A93B', '#D2553A', '#3F8F5A', '#FFFFFF'] })[document.documentElement.dataset.theme] || ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
   for (let i = 0; i < n; i++) { const e = document.createElement('i'); e.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};--x:${(Math.random() - .5) * 160}px;--r:${(Math.random() - .5) * 900}deg;--d:${1.1 + Math.random() * .9}s;animation-delay:${Math.random() * .25}s;transform:scale(${.7 + Math.random() * .8})`; box.appendChild(e); }
   document.body.appendChild(box); setTimeout(() => box.remove(), 2600);
 }
@@ -508,7 +545,7 @@ function viewToday() {
     if (trained) done++;
     const cls = trained ? 'done' : skipped ? 'miss' : d > t ? 'future' : d === t ? 'today' : '';
     const sp = wk.find(w => !w.skipped);
-    return `<div class="d"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></div>`;
+    return `<button class="d" data-a="day" data-k="${d}" aria-label="${esc(fmtDate(d, { wd: true }))}"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></button>`;
   }).join('');
   const prs = ix().prs.slice(-3).reverse();
   return `<div class="stack">
@@ -541,7 +578,7 @@ function viewToday() {
       <div class="cap" style="margin-top:12px">${streakText()}</div>
     </div>
   </div>
-  <div class="card"><div class="week">${strip}</div></div>
+  <div class="card"><div class="card-h"><span class="eyebrow">This week</span><button class="cap" data-a="day" data-k="" style="min-height:32px">Log or edit another day</button></div><div class="week">${strip}</div></div>
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">Latest PRs</span><button class="cap" data-a="prog" data-k="strength" style="min-height:32px">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -837,12 +874,50 @@ function newExEntry(name, nSets, rest, tip) {
   }
   return { name, rest: rest || S.profile.defaultRest, tip: tip || '', note: '', sets, key: uid() };
 }
-function startWorkout(splitId) {
+function startWorkout(splitId, date) {
   if (A) { openWk(); return; }
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log' };
+  if (date && date !== today()) A.date = date;
   persist('jd/active'); openWk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
+}
+// Tap a day: open what was logged that day, or log a workout for it.
+function openDay(d) {
+  const t = today();
+  if (d && d > t) { toast('That day hasn’t happened yet'); return; }
+  const wk = d ? Object.values(S.workouts).filter(w => w.date === d && !w.skipped) : [];
+  if (wk.length === 1) { go({ v: 'workout', id: wk[0].id }); return; }
+  d = d || addDays(t, -1);
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Log or edit a day</div>
+    <input class="input" type="date" id="dy-date" value="${d}" max="${t}">
+    <div id="dy-list"></div></div>`, { label: 'Pick a day', mount: b => {
+    const list = () => {
+      const v = b.querySelector('#dy-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      const ws = Object.values(S.workouts).filter(w => w.date === v && !w.skipped);
+      b.querySelector('#dy-list').innerHTML = `<div class="stack" style="gap:10px">
+        ${ws.length ? `<div class="cap">Logged on ${esc(relDay(v))}</div>` + ws.map(w => `<button class="btn block" data-dw="${w.id}">Edit ${esc(w.splitName)}</button>`).join('') : `<div class="cap">Nothing logged ${v === t ? 'today' : 'on ' + esc(fmtDate(v, { wd: true }))} yet.</div>`}
+        ${A ? `<div class="cap">Finish or discard the workout in progress to log another one.</div>` : S.splits.map(sp => `<button class="btn ${ws.length ? '' : 'primary'} block" data-ds="${sp.id}">Log ${esc(sp.name)} for ${esc(relDay(v))}</button>`).join('') + `<button class="btn ghost block" data-ds="">Log an empty workout</button>`}</div>`;
+    };
+    b.querySelector('#dy-date').onchange = list; list();
+    b.onclick = ev => {
+      const w = ev.target.closest('[data-dw]'), s2 = ev.target.closest('[data-ds]');
+      if (w) { closeSheet(sh); go({ v: 'workout', id: w.dataset.dw }); }
+      else if (s2) { const v = b.querySelector('#dy-date').value; closeSheet(sh); startWorkout(s2.dataset.ds || null, v); }
+    };
+  } });
+}
+// Change which day the workout in progress counts for.
+function openWkDay() {
+  const t = today(), cur = A.date || t;
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Which day is this workout for?</div>
+    <div class="seg"><button data-dd="${t}" class="${cur === t ? 'on' : ''}">Today</button><button data-dd="${addDays(t, -1)}" class="${cur === addDays(t, -1) ? 'on' : ''}">Yesterday</button><button data-dd="${addDays(t, -2)}" class="${cur === addDays(t, -2) ? 'on' : ''}">2 days ago</button></div>
+    <input class="input" type="date" id="wd-date" value="${cur}" max="${t}">
+    <button class="btn primary block" id="wd-ok">Done</button></div>`, { label: 'Workout day', mount: b => {
+    const set = v => { if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v > t) return; if (v === t) delete A.date; else A.date = v; touchA(); };
+    b.querySelectorAll('[data-dd]').forEach(x => x.onclick = () => { set(x.dataset.dd); closeSheet(sh); });
+    b.querySelector('#wd-ok').onclick = () => { set(b.querySelector('#wd-date').value); closeSheet(sh); };
+  } });
 }
 function touchA() { A.touched = Date.now(); persist('jd/active'); renderWorkout(); }
 let wakeLock = null;
@@ -870,7 +945,7 @@ function renderWorkout() {
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div style="text-align:center" class="grow"><div class="wkname">${esc(A.splitName)}</div><div class="cap num" data-elapsed>${fmtDur(Date.now() - A.start)}</div></div>
+      <div style="text-align:center" class="grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num"><span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
       <button class="btn sm primary" data-a="finish">Finish</button></div>
     <div class="row between" style="margin-top:8px;font-size:13px"><span class="sec"><b class="num" style="color:var(--text)">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="num" style="color:var(--text)">${doneSets}</b> / ${totalSets} sets</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' to match last'}</span>` : ''}</div>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
@@ -1023,7 +1098,7 @@ function summaryHTML() {
   const changed = sp && JSON.stringify(A.ex.map(e => e.name)) !== JSON.stringify(sp.ex.map(e => e.name));
   return `<div class="wk-body" style="padding-top:calc(16px + env(safe-area-inset-top, 0px))">
     <button class="back" data-a="sumBack">${I.left}Back to workout</button>
-    <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1></div>
+    <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="cap daychip" data-a="wkDay" style="margin-top:6px">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur(Date.now() - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card"><div class="eyebrow" style="margin-bottom:4px">Compared with last time</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div><div style="text-align:right;font-size:13px" class="num"><div>top ${r.last ? delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v)) : '<span class="sec">first time</span>'}</div><div>vol ${r.last ? delta(r.vol, r.last.vol, v => dvol(v)) : ''}</div></div></div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
@@ -1034,7 +1109,7 @@ function summaryHTML() {
 }
 function saveWorkout() {
   const d = summaryData(); if (!d.sets) return;
-  const w = { id: A.id, date: ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets })) };
+  const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets })) };
   S.workouts[w.id] = w;
   const sp = A.splitId && splitById(A.splitId);
   let metaChanged = false;
@@ -1055,7 +1130,12 @@ function openKeypad(ei, si, f) {
   let buf = null; // null = untouched
   const cur = () => buf != null ? buf : (f === 'w' ? (s.w == null ? '' : dw(s.w)) : (s.r == null ? '' : String(s.r)));
   const q = f === 'w' ? (U() === 'lb' ? [-5, 5, -2.5, 2.5] : [-2.5, 2.5, -1.25, 1.25]) : [-1, 1, -2, 2];
+  // scale-style dial: weight in 1.25 kg / 2.5 lb steps, reps in 1s
+  const D = f === 'w' ? { step: U() === 'lb' ? 2.5 : 1.25, every: U() === 'lb' ? 4 : 8, px: 12 } : { step: 1, every: 5, px: 24 };
+  D.n = Math.round(Math.max(f === 'w' ? (U() === 'lb' ? 400 : 180) : 40, (parseFloat(cur()) || 0) * 1.5) / D.step) + 1;
+  const dialHTML = () => { let t = ''; for (let i = 0; i < D.n; i++) { const m = i % D.every === 0; t += `<i class="${m ? 'm' : ''}">${m ? `<b>${trim(i * D.step)}</b>` : ''}</i>`; } return `<div style="position:relative"><div class="ruler" id="kp-dial" style="--tw:${D.px}px"><div class="ruler-in">${t}</div></div><span class="ruler-mark"></span></div>`; };
   const html = () => `<div class="stack" style="gap:14px"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div><div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
+    ${dialHTML()}
     <div class="keys">
       ${['1', '2', '3'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[0]}">${q[0]}</button>
       ${['4', '5', '6'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[1]}">+${q[1]}</button>
@@ -1073,6 +1153,15 @@ function openKeypad(ei, si, f) {
     label: 'Number pad',
     onClose: () => { commit(); touchA(); },
     mount: (b) => {
+      const r = b.querySelector('#kp-dial'), inner = r.firstElementChild;
+      let quiet = 0, lastI = null, raf = null;
+      const show = () => { const d = b.querySelector('#kp-val'); if (d) d.firstChild.textContent = cur() || '–'; };
+      const dialTo = () => { const i = Math.max(0, Math.min(D.n - 1, Math.round((parseFloat(cur()) || 0) / D.step))); lastI = i; quiet = performance.now() + 300; r.scrollLeft = i * D.px; };
+      requestAnimationFrame(() => { inner.style.padding = `0 ${r.clientWidth / 2 - D.px / 2}px`; dialTo(); });
+      r.addEventListener('scroll', () => {
+        if (raf || performance.now() < quiet) return;
+        raf = requestAnimationFrame(() => { raf = null; const i = Math.round(r.scrollLeft / D.px); if (i !== lastI) { lastI = i; const v = i * D.step; buf = f === 'w' ? trim(v) : String(v); show(); buzz(3); } });
+      }, { passive: true });
       b.onclick = ev => {
         const k = ev.target.closest('[data-k]'), qq = ev.target.closest('[data-q]'), kf = ev.target.closest('[data-kf]');
         if (kf) { commit(); closeSheet(sh); openKeypad(ei, si, kf.dataset.kf); return; }
@@ -1084,7 +1173,7 @@ function openKeypad(ei, si, f) {
           if (key === 'del') buf = (buf == null ? cur() : buf).slice(0, -1);
           else { if (buf == null) buf = ''; if (key === '.' && buf.includes('.')) return; if (buf.length < 6) buf += key; }
         }
-        const d = b.querySelector('#kp-val'); if (d) d.firstChild.textContent = cur() || '–';
+        show(); dialTo();
       };
     },
   });
@@ -1511,6 +1600,8 @@ const ACT = {
   prog: el => { NAV.tab = 'progress'; NAV.stack = []; NAV.prog = el.dataset.k; render(); },
   range: el => { NAV.range = el.dataset.k; rerender(); },
   startSplit: el => startWorkout(el.dataset.id),
+  day: el => openDay(el.dataset.k),
+  wkDay: () => openWkDay(),
   openSplit: el => go({ v: 'split', id: el.dataset.id }),
   editSplit: el => go({ v: 'splitEdit', id: el.dataset.id }),
   openEx: el => go({ v: 'exercise', name: el.dataset.name }),
@@ -1741,7 +1832,7 @@ new MutationObserver(() => { for (const el of document.querySelectorAll('button[
 // The skeleton art is drawn by tools/skeleton.py and inlined by build.py.
 function livingBackground() {
   if (document.getElementById('bg')) return;
-  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="noise"></div></div>`);
+  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="noise"></div><i class="sky-stars"></i><i class="sky-sun"></i><i class="land"></i><i class="tint"></i></div>`);
 }
 async function boot() {
   applyTheme();
