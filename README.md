@@ -17,4 +17,4 @@ A personal strength and body tracker, built for iPhone: custom splits, two-tap s
 No personal training data is stored in this repository. Your log lives in your own Supabase account; bring it in with **Me → Restore from a backup**.
 
 ## Design
-The look is quiet and consistent: a still near-black background with a faint cool glow, soft frosted panels that share one surface, border and radius on every screen, clean system type in normal case, and one soft lime accent kept for Start, finished sets and PRs. Motion is short (screens fade up a few pixels, charts draw in) and turns off when the phone asks for reduced motion.
+The look is a light "climbing wall": a chalky, lightly speckled background, bright panels, rounded type (Nunito, SIL Open Font License, inlined from `fonts/`), and colours from climbing holds: rope purple for actions, mustard, moss green, red and wall blue. The next workout card fills with its split colour. Buttons are chunky and press in, screens bounce in, finished sets pop, and PRs and finished workouts throw confetti. Motion turns off when the phone asks for reduced motion.

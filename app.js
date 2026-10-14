@@ -442,6 +442,20 @@ function render() {
   renderWorkout();
 }
 // Screen entrance: panels rise in, charts draw, headline numbers count up.
+// Dark or white text, whichever reads better on a split's colour.
+function inkOn(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return '#fff';
+  const n = parseInt(m[1], 16), lin = c => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+  const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
+  return L > .36 ? '#221E2B' : '#fff';
+}
+// A burst of hold-coloured confetti for PRs and finished workouts.
+function confetti(n = 60) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cols = ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
+  for (let i = 0; i < n; i++) { const e = document.createElement('i'); e.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};--x:${(Math.random() - .5) * 160}px;--r:${(Math.random() - .5) * 900}deg;--d:${1.1 + Math.random() * .9}s;animation-delay:${Math.random() * .25}s;transform:scale(${.7 + Math.random() * .8})`; box.appendChild(e); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 2600);
+}
 function enter(scr) {
   scr.classList.remove('enter'); void scr.offsetWidth; scr.classList.add('enter');
   clearTimeout(enter.t); enter.t = setTimeout(() => scr.classList.remove('enter'), 700);
@@ -465,7 +479,7 @@ function viewToday() {
   const p = S.profile, fw = firstWeight(), since = lw && fw ? lw.w - fw.w : null;
   const loggedToday = S.weights[t];
   const recent = weightList().filter(e => daysBetween(e.d, t) <= 120);
-  const wchart = recent.length > 1 ? lineChart({ series: [{ pts: recent.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--text)', dots: true, width: 1.6 }], h: 96, yfmt: v => bw(v), area: true }) : '';
+  const wchart = recent.length > 1 ? lineChart({ series: [{ pts: recent.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--accent)', dots: true, width: 2.4 }], h: 96, yfmt: v => bw(v), area: true }) : '';
   const nx = nextSplit();
   const lastNx = nx && lastOfSplit(nx);
   const steps = S.steps[t] || 0, goal = p.stepGoal || 10000, frac = Math.min(1, steps / goal);
@@ -482,7 +496,7 @@ function viewToday() {
   return `<div class="stack">
   <div class="top"><div><div class="eyebrow">${esc(fmtDate(t, { wd: true }).replace(/^(\w+) /, (m, d) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[d] + ', ')))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>
   ${A ? `<button class="card row between" data-a="resume" style="text-align:left;border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 style="margin-top:4px">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
-  <div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'}">
+  <div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
       <button class="btn primary block" style="margin-top:18px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
@@ -596,8 +610,8 @@ function progBody() {
   const st = steps30();
   return `<div class="card"><div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${U()}</span></div>
     <div class="chips" style="margin-bottom:10px">${Object.keys(ranges).map(k => `<button class="chip ${NAV.range === k ? 'on' : ''}" data-a="range" data-k="${k}">${k}</button>`).join('')}</div>
-    ${lineChart({ series: [{ pts: list.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--text2)', dots: true, dotsOnly: list.length > 1, noArea: true, noEnd: true }, { pts: trend, color: 'var(--text)', width: 2.2 }], h: 190, yfmt: v => bw(v) })}
-    <div class="legend" style="margin-top:8px"><span><i style="background:var(--text)"></i>Trend</span><span><i style="background:var(--text2);width:6px;height:6px;border-radius:50%"></i>Logged</span><span><i style="background:transparent;border:1.5px solid var(--text2);width:7px;height:7px;border-radius:50%"></i>Estimated</span></div>
+    ${lineChart({ series: [{ pts: list.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--text2)', dots: true, dotsOnly: list.length > 1, noArea: true, noEnd: true }, { pts: trend, color: 'var(--accent)', width: 2.6 }], h: 190, yfmt: v => bw(v) })}
+    <div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Trend</span><span><i style="background:var(--text2);width:6px;height:6px;border-radius:50%"></i>Logged</span><span><i style="background:transparent;border:1.5px solid var(--text2);width:7px;height:7px;border-radius:50%"></i>Estimated</span></div>
   </div>
   <div class="card"><div class="kpis"><div class="kpi"><b>${fw ? bw(fw.w) : '—'}</b><span>${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${lw ? bw(lw.w) : '—'}</b><span>now</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>total change</span></div></div>
     <div class="cap" style="margin-top:12px">${p.heightCm && fw ? `BMI ${bmi(fw.w)} → ${lw ? bmi(lw.w) : '—'} · ` : ''}${(() => { const r = ratePerMonth(); return r == null ? '' : 'about ' + bw(Math.abs(r)) + ' ' + U() + (r < 0 ? ' down' : ' up') + ' per month'; })()}</div>
@@ -903,7 +917,7 @@ function logSet(ei, si) {
     REST = { end: Date.now() + e.rest * 1000, total: e.rest };
     touchA();
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
-    if (pr.length) { buzz([20, 40, 60]); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
+    if (pr.length) { buzz([20, 40, 60]); confetti(); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
   } else touchA();
 }
 function summaryData() {
@@ -1433,7 +1447,7 @@ const ACT = {
   skipImport: () => doImport(false),
   // workout
   minWk: () => minimizeWk(),
-  finish: () => { A.view = 'summary'; touchA(); },
+  finish: () => { A.view = 'summary'; touchA(); setTimeout(() => confetti(90), 250); },
   sumBack: () => { A.view = 'log'; touchA(); },
   saveWk: () => saveWorkout(),
   energy: el => { A.energy = +el.dataset.k; touchA(); },
