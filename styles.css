@@ -88,6 +88,7 @@ h3 { font-size: 16px; font-weight: 600; margin: 0; }
 .back { display: inline-flex; align-items: center; gap: 4px; color: var(--text2); font-size: 15px; min-height: 44px; font-weight: 700; }
 .hero { display: flex; align-items: center; gap: 10px; font-size: 40px; font-weight: 700; line-height: 1.05; letter-spacing: -.01em; overflow-wrap: anywhere; }
 .sdot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.chip .sdot { width: 10px; height: 10px; border-radius: 3px; }
 
 /* ---------- Panels ---------- */
 .card {
@@ -576,3 +577,8 @@ h2, h3, .hero, .wkname { font-weight: 700; letter-spacing: -.02em; }
 .card.nextup { opacity: 1; }
 .sheet .card { background: var(--raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .theme-opt i { border: 1px solid var(--border); }
+
+/* Day picker on the This week card: a native date input laid over the date label. */
+.datepick { position: relative; display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font-weight: 600; cursor: pointer; }
+.datepick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.dot.sel { outline: 2.5px solid var(--text); outline-offset: 3px; }

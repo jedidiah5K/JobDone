@@ -104,6 +104,7 @@ h3 { font-size: 16px; font-weight: 600; margin: 0; }
 .back { display: inline-flex; align-items: center; gap: 4px; color: var(--text2); font-size: 15px; min-height: 44px; font-weight: 700; }
 .hero { display: flex; align-items: center; gap: 10px; font-size: 40px; font-weight: 700; line-height: 1.05; letter-spacing: -.01em; overflow-wrap: anywhere; }
 .sdot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.chip .sdot { width: 10px; height: 10px; border-radius: 3px; }
 
 /* ---------- Panels ---------- */
 .card {
@@ -592,6 +593,11 @@ h2, h3, .hero, .wkname { font-weight: 700; letter-spacing: -.02em; }
 .card.nextup { opacity: 1; }
 .sheet .card { background: var(--raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .theme-opt i { border: 1px solid var(--border); }
+
+/* Day picker on the This week card: a native date input laid over the date label. */
+.datepick { position: relative; display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font-weight: 600; cursor: pointer; }
+.datepick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.dot.sel { outline: 2.5px solid var(--text); outline-offset: 3px; }
 
 body { margin: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 [hidden] { display: none !important; }
@@ -1138,11 +1144,34 @@ const backBtn = (label = 'Back') => `<button class="back" data-a="back">${I.left
 
 // ---------- Today ----------
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
+// The Today screen can show any past day (Job: tap a day and see it like a normal day). null = today.
+let VIEWDAY = null;
+function setViewDay(d) {
+  const t = today();
+  if (d && d > t) { toast('That day hasn’t happened yet'); return; }
+  VIEWDAY = d && d !== t ? d : null; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+const longDay = d => fmtDate(d, { wd: true }).replace(/^(\w+) /, (m, x) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[x] + ', '));
+const datePick = d => `<label class="cap datepick">${esc(d === today() ? 'Today, ' + fmtDate(d) : fmtDate(d, { wd: true }))} ▾<input type="date" data-in="viewDay" value="${d}" max="${today()}" aria-label="Pick a day"></label>`;
+// What was trained on a past day, or buttons to log it.
+function dayWorkoutCard(d) {
+  const ws = Object.values(S.workouts).filter(w => w.date === d && !w.skipped), sk = Object.values(S.workouts).some(w => w.date === d && w.skipped);
+  const log = A ? `<div class="cap" style="margin-top:12px">Finish the workout in progress to log another one.</div>` : `<div class="cap" style="margin-top:16px">${ws.length ? 'Log another workout' : 'Log a workout for this day'}</div><div class="chips wrap" style="margin-top:8px">${S.splits.filter(x => !x.archived).map(sp => `<button class="chip" data-a="logDay" data-id="${sp.id}" data-k="${d}"><i class="sdot" style="background:${sp.color}"></i>${esc(sp.name)}</button>`).join('')}<button class="chip" data-a="logDay" data-id="" data-k="${d}">Empty</button></div>`;
+  if (!ws.length) return `<div class="card"><div class="card-h"><span class="eyebrow">Workout</span></div><div class="mid" style="margin-top:6px">${sk ? 'Skipped' : 'Rest day'}</div><div class="cap">Nothing logged ${esc(relDay(d))}.</div>${log}</div>`;
+  return ws.map(w => { const sp = wSplit(w), c = sp ? sp.color : 'var(--accent)', sets = w.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
+    return `<div class="card nextup" style="--split:${c};--ink:${sp ? inkOn(sp.color) : '#fff'}">
+    <div class="card-h"><span class="eyebrow">Workout</span><span class="cap">${w.end && w.start ? fmtDur(w.end - w.start) : ''}</span></div>
+    <div class="hero"><i class="sdot" style="background:${c}"></i>${esc(w.splitName)}</div>
+    <div class="cap" style="margin-top:10px">${w.ex.length} exercises · ${sets} sets · ${n0(wVol(w))} ${U()} lifted</div>
+    <div class="row" style="margin-top:16px;gap:8px"><button class="btn primary grow" data-a="openW" data-id="${w.id}">Open and edit</button><button class="btn" data-a="recap" data-id="${w.id}">Recap</button></div>
+    <div class="list nextlist">${w.ex.map(e => `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${e.sets.filter(x => x.w != null || x.r != null).map(setStr).join(', ') || '—'}</span></div>`).join('')}</div></div>`; }).join('');
+}
 function viewToday() {
-  const t = today(), lw = latestWeight(), a7 = avg7();
+  if (VIEWDAY && VIEWDAY >= today()) VIEWDAY = null;
+  const T = today(), t = VIEWDAY || T, past = !!VIEWDAY, lw = past ? weightOn(t) : latestWeight(), a7 = avg7(t);
   const p = S.profile, fw = firstWeight(), since = lw && fw ? lw.w - fw.w : null;
   const loggedToday = S.weights[t];
-  const recent = weightList().filter(e => daysBetween(e.d, t) <= 120);
+  const recent = weightList().filter(e => e.d <= t && daysBetween(e.d, t) <= 120);
   const wchart = recent.length > 1 ? lineChart({ series: [{ pts: recent.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--accent)', dots: true, width: 2.4 }], h: 96, yfmt: v => bw(v), area: true }) : '';
   const nx = nextSplit();
   const lastNx = nx && lastOfSplit(nx);
@@ -1152,43 +1181,43 @@ function viewToday() {
     const d = addDays(ws, i); const wk = Object.values(S.workouts).filter(w => w.date === d);
     const trained = wk.some(w => !w.skipped), skipped = wk.some(w => w.skipped);
     if (trained) done++;
-    const cls = trained ? 'done' : skipped ? 'miss' : d > t ? 'future' : d === t ? 'today' : '';
+    const cls = (trained ? 'done' : skipped ? 'miss' : d > T ? 'future' : d === T ? 'today' : '') + (past && d === t ? ' sel' : '');
     const sp = wk.find(w => !w.skipped);
     return `<button class="d" data-a="day" data-k="${d}" aria-label="${esc(fmtDate(d, { wd: true }))}"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(sp.splitName.slice(0, 1)) : skipped ? '×' : ''}</span></button>`;
   }).join('');
-  const prs = ix().prs.slice(-3).reverse();
+  const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">
-  <div class="top"><div><div class="eyebrow">${esc(fmtDate(t, { wd: true }).replace(/^(\w+) /, (m, d) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[d] + ', ')))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>
+  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div><div class="eyebrow">${esc(longDay(t))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>`}
   ${A ? `<button class="card row between" data-a="resume" style="text-align:left;border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 style="margin-top:4px">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
-  <div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
+  ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
       <button class="btn primary block" style="margin-top:18px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
       <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="cap" style="padding-top:10px">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
       : `<div class="empty">Create a split to get started.</div>`}
-  </div>
-  <button class="card" data-a="weigh" style="text-align:left;width:100%">
-    <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
+  </div>`}
+  <button class="card" data-a="weigh" data-k="${t}" style="text-align:left;width:100%">
+    <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
-    <div class="cap" style="text-align:right">${loggedToday && weightOn(addDays(t, -1)) ? 'vs last ' + wdelta(lw.w, weightOn(addDays(t, -1)).w) : ''}</div></div>
+    <div class="cap" style="text-align:right">${loggedToday && weightOn(addDays(t, -1)) && lw ? 'vs last ' + wdelta(lw.w, weightOn(addDays(t, -1)).w) : ''}</div></div>
     <div class="kpis" style="margin-top:14px"><div class="kpi"><b>${a7 ? bw(a7) : '—'}</b><span>7-day avg</span></div><div class="kpi"><b>${since == null ? '—' : bw(since, true)}</b><span>since ${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${(() => { const r = ratePerMonth(); return r == null ? '—' : bw(r, true); })()}</b><span>per month</span></div></div>
     <div style="margin-top:12px">${wchart}</div>
   </button>
   <div class="grid2">
-    <button class="card" data-a="steps" style="text-align:left">
+    <button class="card" data-a="steps" data-k="${t}" style="text-align:left">
       <div class="eyebrow">Steps</div>
       <div class="row" style="margin-top:10px"><div class="ring"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--raised)" stroke-width="8"/>${frac > 0 ? `<circle cx="42" cy="42" r="36" fill="none" stroke="${frac >= 1 ? 'var(--pos)' : 'var(--text)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 36 * frac).toFixed(1)} 999"/>` : ''}</svg><div class="c">${Math.round(frac * 100)}%</div></div></div>
-      <div class="mid" style="margin-top:10px;font-size:24px">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to add</div>
+      <div class="mid" style="margin-top:10px;font-size:24px">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div>
     </button>
     <div class="card">
       <div class="eyebrow">This week</div>
       <div class="mid" style="margin-top:10px">${done}<span class="unit">/ ${p.weeklyTarget}</span></div>
       <div class="cap">workouts</div>
-      <div class="cap" style="margin-top:12px">${streakText()}</div>
+      <div class="cap" style="margin-top:12px">${past ? 'week of ' + esc(fmtDate(ws)) : streakText()}</div>
     </div>
   </div>
-  <div class="card"><div class="card-h"><span class="eyebrow">This week</span><button class="cap" data-a="day" data-k="" style="min-height:32px">Log or edit another day</button></div><div class="week">${strip}</div></div>
-  ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">Latest PRs</span><button class="cap" data-a="prog" data-k="strength" style="min-height:32px">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
+  <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div><div class="week">${strip}</div></div>
+  ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="cap" data-a="prog" data-k="strength" style="min-height:32px">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
 function ratePerMonth() {
@@ -1622,31 +1651,42 @@ function hourglass(p, paused) {
     <rect x="10" y="${(108 - bot).toFixed(1)}" width="60" height="${bot.toFixed(1)}" clip-path="url(#hgB)" class="hg-sand"/>
     ${p < 1 && !paused ? '<line x1="40" y1="58" x2="40" y2="106" class="hg-stream"/>' : ''}</svg>`;
 }
-let audioCtx = null;
 // Short synth sounds (no files). Cheers play even on silent and briefly duck music; dial clicks follow the silent switch.
+// Sounds are synthesised once into small WAV files and played through <audio> elements, which iPhones play
+// reliably after the first tap (and with the silent switch on). 'transient' asks iOS to lower music, not stop it.
+const SFX = {}, SFX_EL = {};
+let sfxLast = null;
+function wavURL(notes, type, vol) {
+  const sr = 22050, end = Math.max(...notes.map(([, at, len = .18]) => at + len)) + .06, n = Math.ceil(end * sr), d = new Float32Array(n);
+  const wave = type === 'square' ? p => (p % 1 < .5 ? 1 : -1) * .6 : type === 'triangle' ? p => 1 - 4 * Math.abs((p % 1) - .5) : p => Math.sin(2 * Math.PI * p);
+  for (const [f, at, len = .18] of notes) {
+    const i0 = Math.floor(at * sr), m = Math.floor(len * sr), atk = Math.floor(.012 * sr);
+    for (let i = 0; i < m && i0 + i < n; i++) { const env = i < atk ? i / atk : Math.exp(-5 * (i - atk) / m); d[i0 + i] += wave(f * i / sr) * env * vol * 2.2; }
+  }
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf), w = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function sfxEl(ch) { return SFX_EL[ch] || (SFX_EL[ch] = Object.assign(new Audio(), { preload: 'auto' })); }
 function tones(notes, type = 'sine', vol = .22) {
-  if (S && S.profile && S.profile.sound === false) return;
+  if (S && S.profile && S.profile.sound === false) return Promise.resolve();
   try {
-    if (type === 'tick') type = 'sine';
-    audioOn();
-    const t0 = audioCtx.currentTime;
-    for (const [f, at, len = .18] of notes) {
-      const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = type; o.frequency.value = f;
-      g.gain.setValueAtTime(.0001, t0 + at); g.gain.exponentialRampToValueAtTime(vol, t0 + at + .015); g.gain.exponentialRampToValueAtTime(.0001, t0 + at + len);
-      o.connect(g).connect(audioCtx.destination); o.start(t0 + at); o.stop(t0 + at + len + .05);
-    }
-  } catch (e) {}
+    const ch = type === 'tick' ? 'tick' : 'main'; if (type === 'tick') type = 'sine';
+    const key = type + vol + JSON.stringify(notes), url = SFX[key] || (SFX[key] = wavURL(notes, type, vol));
+    if (navigator.audioSession && navigator.audioSession.type !== 'transient') try { navigator.audioSession.type = 'transient'; } catch (e) {}
+    const el = sfxEl(ch); if (el.src !== url) el.src = url; el.currentTime = 0;
+    const p = el.play(); return p && p.catch ? p.catch(e => { sfxLast = e; }) : Promise.resolve();
+  } catch (e) { sfxLast = e; return Promise.resolve(); }
 }
-// iPhone only plays web audio after a tap: on each tap until it's running, start the engine and play a silent blip.
-// 'transient' lets sounds play with the silent switch on and briefly lowers music instead of stopping it.
-function audioOn() {
-  try {
-    if (navigator.audioSession && navigator.audioSession.type !== 'transient') navigator.audioSession.type = 'transient';
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state !== 'running') { audioCtx.resume(); const b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); src.buffer = b; src.connect(audioCtx.destination); src.start(0); }
-  } catch (e) {}
-}
-['touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (!audioCtx || audioCtx.state !== 'running') audioOn(); }, { passive: true, capture: true }));
+// Unlock both audio channels on the first taps, while iOS still counts it as the user's action.
+const SILENT = (() => { try { return wavURL([[440, 0, .01]], 'sine', 0); } catch (e) { return ''; } })();
+let sfxReady = false;
+['touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => {
+  if (sfxReady || !SILENT) return; sfxReady = true;
+  for (const ch of ['main', 'tick']) { const el = sfxEl(ch); el.src = SILENT; const p = el.play(); if (p && p.catch) p.catch(() => { sfxReady = false; }); }
+}, { passive: true, capture: true }));
 const SOUNDS = {
   low: () => tones([[392, 0, .22], [330, .16, .3]], 'triangle', .18),
   nice: () => tones([[659, 0, .2], [880, .1, .3]]),
@@ -1674,12 +1714,7 @@ function celebrate(v, delay = 0) {
   }, delay);
 }
 
-function beep() {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.18].forEach(t => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(0.0001, audioCtx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + t + 0.15); o.connect(g).connect(audioCtx.destination); o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + 0.16); });
-  } catch (e) {}
-}
+function beep() { SOUNDS.rest(); }
 function tick() {
   document.querySelectorAll('[data-elapsed]').forEach(n => { if (A) n.textContent = fmtDur(Date.now() - A.start); });
   if (REST) {
@@ -2040,10 +2075,10 @@ function openSyncKey() {
   };
   } });
 }
-function openSteps() {
-  const t = today();
+function openSteps(day) {
+  const t = today(), d0 = day && day <= t ? day : t;
   const sh = openSheet(`<div class="stack"><div class="eyebrow">Steps</div>
-    <div class="grid2"><div class="field"><label for="st-date">Date</label><input class="input" type="date" id="st-date" value="${t}" max="${t}"></div><div class="field"><label for="st-n">Steps</label><input class="input num" id="st-n" inputmode="numeric" placeholder="8,500" value="${S.steps[t] || ''}"></div></div>
+    <div class="grid2"><div class="field"><label for="st-date">Date</label><input class="input" type="date" id="st-date" value="${d0}" max="${t}"></div><div class="field"><label for="st-n">Steps</label><input class="input num" id="st-n" inputmode="numeric" placeholder="8,500" value="${S.steps[d0] || ''}"></div></div>
     <button class="btn primary block" id="st-save">Save</button>
     <div class="field" style="margin-top:8px"><label for="st-paste">Or paste from your “JobDone steps” shortcut</label><textarea class="input num" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea></div>
     <button class="btn block" id="st-import">Import pasted steps</button><div class="cap" id="st-msg"></div></div>`, {
@@ -2407,20 +2442,23 @@ async function eraseAll() {
 // ---------- events ----------
 const ACT = {
   closeSheet: () => closeSheet(),
-  tab: el => { NAV.tab = el.dataset.k; NAV.stack = []; render(); },
+  tab: el => { if (el.dataset.k === 'today' && NAV.tab === 'today' && !NAV.stack.length) VIEWDAY = null; NAV.tab = el.dataset.k; NAV.stack = []; render(); },
   back: () => back(),
   start: () => openStart(),
   resume: () => openWk(),
-  weigh: () => openWeighIn(today()),
+  weigh: el => openWeighIn(el.dataset.k || today()),
+  viewDay: el => setViewDay(el.dataset.k || null),
+  logDay: el => startWorkout(el.dataset.id || null, el.dataset.k),
+  openW: el => go({ v: 'workout', id: el.dataset.id }),
   weighDate: el => openWeighIn(el.dataset.d || null, false),
   weights: () => go({ v: 'weights' }),
-  steps: () => openSteps(),
+  steps: el => openSteps(el && el.dataset.k),
   syncKey: () => openSyncKey(),
   setPassword: () => openSetPassword(),
   prog: el => { NAV.tab = 'progress'; NAV.stack = []; NAV.prog = el.dataset.k; render(); },
   range: el => { NAV.range = el.dataset.k; rerender(); },
   startSplit: el => startWorkout(el.dataset.id),
-  day: el => openDay(el.dataset.k),
+  day: el => setViewDay(el.dataset.k || null),
   wkDay: () => openWkDay(),
   openSplit: el => go({ v: 'split', id: el.dataset.id }),
   editSplit: el => go({ v: 'splitEdit', id: el.dataset.id }),
@@ -2430,7 +2468,7 @@ const ACT = {
   exMetric: el => { NAV.stack[NAV.stack.length - 1].metric = el.dataset.k; rerender(); },
   rotation: () => openRotation(),
   plates: () => openPlates(0, null),
-  recap: () => showRecap(NAV.stack[NAV.stack.length - 1].id),
+  recap: el => showRecap(el.dataset.id || NAV.stack[NAV.stack.length - 1].id),
   exCat: el => openExForm(el.dataset.k),
   myEx: () => openMyExercises(),
   newSplit: () => { const id = 'sp-' + uid(); S.splits.push({ id, name: 'New split', color: PALETTE[S.splits.length % PALETTE.length], archived: false, ex: [] }); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); },
@@ -2468,15 +2506,15 @@ const ACT = {
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
-  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; SOUNDS.amazing(); S.profile.sound = was; toast(audioCtx ? `Sound engine: ${audioCtx.state}. Turn the volume up if you heard nothing.` : 'No sound engine on this browser'); },
+  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast(sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound. If you heard nothing, turn the volume up.', 4000)); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };
 document.addEventListener('click', ev => {
-  if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   const el = ev.target.closest('[data-a]'); if (!el || el.disabled) return;
   const f = ACT[el.dataset.a]; if (f) { ev.preventDefault(); f(el, ev); }
 });
 const IN = {
+  viewDay: el => { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) setViewDay(el.value); },
   spName: (el, live) => { const sp = splitById(el.dataset.id); const v = el.value.trim(); if (!v) return; sp.name = v; Object.values(S.workouts).forEach(w => { if (w.splitId === sp.id) w.splitName = v; }); persist('jd/meta', ...(live ? [] : allPaths().filter(p => p.startsWith('months/')))); },
   spEx: el => { const sp = splitById(el.dataset.id), e = sp.ex[+el.dataset.i], f = el.dataset.f; if (f === 'note') e.note = el.value; else { const v = parseInt(el.value, 10); if (!isNaN(v) && v >= 0) e[f] = v; if (e.repMax < e.repMin) e.repMax = e.repMin; } persist('jd/meta'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
