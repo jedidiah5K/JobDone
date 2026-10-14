@@ -1,6 +1,6 @@
 # Put JobDone on your own website
 
-About 20 minutes, all free. You need three free accounts: **Supabase** (sign-in and saving), **Vercel or Netlify** (the website), and **Google Cloud** (only for "Continue with Google").
+About 20 minutes, all free. You need two free accounts: **Supabase** (sign-in and saving) and **Vercel or Netlify** (the website).
 
 ## 1. Make the database (Supabase)
 1. Go to https://supabase.com, sign up, and click **New project**. Name it `jobdone`, pick a strong database password, and choose the region nearest you.
@@ -43,20 +43,20 @@ In Supabase, open **Authentication → URL Configuration**:
 - **Site URL:** your site link, e.g. `https://jobdone-job.vercel.app` or `https://jobdone-job.netlify.app`
 - **Redirect URLs:** add the same link. If you move hosts later, update both.
 
-## 5. Turn on "Continue with Google"
-1. Go to https://console.cloud.google.com and create a project called `JobDone`.
-2. **APIs & Services → OAuth consent screen:** choose External, app name `JobDone`, your email as support and developer contact. Save.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID:** type **Web application**.
-   - Authorized JavaScript origins: your site link (Vercel or Netlify).
-   - Authorized redirect URIs: `https://YOUR-PROJECT.supabase.co/auth/v1/callback` (your Project URL plus `/auth/v1/callback`).
-4. Copy the **Client ID** and **Client secret**.
-5. In Supabase, open **Authentication → Sign In / Providers → Google**, turn it on, paste both, and save.
-6. While the Google app is in "Testing", add your Gmail under **OAuth consent screen → Test users**, or click **Publish app**.
+## 5. Make the sign-in email show just the code
+In Supabase, open **Authentication → Emails**. In both the **Magic Link** and **Confirm signup** templates, set the subject to `Your JobDone code` and replace the body with:
+
+```html
+<h2>Your JobDone code</h2>
+<p>Type this code in JobDone to sign in:</p>
+<p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{ .Token }}</p>
+<p>It works once and expires soon. If you didn't ask for it, ignore this email.</p>
+```
 
 ## 6. Install it on your iPhone
 1. Open your site link in **Safari**.
 2. Tap **Share → Add to Home Screen → Add**. JobDone opens full screen with its own icon, like a normal app.
-3. Sign in with Google or an email code.
+3. Sign in with an email code.
 4. Bring your data over: in the Claude version of JobDone, go to **Me → Export JSON** and save the file (to iCloud Drive or Files). On the website's welcome screen, tap **Choose backup or CSV file** and pick it. Your workouts, weights, steps and splits all come across.
 
 The website itself contains none of your training data. It only lives in your Supabase account, which only you can sign in to.

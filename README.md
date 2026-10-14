@@ -1,9 +1,9 @@
 # JobDone
 
-A personal strength and body tracker, built for iPhone: custom splits, two-tap set logging with last-session comparisons and PR detection, daily weigh-ins, steps, and progress charts. It installs to the home screen as an app and saves to your account (Supabase), with Google or email-code sign-in.
+A personal strength and body tracker, built for iPhone: custom splits, two-tap set logging with last-session comparisons and PR detection, daily weigh-ins, steps, and progress charts. It installs to the home screen as an app and saves to your account (Supabase), with email-code sign-in.
 
 - **Live site:** the `web/` folder, served as-is by Vercel (see `vercel.json`).
-- **Set it up:** follow [SETUP.md](SETUP.md) (Supabase, Vercel or Netlify, Google sign-in).
+- **Set it up:** follow [SETUP.md](SETUP.md) (Supabase, then Vercel or Netlify).
 - **Database:** [schema.sql](schema.sql), one table with per-user row-level security.
 
 ## Source
