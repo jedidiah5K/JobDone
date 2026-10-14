@@ -7,6 +7,8 @@ seed_script = os.path.join(here, 'personal', 'build_seed.py')
 seed = subprocess.check_output([sys.executable, seed_script, os.path.join(here, '..', 'prompts', 'workout-log-may-oct-2026.csv')]).decode() if os.path.exists(seed_script) else None
 src_js = open(os.path.join(here, 'app.js')).read()
 css = open(os.path.join(here, 'styles.css')).read()
+# The X-ray skeleton background (drawn by tools/skeleton.py) is inlined into app.js.
+src_js = src_js.replace("'/*SKELETON*/'", repr(open(os.path.join(here, 'tools', 'skeleton.svg')).read().strip()).replace('</', '<\\/'))
 # Bebas Neue (SIL Open Font License) is inlined so the display type works offline and inside the artifact.
 import base64
 font = base64.b64encode(open(os.path.join(here, 'fonts', 'bebas-neue-latin.woff2'), 'rb').read()).decode()

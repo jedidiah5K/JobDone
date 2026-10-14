@@ -1606,56 +1606,12 @@ function skeleton() {
 // Icon-only buttons get a tooltip from their label (shows on hover and long-press on desktop).
 new MutationObserver(() => { for (const el of document.querySelectorAll('button[aria-label]:not([title])')) el.title = el.getAttribute('aria-label'); })
   .observe(document.documentElement, { childList: true, subtree: true });
-// ---------- Living background: aurora, rising sparks, and a holographic athlete squatting ----------
+// ---------- Background: a still X-ray skeleton over a soft volt and blue glow ----------
+// The skeleton art is drawn by tools/skeleton.py and inlined by build.py.
+const SKELETON_SVG = '/*SKELETON*/';
 function livingBackground() {
   if (document.getElementById('bg')) return;
-  const sparks = Array.from({ length: 18 }, (_, i) => {
-    const r = (n => ((Math.sin(i * 97.13 + n) + 1) / 2));
-    return `<i style="left:${(r(1) * 100).toFixed(1)}%;width:${(2 + r(2) * 3).toFixed(1)}px;height:${(2 + r(2) * 3).toFixed(1)}px;animation-duration:${(9 + r(3) * 12).toFixed(1)}s;animation-delay:-${(r(4) * 20).toFixed(1)}s;opacity:${(.35 + r(5) * .5).toFixed(2)}"></i>`;
-  }).join('');
-  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
-    <div class="holo"><svg viewBox="0 0 240 300"><defs><linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="290"><stop offset="0" stop-color="#D4FF3A"/><stop offset="1" stop-color="#3DF5FF"/></linearGradient><linearGradient id="hgf" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="290"><stop offset="0" stop-color="#D4FF3A" stop-opacity=".35"/><stop offset="1" stop-color="#3DF5FF" stop-opacity=".12"/></linearGradient><radialGradient id="hf"><stop offset="0" stop-color="#D4FF3A" stop-opacity=".55"/><stop offset="1" stop-color="#D4FF3A" stop-opacity="0"/></radialGradient></defs>
-    <ellipse cx="120" cy="286" rx="70" ry="9" fill="url(#hf)"/><g id="holo-glow" fill="url(#hg)" stroke="url(#hg)" stroke-width="10" stroke-linejoin="round" opacity=".18"></g><g id="holo-body" fill="url(#hgf)" stroke="url(#hg)" stroke-width="1.6" stroke-linejoin="round"></g></svg></div>
-    <div class="sparks">${sparks}</div><div class="noise"></div></div>`);
-  const body = document.getElementById('holo-body'), glow = document.getElementById('holo-glow');
-  // Front-on lifter doing an overhead press, drawn from tapered limbs (y up, x = 0 is the body's centre line).
-  const P = (x, y) => `${(120 + x).toFixed(1)},${(286 - y).toFixed(1)}`;
-  const limb = (a, b, wa, wb) => {
-    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
-    return `<path d="M${P(a[0] + nx * wa / 2, a[1] + ny * wa / 2)} L${P(b[0] + nx * wb / 2, b[1] + ny * wb / 2)} L${P(b[0] - nx * wb / 2, b[1] - ny * wb / 2)} L${P(a[0] - nx * wa / 2, a[1] - ny * wa / 2)}Z"/><circle cx="${P(...b).split(',')[0]}" cy="${P(...b).split(',')[1]}" r="${(wb / 2).toFixed(1)}" stroke="none"/>`;
-  };
-  const ik = (S, H, l1, l2, side) => { // elbow position, pointing outward
-    const dx = H[0] - S[0], dy = H[1] - S[1], d = Math.min(Math.hypot(dx, dy), l1 + l2 - .01);
-    const a = Math.atan2(dy, dx), b = Math.acos((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d));
-    const t = a - side * b; return [S[0] + l1 * Math.cos(t), S[1] + l1 * Math.sin(t)];
-  };
-  const static_ = `${limb([-15, 108], [-21, 58], 27, 17)}${limb([15, 108], [21, 58], 27, 17)}${limb([-21, 58], [-25, 8], 17, 10)}${limb([21, 58], [25, 8], 17, 10)}
-    ${limb([-25, 6], [-40, 2], 9, 7)}${limb([25, 6], [40, 2], 9, 7)}
-    <path d="M${P(-24, 104)} C${P(-28, 130)} ${P(-24, 150)} ${P(-46, 172)} Q${P(-44, 184)} ${P(-30, 186)} L${P(30, 186)} Q${P(44, 184)} ${P(46, 172)} C${P(24, 150)} ${P(28, 130)} ${P(24, 104)} Z"/>
-    <path d="M${P(-18, 160)} Q${P(0, 152)} ${P(18, 160)}" fill="none" opacity=".6"/><path d="M${P(0, 150)} L${P(0, 116)}" fill="none" opacity=".4"/>
-    ${limb([0, 184], [0, 194], 13, 12)}<ellipse cx="${P(0, 206).split(',')[0]}" cy="${P(0, 206).split(',')[1]}" rx="12" ry="15"/>`;
-  function pose(k) {
-    const hy = 186 + k * 64, parts = [];
-    for (const sd of [-1, 1]) {
-      const S = [sd * 40, 176], H = [sd * 47, hy], E = ik(S, H, 36, 34, sd === 1 ? -1 : 1);
-      parts.push(limb(S, E, 16, 12), limb(E, H, 12, 9));
-    }
-    const by = hy + 2, plate = (x, w, h) => `<rect x="${(120 + x - w / 2).toFixed(1)}" y="${(286 - by - h / 2).toFixed(1)}" width="${w}" height="${h}" rx="3"/>`;
-    const bar = `<path d="M${P(-118, by)} L${P(118, by)}" fill="none" stroke-width="3"/>${plate(-86, 10, 62)}${plate(86, 10, 62)}${plate(-99, 8, 44)}${plate(99, 8, 44)}`;
-    const html = static_ + parts.join('') + bar;
-    body.innerHTML = html; glow.innerHTML = html;
-  }
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { pose(.55); return; }
-  let last = 0;
-  const loop = now => {
-    if (now - last > 33) {
-      last = now; const t = (now / 3600) % 1;
-      const k = t < .12 ? 0 : (1 - Math.cos((t - .12) / .88 * Math.PI * 2)) / 2;
-      pose(k);
-    }
-    requestAnimationFrame(loop);
-  };
-  requestAnimationFrame(loop);
+  document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="xray">${SKELETON_SVG}</div><div class="vig"></div><div class="noise"></div></div>`);
 }
 async function boot() {
   livingBackground();
