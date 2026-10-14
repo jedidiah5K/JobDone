@@ -17,4 +17,4 @@ A personal strength and body tracker, built for iPhone: custom splits, two-tap s
 No personal training data is stored in this repository. Your log lives in your own Supabase account; bring it in with **Me → Restore from a backup**.
 
 ## Design
-The look is a dark "night-session HUD": a slowly moving aurora background (volt, cyan, violet), frosted-glass panels, a floating glass tab bar, condensed uppercase display type, monospace labels, and motion (panels rise in, numbers count up, charts draw in, the Start button breathes). Motion turns off when the phone asks for reduced motion. The display font is Bebas Neue (SIL Open Font License), inlined at build time from `fonts/`.
+The look is a dark "night-session HUD": a slowly moving aurora background (volt and cool blue on black), frosted-glass panels, a floating glass tab bar, condensed uppercase display type, monospace labels, and motion (panels rise in, numbers count up, charts draw in, the Start button breathes). Motion turns off when the phone asks for reduced motion. The display font is Bebas Neue (SIL Open Font License), inlined at build time from `fonts/`.
