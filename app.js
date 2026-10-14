@@ -421,6 +421,7 @@ function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }
 // ---------- render shell ----------
 function render() {
   if (!ready) return;
+  if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
   const app = $('#app');
   if (!S || !S.imported && !S.splits.length) { renderWelcome(); return; }
   if (!$('#screen') || !$('#tabs')) {
@@ -442,6 +443,21 @@ function render() {
   renderWorkout();
 }
 // Screen entrance: panels rise in, charts draw, headline numbers count up.
+// Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
+// and in localStorage (so the right colours show before the data loads).
+const THEMES = [
+  { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'radial-gradient(circle at 25% 35%, #6C3FD6 0 7px, transparent 8px), radial-gradient(circle at 60% 65%, #F4B728 0 7px, transparent 8px), radial-gradient(circle at 82% 30%, #2E8B4E 0 6px, transparent 7px), #EFEBE5' },
+  { k: 'mono', name: 'Dark mono', bar: '#0B0B0C', sw: 'linear-gradient(135deg, #0B0B0C 50%, #3A3A3E 50% 75%, #F2F2F2 75%)' },
+  { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(135deg, #E2231A 55%, #0D1A45 55%)' },
+];
+const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'climb';
+function applyTheme(k = theme()) {
+  const t = THEMES.find(x => x.k === k) || THEMES[0];
+  if (t.k === 'climb') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t.k;
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t.bar;
+  try { localStorage.setItem('jobdone-theme', t.k); } catch (e) {}
+  for (const v in VARC) delete VARC[v];
+}
 // Dark or white text, whichever reads better on a split's colour.
 function inkOn(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return '#fff';
@@ -769,6 +785,7 @@ function viewMe() {
     <div class="cap" style="margin-top:12px">${ix().ws.filter(w => !w.skipped).length} workouts logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</div></div>
   <h2>Settings</h2>
   <div class="card stack">
+    <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
     <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
     <label class="row between"><span>Daily step goal</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
     <label class="row between"><span>Workouts per week</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-week" data-in="prof" data-f="weeklyTarget" value="${p.weeklyTarget}"></label>
@@ -1440,6 +1457,7 @@ const ACT = {
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
   wkDelete: () => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; confirmSheet({ title: 'Delete this workout?', body: `${esc(w.splitName)} on ${esc(fmtDate(w.date, { wd: true }))}. This can’t be undone.`, ok: 'Delete', danger: true, onOk: () => { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); back(); toast('Workout deleted'); } }); },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
+  theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
   reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, onOk: eraseAll }),
   signOut: () => confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => { await flushNow(); try { localStorage.removeItem(LS_KEY); } catch (e) {} await SB.auth.signOut(); } }),
@@ -1650,6 +1668,7 @@ function livingBackground() {
   document.body.insertAdjacentHTML('afterbegin', `<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="noise"></div></div>`);
 }
 async function boot() {
+  applyTheme();
   livingBackground();
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
