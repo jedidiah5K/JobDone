@@ -942,3 +942,24 @@ html:not(.ob-on) .ob-body[data-k="theme"] .ob-t, html:not(.ob-on) .ob-body[data-
 html:not(.ob-on) .ob-body[data-k="theme"] .ob-s { background: var(--surface); color: var(--text2); padding: var(--s3); border-radius: 14px; }
 html:not(.ob-on) .ob-foot { background: none; }
 html:not(.ob-on) .ob-foot .btn.primary { background: var(--accent); color: var(--accent-ink); }
+/* RPE, supersets (15 Oct) */
+.rpe-row td { padding: 2px 0 8px; }
+.rpe { display:grid; grid-template-columns: auto repeat(5, minmax(34px, 1fr)); align-items:center; gap:6px; }
+.rpe .cap { white-space: nowrap; display:flex; align-items:center; gap:4px; }
+.rpe button:not(.info) { min-width:0; height:36px; border-radius:10px; border:1px solid var(--line, rgba(127,127,127,.3)); background: var(--surface2, transparent); color: var(--text); font:600 15px/1 inherit; }
+.rpe button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.rpe-v { font-size:11px; opacity:.6; margin-left:2px; font-weight:500; }
+.ss-line { margin-top:6px; font-size:13px; font-weight:600; color: var(--accent); }
+/* How-to pictures (15 Oct): one restyled look, start and finish positions crossfading */
+.howto { padding: 0; overflow: hidden; }
+.ht-pic { position: relative; aspect-ratio: 3 / 2; max-width: 100%; background: radial-gradient(ellipse at 50% 92%, color-mix(in srgb, var(--text) 10%, transparent) 0 30%, transparent 60%), color-mix(in srgb, var(--text) 4%, transparent); }
+.ht-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: grayscale(1) contrast(1.05); }
+:root[data-theme="mono"] .ht-pic img, :root[data-theme="spidey"] .ht-pic img { filter: grayscale(1) brightness(1.08) contrast(1.05); }
+.ht-pic img.b { animation: htfade 3.2s ease-in-out infinite; }
+@keyframes htfade { 0%, 38% { opacity: 0; } 50%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ht-pic img.b { animation: none; opacity: 0; } }
+.howto details { padding: 12px 16px 14px; }
+.howto summary { cursor: pointer; list-style: none; }
+.howto summary::after { content: ' ▾'; }
+.ht-steps { margin: 10px 0 6px; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.4; }
+.ht-cr { opacity: .6; font-size: 11px; margin: 4px 0 0; }

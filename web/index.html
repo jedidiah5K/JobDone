@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Qn3bCZL5CGJfIESPCXzOf9FaaE29a9mkTYL6weVIst8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-vPSnJtf8HJMaQyzZPhA04Azx64I+75jTLROcjNQqPKw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Jobs Done</title>
 <meta name="description" content="A strength and body tracker">
@@ -959,6 +959,27 @@ html:not(.ob-on) .ob-body[data-k="theme"] .ob-t, html:not(.ob-on) .ob-body[data-
 html:not(.ob-on) .ob-body[data-k="theme"] .ob-s { background: var(--surface); color: var(--text2); padding: var(--s3); border-radius: 14px; }
 html:not(.ob-on) .ob-foot { background: none; }
 html:not(.ob-on) .ob-foot .btn.primary { background: var(--accent); color: var(--accent-ink); }
+/* RPE, supersets (15 Oct) */
+.rpe-row td { padding: 2px 0 8px; }
+.rpe { display:grid; grid-template-columns: auto repeat(5, minmax(34px, 1fr)); align-items:center; gap:6px; }
+.rpe .cap { white-space: nowrap; display:flex; align-items:center; gap:4px; }
+.rpe button:not(.info) { min-width:0; height:36px; border-radius:10px; border:1px solid var(--line, rgba(127,127,127,.3)); background: var(--surface2, transparent); color: var(--text); font:600 15px/1 inherit; }
+.rpe button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.rpe-v { font-size:11px; opacity:.6; margin-left:2px; font-weight:500; }
+.ss-line { margin-top:6px; font-size:13px; font-weight:600; color: var(--accent); }
+/* How-to pictures (15 Oct): one restyled look, start and finish positions crossfading */
+.howto { padding: 0; overflow: hidden; }
+.ht-pic { position: relative; aspect-ratio: 3 / 2; max-width: 100%; background: radial-gradient(ellipse at 50% 92%, color-mix(in srgb, var(--text) 10%, transparent) 0 30%, transparent 60%), color-mix(in srgb, var(--text) 4%, transparent); }
+.ht-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: grayscale(1) contrast(1.05); }
+:root[data-theme="mono"] .ht-pic img, :root[data-theme="spidey"] .ht-pic img { filter: grayscale(1) brightness(1.08) contrast(1.05); }
+.ht-pic img.b { animation: htfade 3.2s ease-in-out infinite; }
+@keyframes htfade { 0%, 38% { opacity: 0; } 50%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ht-pic img.b { animation: none; opacity: 0; } }
+.howto details { padding: 12px 16px 14px; }
+.howto summary { cursor: pointer; list-style: none; }
+.howto summary::after { content: ' ▾'; }
+.ht-steps { margin: 10px 0 6px; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.4; }
+.ht-cr { opacity: .6; font-size: 11px; margin: 4px 0 0; }
 
 body { margin: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 [hidden] { display: none !important; }
@@ -1485,6 +1506,30 @@ function wireSwipe() {
     c.addEventListener('click', e => { if (moved || open) { e.stopPropagation(); e.preventDefault(); if (!moved) { open = false; c.style.transform = ''; w.classList.remove('sw'); } moved = false; } }, true);
   });
 }
+// Share a split by link (Job, 15 Oct): the split rides in the link itself, nothing is uploaded.
+const toB64u = str => btoa(String.fromCharCode(...new TextEncoder().encode(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromB64u = t => new TextDecoder().decode(b64u(t));
+function shareSplit(sp) {
+  if (!sp) return;
+  const tok = toB64u(JSON.stringify({ n: sp.name, c: sp.color, x: sp.ex.map(e => [e.name, e.sets, e.repMin, e.repMax, e.rest]) }));
+  const url = location.origin + location.pathname + '#split=' + tok;
+  if (navigator.share) return navigator.share({ title: sp.name + ' on Jobs Done', text: sp.name + ': ' + sp.ex.map(e => baseName(e.name)).join(', '), url }).catch(() => {});
+  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Link copied. Anyone with Jobs Done can add ' + esc(sp.name) + ' from it.'), () => openSheet(`<div class="stack"><h2>Share ${esc(sp.name)}</h2><p class="cap">Copy this link and send it.</p><textarea class="input" rows="4" readonly>${esc(url)}</textarea><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Share split' }));
+}
+const SHARED_SPLIT = (() => { try { const m = location.hash.match(/^#split=([\w-]{4,6000})$/); if (m) { sessionStorage.setItem('jd-split', m[1]); history.replaceState(null, '', location.pathname + location.search); } return sessionStorage.getItem('jd-split'); } catch (e) { return null; } })();
+function maybeImportSplit() {
+  const tok = (() => { try { return sessionStorage.getItem('jd-split'); } catch (e) { return SHARED_SPLIT; } })();
+  if (!tok || !S) return false;
+  try { sessionStorage.removeItem('jd-split'); } catch (e) {}
+  let d; try { d = JSON.parse(fromB64u(tok)); } catch (e) { toast('That split link is broken.'); return false; }
+  if (!d || typeof d.n !== 'string' || !Array.isArray(d.x) || !d.x.length) return false;
+  const name = d.n.slice(0, 40), clamp = (v, lo, hi, df) => Number.isFinite(+v) ? Math.min(hi, Math.max(lo, Math.round(+v))) : df;
+  const ex = d.x.slice(0, 30).filter(r => Array.isArray(r) && typeof r[0] === 'string').map(r => ({ name: r[0].slice(0, 60), sets: clamp(r[1], 1, 10, 3), repMin: clamp(r[2], 1, 50, 6), repMax: clamp(r[3], 1, 50, 10), rest: clamp(r[4], 15, 900, 120), note: '' }));
+  if (!ex.length) return false;
+  const color = /^#[0-9a-fA-F]{6}$/.test(d.c) ? d.c : PALETTE[S.splits.length % PALETTE.length];
+  setTimeout(() => confirmSheet({ title: 'Add ' + name + ' to your splits?', body: 'Someone shared this split with you: ' + esc(ex.map(e => baseName(e.name)).join(', ')) + '.', ok: 'Add split', onOk: () => { const id = 'sp-' + uid(); S.splits.push({ id, name, color, archived: false, ex }); S.rotation.push(id); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = []; render(); toast(esc(name) + ' added to your splits'); } }), 400);
+  return true;
+}
 function openNewSplit() {
   const seen = new Set(), one = [];
   for (const t of Object.values(TEMPLATES)) for (const [n, ex] of t.s) if (!seen.has(n)) { seen.add(n); one.push([n, ex]); }
@@ -1742,6 +1787,7 @@ function viewSplit({ id }) {
   <div class="pt0 top"><div class="grow"><div class="eyebrow" style="color:${sp.color}">Split</div><h1>${esc(sp.name)}</h1><div class="mt2 cap">${plural(sp.ex.length, 'exercise')} · ${l ? 'last done ' + fmtDate(l.date, { wd: true }) : 'not done yet'}</div></div></div>
   <div class="row"><button class="btn primary grow" data-a="startSplit" data-id="${sp.id}" ${A ? 'disabled' : ''}>${A ? 'Workout in progress' : 'Start ' + esc(sp.name)}</button><button class="btn" data-a="editSplit" data-id="${sp.id}">Edit</button></div>
   <div class="card"><div class="list">${sp.ex.map(e => { const ls = lastSession(e.name); return `<button class="li" data-a="openEx" data-name="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${targetStr(e)}</div><div class="mt1 s num">Last time: ${ls ? ls.sets.map(setStr).join(', ') + ' · ' + relDay(ls.date) : '—'}</div>${e.note ? `<div class="it s">${esc(e.note)}</div>` : ''}</div>${I.right}</button>`; }).join('') || '<div class="empty">No exercises yet. Tap Edit to add some.</div>'}</div></div>
+<button class="btn block" data-a="spShare" data-id="${sp.id}">Share this split</button>
 <button class="btn block danger-fill" data-a="spDelete" data-id="${sp.id}">Delete split</button>
 </div>`;
 }
@@ -1919,6 +1965,22 @@ function progHistory() {
 }
 
 // ---------- exercise detail ----------
+// How-to pictures (Job, 15 Oct): public-domain photos from free-exercise-db, cut out and restyled into one look (web/ex).
+let HOWTO = null, HOWTO_LOADING = false;
+function howtoFor(name) {
+  if (!HOWTO && !HOWTO_LOADING && HOSTED) { HOWTO_LOADING = true; fetch('ex/index.json').then(r => r.ok ? r.json() : {}).then(j => { HOWTO = j || {}; rerender(); }).catch(() => { HOWTO = {}; }); }
+  return HOWTO && HOWTO[baseName(name)];
+}
+function howtoHTML(name, open) {
+  const h = howtoFor(name); if (!h) return '';
+  return `<div class="card howto"><div class="ht-pic" role="img" aria-label="${esc(baseName(name))}, start and finish positions"><img src="ex/${h.f}-0.webp" alt="" loading="lazy" decoding="async"><img class="b" src="ex/${h.f}-1.webp" alt="" loading="lazy" decoding="async"></div>
+  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${h.s.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${h.m ? `<p class="cap">Shown: ${esc(h.m)}. Yours may differ slightly.</p>` : ''}<p class="cap ht-cr">Photos: free-exercise-db, public domain</p></details></div>`;
+}
+function openHowto(name) {
+  const h = howtoFor(name);
+  if (!h) return toast(HOWTO ? 'No how-to pictures for this one yet.' : 'Loading pictures, try again in a second.');
+  openSheet(`<div class="stack"><h2>${esc(baseName(name))}</h2>${howtoHTML(name, true)}<button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'How to do ' + baseName(name) });
+}
 function viewExercise(v) {
   const b = baseName(v.name), h = ix().hist;
   const sides = ['L', 'R'].filter(s => h[`${b} (${s})`]);
@@ -1941,7 +2003,7 @@ function viewExercise(v) {
   return `<div class="stack">${backBtn()}
   <div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
-  ${setupHTML(b)}
+  ${setupHTML(b)}${howtoHTML(b)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
   ${bw && B.e1 && ['barbell', 'dumbbell', 'smith'].includes(exInfo(main).equip) ? `<div class="mt3 cap">Strength-to-weight: e1RM is <b class="c-text num">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
   <div class="card"><div class="mb3 seg">${[['e1', 'e1RM'], ['top', 'Top set'], ['vol', 'Volume']].map(([k, l]) => `<button class="${v.metric === k ? 'on' : ''}" data-a="exMetric" data-k="${k}">${l}</button>`).join('')}</div>
@@ -1999,6 +2061,7 @@ function viewMe() {
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), '9+ reps last time adds weight, otherwise one more rep')}
     ${srow('Plateau alerts', swi(on('noPlateau'), 'pset', 'data-f="noPlateau"'), 'A heads-up when a lift stops improving')}
+    ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
     ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Jobs Done to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
@@ -2179,14 +2242,14 @@ function exCardHTML(e, ei) {
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
     ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div><button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
-    ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}
+    ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
-    ${e.sets.map((s, si) => { const pv = last && last.sets[si]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}" id="row-${ei}-${si}">
+    ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}" id="row-${ei}-${si}">
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
       <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight">${s.w == null ? '–' : dw(s.w)}</button></td>
-      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}</button></td>
-      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button></td></tr>`; }).join('')}
+      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
+      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button></td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="btn sm ghost" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="btn sm ghost sec" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
     ${cmp}
@@ -2302,6 +2365,8 @@ function clank(big = 1, delay = 0) {
 
 // Plain-English meanings for the numbers the app shows. Opened from the small (i) buttons.
 const GLOSSARY = [
+  ['rpe', 'RPE (how hard a set felt)', 'A 6 to 10 score after a set. 10 means you could not have done another rep, 9 means one more was left, 8 means two were left, and 6 or 7 felt fairly easy. Most working sets land around 7 to 9. Turn it on or off in Me.'],
+  ['ss', 'Superset', 'Two exercises done back to back. Rest starts after the second one, then you go back to the first. It saves time and works well for pairs like curls and pushdowns.'],
   ['e1rm', 'e1RM (estimated one-rep max)', 'The most you could likely lift for a single rep, worked out from a set you did. 80 kg for 8 reps works out to about 100 kg. It lets sets with different reps be compared fairly.'],
   ['volume', 'Volume', 'Weight × reps, added up across sets. 3 sets of 10 at 50 kg is 1,500 kg. Warm-up sets don’t count.'],
   ['pr', 'PRs (personal records)', 'You get at most one PR per exercise per workout, and left and right sides count as one lift. Heaviest: more weight than ever before. e1RM: your strongest set ever once reps are taken into account. Reps: more reps than ever at a weight you’ve lifted before.'],
@@ -2398,8 +2463,11 @@ function logSet(ei, si) {
     buzz(10);
     const pr = livePR(e)[si];
     const secs = restFor(e.name);
-    if (!S.profile.noAutoRest) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    const inSS = e.ss && A.ex[ei + 1];
+    if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA();
+    if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
       const v = setVerdict(s.r); celebrate(v);
@@ -2414,7 +2482,7 @@ function logSet(ei, si) {
   } else touchA();
 }
 function summaryData() {
-  const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t })) })).filter(e => e.sets.length);
+  const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t, ...(s.rpe ? { rpe: s.rpe } : {}) })), ...(e.ss ? { ss: 1 } : {}) })).filter(e => e.sets.length);
   const rows = ex.map(e => {
     const last = lastSession(e.name); const b = clone(ix().best[e.name] || emptyBest());
     const types = new Set(); e.sets.forEach(s => { prTypes(s, b).forEach(t => types.add(t)); applyBest(s, b); });
@@ -2439,7 +2507,7 @@ function summaryHTML() {
 function saveWorkout() {
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
-  const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets })) };
+  const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
   S.workouts[w.id] = w;
   const sp = A.splitId && splitById(A.splitId);
   let metaChanged = false;
@@ -3206,8 +3274,10 @@ function exMenu(ei) {
     <button class="btn block" data-m="note">${e.note ? 'Edit note' : 'Add note'}</button>
     <button class="btn block" data-m="order">${I.grip} Reorder exercises</button>
     <button class="btn block" data-m="setup">Machine setup</button>
+    <button class="btn block" data-m="warm">${e.sets.some(x => x.t === 'warm') ? 'Remove warm-up sets' : 'Add warm-up sets'}</button>
+    ${ei < A.ex.length - 1 ? `<button class="btn block" data-m="ss">${e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))}</button>` : ''}
     <button class="btn block" data-m="rest">Rest for this exercise: ${fmtRest(restFor(e.name))}${(S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'}</button>
-    <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>
+    <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>${howtoFor(e.name) ? '<button class="btn block" data-m="howto">How to do it</button>' : ''}
     <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
     onClose: () => { },
@@ -3219,6 +3289,9 @@ function exMenu(ei) {
         if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
         if (m === 'rest') openExRest(e.name);
+        if (m === 'warm') addWarmups(ei);
+        if (m === 'ss') { e.ss = !e.ss; touchA(); toast(e.ss ? `Superset: rest starts after each ${esc(baseName(A.ex[ei + 1].name))} set` : 'Superset unlinked'); }
+        if (m === 'howto') return openHowto(e.name);
         if (m === 'hist') { minimizeWk(); NAV.stack.push({ v: 'exercise', name: e.name }); render(); }
         if (m === 'note') { const s2 = openSheet(`<div class="stack"><div class="eyebrow">Note for ${esc(e.name)}</div><textarea class="input" id="en-t">${esc(e.note)}</textarea><button class="btn primary block" id="en-s">Save note</button></div>`, { mount: bb => { bb.querySelector('#en-s').onclick = () => { e.note = bb.querySelector('#en-t').value.trim(); closeSheet(s2); touchA(); }; } }); }
       };
@@ -3226,6 +3299,16 @@ function exMenu(ei) {
   });
 }
 
+// Warm-ups (Job, 15 Oct): ramp to the first working weight, 50% x 8, 70% x 5, 85% x 3, rounded to the plates.
+function addWarmups(ei) {
+  const e = A.ex[ei];
+  if (e.sets.some(x => x.t === 'warm')) { e.sets = e.sets.filter(x => x.t !== 'warm' || x.done); touchA(); return toast('Warm-up sets removed'); }
+  const w0 = (e.sets.find(x => x.t !== 'warm' && x.w) || {}).w;
+  if (!w0) return toast('Set the weight for your first working set, then add warm-ups.');
+  const step = U() === 'lb' ? 5 / LB : 2.5, rd = v => Math.max(step, Math.round(v / step) * step);
+  const ramp = [[.5, 8], [.7, 5], [.85, 3]].map(([f, r]) => ({ w: rd(w0 * f), r, t: 'warm', done: false })).filter((x, i, a) => x.w < w0 && (!i || x.w > a[i - 1].w));
+  e.sets.unshift(...ramp); touchA(); toast(`${plural(ramp.length, 'warm-up set')} added, building to ${dw(w0)} ${U()}`);
+}
 function openExRest(name) {
   const b0 = baseName(name), cur = (S.profile.restBy || {})[b0] || 0;
   const opts = [[0, `Default (${fmtRest(S.profile.defaultRest || 120)})`], [60, '1:00'], [90, '1:30'], [120, '2:00'], [150, '2:30'], [180, '3:00'], [240, '4:00'], [300, '5:00']];
@@ -3643,8 +3726,9 @@ const ACT = {
   spRemove: el => { const sp = splitById(el.dataset.id); sp.ex.splice(+el.dataset.i, 1); persist('jd/meta'); rerender(); },
   spAdd: el => { const sp = splitById(el.dataset.id); pickExercise(name => { const l = lastSession(name); sp.ex.push({ name, sets: l ? Math.max(2, l.sets.length) : 3, repMin: 6, repMax: 10, rest: S.profile.defaultRest, note: '' }); persist('jd/meta'); rerender(); }); },
   spDup: el => { const sp = splitById(el.dataset.id); const id = 'sp-' + uid(); S.splits.push({ ...clone(sp), id, name: sp.name + ' copy', archived: false }); persist('jd/meta'); NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); toast('Split duplicated'); },
+  spShare: el => shareSplit(splitById(el.dataset.id)),
   spDelete: el => { const sp = splitById(el.dataset.id); if (!sp) return; if (A && A.splitId === sp.id) return toast('Finish or discard the workout using this split first.');
-    confirmSheet({ title: 'Delete ' + sp.name + '?', body: 'The split is removed for good. Workouts you already logged with it stay in your history.', ok: 'Delete split', danger: true, onOk: () => { S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.name + ' deleted'); } }); },
+    confirmSheet({ title: 'Delete ' + sp.name + '?', body: 'The split is removed for good. Workouts you already logged with it stay in your history.', ok: 'Delete split', danger: true, onOk: () => { S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(esc(sp.name) + ' deleted'); } }); },
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
@@ -3669,6 +3753,7 @@ const ACT = {
   energy: el => { A.energy = +el.dataset.k; touchA(); },
   key: el => el.dataset.f === 'w' && usesPlates(A.ex[+el.dataset.e].name) ? openSetPlates(+el.dataset.e, +el.dataset.s) : openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
   done: el => logSet(+el.dataset.e, +el.dataset.s),
+  rpe: el => { const st = A.ex[+el.dataset.e].sets[+el.dataset.s], k = +el.dataset.k; st.rpe = st.rpe === k ? null : k; A.rpeAsk = null; touchA(); },
   setType: el => { const s = A.ex[+el.dataset.e].sets[+el.dataset.s]; const o = ['work', 'warm', 'drop', 'fail']; s.t = o[(o.indexOf(s.t) + 1) % o.length]; touchA(); },
   addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length > 1) e.sets.pop(); touchA(); },
@@ -3856,6 +3941,7 @@ function maybeInstallGuide() {
   return true;
 }
 function maybePrompt() {
+  if (maybeImportSplit()) return;
   if (maybeInstallGuide()) return;
   if (!S || !S.imported && !S.splits.length) return;
   const t = today();
