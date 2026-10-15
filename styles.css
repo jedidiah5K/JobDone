@@ -428,15 +428,15 @@ tr.pop .check { animation: pop .3s var(--ease); }
 /* Venom: symbiote black, white accent, smooth drips from the top edge */
 :root[data-theme="mono"] {
   color-scheme: dark;
-  --bg: #000000; --surface: #141417; --surface-solid: #141417; --raised: rgba(150,150,170,.16);
+  --bg: #08080A; --surface: #141418; --surface-solid: #141418; --raised: rgba(160,160,175,.15);
   --border: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16);
-  --text: #F4F5F8; --text2: rgba(235,235,245,.6); --muted: rgba(235,235,245,.34);
-  --accent: #EDEDF2; --accent-dark: #A0A0AA; --accent-ink: #0B0B0D;
-  --yellow: #D9D9DE; --green: #8E95B5; --pos: #C9CCDA; --neg: #8E8E98; --pr: #E6E6EC;
+  --text: #F4F4F6; --text2: rgba(235,235,242,.62); --muted: rgba(235,235,242,.36);
+  --accent: #F2F2F4; --accent-dark: #A6A6B0; --accent-ink: #0A0A0C;
+  --yellow: #D9D9DE; --green: #9DA3B8; --red: #E0303C; --pos: #CDD0DB; --neg: #E0303C; --pr: #E0303C;
   --shadow: 0 0 0 .5px rgba(255,255,255,.07);
-  --hdr-ink: #FFFFFF; --hdr-ink2: rgba(255,255,255,.6);
-  --band: radial-gradient(120% 90% at 20% 0%, #1E2233 0%, #0B0C12 60%, #000 100%);
-  --band-art: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 236' preserveAspectRatio='none'%3E%3Cpath d='M0 0H400V22C380 22 376 60 366 60S354 26 330 26 316 92 304 92 296 30 262 30 246 48 236 48 226 24 190 24 172 74 160 74 150 28 120 28 100 54 90 54 80 20 50 20 34 40 24 40 10 22 0 22Z' fill='%23181B26'/%3E%3C/svg%3E");
+  --hdr-ink: #FFFFFF; --hdr-ink2: rgba(255,255,255,.62);
+  --band: linear-gradient(180deg, #1A1A20 0%, #121216 70%, var(--bg) 100%);
+  --band-art: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 236'%3E%3Cdefs%3E%3Cpattern id='p' width='12' height='236' patternUnits='userSpaceOnUse'%3E%3Cpath d='M6 0V236' stroke='%23fff' stroke-opacity='.045' stroke-width='.8'/%3E%3C/pattern%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23F4F4F6'/%3E%3Cstop offset='1' stop-color='%23C9C9D0'/%3E%3C/linearGradient%3E%3ClinearGradient id='t' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%239E0B1A'/%3E%3Cstop offset='.5' stop-color='%23D3142B'/%3E%3Cstop offset='1' stop-color='%238A0A17'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='400' height='236' fill='url(%23p)'/%3E%3Cg transform='translate(366 0) scale(.78) translate(-330 0)'%3E%3Cpath d='M288 0H372L330 150Z' fill='url(%23s)'/%3E%3Cpath d='M288 0L330 150L322 176L276 0Z' fill='%231F1F27'/%3E%3Cpath d='M372 0L330 150L338 176L384 0Z' fill='%231F1F27'/%3E%3Cpath d='M276 0L322 176M384 0L338 176' stroke='%233A3A46' stroke-width='1.2' fill='none'/%3E%3Cpath d='M292 0H327L313 40Z' fill='%23FFFFFF'/%3E%3Cpath d='M333 0H368L347 40Z' fill='%23FFFFFF'/%3E%3Cpath d='M292 0L313 40L327 0M333 0L347 40L368 0' stroke='%23B8B8C2' stroke-width='.8' fill='none'/%3E%3Cpath d='M322 6H338L335 26H325Z' fill='%23A50D1D'/%3E%3Cpath d='M325 26H335L345 128L330 150L315 128Z' fill='url(%23t)'/%3E%3Cpath d='M327 40L340 56M321 70L343 94' stroke='%23000' stroke-opacity='.18' stroke-width='3'/%3E%3Ccircle cx='330' cy='198' r='3.2' fill='%232C2C36'/%3E%3Cpath d='M246 118L276 118L272 128L250 128Z' fill='%23EDEDF0' opacity='.9'/%3E%3Cg fill='%23B0101F'%3E%3Ccircle cx='307' cy='62' r='3.4'/%3E%3Ccircle cx='300' cy='72' r='1.6'/%3E%3Ccircle cx='313' cy='50' r='1.3'/%3E%3Ccircle cx='352' cy='84' r='2.2'/%3E%3Cpath d='M307 62q1 10 -1 15q-2 -6 -2 -12z'/%3E%3Ccircle cx='296' cy='56' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 :root[data-theme="mono"] #bg .land { background-position: center top; }
 :root[data-theme="mono"] .split .tag, :root[data-theme="mono"] .sdot, :root[data-theme="mono"] .dot.done[style], :root[data-theme="mono"] .spark, :root[data-theme="mono"] .card.nextup .card-h .eyebrow::before { filter: grayscale(1) brightness(1.4); }
@@ -658,7 +658,7 @@ a.xr { text-decoration: none; }
 :root:not([data-theme]) #wk { background: linear-gradient(rgba(239,235,229,.4), rgba(239,235,229,.4)), var(--wall), var(--bg); }
 .wk-head { background: color-mix(in srgb, var(--surface) 78%, transparent); }
 #wk .wk-body > .btn, #wk .wk-body > button { background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); }
-:root[data-theme="mono"] #wk { background-position: center 96px, 0 0, 0 0; }
+:root[data-theme="mono"] #wk { background-position: center 0, 0 0, 0 0; }
 #wk .wk-body > .link { padding: 8px 18px; border-radius: 999px; }
 .dwrap { position: relative; display: block; }
 .dwrap > input[type=date] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; z-index: 1; }
@@ -698,3 +698,6 @@ a.xr { text-decoration: none; }
 #wk .card.uni-r { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: calc(-1 * var(--s3) - 1px); border-top: 1px dashed var(--border); padding-top: var(--s3); box-shadow: none; }
 .uni-lbl { display: inline-block; margin-top: var(--s2); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .uni-r .setup, .uni-r .pl-line { display: none; }
+/* Hitman (replaced Symbiote, 15 Oct): black suit, white shirt, one red tie. Red only for PRs and the tie. */
+:root[data-theme="mono"] .pill.pr { color: #fff; background: #B0101F; }
+:root[data-theme="mono"] .top h1, :root[data-theme="mono"] .top .eyebrow { text-shadow: 0 2px 14px rgba(0,0,0,.75); }

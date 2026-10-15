@@ -500,7 +500,7 @@ function render() {
 const THEMES = [
   { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
   { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
-  { k: 'mono', name: 'Symbiote', bar: '#050507', sw: 'linear-gradient(180deg, #050507 0.0% 33.3%, #6C7AA8 33.3% 66.7%, #F4F5FA 66.7% 100.0%)' },
+  { k: 'mono', name: 'Hitman', bar: '#121216', sw: 'linear-gradient(180deg, #121216 0.0% 33.3%, #F2F2F4 33.3% 66.7%, #C8102E 66.7% 100.0%)' },
   { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
 ];
 const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
@@ -555,7 +555,7 @@ function inkOn(hex) {
 function confetti(n = 60) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || S.profile.noConfetti) return;
   n = Math.min(40, Math.round(n * .4)); // brief and subtle since the Oct 2026 redesign
-  const cols = ({ mono: ['#F4F5FA', '#6C7AA8', '#1C1D26'], spidey: ['#E2231A', '#FFFFFF', '#5B8CFF'], miles: ['#E3262E', '#FFE94D', '#FFFFFF', '#7FD8FF'], cliffs: ['#1F7A99', '#F2A93B', '#D2553A', '#3F8F5A', '#FFFFFF'] })[document.documentElement.dataset.theme] || ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
+  const cols = ({ mono: ['#F4F5FA', '#C8102E', '#1C1D26'], spidey: ['#E2231A', '#FFFFFF', '#5B8CFF'], miles: ['#E3262E', '#FFE94D', '#FFFFFF', '#7FD8FF'], cliffs: ['#1F7A99', '#F2A93B', '#D2553A', '#3F8F5A', '#FFFFFF'] })[document.documentElement.dataset.theme] || ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
   for (let i = 0; i < n; i++) { const e = document.createElement('i'); e.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};--x:${(Math.random() - .5) * 160}px;--r:${(Math.random() - .5) * 900}deg;--d:${1.1 + Math.random() * .9}s;animation-delay:${Math.random() * .25}s;transform:scale(${.7 + Math.random() * .8})`; box.appendChild(e); }
   document.body.appendChild(box); setTimeout(() => box.remove(), 2600);
 }
@@ -1258,10 +1258,10 @@ const THEME_MSG = {
     part: ['Came off early. Back on the wall next time.', 'Not a send yet. Every attempt counts.'],
   },
   mono: {
-    low: ['It wants less', 'Too much, too soon', 'Back to the dark'], nice: ['It approves', 'The bond holds', 'Steady hunger'],
-    great: ['Growing stronger', 'It feeds on this', 'Darker, stronger'], amazing: ['Unstoppable', 'We are stronger', 'Pure power'],
-    done: ['The hunger is fed.', 'Stronger together.', 'Nothing left on the bar.', 'It took everything. Good.'],
-    part: ['It’s still hungry. Come back for more.', 'Half fed is still fed.'],
+    low: ['Missed the mark', 'Abort and regroup', 'Too much heat'], nice: ['Clean work', 'On target', 'Smooth operator'],
+    great: ['Target down', 'Licensed to lift', 'Shaken, not stirred'], amazing: ['Contract complete', 'Silent and deadly', 'Flawless execution'],
+    done: ['Contract complete.', 'Target down. Suit unwrinkled.', 'Clean exit. No witnesses.', 'Mission accomplished. Martini earned.'],
+    part: ['Mission cut short. There’s always another contract.', 'Partial job. The client will understand.'],
   },
   spidey: {
     low: ['Lost your grip', 'Missed the swing', 'Steady on the wall'], nice: ['Web holds', 'Clean swing', 'Looking out'],
@@ -1442,26 +1442,57 @@ function showRecap(id, fresh) {
 }
 // Draw the recap as a 1080x1350 image in the current theme's colours and hand it to the share sheet.
 async function shareRecap(d) {
+  // Poster-style share card (4:5): the theme's own header scenery, one big headline, four stats, best lifts (Job, 15 Oct).
   const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-  const F = (wt, px) => `${wt} ${px}px Nunito, system-ui, sans-serif`;
+  const F = (wt, px) => `${wt} ${px}px -apple-system, "SF Pro Display", system-ui, sans-serif`;
   try { await document.fonts.ready; } catch (e) {}
-  const bg = /^#|^rgb/.test(v('--surface-solid')) ? v('--surface-solid') : '#FFFDFA';
-  g.fillStyle = v('--bg') || '#EFEBE5'; g.fillRect(0, 0, W, H);
-  g.fillStyle = v('--accent') || '#6C3FD6'; g.fillRect(0, 0, W, 360);
-  g.fillStyle = v('--accent-ink') || '#fff'; g.font = F(900, 44); g.fillText(`WORKOUT #${d.num} · ${fmtDate(d.w.date, { wd: true, y: true }).toUpperCase()}`, 72, 110);
-  g.font = F(900, 150); g.fillText('Job done!', 64, 245);
-  g.font = F(700, 42); g.fillText(d.line || RC_LINE[d.w.id] || doneLine(d.w), 72, 300);
-  g.font = F(800, 40); g.fillText(`${d.w.splitName || 'Workout'}${d.prs.length ? ` · ${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}` : ''}`, 72, 345);
-  const st = [[d.dur ? fmtDur(d.dur) : '—', 'time'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.reps), 'reps']];
-  st.forEach(([a, b], i) => { const x = 56 + i * 246; g.fillStyle = bg; g.beginPath(); g.roundRect(x, 400, 226, 190, 36); g.fill(); g.fillStyle = v('--text') || '#221E2B'; g.font = F(900, 58); g.fillText(a, x + 26, 490); g.fillStyle = v('--text2') || '#5F5A69'; g.font = F(800, 34); g.fillText(b, x + 26, 548); });
-  let y = 680; g.fillStyle = v('--text') || '#221E2B'; g.font = F(800, 40); g.fillText(`That's like lifting ${d.heavy}.`, 72, y); y += 80;
-  const sec = (title, rows) => { if (!rows.length || y > H - 200) return; g.font = F(900, 34); g.fillStyle = v('--text2') || '#5F5A69'; g.fillText(title, 72, y); y += 66;
-    for (const [a, b] of rows) { if (y > H - 140) break; g.fillStyle = v('--text') || '#221E2B'; g.font = F(800, 42); g.fillText(a.length > 28 ? a.slice(0, 27) + '…' : a, 72, y); g.textAlign = 'right'; g.fillText(b, W - 72, y); g.textAlign = 'left'; y += 66; } y += 30; };
-  const prn = new Set(d.prs.map(p => p.ex));
-  sec('PERSONAL RECORDS', d.prs.slice(0, 4).map(p => [p.ex, setStr(p.set)]));
-  sec('BEST SETS', d.w.ex.filter(e => !prn.has(e.name)).map(e => [e.name, setStr(topSet(e.sets))]));
-  g.fillStyle = v('--muted') || '#98929F'; g.font = F(900, 36); g.fillText('JobDone', 72, H - 72);
+  const img = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; setTimeout(() => r(null), 2500); });
+  const col = (k, f) => { const x = v(k); return /^#|^rgb/.test(x) ? x : f; };
+  const th = THEMES.find(x => x.k === theme()) || THEMES[0];
+  const bg = col('--bg', '#EFEBE5'), text = col('--text', '#1C1C1E'), text2 = col('--text2', '#6B6B70'), acc = col('--accent', '#6C3FD6');
+  const ink = col('--hdr-ink', '#fff'), ink2 = col('--hdr-ink2', 'rgba(255,255,255,.7)'), surf = col('--surface-solid', col('--surface', '#fff'));
+  const HH = 640;
+  // header: sky / band colours, then the theme's scenery art across the bottom of it
+  const top = theme() === 'cliffs' ? col('--sky1', th.bar) : th.bar, mid = theme() === 'cliffs' ? col('--sky2', th.bar) : th.bar;
+  let gr = g.createLinearGradient(0, 0, 0, HH); gr.addColorStop(0, top); gr.addColorStop(.6, mid); gr.addColorStop(1, bg);
+  g.fillStyle = bg; g.fillRect(0, 0, W, H); g.fillStyle = gr; g.fillRect(0, 0, W, HH);
+  const art = (/url\(\s*"(data:.*)"\s*\)/.exec(v('--band-art')) || /url\(\s*'?(data:[^')]+)'?\s*\)/.exec(v('--band-art')) || [])[1];
+  if (art) { const i = await img(art.replace(/\\"/g, '"')); if (i) { const h = W * (i.naturalHeight || 236) / (i.naturalWidth || 400); g.drawImage(i, 0, theme() === 'mono' ? 0 : HH - h, W, h); } }
+  gr = g.createLinearGradient(0, HH - 260, 0, HH); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, bg); g.fillStyle = gr; g.fillRect(0, HH - 260, W, 260);
+  // wordmark
+  const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=6') : null;
+  let x0 = 72; if (icon) { g.save(); g.beginPath(); g.roundRect(72, 64, 72, 72, 18); g.clip(); g.drawImage(icon, 72, 64, 72, 72); g.restore(); x0 = 164; }
+  g.fillStyle = ink; g.font = F(800, 38); g.fillText('JobDone', x0, 114);
+  // headline
+  const light = /^#(f|e|d)/i.test(ink) || /255/.test(ink); if (light) { g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 18; g.shadowOffsetY = 2; }
+  g.fillStyle = ink; g.font = F(900, 150); g.fillText('Job done.', 64, 300);
+  const line = d.line || RC_LINE[d.w.id] || doneLine(d.w);
+  g.font = F(600, 40); g.fillStyle = ink2; g.fillText(line.length > 46 ? line.slice(0, 45) + '…' : line, 70, 362); g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
+  // split pill
+  const pill = `${d.w.splitName || 'Workout'} · #${d.num} · ${fmtDate(d.w.date, { wd: true })}`; g.font = F(700, 34); const pw = g.measureText(pill).width + 56;
+  g.fillStyle = acc; g.beginPath(); g.roundRect(70, 404, pw, 68, 34); g.fill(); g.fillStyle = col('--accent-ink', '#fff'); g.fillText(pill, 98, 450);
+  // stats card
+  g.fillStyle = surf; g.beginPath(); g.roundRect(56, 520, W - 112, 210, 40); g.fill();
+  const st = [[d.dur ? fmtDur(d.dur) : '—', 'time'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.prs.length), d.prs.length === 1 ? 'PR' : 'PRs']];
+  const cw = (W - 112) / 4;
+  st.forEach(([a, b], i) => { const x = 56 + i * cw; if (i) { g.fillStyle = col('--border', 'rgba(0,0,0,.08)'); g.fillRect(x, 560, 2, 130); }
+    g.fillStyle = i === 3 && d.prs.length ? col('--pr', acc) : text; g.font = F(800, a.length > 6 ? 46 : 60); g.fillText(a, x + 34, 632); g.fillStyle = text2; g.font = F(600, 30); g.fillText(b, x + 34, 682); });
+  // lifts
+  let y = 800; g.fillStyle = text2; g.font = F(700, 30); g.fillText(`THAT'S LIKE LIFTING ${String(d.heavy).toUpperCase()}`, 72, y); y += 64;
+  const prn = new Map(d.prs.map(p => [p.ex, p.set]));
+  const rows = mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), e => { const t = prn.get(e.name) || topSet(e.sets); return t ? setStr(t) : '—'; })
+    .map(r => ({ ...r, pr: d.w.ex.some(e => baseName(e.name) === baseName(r.name) && prn.has(e.name)) }));
+  rows.sort((a, b) => b.pr - a.pr);
+  for (const r of rows.slice(0, 6)) {
+    if (y > H - 150) break;
+    g.fillStyle = surf; g.beginPath(); g.roundRect(56, y - 50, W - 112, 76, 24); g.fill();
+    g.fillStyle = text; g.font = F(700, 36); g.fillText(r.name.length > 24 ? r.name.slice(0, 23) + '…' : r.name, 88, y);
+    g.textAlign = 'right'; g.font = F(800, 36); const tx = r.txt.replace(' each side', ''); g.fillText(tx.length > 22 ? tx.slice(0, 21) + '…' : tx, W - (r.pr ? 186 : 88), y);
+    if (r.pr) { g.fillStyle = col('--pr', acc); g.beginPath(); g.roundRect(W - 168, y - 36, 80, 48, 24); g.fill(); g.fillStyle = '#fff'; g.font = F(800, 26); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 4); }
+    g.textAlign = 'left'; y += 92;
+  }
+  g.fillStyle = text2; g.font = F(600, 28); g.fillText('Logged with JobDone', 72, H - 56);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
