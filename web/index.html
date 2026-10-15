@@ -939,6 +939,26 @@ html.ob-on .input::placeholder { color: color-mix(in srgb, var(--text2) 55%, tra
 :root[data-theme="mono"] .rc-hero { background: linear-gradient(160deg, #2A2A31, #111115); color: #fff; }
 .li.on { color: var(--accent); }
 
+/* Sign-in: show password button inside the field (15 Oct) */
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 72px; }
+.pw-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; font-weight: 600; }
+
+/* Splits: swipe a card left to reveal Delete (15 Oct) */
+.swipe { position: relative; border-radius: var(--r3, 20px); }
+.swipe > .card { position: relative; z-index: 1; transition: transform .22s ease; width: 100%; }
+.swipe-del { position: absolute; top: 0; right: 0; bottom: 0; width: 120px; padding-left: 24px; border: 0; border-radius: var(--r3, 20px); background: #E5383B; color: #fff; font: 600 15px/1 inherit; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s; }
+.swipe.sw .swipe-del { opacity: 1; }
+
+/* Intro look step previews the picked theme for real, so its cards and footer follow that theme (15 Oct) */
+html:not(.ob-on) .ob-themes button { background: var(--surface); border: 2px solid transparent; box-shadow: var(--shadow); color: var(--text); }
+html:not(.ob-on) .ob-themes button.on { border-color: var(--accent); background: var(--surface); }
+html:not(.ob-on) .ob-themes span { color: var(--text2); }
+html:not(.ob-on) .ob-body[data-k="theme"] .ob-t, html:not(.ob-on) .ob-body[data-k="theme"] .ob-s, html:not(.ob-on) .ob-body[data-k="theme"] .ob-eb { text-shadow: none; }
+html:not(.ob-on) .ob-body[data-k="theme"] .ob-s { background: var(--surface); color: var(--text2); padding: var(--s3); border-radius: 14px; }
+html:not(.ob-on) .ob-foot { background: none; }
+html:not(.ob-on) .ob-foot .btn.primary { background: var(--accent); color: var(--accent-ink); }
+
 body { margin: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 [hidden] { display: none !important; }
 img { max-width: 100%; }
@@ -1449,6 +1469,32 @@ function closeSheet(sh) {
   if (sh.opts.onClose) sh.opts.onClose();
 }
 function setSheet(sh, html) { const b = sh.el.querySelector('.sheet-body'); b.innerHTML = html; if (sh.opts.mount) sh.opts.mount(b, sh); }
+// Swipe a split card left to reveal Delete (Job, 15 Oct)
+function wireSwipe() {
+  document.querySelectorAll('.swipe:not([data-w])').forEach(w => {
+    w.dataset.w = 1; const c = w.querySelector('.card'); let x0 = null, y0 = 0, dx = 0, open = false, moved = false;
+    c.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = open ? -96 : 0; moved = false; c.style.transition = 'none'; }, { passive: true });
+    c.addEventListener('touchmove', e => {
+      if (x0 == null) return; const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!moved && Math.abs(my) > Math.abs(mx) && Math.abs(my) > 6) { x0 = null; c.style.transition = ''; return; }
+      if (Math.abs(mx) > 6) { moved = true; w.classList.add('sw'); }
+      if (moved) { dx = Math.min(0, Math.max(-140, (open ? -96 : 0) + mx)); c.style.transform = `translateX(${dx}px)`; }
+    }, { passive: true });
+    c.addEventListener('touchend', () => { x0 = null; c.style.transition = ''; if (!moved) return; open = dx < -48; c.style.transform = open ? 'translateX(-96px)' : ''; w.classList.toggle('sw', open); });
+    c.addEventListener('click', e => { if (moved || open) { e.stopPropagation(); e.preventDefault(); if (!moved) { open = false; c.style.transform = ''; w.classList.remove('sw'); } moved = false; } }, true);
+  });
+}
+function openNewSplit() {
+  const seen = new Set(), one = [];
+  for (const t of Object.values(TEMPLATES)) for (const [n, ex] of t.s) if (!seen.has(n)) { seen.add(n); one.push([n, ex]); }
+  const sh = openSheet(`<div class="stack"><h2>New split</h2>
+    <button class="btn block primary" data-a="newBlankSplit">Start from blank</button>
+    <section><div class="sgh">Add a ready-made plan</div><div class="tmpl">${Object.entries(TEMPLATES).filter(([, t]) => t.s.length).map(([k, t]) => `<button data-np="${k}"><b>${esc(t.n)}</b><span>${esc(t.d)}</span></button>`).join('')}</div></section>
+    <section><div class="sgh">Or one preset split</div><div class="tmpl">${one.map(([n, ex], i) => `<button data-ns="${i}"><b>${esc(n)}</b><span>${esc(ex.join(', '))}</span></button>`).join('')}</div></section></div>`, { label: 'New split' });
+  const add = list => { const ids = []; for (const [name, ex] of list) { const id = 'sp-' + uid(); const r = S.profile.exp && OB_EXP[S.profile.exp] ? OB_EXP[S.profile.exp] : [0, 0, 6, 10]; S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: r[2], repMax: r[3], rest: S.profile.defaultRest || 120, note: '' })) }); S.rotation.push(id); ids.push(id); } persist('jd/meta'); closeSheet(sh); NAV.tab = 'splits'; NAV.stack = []; render(); toast(list.length > 1 ? list.length + ' splits added to your rotation' : list[0][0] + ' added to your rotation'); };
+  sh.el.querySelectorAll('[data-np]').forEach(b => b.onclick = () => add(TEMPLATES[b.dataset.np].s));
+  sh.el.querySelectorAll('[data-ns]').forEach(b => b.onclick = () => add([one[+b.dataset.ns]]));
+}
 function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }) {
   const sh = openSheet(`<div class="stack"><h2>${esc(title)}</h2>${body ? `<p class="m0 sec">${body}</p>` : ''}
     <button class="btn block ${danger ? 'danger-fill' : 'primary'}" id="cf-ok">${esc(ok)}</button><button class="btn block ghost" data-a="closeSheet">Cancel</button></div>`, { label: title });
@@ -1489,7 +1535,7 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
-  screenChanged();
+  screenChanged(); wireSwipe();
 }
 // Screen entrance: panels rise in, charts draw, headline numbers count up.
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
@@ -1678,7 +1724,7 @@ function viewSplits() {
   const card = sp => {
     const l = lastOfSplit(sp);
     const vols = ix().ws.filter(w => !w.skipped && (w.splitId === sp.id || (!w.splitId && w.splitName === sp.name))).slice(-8).map(wVol);
-    return `<button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${plural(sp.ex.length, 'exercise')} · ${l ? relDay(l.date) : 'not done yet'}</div>${splitMuscles(sp)}</div>${sparkline(vols, sp.color)}${I.right}</button>`;
+    return `<div class="swipe"><button class="swipe-del" data-a="spDelete" data-id="${sp.id}" tabindex="-1">Delete</button><button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${plural(sp.ex.length, 'exercise')} · ${l ? relDay(l.date) : 'not done yet'}</div>${splitMuscles(sp)}</div>${sparkline(vols, sp.color)}${I.right}</button></div>`;
   };
   return `<div class="stack">
   <div class="top"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
@@ -1695,6 +1741,7 @@ function viewSplit({ id }) {
   <div class="pt0 top"><div class="grow"><div class="eyebrow" style="color:${sp.color}">Split</div><h1>${esc(sp.name)}</h1><div class="mt2 cap">${plural(sp.ex.length, 'exercise')} · ${l ? 'last done ' + fmtDate(l.date, { wd: true }) : 'not done yet'}</div></div></div>
   <div class="row"><button class="btn primary grow" data-a="startSplit" data-id="${sp.id}" ${A ? 'disabled' : ''}>${A ? 'Workout in progress' : 'Start ' + esc(sp.name)}</button><button class="btn" data-a="editSplit" data-id="${sp.id}">Edit</button></div>
   <div class="card"><div class="list">${sp.ex.map(e => { const ls = lastSession(e.name); return `<button class="li" data-a="openEx" data-name="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${targetStr(e)}</div><div class="mt1 s num">Last time: ${ls ? ls.sets.map(setStr).join(', ') + ' · ' + relDay(ls.date) : '—'}</div>${e.note ? `<div class="it s">${esc(e.note)}</div>` : ''}</div>${I.right}</button>`; }).join('') || '<div class="empty">No exercises yet. Tap Edit to add some.</div>'}</div></div>
+<button class="btn block danger-fill" data-a="spDelete" data-id="${sp.id}">Delete split</button>
 </div>`;
 }
 function viewSplitEdit({ id }) {
@@ -1714,6 +1761,7 @@ function viewSplitEdit({ id }) {
   </div>`).join('')}</div>
   <button class="btn block" data-a="spAdd" data-id="${sp.id}">Add exercise</button>
   <div class="row"><button class="btn grow" data-a="spDup" data-id="${sp.id}">Duplicate</button><button class="btn grow" data-a="spArchive" data-id="${sp.id}">${sp.archived ? 'Unarchive' : 'Archive'}</button></div>
+  <button class="btn block danger-fill" data-a="spDelete" data-id="${sp.id}">Delete split</button>
 </div>`;
 }
 
@@ -3329,7 +3377,7 @@ const TEMPLATES = {
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
 const OB_NAMES = { home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
-const OB_STEPS = ['home', 'tour', 'you', 'goal', 'days', 'exp', 'theme', 'prefs', 'train', 'plan'];
+const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan'];
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
@@ -3366,12 +3414,12 @@ function obBody(k) {
     <div class="tmpl">${OB_DAYS.map(([n, t, d]) => `<button data-days="${n}" class="${OB.days === n ? 'on' : ''}"><b>${t}</b><span>${d}</span></button>`).join('')}</div>`;
   if (k === 'exp') return `<h1 class="ob-t">How long have you been lifting?</h1><p class="sec ob-s">Newer lifters get higher reps to learn the moves. You can change any target later.</p>
     <div class="tmpl">${Object.entries(OB_EXP).map(([e, [n, d, lo, hi]]) => `<button data-exp="${e}" class="${OB.exp === e ? 'on' : ''}"><b>${n}</b><span>${d} · ${lo} to ${hi} reps</span></button>`).join('')}</div>`;
-  if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Each theme has its own scenery and its own voice when you finish a set. You can switch any time in Me.</p>
+  if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Tap one to try it on this screen. Each theme has its own scenery and its own voice when you finish a set. You can switch any time in Me.</p>
     <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i class="thp thp-${t.k}"></i><b>${t.name}</b><span>${esc(pick(THEME_MSG[t.k].great))}</span></button>`).join('')}</div>`;
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
-    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music and follows the silent switch, like a game')}
+    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}
     <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Jobs Done is on your Home Screen. Turn it on later in Me') : ''}
     ${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
     <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
@@ -3394,9 +3442,9 @@ function obBody(k) {
       <label class="btn block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
 }
 function renderWelcomePublic() {
-  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: false, autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
+  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
   const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
-  document.documentElement.classList.add('ob-on'); document.documentElement.dataset.theme = 'mono'; delete document.documentElement.dataset.tod;
+  if (k === 'theme') { document.documentElement.classList.remove('ob-on'); applyTheme(OB.theme); } else { document.documentElement.classList.add('ob-on'); document.documentElement.dataset.theme = 'mono'; delete document.documentElement.dataset.tod; }
   const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Next' : last ? 'Start training' : 'Continue';
   $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div></div>
     <div class="ob-body stack" data-k="${k}"><div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES[k]}</div>${obBody(k)}</div>
@@ -3412,7 +3460,7 @@ function renderWelcomePublic() {
   qa('[data-goal]').forEach(b => b.onclick = () => { OB.goal = b.dataset.goal; if (OB.goal === 'strength' && OB.exp !== 'new') OB.exp = 'pro'; renderWelcomePublic(); });
   qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
   qa('[data-exp]').forEach(b => b.onclick = () => { OB.exp = b.dataset.exp; OB.plan = null; renderWelcomePublic(); });
-  qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; qa('[data-th]').forEach(x => x.classList.toggle('on', x === b)); });
+  qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; const y = $('#screen') ? $('#screen').scrollTop : 0; renderWelcomePublic(); if ($('#screen')) $('#screen').scrollTop = y; });
   qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
   qa('[data-pf]').forEach(b => b.onclick = async () => {
     const f = b.dataset.pf, on = !OB.prefs[f];
@@ -3426,6 +3474,7 @@ function renderWelcomePublic() {
     keep(); const err = m => { q('#ob-err').textContent = m; };
     if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: 'smooth' }); return; }
     if (k === 'days' && !OB.days) return err('Pick how often you plan to train.');
+    if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { pushOn().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
     if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (!(w > 20 && w < 700)) return err('Add your weight today so your charts have a starting point.'); }
     if (!last) return go(1);
     obFinish();
@@ -3578,12 +3627,15 @@ const ACT = {
   recap: el => showRecap(el.dataset.id || NAV.stack[NAV.stack.length - 1].id),
   exCat: el => openExForm(el.dataset.k),
   myEx: () => openMyExercises(),
-  newSplit: () => { const id = 'sp-' + uid(); S.splits.push({ id, name: 'New split', color: PALETTE[S.splits.length % PALETTE.length], archived: false, ex: [] }); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); },
+  newSplit: () => openNewSplit(),
+  newBlankSplit: () => { closeSheet(); const id = 'sp-' + uid(); S.splits.push({ id, name: 'New split', color: PALETTE[S.splits.length % PALETTE.length], archived: false, ex: [] }); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); },
   spColor: el => { splitById(el.dataset.id).color = el.dataset.c; persist('jd/meta'); rerender(); },
   spMove: el => { const sp = splitById(el.dataset.id), i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= sp.ex.length) return; [sp.ex[i], sp.ex[j]] = [sp.ex[j], sp.ex[i]]; persist('jd/meta'); rerender(); },
   spRemove: el => { const sp = splitById(el.dataset.id); sp.ex.splice(+el.dataset.i, 1); persist('jd/meta'); rerender(); },
   spAdd: el => { const sp = splitById(el.dataset.id); pickExercise(name => { const l = lastSession(name); sp.ex.push({ name, sets: l ? Math.max(2, l.sets.length) : 3, repMin: 6, repMax: 10, rest: S.profile.defaultRest, note: '' }); persist('jd/meta'); rerender(); }); },
   spDup: el => { const sp = splitById(el.dataset.id); const id = 'sp-' + uid(); S.splits.push({ ...clone(sp), id, name: sp.name + ' copy', archived: false }); persist('jd/meta'); NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); toast('Split duplicated'); },
+  spDelete: el => { const sp = splitById(el.dataset.id); if (!sp) return; if (A && A.splitId === sp.id) return toast('Finish or discard the workout using this split first.');
+    confirmSheet({ title: 'Delete ' + sp.name + '?', body: 'The split is removed for good. Workouts you already logged with it stay in your history.', ok: 'Delete split', danger: true, onOk: () => { S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.name + ' deleted'); } }); },
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
@@ -3833,7 +3885,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="m0 mt2 sec">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
     ${make ? `<div class="field"><label for="si-name">Your first name</label><input class="input" id="si-name" autocomplete="given-name" maxlength="40" placeholder="Alex"></div>` : ''}
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
-    <div class="field"><label for="si-pw">Password</label><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 8 characters' : ''}"></div>
+    <div class="field"><label for="si-pw">Password</label><div class="pw-wrap"><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 8 characters' : ''}"><button type="button" class="pw-eye link" id="si-eye" aria-label="Show password">Show</button></div></div>
+    ${make ? `<div class="field"><label for="si-pw2">Confirm password</label><input class="input" id="si-pw2" type="password" autocomplete="new-password" placeholder="Type it again"></div>` : ''}
     ${make ? `<label class="g2 row cap si-age"><input type="checkbox" id="si-age" class="cbox"><span>I’m 13 or older and I agree to the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>.</span></label>
     <input id="si-web" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">` : ''}
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
@@ -3848,6 +3901,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   const go = async () => {
     const em = emailOk(); if (!em) return;
     const pw = $('#si-pw').value; if (pw.length < (make ? 8 : 6)) { m(make ? 'Use a password of at least 8 characters.' : 'Enter your password.'); return; }
+    if (make && $('#si-pw2').value !== pw) { m('The two passwords don’t match.'); return; }
     if (make && !$('#si-age').checked) { m('Please confirm you’re 13 or older and agree to the Privacy Policy and Terms.'); return; }
     const b = $('#si-go'); b.disabled = true; b.textContent = make ? 'Creating…' : 'Signing in…';
     if (make) {
@@ -3866,7 +3920,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     if (make && !data.session) { b.textContent = 'Create account'; b.disabled = false; m('Almost done: open the confirmation email, tap its link, then sign in here.', true); }
   };
   $('#si-go').onclick = go;
-  for (const id of ['#si-email', '#si-pw']) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#si-eye').onclick = () => { const show = $('#si-pw').type === 'password'; for (const id of ['#si-pw', '#si-pw2']) { const e = $(id); if (e) e.type = show ? 'text' : 'password'; } $('#si-eye').textContent = show ? 'Hide' : 'Show'; $('#si-eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
+  for (const id of ['#si-email', '#si-pw', ...(make ? ['#si-pw2'] : [])]) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
   $('#si-demo').onclick = () => startDemo();
   $('#si-switch').onclick = () => renderSignIn(make ? 'start' : 'create', $('#si-email').value.trim());
   if (!make) $('#si-forgot').onclick = async () => {

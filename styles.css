@@ -922,3 +922,23 @@ html.ob-on .input::placeholder { color: color-mix(in srgb, var(--text2) 55%, tra
 :root[data-theme="spidey"] .sets .cell.tgt, :root[data-theme="spidey"] .tgt-line { color: var(--text); }
 :root[data-theme="mono"] .rc-hero { background: linear-gradient(160deg, #2A2A31, #111115); color: #fff; }
 .li.on { color: var(--accent); }
+
+/* Sign-in: show password button inside the field (15 Oct) */
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 72px; }
+.pw-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; font-weight: 600; }
+
+/* Splits: swipe a card left to reveal Delete (15 Oct) */
+.swipe { position: relative; border-radius: var(--r3, 20px); }
+.swipe > .card { position: relative; z-index: 1; transition: transform .22s ease; width: 100%; }
+.swipe-del { position: absolute; top: 0; right: 0; bottom: 0; width: 120px; padding-left: 24px; border: 0; border-radius: var(--r3, 20px); background: #E5383B; color: #fff; font: 600 15px/1 inherit; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s; }
+.swipe.sw .swipe-del { opacity: 1; }
+
+/* Intro look step previews the picked theme for real, so its cards and footer follow that theme (15 Oct) */
+html:not(.ob-on) .ob-themes button { background: var(--surface); border: 2px solid transparent; box-shadow: var(--shadow); color: var(--text); }
+html:not(.ob-on) .ob-themes button.on { border-color: var(--accent); background: var(--surface); }
+html:not(.ob-on) .ob-themes span { color: var(--text2); }
+html:not(.ob-on) .ob-body[data-k="theme"] .ob-t, html:not(.ob-on) .ob-body[data-k="theme"] .ob-s, html:not(.ob-on) .ob-body[data-k="theme"] .ob-eb { text-shadow: none; }
+html:not(.ob-on) .ob-body[data-k="theme"] .ob-s { background: var(--surface); color: var(--text2); padding: var(--s3); border-radius: 14px; }
+html:not(.ob-on) .ob-foot { background: none; }
+html:not(.ob-on) .ob-foot .btn.primary { background: var(--accent); color: var(--accent-ink); }
