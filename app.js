@@ -1501,7 +1501,7 @@ async function shareRecap(d) {
   if (art) { const i = await img(art.replace(/\\"/g, '"')); if (i) { const h = W * (i.naturalHeight || 236) / (i.naturalWidth || 400); g.drawImage(i, 0, theme() === 'mono' ? 0 : HH - h, W, h); } }
   gr = g.createLinearGradient(0, HH - 260, 0, HH); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, bg); g.fillStyle = gr; g.fillRect(0, HH - 260, W, 260);
   // wordmark
-  const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=6') : null;
+  const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
   let x0 = 72; if (icon) { g.save(); g.beginPath(); g.roundRect(72, 64, 72, 72, 18); g.clip(); g.drawImage(icon, 72, 64, 72, 72); g.restore(); x0 = 164; }
   g.fillStyle = ink; g.font = F(800, 38); g.fillText('JobDone', x0, 114);
   // headline
