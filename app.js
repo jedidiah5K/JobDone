@@ -456,6 +456,7 @@ function render() {
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
   // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
   if (S && S.profile && S.profile.legacy == null) { const old = (S.created || Date.now()) < Date.UTC(2026, 9, 15, 6); S.profile.legacy = old ? 1 : 0; if (old) { if (S.profile.barW == null) S.profile.barW = 0; if (!S.profile.stepSrc) S.profile.stepSrc = 'QWatch Pro'; S.profile.owner = true; } persist('jd/meta'); }
+  if (S && S.profile && !S.profile.musicOk) { S.profile.soundSilent = false; S.profile.musicOk = true; persist('jd/meta'); }
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
   const app = $('#app');
   if (!S || !S.imported && !S.splits.length) { renderWelcome(); return; }
@@ -952,7 +953,7 @@ function viewMe() {
   </div></section>
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
-    ${srow('Play when on silent', swi(!!p.soundSilent, 'soundSilent', `data-k="${p.soundSilent ? '' : '1'}"`), 'Pauses music while a sound plays')}
+    ${srow('Play when on silent', swi(!!p.soundSilent, 'soundSilent', `data-k="${p.soundSilent ? '' : '1'}"`), 'Off keeps your music playing. On lets sounds play on silent, but iPhone pauses your music to do it')}
     ${slink('Play a test sound', 'soundTest', 'act')}
   </div></section>
   <section><div class="sgh">App</div><div class="sgrp">
@@ -1170,7 +1171,8 @@ const Sound = {
     // and playing a silent <audio> clip once from a tap moves the page onto the media channel,
     // so sounds play like a video does (Jedris has the same limit on silent mode).
     // Only when Job turns on Me → Sounds → "Play on silent": a playback session pauses music apps.
-    if (!(S && S.profile && S.profile.soundSilent)) return;
+    // Default: an 'ambient' session mixes our sounds over whatever music is playing and never pauses it.
+    if (!(S && S.profile && S.profile.soundSilent)) { if (navigator.audioSession && navigator.audioSession.type !== 'ambient') try { navigator.audioSession.type = 'ambient'; } catch (e) {} if (this.media) { try { this.media.pause(); } catch (e) {} this.media = null; } return; }
     if (navigator.audioSession && navigator.audioSession.type !== 'playback') try { navigator.audioSession.type = 'playback'; } catch (e) {}
     if (!this.media) try {
       const n = 800, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
@@ -2297,7 +2299,7 @@ const ACT = {
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
-  soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent && navigator.audioSession) try { navigator.audioSession.type = 'auto'; } catch (e) {} Sound.unlock(); rerender(); },
+  soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent && navigator.audioSession) try { navigator.audioSession.type = 'ambient'; } catch (e) {} Sound.unlock(); rerender(); },
   soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast((sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound.') + ` (audio ${Sound.ctx ? Sound.ctx.state : 'none'}, ${navigator.audioSession ? navigator.audioSession.type : 'no session'})`, 4000)); },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
