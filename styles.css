@@ -581,3 +581,12 @@ input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 
 .grid2 > * { min-width: 0; }
 .kpis.rc-k { display: grid; grid-template-columns: repeat(4, 1fr); }
 .kpis.rc-k .kpi { padding: 0 var(--s2); } .kpis.rc-k .kpi:first-child { padding-left: 0; }
+
+/* ============ Targets and machine setup (Oct 2026) ============ */
+.tgt-line { margin-top: var(--s1); font-size: 13px; line-height: 18px; font-weight: 600; color: var(--accent); }
+.sets .cell.tgt { color: var(--accent); font-weight: 600; }
+.setup { display: flex; align-items: center; gap: 6px; margin-top: var(--s2); padding: 6px 10px; border-radius: 8px; background: var(--raised); color: var(--text); font-size: 13px; line-height: 18px; text-align: left; max-width: 100%; border: 0; cursor: pointer; }
+.setup svg { flex: none; color: var(--text2); }
+.setup span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setup.empty { background: transparent; color: var(--text2); padding-left: 0; }
+.stack > .setup { margin-top: 0; align-self: flex-start; background: var(--surface); box-shadow: var(--shadow); padding: 10px 14px; font-size: 15px; }
