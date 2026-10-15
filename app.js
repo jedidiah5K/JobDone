@@ -2311,7 +2311,7 @@ function obTour() {
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
 }
 function obBody(k) {
-  if (k === 'home') return `<div class="ob-hero"><img src="icons/apple-touch-icon.png?v=6" alt="" width="72" height="72" onerror="this.remove()"><h1>First, put JobDone on your Home Screen</h1><p class="sec">It opens full screen like a real app, keeps you signed in, and can tell you when rest is over.</p></div>
+  if (k === 'home') return `<div class="ob-hero"><h1>First, put JobDone on your Home Screen</h1><p class="sec">It opens full screen like a real app, keeps you signed in, and can tell you when rest is over.</p></div>
     ${isStandalone() ? `<div class="note ok">You’re already using JobDone from your Home Screen. Nice.</div>` : `<div class="seg"><button data-os="ios" class="${OB.os === 'ios' ? 'on' : ''}">iPhone</button><button data-os="android" class="${OB.os === 'android' ? 'on' : ''}">Android</button></div>
     ${OB.os === 'android' && installEvt ? '<button class="btn block" id="ob-inst">Install now</button>' : ''}${installSteps(OB.os)}<p class="cap">Then open JobDone from its new icon and sign in once more. You can find these steps again in Me.</p>`}`;
   if (k === 'tour') return `<h1 class="ob-t">Here’s what JobDone does</h1>${obTour()}`;
@@ -2728,7 +2728,7 @@ function installSteps(os) {
 }
 function openInstallGuide(first) {
   let os = devOS();
-  const sh = openSheet(`<div class="stack"><div class="a2-hero"><img src="icons/apple-touch-icon.png?v=6" alt="" width="64" height="64" onerror="this.remove()"><div><div class="f22 fw7">${first ? 'Put JobDone on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
+  const sh = openSheet(`<div class="stack"><div class="a2-hero"><div><div class="f22 fw7">${first ? 'Put JobDone on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
     ${isStandalone() ? '<div class="note">You’re already using JobDone from your Home Screen.</div>' : ''}
     <div class="seg"><button data-os="ios">iPhone</button><button data-os="android">Android</button></div>
     <div id="a2-body"></div>
