@@ -2516,7 +2516,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   if (!make) $('#si-forgot').onclick = async () => {
     const em = emailOk(); if (!em) return;
     const { error } = await SB.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
-    m(error ? (/rate/i.test(error.message) ? 'Too many emails sent. Wait a while, then try again.' : error.message) : 'Check your email and tap the link. It opens JobDone, where you set a new password.', !error);
+    m(error && /rate/i.test(error.message) ? 'Too many reset emails. Wait an hour, then try again.' : 'If that email has an account, a reset link is on its way (check spam too). If nothing arrives within 10 minutes, ask whoever shared JobDone with you to reset it.', !(error && /rate/i.test(error.message)));
   };
 }
 function openSetPassword(title = 'Set a password') {
