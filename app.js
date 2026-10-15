@@ -26,6 +26,7 @@ const clock = s => Math.floor(s / 60) + ':' + pad2(Math.floor(s % 60));
 // Wall-clock time like 3:00 pm (start of a workout, end of a rest).
 const hm = t => { const d = new Date(t); let h = d.getHours(); const ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12; return h + ':' + pad2(d.getMinutes()) + ' ' + ap; };
 const plural = (n, w, ws) => n + ' ' + (n === 1 ? w : (ws || w + 's'));
+const fmtRest = v => Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0');
 const REST_OPTS_X = v => v && ![60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].includes(v) ? [v] : [];
 const n0 = v => Math.round(v).toLocaleString('en-US');
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -71,6 +72,10 @@ function mergeLR(rows, fmt) {
 const sideOf = n => (n.match(/\((L|R)\)$/) || [])[1] || null;
 // The plate loader only makes sense where you slide plates onto a bar.
 // Plate loader opens first for anything loaded with plates (Job's machines are plate-loaded); dumbbells, cables and bodyweight go straight to the dial.
+// Job's existing Shortcut is called JobDone steps; everyone else gets the app's real name.
+const SC_NAME = () => S && S.profile && S.profile.owner ? 'JobDone steps' : 'Jobs Done steps';
+// Rest: one default in Me, with an optional override per exercise (from its ⋯ menu).
+const restFor = name => ((S.profile.restBy || {})[baseName(name)]) || S.profile.defaultRest || 120;
 const usesPlates = name => !['dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band'].includes(exInfo(name).equip);
 function exInfo(name) {
   const b = baseName(name);
@@ -134,7 +139,8 @@ let mode = 'pending'; // cloud | local
 let syncState = 'ok';
 let ready = false;
 let REST = null;      // {end, total}
-let welcomeOv = {};   // assumption overrides on the welcome screen
+let welcomeOv = {};
+let DEMO = false;     // judges and visitors: a sample account in memory, nothing saved   // assumption overrides on the welcome screen
 
 function freshState() {
   return {
@@ -147,7 +153,7 @@ const invalidate = () => { IX = null; };
 
 // ---------- storage ----------
 function lsLoad() { try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-function lsSave() { try { localStorage.setItem(LS_KEY, JSON.stringify({ S, A, UI })); } catch (e) {} }
+function lsSave() { if (DEMO) return; try { localStorage.setItem(LS_KEY, JSON.stringify({ S, A, UI })); } catch (e) {} }
 const dirty = new Set(), inflight = new Set();
 let flushT = null, retryT = null;
 // Paths saved on this phone but not yet in the account. Kept in localStorage so they survive closing the app.
@@ -157,6 +163,7 @@ function pend() {
 }
 function pendSave() { try { localStorage.setItem(LS_KEY + ':pending', JSON.stringify([...pend()])); } catch (e) {} }
 function persist(...paths) {
+  if (DEMO) return;
   paths.forEach(p => pend().add(p)); pendSave();
   lsSave();
   if (!DB || !S) return;
@@ -449,6 +456,8 @@ function endScrub(el) { const ln = el.querySelector('.scrub'); if (ln) ln.setAtt
 
 // ---------- toast & sheets ----------
 let toastT = null;
+let SCR_KEY = '';
+function screenChanged() { const top = NAV.stack[NAV.stack.length - 1], k = (top ? top.v : NAV.tab) + '|' + (A && A.open ? (A.view || 'log') : ''); if (k !== SCR_KEY) { SCR_KEY = k; document.querySelectorAll('.toast').forEach(t => t.remove()); } }
 function toast(html, ms = 2600) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = html;
@@ -527,6 +536,7 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
+  screenChanged();
 }
 // Screen entrance: panels rise in, charts draw, headline numbers count up.
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
@@ -984,7 +994,7 @@ function viewMe() {
     ${snum('Workouts per week', 'set-week', 'weeklyTarget', p.weeklyTarget, '4')}
   </div></section>
   <section><div class="sgh">Workouts</div><div class="sgrp">
-    <label class="xr"><span class="grow">Rest between sets<span class="s">One timer for every exercise</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
+    <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), '9+ reps last time adds weight, otherwise one more rep')}
     ${srow('Plateau alerts', swi(on('noPlateau'), 'pset', 'data-f="noPlateau"'), 'A heads-up when a lift stops improving')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
@@ -1013,20 +1023,20 @@ function viewMe() {
     <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
       <ol class="f15 m0 sec xr-ol">
         <li>Make a sync key above and copy it.</li>
-        <li>Open Shortcuts, tap +, and name it “JobDone steps”.</li>
+        <li>Open Shortcuts, tap +, and name it “${SC_NAME()}”.</li>
         <li>Add <b>Find Health Samples</b>: Type is Steps, Start Date is in the last 3 days, Group By Day.</li>
         <li>Add <b>Repeat with Each</b>. Inside it, add <b>Text</b> containing the item’s Start Date (format: Custom, <span class="num">yyyy-MM-dd</span>), a space, then the item’s Value.</li>
         <li>After the repeat, add <b>Combine Text</b> with New Lines.</li>
         <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
         <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
-        <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “JobDone steps”.</li>
+        <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “${SC_NAME()}”.</li>
       </ol></details>` : `<p class="xr-p">Your steps are in Apple Health. Type them on Today, or paste them here. Sign in on the Jobs Done website to have a Shortcut send them every evening.</p>`}
     ${slink('Add or paste steps by hand', 'steps', 'act')}
   </div></section>
   ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
     ${srow('Signed in as', `<span class="xr-v">${esc(USER.email || 'your account')}</span>`)}
     ${slink('Change password', 'setPassword')}
-    ${slink('Sign out', 'signOut', 'acc')}
+    ${slink(DEMO ? 'Leave the demo' : 'Sign out', 'signOut', 'acc')}
   </div></section>` : ''}
   <section><div class="sgh">Your data</div><div class="sgrp">
     <label class="xr" for="csv-file"><span class="grow">Import workouts from CSV</span>${I.right}</label><input type="file" id="csv-file" accept=".csv,text/csv" data-in="csvFile" hidden>
@@ -1166,7 +1176,7 @@ function exCardHTML(e, ei) {
   const uni = pair && baseName(pair.name) === baseName(e.name) && sideOf(pair.name) === (side === 'L' ? 'R' : 'L') ? side : '';
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
     ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div><button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
-    ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg)} ${infoBtn('target')}</div>` : ''}
+    ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const pv = last && last.sets[si]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}" id="row-${ei}-${si}">
@@ -1385,7 +1395,7 @@ function logSet(ei, si) {
   if (s.done) {
     buzz(10);
     const pr = livePR(e)[si];
-    const secs = S.profile.defaultRest || 300;
+    const secs = restFor(e.name);
     if (!S.profile.noAutoRest) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     touchA();
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
@@ -1460,7 +1470,7 @@ const RC_LINE = {};
 function showRecap(id, fresh) {
   const d = recapData(id); if (!d.w) return;
   d.line = RC_LINE[id] || (RC_LINE[id] = doneLine(d.w));
-  const old = document.getElementById('recap'); if (old) old.remove();
+  const old = document.getElementById('recap'); if (old) old.remove(); document.querySelectorAll('.toast').forEach(t => t.remove());
   const el = document.createElement('div'); el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Workout recap');
   const pr = new Map(d.prs.map(p => [p.ex, p])), mx = d.musL.length ? d.musL[0][1] : 1;
   const h = d.w.ex.map(e => { const H = ix().hist[e.name] || [], k = H.findIndex(x => x.wid === d.w.id), p = k > 0 ? H[k - 1] : null, t = topSet(e.sets);
@@ -1485,7 +1495,7 @@ function showRecap(id, fresh) {
         <div class="rc-bar was"><span>Last ${esc(fmtDate(d.prev.date))}</span><i><b style="width:${Math.round(pv / top * 100)}%"></b></i><em class="num">${dvol(pv)}</em></div>
         <div class="cap ${d.dv >= 0 ? 'c-pos' : ''}">${d.dv >= 0 ? `${Math.round(d.dv * 100)}% more volume than your last ${esc(d.w.splitName || 'workout')}` : d.w.planned && d.sets < d.w.planned ? `A shorter session: ${d.sets} of ${d.w.planned} planned sets done.` : `${Math.abs(Math.round(d.dv * 100))}% less volume than your last ${esc(d.w.splitName || 'workout')}`}</div></div>` : ''}
     </div>
-    <div class="card"><div class="kpis rc-k"><div class="kpi"><b>${d.dur >= 6e4 ? fmtDur(d.dur) : '—'}</b><span>time</span></div><div class="kpi"><b>${d.w.ex.length}</b><span>exercises</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.reps}</b><span>reps</span></div></div></div>
+    <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : `<div class="kpi"><b>${d.reps}</b><span>reps</span></div>`}<div class="kpi"><b>${d.w.ex.length}</b><span>exercises</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.reps}</b><span>reps</span></div></div></div>
     ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
     <div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${h.map(({ e, t, dl }) => `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><div class="rc-right"><b class="num">${t ? setStr(t) : '—'}</b>${dl}</div></div>`).join('')}</div></div>
     <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n1(n)}</em></div>`).join('')}</div>
@@ -1528,7 +1538,7 @@ async function shareRecap(d) {
   g.fillStyle = ink; g.font = F(800, 38); g.fillText('Jobs Done', x0, 114);
   // headline
   const light = /^#(f|e|d)/i.test(ink) || /255/.test(ink); if (light) { g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 18; g.shadowOffsetY = 2; }
-  g.fillStyle = ink; g.font = F(900, 150); g.fillText('Jobs done.', 64, 300);
+  g.fillStyle = ink; g.font = F(900, 150); g.fillText('Jobs done!', 64, 300);
   const line = d.line || RC_LINE[d.w.id] || doneLine(d.w);
   g.font = F(600, 40); g.fillStyle = ink2; g.fillText(line.length > 46 ? line.slice(0, 45) + '…' : line, 70, 362); g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
   // split pill
@@ -1536,7 +1546,7 @@ async function shareRecap(d) {
   g.fillStyle = acc; g.beginPath(); g.roundRect(70, 404, pw, 68, 34); g.fill(); g.fillStyle = col('--accent-ink', '#fff'); g.fillText(pill, 98, 450);
   // stats card
   g.fillStyle = surf; g.beginPath(); g.roundRect(56, 520, W - 112, 210, 40); g.fill();
-  const st = [[d.dur ? fmtDur(d.dur) : '—', 'time'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.prs.length), d.prs.length === 1 ? 'PR' : 'PRs']];
+  const st = [d.dur ? [fmtDur(d.dur), 'time'] : [String(d.reps), 'reps'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.prs.length), d.prs.length === 1 ? 'PR' : 'PRs']];
   const cw = (W - 112) / 4;
   st.forEach(([a, b], i) => { const x = 56 + i * cw; if (i) { g.fillStyle = col('--border', 'rgba(0,0,0,.08)'); g.fillRect(x, 560, 2, 130); }
     g.fillStyle = i === 3 && d.prs.length ? col('--pr', acc) : text; g.font = F(800, a.length > 6 ? 46 : 60); g.fillText(a, x + 34, 632); g.fillStyle = text2; g.font = F(600, 30); g.fillText(b, x + 34, 682); });
@@ -1777,7 +1787,7 @@ async function openPhotos() {
 // Bar with sleeves; plates slide on from the ends, mirrored on both sides. Drag (or tap) plates from the tray.
 const PLATE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>';
 const PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5] };
-const PLATE_COL = { 25: '#D8312B', 20: '#2F62C9', 15: '#E8B524', 10: '#2E8B4E', 5: '#DCD8CE', 2.5: '#2B2D31', 1.25: '#9EA3AA', 45: '#2F62C9', 35: '#E8B524' };
+const PLATE_COL = { 25: '#D8312B', 20: '#2F62C9', 15: '#E8B524', 10: '#2E8B4E', 5: '#DCD8CE', 2.5: '#7A7F88', 1.25: '#9EA3AA', 45: '#2F62C9', 35: '#E8B524' };
 const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 104 * Math.sqrt(w / m)); };
 // Weight entry starts on the plate loader; "Dial / keypad" switches to the number pad.
 function openSetPlates(ei, si) {
@@ -1797,7 +1807,7 @@ function openPlates(target, onUse, o = {}) {
     const W = 340, cx = W / 2, H = 170, cy = H / 2;
     let xR = cx + 62, xL = cx - 62, out = '';
     // Heavy loads: squeeze plate thickness and gaps so every plate stays on the sleeve (Job, 15 Oct: 330 kg overflowed).
-    const pw = p => p >= (U() === 'lb' ? 25 : 10) ? 15 : 10, need = side.reduce((a, p) => a + pw(p) + 2, 0), k = Math.min(1, (W - 10 - xR) / (need || 1));
+    const pw = p => p >= (U() === 'lb' ? 25 : 10) ? 15 : 10, need = side.reduce((a, p) => a + pw(p) + 2, 0), k = Math.min(1, (W - 22 - xR) / (need || 1));
     side.forEach((p, i) => { const h = plateH(p), w = pw(p) * k, col = PLATE_COL[p] || 'var(--accent)', nw = i === fresh ? ' new' : '';
       out += `<g class="pl R${nw}" data-i="${i}"><rect x="${xR}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xR + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
       out += `<g class="pl L${nw}" data-i="${i}"><rect x="${xL - w}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xL - w + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
@@ -1818,7 +1828,7 @@ function openPlates(target, onUse, o = {}) {
       b.querySelector('#pl-bar').innerHTML = svg(); fresh = -1;
       b.querySelector('#pl-tot').firstChild.textContent = trim(total());
       const u = b.querySelector('#pl-use-v'); if (u) u.textContent = trim(total());
-      b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · ${trim(left * 2)} ${U()} short of your target` : ''}` : (bar ? `Empty ${bar} ${U()} bar` : 'Add plates to start');
+      b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · closest to your ${trim(target)} ${U()} with these plates` : ''}` : (bar ? `Empty ${bar} ${U()} bar` : 'Add plates to start');
     };
     const add = p => { side.push(p); side.sort((a, c) => c - a); fresh = side.lastIndexOf(p); left = 0; buzz(8); clank(p / 25); draw(); };
     draw();
@@ -2000,7 +2010,7 @@ function openSteps(day) {
   const sh = openSheet(`<div class="stack"><div class="eyebrow">Steps</div>
     <div class="grid2"><div class="field"><label for="st-date">Date</label><input class="input" type="date" id="st-date" value="${d0}" max="${t}"></div><div class="field"><label for="st-n">Steps</label><input class="input num" id="st-n" inputmode="numeric" placeholder="Steps" value="${S.steps[d0] || ''}"></div></div>
     <button class="btn primary block" id="st-save">Save</button>
-    <div class="mt2 field"><label for="st-paste">Or paste from your “JobDone steps” shortcut</label><textarea class="input num" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea></div>
+    <div class="mt2 field"><label for="st-paste">Or paste from your “${SC_NAME()}” shortcut</label><textarea class="input num" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea></div>
     <button class="btn block" id="st-import">Import pasted steps</button><div class="cap" id="st-msg"></div></div>`, {
     label: 'Steps',
     mount: b => {
@@ -2068,11 +2078,11 @@ function pickExercise(onPick, opts = {}) {
 // Create a custom exercise, or change any exercise's muscle group and equipment.
 function openExForm(name, o = {}) {
   const cur = name ? exInfo(name) : null, known = name && (LIB.some(e => e.name === name) || (S.customEx || []).some(e => e.name === name));
-  let mu = o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : 'other';
+  let mu = o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : null;
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${known ? 'Exercise group' : 'New exercise'}</div>
     <div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(name || '')}" placeholder="e.g. Hammer Curl" ${known ? 'disabled' : ''}></div>
     <div class="field"><span class="lbl">Muscle group</span><div class="chips wrap" id="ef-m">${MUSCLES.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>
-    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${EQUIP.map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>
+    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${EQUIP.map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div></div>
     <button class="btn primary block" id="ef-ok">Save</button>
     ${known && (S.customEx || []).some(e => e.name === name) && !LIB.some(e => e.name === name) ? '' : ''}
     <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: 'Exercise', mount: b => {
@@ -2082,7 +2092,7 @@ function openExForm(name, o = {}) {
       const n = (b.querySelector('#ef-n').value || '').trim().replace(/\s+/g, ' ');
       if (!n) { toast('Give it a name'); return; }
       if (!mu) { toast('Pick a muscle group'); return; }
-      S.customEx = (S.customEx || []).filter(e => e.name !== n); S.customEx.push({ name: n, muscle: mu, equip: eq });
+      S.customEx = (S.customEx || []).filter(e => e.name !== n); S.customEx.push({ name: n, muscle: mu, equip: eq || 'other' });
       persist('jd/meta'); invalidate(); closeSheet(sh);
       if (o.onSave) o.onSave(n); else { rerender(); toast(`${esc(n)} · ${esc(mu)}`); }
     };
@@ -2116,7 +2126,7 @@ function openStart() {
 function openRotation() {
   let order = S.rotation.slice();
   const html = () => `<div class="stack"><div class="eyebrow">Rotation</div><p class="m0 cap">Today suggests the split after the last one you did, in this order.</p>
-    <div class="list dsort" data-sort="rot">${order.map((id, i) => { const sp = splitById(id); return sp ? `<div class="li" data-dragitem><button class="drag-h" data-drag aria-label="Drag to move">${I.grip}</button><span class="tag" style="width:8px;height:28px;border-radius:4px;background:${sp.color};flex:none"></span><div class="grow t">${i + 1}. ${esc(sp.name)}</div><button class="icon-btn" data-ro="up" data-i="${i}" aria-label="Move up">${I.up1}</button><button class="icon-btn" data-ro="dn" data-i="${i}" aria-label="Move down">${I.dn1}</button><button class="icon-btn" data-ro="rm" data-i="${i}" aria-label="Remove">${I.x}</button></div>` : ''; }).join('') || '<div class="empty">Add splits below.</div>'}</div>
+    <div class="list dsort" data-sort="rot">${order.map((id, i) => { const sp = splitById(id); return sp ? `<div class="li" data-dragitem><button class="drag-h" data-drag aria-label="Drag to move">${I.grip}</button><span class="tag" style="width:8px;height:28px;border-radius:4px;background:${sp.color};flex:none"></span><div class="grow t">${i + 1}. ${esc(sp.name)}</div><button class="icon-btn" data-ro="rm" data-i="${i}" aria-label="Remove">${I.x}</button></div>` : ''; }).join('') || '<div class="empty">Add splits below.</div>'}</div>
     <div class="chips wrap">${S.splits.filter(s => !s.archived).map(s => `<button class="chip" data-ro="add" data-id="${s.id}">+ ${esc(s.name)}</button>`).join('')}</div>
     <button class="btn primary block" data-ro="save">Save rotation</button></div>`;
   const sh = openSheet(html(), {
@@ -2194,6 +2204,7 @@ function exMenu(ei) {
     <button class="btn block" data-m="note">${e.note ? 'Edit note' : 'Add note'}</button>
     <button class="btn block" data-m="order">${I.grip} Reorder exercises</button>
     <button class="btn block" data-m="setup">Machine setup</button>
+    <button class="btn block" data-m="rest">Rest for this exercise: ${fmtRest(restFor(e.name))}${(S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'}</button>
     <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>
     <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
@@ -2205,11 +2216,60 @@ function exMenu(ei) {
         if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { A.ex.splice(ei, 1); touchA(); } });
         if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
+        if (m === 'rest') openExRest(e.name);
         if (m === 'hist') { minimizeWk(); NAV.stack.push({ v: 'exercise', name: e.name }); render(); }
         if (m === 'note') { const s2 = openSheet(`<div class="stack"><div class="eyebrow">Note for ${esc(e.name)}</div><textarea class="input" id="en-t">${esc(e.note)}</textarea><button class="btn primary block" id="en-s">Save note</button></div>`, { mount: bb => { bb.querySelector('#en-s').onclick = () => { e.note = bb.querySelector('#en-t').value.trim(); closeSheet(s2); touchA(); }; } }); }
       };
     },
   });
+}
+
+function openExRest(name) {
+  const b0 = baseName(name), cur = (S.profile.restBy || {})[b0] || 0;
+  const opts = [[0, `Default (${fmtRest(S.profile.defaultRest || 120)})`], [60, '1:00'], [90, '1:30'], [120, '2:00'], [150, '2:30'], [180, '3:00'], [240, '4:00'], [300, '5:00']];
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Rest for ${esc(b0)}</div><p class="m0 cap">Short rests suit raises and curls; big lifts like more.</p><div class="list">${opts.map(([v, l]) => `<button class="li tl ${cur === v ? 'on' : ''}" data-r="${v}"><span class="grow t">${l}</span>${cur === v ? I.check : ''}</button>`).join('')}</div></div>`, { label: 'Rest', mount: b => {
+    b.onclick = ev => { const x = ev.target.closest('[data-r]'); if (!x) return; const v = +x.dataset.r; S.profile.restBy = Object.assign({}, S.profile.restBy); if (v) S.profile.restBy[b0] = v; else delete S.profile.restBy[b0]; persist('jd/meta'); closeSheet(sh); toast(v ? `${esc(b0)}: ${fmtRest(v)} rest` : `${esc(b0)} uses your default rest`); };
+  } });
+}
+
+// ---------- demo account (judge review, 15 Oct): sample history so the charts, PRs and badges show ----------
+function demoState() {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const st = freshState(), p = st.profile;
+  Object.assign(p, { name: 'Alex', heightCm: 178, goalW: 76, unit: 'kg', weeklyTarget: 4, defaultRest: 120, stepGoal: 9000, theme: theme(), legacy: 0, rest5: true, music2: true, musicOk: true, soundSilent: false, cliffs1: true, demo: true, restBy: { 'Lateral Raise': 75, 'Dumbbell Curl': 75, 'Hammer Curl': 75, 'Face Pull': 75, 'Calf Raise': 60 } });
+  st.created = Date.now(); st.imported = true;
+  const PLAN = [['Push', [['Bench Press', 60], ['Incline Dumbbell Press', 20], ['Shoulder Press', 40], ['Lateral Raise', 8], ['Tricep Pushdown', 22.5]]],
+    ['Pull', [['Lat Pulldown', 50], ['Seated Cable Row', 50], ['Face Pull', 17.5], ['Dumbbell Curl', 10], ['Hammer Curl', 12]]],
+    ['Legs', [['Back Squat', 70], ['Romanian Deadlift', 60], ['Leg Press', 120], ['Leg Curl', 35], ['Calf Raise', 60]]]];
+  for (const [n, ex] of PLAN) { const id = 'sp-demo-' + n.toLowerCase(); st.splits.push({ id, name: n, color: SPLIT_COLORS[n] || PALETTE[st.splits.length], archived: false, ex: ex.map(([e]) => ({ name: e, sets: 3, repMin: 6, repMax: 10, rest: 120, note: '' })) }); st.rotation.push(id); }
+  const cur = {}; PLAN.forEach(([, ex]) => ex.forEach(([e, w]) => { cur[e] = { w, r: 6 }; }));
+  const T = today(), start = addDays(T, -83); let k = 0, num = 0;
+  for (let d = start; d < T; d = addDays(d, 1)) {
+    const dow = (new Date(d + 'T12:00').getDay() + 6) % 7;   // Mon 0
+    if (![0, 1, 3, 5].includes(dow)) continue;
+    if (rnd() < .06 && daysBetween(d, T) > 7) continue;      // the odd missed day, never this week
+    const [sn, ex] = PLAN[k % 3]; k++; num++;
+    const t0 = new Date(d + 'T18:05').getTime() + Math.round(rnd() * 40) * 6e4, mins = 52 + Math.round(rnd() * 22);
+    const w = { id: 'demo-' + num, date: d, splitId: 'sp-demo-' + sn.toLowerCase(), splitName: sn, start: t0, end: t0 + mins * 6e4, note: '', energy: null, src: 'native', planned: 15, ex: [] };
+    for (const [e] of ex) {
+      const c = cur[e], stall = e === 'Shoulder Press' && daysBetween(d, T) < 26, sets = [];
+      for (let i = 0; i < 3; i++) sets.push({ w: c.w, r: Math.max(4, c.r - (i === 2 ? 1 : 0) - (rnd() < .2 ? 1 : 0)), t: 'work', done: true });
+      w.ex.push({ name: e, note: '', sets });
+      if (!stall) { c.r++; if (c.r > 10) { c.r = 6; c.w = Math.round((c.w + (c.w >= 40 ? 2.5 : c.w >= 15 ? 1.25 : 1)) * 100) / 100; } }
+    }
+    st.workouts[w.id] = w;
+  }
+  for (let d = start, i = 0; d <= T; d = addDays(d, 1), i++) {
+    if (rnd() < .82) st.weights[d] = { w: Math.round((82.4 - i * .045 + (rnd() - .5) * .8) * 10) / 10, src: 'manual' };
+    if (i > 23) st.steps[d] = Math.round(5200 + rnd() * 7400);
+  }
+  return st;
+}
+function startDemo() {
+  DEMO = true; DB = null; mode = 'local'; A = null; S = demoState(); UI = { lastPrompt: today() }; invalidate();
+  NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
+  ready = true; applyTheme(); render();
+  toast('Demo account: Alex’s 12 weeks of training. Nothing you change is saved.', 5000);
 }
 
 // ---------- welcome / import ----------
@@ -2307,9 +2367,9 @@ function restoreFile(file, replacing) {
 }
 // Starter splits for new people; they can rename or edit everything later.
 const TEMPLATES = {
-  ppl: { n: 'Push / Pull / Legs', d: '3 days, repeat as often as you like', s: [['Push', ['Bench Press', 'Incline Dumbbell Press', 'Shoulder Press', 'Lateral Raise', 'Tricep Pushdown']], ['Pull', ['Lat Pulldown', 'Seated Cable Row', 'Face Pull', 'Dumbbell Curl', 'Hammer Curl']], ['Legs', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
-  ul: { n: 'Upper / Lower', d: '2 days, great for 4 days a week', s: [['Upper', ['Bench Press', 'Barbell Row', 'Shoulder Press', 'Lat Pulldown', 'Dumbbell Curl', 'Tricep Pushdown']], ['Lower', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
-  fb: { n: 'Full body', d: 'One workout, 2 to 3 times a week', s: [['Full Body', ['Back Squat', 'Bench Press', 'Barbell Row', 'Shoulder Press', 'Romanian Deadlift']]] },
+  ppl: { n: 'Push / Pull / Legs', d: '3 workouts you rotate; fits 3 to 6 days a week', s: [['Push', ['Bench Press', 'Incline Dumbbell Press', 'Shoulder Press', 'Lateral Raise', 'Tricep Pushdown']], ['Pull', ['Lat Pulldown', 'Seated Cable Row', 'Face Pull', 'Dumbbell Curl', 'Hammer Curl']], ['Legs', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
+  ul: { n: 'Upper / Lower', d: '2 workouts you alternate; fits 4 days a week', s: [['Upper', ['Bench Press', 'Barbell Row', 'Shoulder Press', 'Lat Pulldown', 'Dumbbell Curl', 'Tricep Pushdown']], ['Lower', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
+  fb: { n: 'Full body', d: '1 workout you repeat; fits 1 to 3 days a week', s: [['Full Body', ['Back Squat', 'Bench Press', 'Barbell Row', 'Shoulder Press', 'Romanian Deadlift']]] },
   none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
 };
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Jobs Done does,
@@ -2331,7 +2391,7 @@ function obTour() {
     ['Watch yourself get stronger', 'PRs, a weight vs strength chart and plateau alerts tell you what is working and what to change.',
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
-      mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Jobs done.</div>`)],
+      mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Jobs done!</div>`)],
   ];
   return `<div class="ob-tour" id="ob-tour">${slides.map(([t, d, m]) => `<section class="ob-slide">${m}<h2>${t}</h2><p class="sec">${d}</p></section>`).join('')}</div>
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
@@ -2392,6 +2452,7 @@ function renderWelcomePublic() {
   const keep = () => { const f = id => { const e = q(id); return e ? e.value.trim() : null; }; const n = f('#ob-name'); if (n != null) { OB.name = n; OB.w = f('#ob-w'); OB.gw = f('#ob-gw'); OB.h = f('#ob-h'); } };
   const go = d => { keep(); OB.step = Math.max(0, Math.min(OB_STEPS.length - 1, OB.step + d)); renderWelcomePublic(); const sc = $('#screen'); if (sc) sc.scrollTop = 0; };
   q('#ob-back').onclick = () => go(-1);
+  qa('#app input').forEach(i => i.addEventListener('input', () => { const e = q('#ob-err'); if (e) e.textContent = ''; }));
   qa('[data-os]').forEach(b => b.onclick = () => { OB.os = b.dataset.os; renderWelcomePublic(); });
   const ib = q('#ob-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; renderWelcomePublic(); };
   qa('[data-unit]').forEach(b => b.onclick = () => { keep(); OB.unit = b.dataset.unit; renderWelcomePublic(); });
@@ -2578,7 +2639,7 @@ const ACT = {
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
   reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, onOk: eraseAll }),
-  signOut: () => confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => { await flushNow(); try { localStorage.removeItem(LS_KEY); } catch (e) {} await SB.auth.signOut(); } }),
+  signOut: () => DEMO ? (location.hash = '', location.reload()) : confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => { await flushNow(); try { localStorage.removeItem(LS_KEY); } catch (e) {} await SB.auth.signOut(); } }),
   doImport: () => doImport(true),
   skipImport: () => doImport(false),
   // workout
@@ -2825,6 +2886,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
     <div class="row between"><button class="link" id="si-switch">${make ? 'I have an account' : 'Create account'}</button>${make ? '' : '<button class="link" id="si-forgot">Forgot password?</button>'}</div>
     <div class="c-neg cap" id="si-msg" role="alert" style="min-height:18px">${esc(msg)}</div>
+    <button class="btn block" id="si-demo">Try the demo account</button><p class="m0 tc cap">Sample history, nothing saved. No sign-up needed.</p>
     <div class="tc cap legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></div>
   </div></main>`;
   const shownAt = Date.now();
@@ -2852,6 +2914,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   };
   $('#si-go').onclick = go;
   for (const id of ['#si-email', '#si-pw']) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#si-demo').onclick = () => startDemo();
   $('#si-switch').onclick = () => renderSignIn(make ? 'start' : 'create', $('#si-email').value.trim());
   if (!make) $('#si-forgot').onclick = async () => {
     const em = emailOk(); if (!em) return;
@@ -2941,6 +3004,7 @@ function livingBackground() {
 }
 async function boot() {
   applyTheme();
+  if (/^#demo$/.test(location.hash)) { livingBackground(); startDemo(); return; }
   livingBackground();
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
