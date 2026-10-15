@@ -93,6 +93,37 @@ let LS_KEY = 'jobdone.v1';
 const CFG = window.JOBDONE_CONFIG || null;
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
+// Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
+const pushReady = () => HOSTED && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:';
+async function restFn(body) {
+  try {
+    const { data } = await SB.auth.getSession(); const tok = data && data.session && data.session.access_token; if (!tok) return null;
+    const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/rest-push', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, apikey: CFG.supabaseAnonKey }, body: JSON.stringify(body) });
+    return await r.json().catch(() => null);
+  } catch (e) { return null; }
+}
+const b64u = s => { const b = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function pushOn() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Notifications are off for JobDone. Turn them on in Settings, Notifications, JobDone.'); return false; }
+    const reg = await navigator.serviceWorker.ready;
+    const k = await restFn({ action: 'key' }); if (!k || !k.key) { toast('Could not reach the server. Try again.'); return false; }
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k.key) });
+    const r = await restFn({ action: 'sub', sub: sub.toJSON() }); return !!(r && r.ok);
+  } catch (e) { toast('Could not turn on notifications on this phone.'); return false; }
+}
+async function pushOff() { try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
+let restPushSent = 0;
+function syncRestPush() {
+  if (!HOSTED || !S || !S.profile || !S.profile.restPush) return;
+  const due = A && REST && !REST.paused ? Math.round(REST.end / 1000) * 1000 : 0;
+  if (due === restPushSent) return;
+  const was = restPushSent; restPushSent = due;
+  if (due) { const ex = A.ex && A.ex.find(e => e.sets && e.sets.some(x => !x.done)); restFn({ action: 'at', due, title: 'Rest done', body: ex ? 'Next set: ' + ex.name : 'Time for your next set.' }); }
+  else if (was && Date.now() < was - 1500) restFn({ action: 'cancel' });
+}
 let S = null;        // persisted app state
 let A = null;        // active workout in progress
 let UI = { lastPrompt: null };
@@ -465,6 +496,7 @@ function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }
 // ---------- render shell ----------
 function render() {
   if (!ready) return;
+  syncRestPush();
   // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
   // Oct 2026: Job removed the Miles theme; anyone on it moves to Cliffs.
   if (S && S.profile && S.profile.theme === 'miles') { S.profile.theme = 'cliffs'; persist('jd/meta'); }
@@ -955,6 +987,7 @@ function viewMe() {
     <label class="xr"><span class="grow">Rest between sets<span class="s">One timer for every exercise</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), '9+ reps last time adds weight, otherwise one more rep')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
+    ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add JobDone to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
     ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
     ${slink('Plate loader', 'plates')}
@@ -1096,6 +1129,7 @@ function livePR(e) {
   return out;
 }
 function renderWorkout() {
+  syncRestPush();
   const el = $('#wk'); if (!el) return;
   if (!A || !A.open) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
@@ -2523,6 +2557,11 @@ const ACT = {
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
   soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent && navigator.audioSession) try { navigator.audioSession.type = 'ambient'; } catch (e) {} Sound.unlock(); rerender(); },
   soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast((sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound.') + ` (audio ${Sound.ctx ? Sound.ctx.state : 'none'}, ${navigator.audioSession ? navigator.audioSession.type : 'no session'})`, 4000)); },
+  restPush: async () => {
+    if (S.profile.restPush) { S.profile.restPush = false; persist('jd/meta'); rerender(); pushOff(); return; }
+    if (!pushReady()) { toast('Add JobDone to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
+    const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
+  },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };
