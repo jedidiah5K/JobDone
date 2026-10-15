@@ -1424,7 +1424,8 @@ function render() {
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
   // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
   if (S && S.profile && S.profile.legacy == null) { const old = (S.created || Date.now()) < Date.UTC(2026, 9, 15, 6); S.profile.legacy = old ? 1 : 0; if (old) { if (S.profile.barW == null) S.profile.barW = 0; if (!S.profile.stepSrc) S.profile.stepSrc = 'QWatch Pro'; S.profile.owner = true; } persist('jd/meta'); }
-  if (S && S.profile && !S.profile.musicOk) { S.profile.soundSilent = false; S.profile.musicOk = true; persist('jd/meta'); }
+  // Job (15 Oct): sounds AND music together, like Jedris. 'Play when on silent' paused music, so it is retired for everyone.
+  if (S && S.profile && (!S.profile.musicOk || !S.profile.music2)) { S.profile.soundSilent = false; S.profile.musicOk = true; S.profile.music2 = true; persist('jd/meta'); }
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
   const app = $('#app');
   if (!S || !S.imported && !S.splits.length) { renderWelcome(); return; }
@@ -1917,7 +1918,6 @@ function viewMe() {
   </div></section>
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
-    ${srow('Play when on silent', swi(!!p.soundSilent, 'soundSilent', `data-k="${p.soundSilent ? '' : '1'}"`), 'Off keeps your music playing. On lets sounds play on silent, but iPhone pauses your music to do it')}
     ${slink('Play a test sound', 'soundTest', 'act')}
   </div></section>
   <section><div class="sgh">App</div><div class="sgrp">
@@ -2179,7 +2179,28 @@ const SOUNDS = {
   next: () => tones([[784, 0, .12], [988, .1, .12], [1175, .2, .12], [1568, .3, .45]], 'square', .08),
   tick: () => tones([[1800, 0, .025]], 'tick', .05),
   rest: () => tones([[880, 0, .15], [880, .2, .15], [1175, .42, .4]]),
+  clank: (big = 1, delay = 0) => clank(big, delay),
 };
+// A plate sliding on and smacking into the one already on the bar: a sharp noise hit, a low thud and
+// a few clashing metal partials that ring out briefly. Heavier plates sound lower (Job, 15 Oct).
+function clank(big = 1, delay = 0) {
+  if (S && S.profile && S.profile.sound === false) return;
+  if (!Sound.ctx) Sound.unlock(); if (!Sound.ctx || Sound.ctx.state !== 'running') { if (Sound.ctx) Sound.ctx.resume(); return; }
+  const c = Sound.ctx, t = c.currentTime + delay, lo = 1 - Math.min(1, Math.max(0, big)) * .35, out = c.createGain();
+  out.gain.value = .9; out.connect(Sound.master); Sound.master.gain.value = 1;
+  const n = c.createBuffer(1, c.sampleRate * .08, c.sampleRate), d = n.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  const src = c.createBufferSource(), bp = c.createBiquadFilter(), ng = c.createGain();
+  src.buffer = n; bp.type = 'bandpass'; bp.frequency.value = 2600 * lo; bp.Q.value = .8; ng.gain.setValueAtTime(.55, t);
+  src.connect(bp).connect(ng).connect(out); src.start(t);
+  const thud = c.createOscillator(), tg = c.createGain(); thud.type = 'sine'; thud.frequency.setValueAtTime(140 * lo, t); thud.frequency.exponentialRampToValueAtTime(55, t + .12);
+  tg.gain.setValueAtTime(.5, t); tg.gain.exponentialRampToValueAtTime(.0001, t + .16); thud.connect(tg).connect(out); thud.start(t); thud.stop(t + .18);
+  [[523, .16, .5], [1187, .1, .35], [1873, .07, .28], [2944, .05, .2], [4210, .03, .12]].forEach(([f, v, len]) => {
+    const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f * lo * (1 + (Math.random() - .5) * .01);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .002); g.gain.exponentialRampToValueAtTime(.0001, t + len);
+    o.connect(g).connect(out); o.start(t); o.stop(t + len + .02);
+  });
+}
 // What a finished set says, by reps.
 
 // Plain-English meanings for the numbers the app shows. Opened from the small (i) buttons.
@@ -2712,12 +2733,12 @@ function openPlates(target, onUse, o = {}) {
       const u = b.querySelector('#pl-use-v'); if (u) u.textContent = trim(total());
       b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · ${trim(left * 2)} ${U()} short of your target` : ''}` : (bar ? `Empty ${bar} ${U()} bar` : 'Add plates to start');
     };
-    const add = p => { side.push(p); side.sort((a, c) => c - a); fresh = side.lastIndexOf(p); left = 0; buzz(8); draw(); };
+    const add = p => { side.push(p); side.sort((a, c) => c - a); fresh = side.lastIndexOf(p); left = 0; buzz(8); clank(p / 25); draw(); };
     draw();
     b.querySelector('#pl-bar').onclick = ev => { const g = ev.target.closest('.pl'); if (!g) return; side.splice(+g.dataset.i, 1); left = 0; buzz(5); draw(); };
     b.querySelector('#pl-clear').onclick = () => { side = []; left = 0; draw(); };
     b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; S.profile.barW = bar; persist('jd/meta'); b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
-    b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); };
+    b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); side.forEach((p, i) => clank(p / 25, i * .09)); };
     b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
     const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { closeSheet(sh); onUse(total()); };
     const al = b.querySelector('#pl-alt'); if (al) al.onclick = () => { closeSheet(sh); o.alt(); };
@@ -3250,8 +3271,7 @@ function obBody(k) {
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
-    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest')}
-    ${row('music', 'Keep my music playing', 'Sounds mix over your music. Turn off to hear sounds on silent mode; iPhone then pauses your music')}</div></section>
+    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music and follows the silent switch, like a game')}
     <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Jobs Done is on your Home Screen. Turn it on later in Me') : ''}
     ${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
     <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
@@ -3315,7 +3335,7 @@ function obFinish() {
   const p = S.profile, num = x => { const v = parseFloat(x); return isNaN(v) ? null : v; };
   p.name = OB.name.slice(0, 40); p.unit = OB.unit; p.weeklyTarget = OB.days || 3; p.goal = OB.goal; p.exp = OB.exp; p.theme = OB.theme; p.cliffs1 = true; p.onboarded = today();
   if (!OB.skippedHome) p.a2hs = today();
-  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = pf.music === false; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.plateau === false) p.noPlateau = true;
+  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = false; p.music2 = true; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.plateau === false) p.noPlateau = true;
   const toKg2 = v => v == null ? null : Math.round((OB.unit === 'lb' ? v / LB : v) * 100) / 100;
   const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
   if (w) S.weights[today()] = { w, src: 'manual' };
