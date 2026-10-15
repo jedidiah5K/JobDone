@@ -985,6 +985,7 @@ function viewMe() {
   <section><div class="sgh">Workouts</div><div class="sgrp">
     <label class="xr"><span class="grow">Rest between sets<span class="s">One timer for every exercise</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), '9+ reps last time adds weight, otherwise one more rep')}
+    ${srow('Plateau alerts', swi(on('noPlateau'), 'pset', 'data-f="noPlateau"'), 'A heads-up when a lift stops improving')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
     ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add JobDone to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
@@ -1562,6 +1563,7 @@ function openSwap(ei) {
 
 // ---------- Plateau alerts: no new best e1RM for 3+ weeks across 3+ sessions ----------
 function plateaus() {
+  if (S && S.profile && S.profile.noPlateau) return [];
   const out = [], hide = UI.plHide || {}, t = today();
   for (const [name, ss] of Object.entries(ix().hist)) {
     const v = ss.filter(x => x.e1 > 0); if (v.length < 4) continue;
@@ -2289,7 +2291,7 @@ const TEMPLATES = {
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what JobDone does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
-const OB_STEPS = ['home', 'tour', 'you', 'goal', 'exp', 'theme', 'plan'];
+const OB_STEPS = ['home', 'tour', 'you', 'goal', 'exp', 'theme', 'prefs', 'train', 'plan'];
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const obPlan = () => OB.days >= 5 ? 'ppl' : OB.days === 4 ? 'ul' : OB.exp === 'new' ? 'fb' : 'ppl';
@@ -2326,6 +2328,26 @@ function obBody(k) {
     <div class="tmpl">${Object.entries(OB_EXP).map(([e, [n, d, lo, hi]]) => `<button data-exp="${e}" class="${OB.exp === e ? 'on' : ''}"><b>${n}</b><span>${d} · ${lo} to ${hi} reps</span></button>`).join('')}</div>`;
   if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Each theme has its own scenery and its own voice when you finish a set. Change it any time in Me.</p>
     <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i style="background:${t.sw}"></i><b>${t.name}</b><span>${esc(pick(THEME_MSG[t.k].great))}</span></button>`).join('')}</div>`;
+  if (k === 'prefs') {
+    const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
+    return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
+    <div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest')}
+    ${row('music', 'Keep my music playing', 'Sounds mix over your music. Turn off to hear sounds on silent mode, but iPhone pauses your music to do it')}
+    ${HOSTED ? row('push', 'Notify when rest ends', pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Works once JobDone is on your Home Screen. Turn it on later in Me') : ''}
+    ${row('autoRest', 'Start rest after each set', 'The rest timer starts by itself when you tick a set')}
+    ${row('wake', 'Keep screen awake', 'While a workout is open')}
+    ${row('weigh', 'Daily weigh-in reminder', 'Asks for your weight the first time you open the app each day')}
+    ${row('confetti', 'Confetti', 'For PRs and finished workouts')}</div>`;
+  }
+  if (k === 'train') {
+    const P = OB.prefs, seg = (f, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-pv="${f}" data-v="${v}" class="${String(P[f]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    return `<h1 class="ob-t">How you train</h1><p class="sec ob-s">A few defaults for your workouts. All of them live in Me if you change your mind.</p>
+    <div class="field"><span class="lbl">Rest between sets</span>${seg('rest', [[90, '1:30'], [120, '2:00'], [180, '3:00'], [240, '4:00'], [300, '5:00']])}</div>
+    <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
+    <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
+    <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div>
+    <div class="xr"><span class="grow">Plateau alerts<span class="s">A heads-up when a lift hasn’t improved for a few weeks</span></span>${swi(!!P.plateau, '', 'data-pf="plateau"')}</div></div>`;
+  }
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">Based on ${OB.days} workouts a week. Every split can be renamed and edited later.</p>
     <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
@@ -2333,7 +2355,7 @@ function obBody(k) {
       <label class="btn block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
 }
 function renderWelcomePublic() {
-  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: 3, exp: 'some', theme: theme(), plan: null };
+  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: 3, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: false, autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
   const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
   document.documentElement.classList.add('ob-on');
   const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Set me up' : last ? 'Start training' : 'Continue';
@@ -2351,6 +2373,12 @@ function renderWelcomePublic() {
   qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
   qa('[data-exp]').forEach(b => b.onclick = () => { OB.exp = b.dataset.exp; OB.plan = null; renderWelcomePublic(); });
   qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; applyTheme(OB.theme); renderWelcomePublic(); });
+  qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
+  qa('[data-pf]').forEach(b => b.onclick = async () => {
+    const f = b.dataset.pf, on = !OB.prefs[f];
+    if (f === 'push' && on) { if (!pushReady()) { toast('Add JobDone to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
+    OB.prefs[f] = on; renderWelcomePublic();
+  });
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
   const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); };
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
@@ -2367,12 +2395,13 @@ function obFinish() {
   const p = S.profile, num = x => { const v = parseFloat(x); return isNaN(v) ? null : v; };
   p.name = OB.name.slice(0, 40); p.unit = OB.unit; p.weeklyTarget = OB.days; p.goal = OB.goal; p.exp = OB.exp; p.theme = OB.theme; p.cliffs1 = true; p.onboarded = today();
   if (!OB.skippedHome) p.a2hs = today();
+  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = pf.music === false; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.plateau === false) p.noPlateau = true;
   const toKg2 = v => v == null ? null : Math.round((OB.unit === 'lb' ? v / LB : v) * 100) / 100;
   const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
   if (w) S.weights[today()] = { w, src: 'manual' };
   if (gw) p.goalW = gw; if (h && h > 90 && h < 250) p.heightCm = Math.round(h);
   const [, , lo, hi] = OB_EXP[OB.exp]; const lo2 = OB.goal === 'strength' ? lo - 1 : lo, hi2 = OB.goal === 'strength' ? hi - 2 : hi;
-  for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: 120, note: '' })) }); S.rotation.push(id); }
+  for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
   if (UI) UI.lastPrompt = today();
   applyTheme(OB.theme); OB = null; document.documentElement.classList.remove('ob-on');
   finishImport(S.splits.length ? `You’re set, ${p.name}. Your first workout is on Today.` : 'Ready. Add a split to get started.');
