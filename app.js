@@ -2611,7 +2611,7 @@ function csvToWorkouts(text) {
   const rows = parseCSV(text); if (rows.length < 2) return { err: 'That file has no rows.' };
   const h = rows[0].map(x => x.trim().toLowerCase());
   const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
-  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), r: col('reps'), note: col('notes', 'note', 'exercise_notes') };
+  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), note: col('notes', 'note', 'exercise_notes') };
   if (c.date < 0 || c.ex < 0) return { err: 'Couldn’t find date and exercise columns. Expected Jobs Done, Strong or Hevy CSV headers.' };
   const map = {};
   for (const r of rows.slice(1)) {
@@ -2623,8 +2623,10 @@ function csvToWorkouts(text) {
     const ex = (r[c.ex] || '').trim();
     if (!ex) { if (/skip/i.test(r[c.note] || '')) w.skipped = true; continue; }
     let e = w.ex[w.ex.length - 1]; if (!e || e.name !== ex) { e = { name: ex, note: '', sets: [] }; w.ex.push(e); }
-    const wt = parseFloat(r[c.w]), rp = parseInt(r[c.r], 10);
-    e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t: 'work' });
+    // Strong and Hevy export pounds in a separate column; set types come as warmup/dropset/failure (Hevy) or W/D/F (Strong).
+    const wkg = parseFloat(r[c.w]), wlb = parseFloat(r[c.lb]), wt = !isNaN(wkg) ? wkg : isNaN(wlb) ? NaN : Math.round(wlb / LB * 4) / 4, rp = parseInt(r[c.r], 10);
+    const ty = (r[c.t] || '').trim().toLowerCase(), t = /^(w|warm)/.test(ty) ? 'warm' : /^(d|drop)/.test(ty) ? 'drop' : /^(f|fail)/.test(ty) ? 'fail' : 'work';
+    e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t });
     const nt = c.note >= 0 ? (r[c.note] || '').trim() : ''; if (nt && !e.note) e.note = nt;
   }
   return { list: Object.values(map) };
