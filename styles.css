@@ -777,3 +777,37 @@ html.ob-on .ob-prog { background: var(--raised); }
 .dsort > [data-dragitem] { transition: transform .18s ease; }
 .dsort > .dragging { transition: none; position: relative; z-index: 5; box-shadow: 0 16px 36px -10px rgba(0,0,0,.35); background: var(--surface-solid, var(--surface)); border-radius: var(--r2, 14px); }
 .btn svg { vertical-align: -4px; margin-right: 6px; }
+
+/* ============ Climbing: the classic (pre-v7) look Job prefers ============
+   Cream panels pinned to the wall with the wall showing through, uppercase labels,
+   boxed kg/reps cells, chunky buttons and a floating tab bar with a raised purple Start button. */
+:root:not([data-theme]) { --surface: #FFFDFA; --raised: #F6F2EC; --r2: 18px; --edge: rgba(43,33,58,.14); --lift: 0 1px 0 rgba(43,33,58,.04), 0 10px 26px -16px rgba(43,33,58,.28); }
+:root:not([data-theme]) .card { border: 1px solid rgba(43,33,58,.08); box-shadow: var(--lift); border-radius: 18px; }
+:root:not([data-theme]) .card:not(.nextup) { background: color-mix(in srgb, #FFFDFA 90%, transparent); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); }
+:root:not([data-theme]) .card.nextup { border-color: transparent; }
+:root:not([data-theme]) .eyebrow { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+:root:not([data-theme]) .card.nextup .eyebrow { text-transform: none; letter-spacing: 0; font-size: 13px; }
+:root:not([data-theme]) .kpis { gap: 8px; border-top: 0; padding-top: 0; }
+:root:not([data-theme]) .kpi { padding: 12px; border-radius: 18px; background: var(--raised); border: 0 !important; }
+:root:not([data-theme]) .btn { border-radius: 14px; border: 1.5px solid var(--edge); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 600; }
+:root:not([data-theme]) .btn.primary, :root:not([data-theme]) .card.nextup .btn { border-color: transparent; }
+:root:not([data-theme]) .btn.ghost, :root:not([data-theme]) .btn.link { border-color: transparent; box-shadow: none; }
+/* logger: boxed cells and a chunky tick, like before */
+:root:not([data-theme]) .sets th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+:root:not([data-theme]) .cell { height: 46px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--edge); font-size: 18px; font-weight: 700; color: var(--text2); }
+:root:not([data-theme]) .cell.edited { color: var(--text); border-color: var(--text2); }
+:root:not([data-theme]) .sets tr.done .cell { background: transparent; border-color: transparent; }
+:root:not([data-theme]) .check { width: 46px; height: 46px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--edge); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+:root:not([data-theme]) tr.done .check { background: var(--green); border-color: var(--green); color: #fff; }
+:root:not([data-theme]) .sets tr.done td { background: color-mix(in srgb, var(--green) 13%, transparent); }
+:root:not([data-theme]) .sets tr.done td:first-child { border-radius: 16px 0 0 16px; } :root:not([data-theme]) .sets tr.done td:last-child { border-radius: 0 16px 16px 0; }
+/* floating tab bar with the raised Start button */
+:root:not([data-theme]) #tabs { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); max-width: 536px; align-items: center; padding: 6px 8px; border-radius: 26px; border: 1px solid rgba(43,33,58,.08); background: rgba(255,253,250,.94); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: 0 14px 34px -14px rgba(43,33,58,.35); }
+:root:not([data-theme]) .tab { min-height: 50px; justify-content: center; font-size: 11px; font-weight: 600; gap: 3px; }
+:root:not([data-theme]) .tab svg { width: 24px; height: 24px; }
+:root:not([data-theme]) .tab-start { justify-self: center; width: 54px; height: 54px; min-height: 54px; margin-top: -18px; border-radius: 20px; background: var(--accent); color: #fff; justify-content: center; box-shadow: 0 8px 18px -8px rgba(108,63,214,.7); }
+:root:not([data-theme]) .tab-start.live { background: var(--green); color: #fff; box-shadow: 0 8px 18px -8px rgba(46,139,78,.7); }
+:root:not([data-theme]) .tab-start span { display: none; }
+:root:not([data-theme]) #screen { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+:root:not([data-theme]) .sets tbody tr + tr td { border-top: 0; }
+:root:not([data-theme]) .sgh { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
