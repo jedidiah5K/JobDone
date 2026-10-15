@@ -648,3 +648,4 @@ a.xr { text-decoration: none; }
 .btn.danger-fill { background: var(--danger); color: #fff; box-shadow: none; }
 .xr.danger { color: var(--danger); }
 .xr.acc { color: var(--accent); }
+.rc-line { font-size: 17px; line-height: 22px; font-weight: 600; margin-top: 2px; opacity: .92; }

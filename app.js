@@ -1211,12 +1211,49 @@ const SOUNDS = {
   rest: () => tones([[880, 0, .15], [880, .2, .15], [1175, .42, .4]]),
 };
 // What a finished set says, by reps.
+// Set messages: the title speaks the theme's language, the subtitle keeps the coaching (same tiers Job set).
+const THEME_MSG = {
+  cliffs: {
+    low: ['Loose rock', 'Steep pitch', 'Find your footing'], nice: ['Steady climb', 'On the trail', 'Good ground'],
+    great: ['Above the treeline', 'Ridge in sight', 'Strong ascent'], amazing: ['Summit', 'Top of the ridge', 'Peak reached'],
+    done: { day: ['Summit reached.', 'That ridge is behind you.', 'Clear skies, solid work.'], sunrise: ['First light, first win.', 'You beat the sun up.'], sunset: ['Golden hour, earned.', 'Down the mountain before dark.'], night: ['Night climb, done.', 'Stars out, work in.'] },
+    part: ['Turned back early. The mountain stays put.', 'A short hike still counts.'],
+  },
+  climb: {
+    low: ['Pumped out', 'Off the wall', 'Rework the beta'], nice: ['Clean move', 'On route', 'Good beta'],
+    great: ['Crushed the crux', 'Sticking it', 'Strong grip'], amazing: ['Flashed it', 'Sent!', 'Top out'],
+    done: ['Route sent.', 'Chalked up and topped out.', 'That project is yours.', 'Clipped the chains.'],
+    part: ['Came off early. Back on the wall next time.', 'Not a send yet. Every attempt counts.'],
+  },
+  mono: {
+    low: ['It wants less', 'Too much, too soon', 'Back to the dark'], nice: ['It approves', 'The bond holds', 'Steady hunger'],
+    great: ['Growing stronger', 'It feeds on this', 'Darker, stronger'], amazing: ['Unstoppable', 'We are stronger', 'Pure power'],
+    done: ['The hunger is fed.', 'Stronger together.', 'Nothing left on the bar.', 'It took everything. Good.'],
+    part: ['It’s still hungry. Come back for more.', 'Half fed is still fed.'],
+  },
+  spidey: {
+    low: ['Lost your grip', 'Missed the swing', 'Steady on the wall'], nice: ['Web holds', 'Clean swing', 'Looking out'],
+    great: ['Sense tingling', 'Swinging high', 'City’s safe'], amazing: ['Saved the day', 'Top of the tower', 'Spectacular'],
+    done: ['City’s safe tonight.', 'Another night, another save.', 'Web-slung and done.', 'Your friendly neighbourhood lifter.'],
+    part: ['Called away early. The city understands.', 'Short patrol, still counts.'],
+  },
+};
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const themeMsg = () => THEME_MSG[theme()] || THEME_MSG.cliffs;
 function setVerdict(r) {
-  // Oct 2026 redesign: same tiers Job set, said in a calmer voice.
-  if (r <= 4) return { k: 'low', title: 'Go lighter', sub: 'Drop the weight a little. Form first.', bits: 0 };
-  if (r <= 6) return { k: 'nice', title: 'Solid set', sub: 'Right in the range.', bits: 0 };
-  if (r <= 8) return { k: 'great', title: 'Strong set', sub: 'Nearly time to add weight.', bits: 0 };
-  return { k: 'amazing', title: 'Add weight next time', sub: 'You beat the top of the range.', bits: 40 };
+  const m = themeMsg();
+  if (r <= 4) return { k: 'low', title: pick(m.low), sub: 'Drop the weight a little. Form first.', bits: 0 };
+  if (r <= 6) return { k: 'nice', title: pick(m.nice), sub: 'Right in the range.', bits: 0 };
+  if (r <= 8) return { k: 'great', title: pick(m.great), sub: 'Nearly time to add weight.', bits: 0 };
+  return { k: 'amazing', title: pick(m.amazing), sub: 'Add weight next time. You beat the top of the range.', bits: 40 };
+}
+// One line under "Job done!" in the theme's voice. Cliffs follows the time of day like its sky.
+function doneLine(w) {
+  const m = themeMsg();
+  if (w && w.planned && wSets(w) < w.planned) return pick(m.part);
+  if (Array.isArray(m.done)) return pick(m.done);
+  const h = new Date(w && w.end || Date.now()).getHours();
+  return pick(m.done[h >= 5 && h < 8 ? 'sunrise' : h >= 17 && h < 20 ? 'sunset' : h >= 20 || h < 5 ? 'night' : 'day']);
 }
 function celebrate(v, delay = 0) {
   setTimeout(() => {
@@ -1316,8 +1353,10 @@ function recapData(id) {
   const dur = w.end && w.start ? w.end - w.start : 0;
   return { w, num, prev, vol, sets, reps, prs, musL, dur, heavy: `${times % 1 ? times.toFixed(1) : times}× ${h[1]}`, dv: prev ? (vol - wVol(prev)) / Math.max(1, wVol(prev)) : null };
 }
+const RC_LINE = {};
 function showRecap(id, fresh) {
   const d = recapData(id); if (!d.w) return;
+  d.line = RC_LINE[id] || (RC_LINE[id] = doneLine(d.w));
   const old = document.getElementById('recap'); if (old) old.remove();
   const el = document.createElement('div'); el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Workout recap');
   const pr = new Map(d.prs.map(p => [p.ex, p])), mx = d.musL.length ? d.musL[0][1] : 1;
@@ -1332,7 +1371,7 @@ function showRecap(id, fresh) {
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
     <div class="rc-hero"><div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
-      <div class="rc-date">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1>
+      <div class="rc-date">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1><div class="rc-line">${esc(d.line || (d.line = doneLine(d.w)))}</div>
       <div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div></div>
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
@@ -1370,8 +1409,9 @@ async function shareRecap(d) {
   g.fillStyle = v('--bg') || '#EFEBE5'; g.fillRect(0, 0, W, H);
   g.fillStyle = v('--accent') || '#6C3FD6'; g.fillRect(0, 0, W, 360);
   g.fillStyle = v('--accent-ink') || '#fff'; g.font = F(900, 44); g.fillText(`WORKOUT #${d.num} · ${fmtDate(d.w.date, { wd: true, y: true }).toUpperCase()}`, 72, 110);
-  g.font = F(900, 150); g.fillText('Job done!', 64, 260);
-  g.font = F(800, 52); g.fillText(`${d.w.splitName || 'Workout'}${d.prs.length ? ` · ${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}` : ''}`, 72, 330);
+  g.font = F(900, 150); g.fillText('Job done!', 64, 245);
+  g.font = F(700, 42); g.fillText(d.line || RC_LINE[d.w.id] || doneLine(d.w), 72, 300);
+  g.font = F(800, 40); g.fillText(`${d.w.splitName || 'Workout'}${d.prs.length ? ` · ${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}` : ''}`, 72, 345);
   const st = [[d.dur ? fmtDur(d.dur) : '—', 'time'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.reps), 'reps']];
   st.forEach(([a, b], i) => { const x = 56 + i * 246; g.fillStyle = bg; g.beginPath(); g.roundRect(x, 400, 226, 190, 36); g.fill(); g.fillStyle = v('--text') || '#221E2B'; g.font = F(900, 58); g.fillText(a, x + 26, 490); g.fillStyle = v('--text2') || '#5F5A69'; g.font = F(800, 34); g.fillText(b, x + 26, 548); });
   let y = 680; g.fillStyle = v('--text') || '#221E2B'; g.font = F(800, 40); g.fillText(`That's like lifting ${d.heavy}.`, 72, y); y += 80;
