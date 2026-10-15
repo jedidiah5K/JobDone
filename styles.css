@@ -614,3 +614,25 @@ input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 
 .ph { padding: 0; border: 0; background: none; text-align: left; }
 .ph img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; display: block; }
 .ph span { font-size: 11px; color: var(--text2); }
+
+/* ============ Add to Home Screen guide ============ */
+.a2-hero { display: flex; align-items: center; gap: var(--s4); }
+.a2-hero img { border-radius: 14px; flex: none; box-shadow: var(--shadow); }
+.a2-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--raised); border-radius: var(--r2); }
+.a2-steps li { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); font-size: 15px; line-height: 20px; }
+.a2-steps li + li { border-top: 1px solid var(--border); }
+.a2-n { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
+.a2-ic { color: var(--blue); flex: none; }
+
+/* ============ Launch: legal links, honeypot, danger button ============ */
+.hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.si-age { align-items: flex-start; line-height: 18px; }
+.si-age a, .legal a { color: var(--accent); }
+.btn.danger-fill { background: var(--neg); color: #fff; }
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+a.xr { text-decoration: none; }
+.tmpl { display: grid; gap: var(--s2); }
+.tmpl button { text-align: left; padding: var(--s3) var(--s4); border-radius: var(--r2); background: var(--surface); box-shadow: var(--shadow); border: 2px solid transparent; }
+.tmpl button.on { border-color: var(--accent); }
+.tmpl b { display: block; font-size: 17px; }
+.tmpl span { font-size: 13px; color: var(--text2); }

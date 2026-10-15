@@ -23,7 +23,7 @@ Deno.serve(async req => {
   if (key.length < 20) return reply(401, 'Missing sync key');
   const { data: row, error: kerr } = await db.from('jobdone_sync_keys').select('user_id').eq('key_hash', await sha256hex(key)).maybeSingle();
   if (kerr) return reply(500, 'Could not check key');
-  if (!row) return reply(401, 'Sync key not recognised. Make a new one in JobDone: Me, Steps from QWatch.');
+  if (!row) return reply(401, 'Sync key not recognised. Make a new one in JobDone: Me, Steps.');
 
   // Lines like "2026-10-14 6,120" (same format the app's paste box takes), or { days: { date: n } }.
   const got: Record<string, number> = {};

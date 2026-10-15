@@ -631,6 +631,28 @@ input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 
 .ph img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; display: block; }
 .ph span { font-size: 11px; color: var(--text2); }
 
+/* ============ Add to Home Screen guide ============ */
+.a2-hero { display: flex; align-items: center; gap: var(--s4); }
+.a2-hero img { border-radius: 14px; flex: none; box-shadow: var(--shadow); }
+.a2-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--raised); border-radius: var(--r2); }
+.a2-steps li { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); font-size: 15px; line-height: 20px; }
+.a2-steps li + li { border-top: 1px solid var(--border); }
+.a2-n { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
+.a2-ic { color: var(--blue); flex: none; }
+
+/* ============ Launch: legal links, honeypot, danger button ============ */
+.hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.si-age { align-items: flex-start; line-height: 18px; }
+.si-age a, .legal a { color: var(--accent); }
+.btn.danger-fill { background: var(--neg); color: #fff; }
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+a.xr { text-decoration: none; }
+.tmpl { display: grid; gap: var(--s2); }
+.tmpl button { text-align: left; padding: var(--s3) var(--s4); border-radius: var(--r2); background: var(--surface); box-shadow: var(--shadow); border: 2px solid transparent; }
+.tmpl button.on { border-color: var(--accent); }
+.tmpl b { display: block; font-size: 17px; }
+.tmpl span { font-size: 13px; color: var(--text2); }
+
 body { margin: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 [hidden] { display: none !important; }
 img { max-width: 100%; }
@@ -1089,6 +1111,8 @@ function render() {
   if (S && S.profile && !S.profile.cliffs1) { S.profile.theme = 'cliffs'; S.profile.cliffs1 = true; persist('jd/meta'); }
   if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
+  // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
+  if (S && S.profile && S.profile.legacy == null) { const old = (S.created || Date.now()) < Date.UTC(2026, 9, 15, 6); S.profile.legacy = old ? 1 : 0; if (old) { if (S.profile.barW == null) S.profile.barW = 0; if (!S.profile.stepSrc) S.profile.stepSrc = 'QWatch Pro'; S.profile.owner = true; } persist('jd/meta'); }
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
   const app = $('#app');
   if (!S || !S.imported && !S.splits.length) { renderWelcome(); return; }
@@ -1586,11 +1610,14 @@ function viewMe() {
     ${srow('Play when on silent', swi(!!p.soundSilent, 'soundSilent', `data-k="${p.soundSilent ? '' : '1'}"`), 'Pauses music while a sound plays')}
     ${slink('Play a test sound', 'soundTest', 'act')}
   </div></section>
+  <section><div class="sgh">App</div><div class="sgrp">
+    ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add JobDone to your Home Screen', 'a2hs')}
+  </div></section>
   <section><div class="sgh">Theme</div><div class="sgrp pad">
     <div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div>
   </div></section>
-  <section><div class="sgh">Steps from QWatch</div><div class="sgrp">
-    ${HOSTED && USER ? `<p class="xr-p">QWatch Pro sends your steps to Apple Health, and an evening Apple Shortcut sends them on to JobDone. It needs a sync key, made once here.</p>
+  <section><div class="sgh">${p.stepSrc ? 'Steps from ' + esc(p.stepSrc) : 'Steps from Apple Health'}</div><div class="sgrp">
+    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to Apple Health' : 'Your iPhone (and any watch that syncs to it) counts steps in Apple Health'}, and an evening Apple Shortcut sends them on to JobDone. It needs a sync key, made once here. On Android, add steps by hand below.</p>
     ${slink('Create sync key', 'syncKey', 'act')}
     <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
       <ol class="f15 m0 sec xr-ol">
@@ -1602,7 +1629,7 @@ function viewMe() {
         <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
         <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
         <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “JobDone steps”.</li>
-      </ol></details>` : `<p class="xr-p">Your QWatch steps reach Apple Health. Type them on Today, or paste them here. Sign in on the JobDone website to have a Shortcut send them every evening.</p>`}
+      </ol></details>` : `<p class="xr-p">Your steps are in Apple Health. Type them on Today, or paste them here. Sign in on the JobDone website to have a Shortcut send them every evening.</p>`}
     ${slink('Add or paste steps by hand', 'steps', 'act')}
   </div></section>
   ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
@@ -1617,7 +1644,14 @@ function viewMe() {
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'neg')}
   </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your JobDone account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
-  <p class="tc cap">JobDone · Oct 2026</p>
+  <section><div class="sgh">About</div><div class="sgrp">
+    ${slink('Send feedback or report a bug', 'feedback')}
+    ${p.owner && HOSTED && USER ? slink('Feedback inbox', 'fbInbox') : ''}
+    <a class="xr" href="privacy.html" target="_blank" rel="noopener"><span class="grow">Privacy Policy</span>${I.right}</a>
+    <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
+    ${HOSTED && USER ? slink('Delete account', 'delAccount', 'neg') : ''}
+  </div></section>
+  <p class="tc cap">JobDone · soft launch, Oct 2026</p>
 </div>`;
 }
 
@@ -2230,7 +2264,7 @@ function openSetPlates(ei, si) {
 }
 function openPlates(target, onUse, o = {}) {
   const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
-  let bar = S.profile.barW != null ? S.profile.barW : 0; if (U() === 'lb' && S.profile.barW === 0) bar = 0;
+  let bar = S.profile.barW != null ? S.profile.barW : (U() === 'lb' ? 45 : 20); if (U() === 'lb' && S.profile.barW === 0) bar = 0;
   let side = [], fresh = -1;
   const total = () => Math.round((bar + 2 * side.reduce((a, b) => a + b, 0)) * 1000) / 1000;
   const auto = t => { side = []; let r = Math.max(0, (t - bar) / 2); for (const p of den) while (r >= p - 1e-9) { side.push(p); r = Math.round((r - p) * 1000) / 1000; } return r; };
@@ -2677,6 +2711,7 @@ async function doImport(withHistory) {
 }
 function finishImport(msg) {
   invalidate();
+  if (UI.a2hs && S && S.profile) S.profile.a2hs = UI.a2hs;
   UI.lastPrompt = today();
   $('#app').innerHTML = '';
   persist(...allPaths());
@@ -2711,15 +2746,31 @@ function restoreFile(file, replacing) {
   };
   rd.readAsText(file);
 }
+// Starter splits for new people; they can rename or edit everything later.
+const TEMPLATES = {
+  ppl: { n: 'Push / Pull / Legs', d: '3 days, repeat as often as you like', s: [['Push', ['Bench Press', 'Incline Dumbbell Press', 'Shoulder Press', 'Lateral Raise', 'Tricep Pushdown']], ['Pull', ['Lat Pulldown', 'Seated Cable Row', 'Face Pull', 'Dumbbell Curl', 'Hammer Curl']], ['Legs', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
+  ul: { n: 'Upper / Lower', d: '2 days, great for 4 days a week', s: [['Upper', ['Bench Press', 'Barbell Row', 'Shoulder Press', 'Lat Pulldown', 'Dumbbell Curl', 'Tricep Pushdown']], ['Lower', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
+  fb: { n: 'Full body', d: 'One workout, 2 to 3 times a week', s: [['Full Body', ['Back Squat', 'Bench Press', 'Barbell Row', 'Shoulder Press', 'Romanian Deadlift']]] },
+  none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
+};
 function renderWelcomePublic() {
-  $('#app').innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="g4 pt6 stack">
+  let pick = 'ppl';
+  $('#app').innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="g4 pt6 stack" style="max-width:480px;margin:0 auto">
     <div class="wordmark">Job<span>Done</span></div>
-    <div><h1>Welcome, ${esc(firstName())}</h1><p class="m0 mt2 sec">Bring in your training log, or start fresh.</p></div>
-    <div class="card stack"><div class="eyebrow">Restore a backup</div><p class="m0 cap">From the Claude version of JobDone: Me → Export JSON. This brings over your workouts, weights, steps and splits.</p>
-      <label class="btn primary block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden>
-      <p class="m0 cap">A CSV log works too (JobDone, Strong or Hevy). Splits are made from the last session of each one.</p></div>
-    <button class="btn block" data-a="doImport">Start fresh</button>
+    <div><h1>Welcome, ${esc(firstName())}</h1><p class="m0 mt2 sec">Log your lifts, see last time’s numbers, and watch your strength climb.</p></div>
+    <div class="field"><label for="wl-name">What should we call you?</label><input class="input" id="wl-name" maxlength="40" value="${esc(firstName() === 'there' ? '' : firstName())}" placeholder="Your first name"></div>
+    <div><div class="mb2 eyebrow">Pick a starting plan</div><div class="tmpl">${Object.entries(TEMPLATES).map(([k, t]) => `<button data-t="${k}" class="${k === pick ? 'on' : ''}"><b>${esc(t.n)}</b><span>${esc(t.d)}</span></button>`).join('')}</div></div>
+    <button class="mh52 f17 btn primary block" id="wl-go">Start</button>
+    <details><summary class="link">Already have a log? Import it</summary><div class="mt3 stack"><p class="m0 cap">A JobDone backup (JSON), or a CSV export from Strong or Hevy.</p>
+      <label class="btn block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>
   </div></main>`;
+  document.querySelectorAll('.tmpl [data-t]').forEach(b => b.onclick = () => { pick = b.dataset.t; document.querySelectorAll('.tmpl [data-t]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#wl-go').onclick = () => {
+    S = freshState(); S.imported = true; S.profile.legacy = 0;
+    const nm = $('#wl-name').value.trim(); if (nm) S.profile.name = nm.slice(0, 40);
+    for (const [name, ex] of TEMPLATES[pick].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: 6, repMax: 10, rest: 120, note: '' })) }); S.rotation.push(id); }
+    finishImport(S.splits.length ? 'You’re set. Your first workout is on Today.' : 'Ready. Add a split to get started.');
+  };
 }
 
 // ---------- CSV import / export ----------
@@ -2885,6 +2936,10 @@ const ACT = {
   month: el => showMonth(el.dataset.k),
   allBadges: () => openBadges(),
   meas: () => openMeas(),
+  a2hs: () => openInstallGuide(false),
+  feedback: () => openFeedback(),
+  fbInbox: () => openInbox(),
+  delAccount: () => openDeleteAccount(),
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
   wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }), 50); }),
@@ -2963,7 +3018,97 @@ document.addEventListener('touchend', () => {
 });
 
 // ---------- boot ----------
+// ---------- Feedback and account deletion ----------
+function openFeedback() {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Send feedback</div><div class="cap">Ideas, bugs, anything that felt off. It goes straight to the person who builds JobDone.</div>
+    <textarea class="input" id="fb-t" maxlength="2000" rows="5" placeholder="What happened, or what would make JobDone better?"></textarea>
+    <button class="btn primary block" id="fb-s">Send</button></div>`, { label: 'Send feedback', mount: b => {
+    b.querySelector('#fb-s').onclick = async ev => {
+      const t = b.querySelector('#fb-t').value.trim(); if (!t) return;
+      if (!(HOSTED && USER && SB)) { toast('Sign in to send feedback.'); return; }
+      ev.currentTarget.disabled = true;
+      const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: t.slice(0, 2000) });
+      if (error) { ev.currentTarget.disabled = false; toast('Couldn’t send it. Check your signal and try again.'); return; }
+      closeSheet(sh); toast('Thanks! Feedback sent.');
+    };
+  } });
+}
+async function openInbox() {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Feedback inbox</div><div id="ib" class="cap">Loading…</div></div>`, { label: 'Feedback inbox', mount: async b => {
+    const { data, error } = await SB.from('jobdone_feedback').select('email,body,created_at').order('created_at', { ascending: false }).limit(100);
+    b.querySelector('#ib').innerHTML = error ? 'Couldn’t load feedback.' : !data.length ? 'No feedback yet.' : `<div class="list">${data.map(f => `<div class="li"><div class="grow"><div class="t f15 pre">${esc(f.body)}</div><div class="s">${esc(f.email || 'unknown')} · ${esc(fmtDate(f.created_at.slice(0, 10)))}</div></div></div>`).join('')}</div>`;
+  } });
+}
+function openDeleteAccount() {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Delete account</div>
+    <p class="m0 f15">This permanently deletes your account and everything in it: workouts, weights, steps, splits, measurements and photos. It can’t be undone.</p>
+    <p class="m0 cap">Want a copy first? Use Me → Your data → Export backup.</p>
+    <div class="field"><label for="da-t">Type DELETE to confirm</label><input class="input" id="da-t" autocomplete="off" autocapitalize="characters"></div>
+    <button class="btn block danger-fill" id="da-go" disabled>Delete my account</button><button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: 'Delete account', mount: b => {
+    const go = b.querySelector('#da-go');
+    b.querySelector('#da-t').oninput = e => { go.disabled = e.target.value.trim().toUpperCase() !== 'DELETE'; };
+    go.onclick = async () => {
+      go.disabled = true; go.textContent = 'Deleting…';
+      try {
+        const { data } = await SB.auth.getSession(); const tok = data && data.session && data.session.access_token;
+        const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/delete-account', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, apikey: CFG.supabaseAnonKey } });
+        if (!r.ok) throw new Error('failed');
+        try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + ':pending'); } catch (e) {}
+        closeSheet(sh); await SB.auth.signOut().catch(() => {}); toast('Your account and data were deleted.', 4000);
+      } catch (e) { go.disabled = false; go.textContent = 'Delete my account'; toast('Couldn’t delete it. Check your signal and try again.'); }
+    };
+  } });
+}
+// ---------- Add to Home Screen guide (shown once after first sign-in, and in Me) ----------
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const devOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? 'ios' : /Android/i.test(navigator.userAgent) ? 'android' : 'ios';
+const A2HS_SHARE = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+const A2HS_ADD = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+const A2HS_DOTS = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+function installSteps(os) {
+  const st = os === 'ios' ? [
+    ['Open this page in <b>Safari</b>.', ''],
+    [`Tap the <b>Share</b> button at the bottom of the screen.`, A2HS_SHARE],
+    ['Scroll down and tap <b>Add to Home Screen</b>.', A2HS_ADD],
+    ['Tap <b>Add</b> in the top right corner.', ''],
+  ] : [
+    ['Open this page in <b>Chrome</b>.', ''],
+    ['Tap the <b>menu</b> in the top right corner.', A2HS_DOTS],
+    ['Tap <b>Add to Home screen</b> or <b>Install app</b>.', A2HS_ADD],
+    ['Tap <b>Install</b> to confirm.', ''],
+  ];
+  return `<ol class="a2-steps">${st.map(([t, ic], i) => `<li><span class="a2-n">${i + 1}</span><span class="grow">${t}</span>${ic}</li>`).join('')}</ol>`;
+}
+function openInstallGuide(first) {
+  let os = devOS();
+  const sh = openSheet(`<div class="stack"><div class="a2-hero"><img src="icons/apple-touch-icon.png?v=6" alt="" width="64" height="64" onerror="this.remove()"><div><div class="f22 fw7">${first ? 'Put JobDone on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
+    ${isStandalone() ? '<div class="note">You’re already using JobDone from your Home Screen.</div>' : ''}
+    <div class="seg"><button data-os="ios">iPhone</button><button data-os="android">Android</button></div>
+    <div id="a2-body"></div>
+    <button class="btn primary block" id="a2-ok">${first ? 'Got it' : 'Done'}</button></div>`, { label: 'Add to Home Screen', mount: b => {
+    const draw = () => {
+      b.querySelectorAll('[data-os]').forEach(x => x.classList.toggle('on', x.dataset.os === os));
+      b.querySelector('#a2-body').innerHTML = (os === 'android' && installEvt ? '<button class="btn block" id="a2-inst">Install now</button><div class="mt3 mb2 cap tc">or do it yourself:</div>' : '') + installSteps(os)
+        + `<div class="mt3 cap">${os === 'ios' ? 'Then open JobDone from its new icon. If you added it before, remove the old icon first to get the newest one.' : 'Then open JobDone from its new icon on your Home Screen.'} You can find these steps again in Me.</div>`;
+      const ib = b.querySelector('#a2-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { const r = await installEvt.userChoice; if (r.outcome === 'accepted') { closeSheet(sh); toast('Installed. Open JobDone from your Home Screen.'); } } catch (e) {} installEvt = null; draw(); };
+    };
+    b.querySelectorAll('[data-os]').forEach(x => x.onclick = () => { os = x.dataset.os; draw(); });
+    b.querySelector('#a2-ok').onclick = () => closeSheet(sh);
+    draw();
+  } });
+}
+// Once per account on this device, on the first sign-in, unless already opened from the Home Screen.
+function maybeInstallGuide() {
+  if (S && UI.a2hs && !S.profile.a2hs) { S.profile.a2hs = UI.a2hs; persist('jd/meta'); }
+  if (!HOSTED || UI.a2hs || (S && S.profile.a2hs) || isStandalone()) return false;
+  UI.a2hs = today(); lsSave(); if (S) { S.profile.a2hs = UI.a2hs; persist('jd/meta'); }
+  setTimeout(() => openInstallGuide(true), 600);
+  return true;
+}
 function maybePrompt() {
+  if (maybeInstallGuide()) return;
   if (!S || !S.imported && !S.splits.length) return;
   const t = today();
   if (S.profile.noWeighPrompt || S.weights[t] || UI.lastPrompt === t || (A && A.open)) return;
@@ -2974,7 +3119,9 @@ function maybePrompt() {
 function firstName() {
   const m = USER && USER.user_metadata || {};
   const n = (m.full_name || m.name || '').trim().split(/\s+/)[0];
-  return n || 'Job';
+  if (n) return n;
+  if (PUBLIC) { const e = ((USER && USER.email) || '').split('@')[0].split(/[._+-]/)[0].replace(/\d+/g, ''); return e ? e[0].toUpperCase() + e.slice(1).toLowerCase() : 'there'; }
+  return 'Job';
 }
 const TABLE = 'jobdone_docs';
 function supaDB() {
@@ -2997,22 +3144,36 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   $('#app').innerHTML = `<main id="screen" class="pb8"><div class="g3 pt6 stack" style="max-width:420px;margin:0 auto">
     <div class="wordmark">Job<span>Done</span></div>
     <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="m0 mt2 sec">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
+    ${make ? `<div class="field"><label for="si-name">Your first name</label><input class="input" id="si-name" autocomplete="given-name" maxlength="40" placeholder="Alex"></div>` : ''}
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
-    <div class="field"><label for="si-pw">Password</label><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 6 characters' : ''}"></div>
+    <div class="field"><label for="si-pw">Password</label><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 8 characters' : ''}"></div>
+    ${make ? `<label class="g2 row cap si-age"><input type="checkbox" id="si-age" class="cbox"><span>I’m 13 or older and I agree to the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>.</span></label>
+    <input id="si-web" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">` : ''}
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
     <div class="row between"><button class="link" id="si-switch">${make ? 'I have an account' : 'Create account'}</button>${make ? '' : '<button class="link" id="si-forgot">Forgot password?</button>'}</div>
     <div class="c-neg cap" id="si-msg" role="alert" style="min-height:18px">${esc(msg)}</div>
+    <div class="tc cap legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></div>
   </div></main>`;
+  const shownAt = Date.now();
   const m = (t, ok) => { const e = $('#si-msg'); e.textContent = t; e.style.color = ok ? 'var(--text2)' : 'var(--neg)'; };
   const emailOk = () => { const em = $('#si-email').value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { m('Enter your email address.'); return null; } return em; };
   const go = async () => {
     const em = emailOk(); if (!em) return;
-    const pw = $('#si-pw').value; if (pw.length < 6) { m('Passwords are at least 6 characters.'); return; }
+    const pw = $('#si-pw').value; if (pw.length < (make ? 8 : 6)) { m(make ? 'Use a password of at least 8 characters.' : 'Enter your password.'); return; }
+    if (make && !$('#si-age').checked) { m('Please confirm you’re 13 or older and agree to the Privacy Policy and Terms.'); return; }
     const b = $('#si-go'); b.disabled = true; b.textContent = make ? 'Creating…' : 'Signing in…';
-    const { data, error } = make ? await SB.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: location.origin + location.pathname } }) : await SB.auth.signInWithPassword({ email: em, password: pw });
+    if (make) {
+      // Accounts are made by the "signup" function, ready to use with no confirmation email.
+      try {
+        const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em, password: pw, name: $('#si-name').value.trim(), age: true, website: $('#si-web').value, ms: Date.now() - shownAt }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { b.disabled = false; b.textContent = 'Create account'; return m(j.error || 'Could not create the account. Try again.'); }
+      } catch (e) { b.disabled = false; b.textContent = 'Create account'; return m('No connection. Check your signal and try again.'); }
+    }
+    const { data, error } = await SB.auth.signInWithPassword({ email: em, password: pw });
     if (error) {
       b.disabled = false; b.textContent = make ? 'Create account' : 'Sign in';
-      return m(/invalid login/i.test(error.message) ? 'Wrong email or password. If you used to sign in with a code, tap Forgot password? to set one.' : /not confirmed/i.test(error.message) ? 'Confirm your email first: open the link Supabase emailed you, then sign in here.' : /rate/i.test(error.message) ? 'Too many tries. Wait a minute, then try again.' : error.message);
+      return m(make && /invalid login/i.test(error.message) ? 'That email may already have an account. Sign in instead, or reset your password.' : /invalid login/i.test(error.message) ? 'Wrong email or password.' : /not confirmed/i.test(error.message) ? 'Confirm your email first: open the link Supabase emailed you, then sign in here.' : /rate/i.test(error.message) ? 'Too many tries. Wait a minute, then try again.' : error.message);
     }
     if (make && !data.session) { b.textContent = 'Create account'; b.disabled = false; m('Almost done: open the confirmation email, tap its link, then sign in here.', true); }
   };
@@ -3028,15 +3189,16 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
 function openSetPassword(title = 'Set a password') {
   openSheet(`<div class="stack"><div class="eyebrow">${esc(title)}</div>
     <p class="m0 f15 sec">Use this with your email to sign in on any device.</p>
-    <div class="field"><label for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+    <div class="field"><label for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
     <button class="btn primary block" id="pw-save">Save password</button><div class="c-neg cap" id="pw-msg"></div>
     <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: title, mount: el => {
     el.querySelector('#pw-save').onclick = async ev => {
-      const pw = el.querySelector('#pw-new').value; if (pw.length < 6) { el.querySelector('#pw-msg').textContent = 'At least 6 characters.'; return; }
+      const pw = el.querySelector('#pw-new').value; if (pw.length < 8) { el.querySelector('#pw-msg').textContent = 'At least 8 characters.'; return; }
       ev.currentTarget.disabled = true;
       const { error } = await SB.auth.updateUser({ password: pw });
       if (error) { ev.currentTarget.disabled = false; el.querySelector('#pw-msg').textContent = error.message; return; }
-      closeSheet(); toast('Password saved');
+      try { await SB.auth.signOut({ scope: 'others' }); } catch (e) {}
+      closeSheet(); toast('Password saved. Other devices were signed out.');
     };
   } });
 }
@@ -3072,7 +3234,7 @@ async function connect(db) {
     const had = await loadCloud();
     if (had) { lsSave(); const first = !ready; ready = true; if (first) $('#app').innerHTML = ''; rerender(); if (first) maybePrompt(); }
     else if (S && (S.imported || S.splits.length)) persist(...allPaths());
-    else { ready = true; S = null; renderWelcome(); }
+    else { ready = true; S = null; renderWelcome(); maybeInstallGuide(); }
   } catch (e) {
     mode = 'local';
     if (!ready) { ready = true; S = null; renderWelcome(); }
