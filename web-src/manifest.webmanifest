@@ -1,6 +1,6 @@
 {
-  "name": "JobDone",
-  "short_name": "JobDone",
+  "name": "Jobs Done",
+  "short_name": "Jobs Done",
   "description": "Strength and body tracker",
   "start_url": "./",
   "scope": "./",
