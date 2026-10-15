@@ -607,6 +607,30 @@ input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 
 .setup.empty { background: transparent; color: var(--text2); padding-left: 0; }
 .stack > .setup { margin-top: 0; align-self: flex-start; background: var(--surface); box-shadow: var(--shadow); padding: 10px 14px; font-size: 15px; }
 
+/* ============ Swap, plateaus, reports, badges, measurements (Oct 2026) ============ */
+.cbox { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.pl-line { margin-top: var(--s1); font-size: 13px; line-height: 18px; color: var(--yellow); font-weight: 600; }
+.rc-ready { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000)); color: var(--accent-ink); }
+.rc-ready .eyebrow { color: inherit; opacity: .8; }
+.rc-ready svg { color: inherit; }
+.badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3) var(--s2); }
+.badge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; min-width: 0; }
+.bd-ic { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--muted) calc(var(--p) * 360deg), var(--raised) 0); padding: 4px; }
+.bd-ic span { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text2); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.badge.on .bd-ic { background: linear-gradient(145deg, #FFD86B, #E0A526 60%, #B8801A); box-shadow: 0 2px 8px rgba(224, 165, 38, .35); }
+.badge.on .bd-ic span { background: linear-gradient(145deg, #F7C948, #E0A526); color: #3A2A06; box-shadow: inset 0 0 0 2px rgba(255, 236, 170, .7); }
+.bd-t { font-size: 12px; line-height: 15px; font-weight: 600; }
+.bd-s { font-size: 11px; line-height: 14px; color: var(--text2); }
+.badge:not(.on) .bd-t { color: var(--text2); }
+.ph-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-bottom: var(--s3); }
+.ph-cmp figure { margin: 0; }
+.ph-cmp img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: var(--r1); display: block; }
+.ph-cmp figcaption { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.ph-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+.ph { padding: 0; border: 0; background: none; text-align: left; }
+.ph img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; display: block; }
+.ph span { font-size: 11px; color: var(--text2); }
+
 body { margin: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 [hidden] { display: none !important; }
 img { max-width: 100%; }
@@ -746,7 +770,7 @@ function flush() {
 }
 async function flushNow() { clearTimeout(flushT); for (const p of [...dirty]) { dirty.delete(p); try { await writeDoc(p); } catch (e) {} } }
 function docBody(p) {
-  if (p === 'jd/meta') return { v: S.v, profile: S.profile, splits: S.splits, rotation: S.rotation, customEx: S.customEx, setup: S.setup || {}, imported: S.imported, created: S.created, updated: Date.now() };
+  if (p === 'jd/meta') return { v: S.v, profile: S.profile, splits: S.splits, rotation: S.rotation, customEx: S.customEx, setup: S.setup || {}, meas: S.meas || {}, imported: S.imported, created: S.created, updated: Date.now() };
   if (p === 'jd/weights') return { e: S.weights };
   if (p === 'jd/steps') return { e: S.steps };
   if (p === 'jd/active') return { a: A || null, t: Date.now() };
@@ -784,7 +808,7 @@ async function loadCloud() {
   const [m, w, s, a, months] = await Promise.all([DB.doc('jd/meta').get(), DB.doc('jd/weights').get(), DB.doc('jd/steps').get(), DB.doc('jd/active').get(), DB.collection('months').get()]);
   if (!m.exists) return false;
   const md = clone(m.data());
-  const ns = Object.assign(freshState(), { v: md.v, profile: Object.assign(freshState().profile, md.profile), splits: md.splits || [], rotation: md.rotation || [], customEx: md.customEx || [], setup: md.setup || {}, imported: md.imported, created: md.created });
+  const ns = Object.assign(freshState(), { v: md.v, profile: Object.assign(freshState().profile, md.profile), splits: md.splits || [], rotation: md.rotation || [], customEx: md.customEx || [], setup: md.setup || {}, meas: md.meas || {}, imported: md.imported, created: md.created });
   ns.weights = w.exists ? clone(w.data().e || {}) : {};
   ns.steps = s.exists ? clone(s.data().e || {}) : {};
   ns.workouts = {};
@@ -898,6 +922,7 @@ function wdelta(a, b) { if (a == null || b == null) return ''; const d = a - b; 
 
 // ---------- icons ----------
 const I = {
+  swap: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>',
   wrench: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
   today: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>',
   splits: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>',
@@ -1222,6 +1247,7 @@ function viewToday() {
       <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="pt3 cap">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
       : `<div class="empty">Create a split to get started.</div>`}
   </div>`}
+  ${past ? '' : reportCard() + plateauCard()}
   <button class="tl full card" data-a="weigh" data-k="${t}">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
@@ -1341,6 +1367,7 @@ function progBody() {
   <div class="card"><div class="kpis"><div class="kpi"><b>${fw ? bw(fw.w) : '—'}</b><span>${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${lw ? bw(lw.w) : '—'}</b><span>now</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>total change</span></div></div>
     <div class="mt3 cap">${p.heightCm && fw ? `BMI ${bmi(fw.w)} → ${lw ? bmi(lw.w) : '—'} · ` : ''}${(() => { const r = ratePerMonth(); return r == null ? '' : 'about ' + bw(Math.abs(r)) + ' ' + U() + (r < 0 ? ' down' : ' up') + ' per month'; })()}</div>
     <button class="link" data-a="weights">All weight entries</button></div>
+  ${measCard()}
   <div class="card"><div class="card-h"><span class="eyebrow">Steps · last 30 days</span><button class="mh32 cap" data-a="steps">Add</button></div>
     ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Apple Health).</div>'}
   </div>`;
@@ -1457,7 +1484,10 @@ function progHistory() {
   }
   if (lastM) list += '</div></div>';
   const trained = ws.filter(w => !w.skipped).length;
-  return `<div class="card"><div class="card-h"><span class="eyebrow">Training days</span><span class="cap">${trained} workouts since ${fmtDate(start)}</span></div><div class="heat" aria-label="Calendar of training days">${cells}</div>
+  const rm = reportMonths();
+  return `${badgesCard()}
+  <div class="card"><div class="card-h"><span class="eyebrow">Monthly reports</span><span class="cap">tap to open and share</span></div><div class="list">${rm.slice(0, 6).map(m => `<button class="li" data-a="month" data-k="${m}"><div class="grow"><div class="t">${esc(monthName(m))}</div><div class="s">${ix().ws.filter(w => !w.skipped && ymOf(w.date) === m).length} workouts</div></div>${I.right}</button>`).join('')}</div></div>
+  <div class="card"><div class="card-h"><span class="eyebrow">Training days</span><span class="cap">${trained} workouts since ${fmtDate(start)}</span></div><div class="heat" aria-label="Calendar of training days">${cells}</div>
   <div class="mt2 legend"><span><i style="background:var(--accent);height:8px;width:8px;border-radius:2px"></i>Heavier day</span><span><i style="background:#3a4a1a;height:8px;width:8px;border-radius:2px"></i>Lighter day</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--neg);height:8px;width:8px;border-radius:2px"></i>Skipped</span></div></div>
   ${list || '<div class="empty">No workouts yet.</div>'}`;
 }
@@ -1707,8 +1737,8 @@ function exCardHTML(e, ei) {
   const dsets = e.sets.filter(s => s.done);
   const cmp = dsets.length && last ? `<div class="cmp"><span class="sec">vs last:</span><span>top ${delta(topSet(dsets) ? topSet(dsets).w : null, last.top ? last.top.w : null, v => dw(v))}</span><span>vol ${delta(exVol(dsets), exVol(last.sets.slice(0, dsets.length)), v => dvol(v))}</span><span class="sec">(${dsets.length} set${dsets.length > 1 ? 's' : ''})</span></div>` : '';
   return `<section class="card tight" id="ex-${ei}" aria-label="${esc(e.name)}">
-    <div class="row between"><div class="grow"><div class="ex-name">${esc(e.name)}</div>${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}</div><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
-    ${setupHTML(e.name)}${sugg ? `<div class="tgt-line">${esc(sugg)}</div>` : ''}
+    <div class="row between"><div class="grow"><div class="ex-name">${esc(e.name)}</div>${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}</div><button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+    ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${pl.weeks} weeks. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg)}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const pv = last && last.sets[si]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}" id="row-${ei}-${si}">
@@ -1935,6 +1965,7 @@ function showRecap(id, fresh) {
     ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
     <div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${h.map(({ e, t, dl }) => `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><div class="rc-right"><b class="num">${t ? setStr(t) : '—'}</b>${dl}</div></div>`).join('')}</div></div>
     <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n1(n)}</em></div>`).join('')}</div>
+    ${(() => { const nb = badgeList().filter(b => b.at === d.w.date); return nb.length ? `<div class="card"><div class="mb3 eyebrow">${nb.length > 1 ? 'Badges' : 'Badge'} earned</div><div class="badges">${nb.map(badgeHTML).join('')}</div></div>` : ''; })()}
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${S.profile.weeklyTarget || 4} workouts${nx ? ` · Next up: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
@@ -1972,6 +2003,217 @@ async function shareRecap(d) {
   const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+// ---------- Swap: same-muscle alternatives, ranked by your own history ----------
+function openSwap(ei) {
+  const e = A.ex[ei], cur = exInfo(e.name), h = ix().hist;
+  const names = new Set([...LIB.map(x => x.name), ...(S.customEx || []).map(x => x.name)]);
+  const n = x => (h[x] || []).length + (h[x + ' (L)'] || []).length;
+  const alts = [...names].map(exInfo).filter(x => x.muscle === cur.muscle && x.name !== baseName(e.name))
+    .sort((a, b) => n(b.name) - n(a.name) || (b.equip === cur.equip) - (a.equip === cur.equip) || a.name.localeCompare(b.name));
+  const sp = A.splitId && splitById(A.splitId), inSplit = sp && sp.ex.some(x => x.name === e.name);
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Swap ${esc(e.name)}</div><div class="mt1 cap">Other ${esc(cur.muscle.toLowerCase())} exercises, the ones you do most first.</div></div>
+    ${inSplit ? `<label class="row between card tight"><span>Also change it in ${esc(sp.name)}</span><input type="checkbox" id="sw-keep" class="cbox"></label>` : ''}
+    <div class="list">${alts.slice(0, 14).map(x => { const l = lastSession(x.name); return `<button class="li" data-sw="${esc(x.name)}"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.equip)}${l ? ' · last ' + esc(l.sets.filter(validSet).map(setStr).join(', ')) + ' · ' + esc(relDay(l.date)) : ''}</div></div>${I.right}</button>`; }).join('') || '<div class="empty">No other exercises for this muscle yet.</div>'}</div>
+    <button class="btn block" id="sw-all">Search all exercises</button></div>`, { label: 'Swap exercise', mount: b => {
+    const go = name => {
+      const keep = b.querySelector('#sw-keep') && b.querySelector('#sw-keep').checked; closeSheet(sh);
+      if (keep) { const x = sp.ex.find(y => y.name === e.name); if (x) { x.name = name; persist('jd/meta'); } }
+      A.ex[ei] = newExEntry(name, e.sets.length, e.rest); touchA(); toast(`Swapped to ${name}${keep ? ' in ' + sp.name + ' too' : ' for today'}`);
+    };
+    b.querySelectorAll('[data-sw]').forEach(x => x.onclick = () => go(x.dataset.sw));
+    b.querySelector('#sw-all').onclick = () => { closeSheet(sh); pickExercise(go, { title: 'Swap ' + e.name }); };
+  } });
+}
+
+// ---------- Plateau alerts: no new best e1RM for 3+ weeks across 3+ sessions ----------
+function plateaus() {
+  const out = [], hide = UI.plHide || {}, t = today();
+  for (const [name, ss] of Object.entries(ix().hist)) {
+    const v = ss.filter(x => x.e1 > 0); if (v.length < 4) continue;
+    if (daysBetween(v[v.length - 1].date, t) > 21) continue;
+    let best = 0, at = null, since = 0;
+    for (const x of v) { if (x.e1 > best * 1.01) { best = x.e1; at = x.date; since = 0; } else since++; }
+    // any kind of record (heavier, more reps, more volume) also counts as progress
+    const lp = ix().prs.filter(x => x.ex === name).pop(); if (lp && lp.date > at) { at = lp.date; since = v.filter(x => x.date > lp.date).length; }
+    const days = daysBetween(at, t);
+    if (days >= 21 && days <= 84 && since >= 3 && !(hide[name] && daysBetween(hide[name], t) < 14)) out.push({ name, weeks: Math.floor(days / 7), since, best: (v.find(x => x.date === at) || {}).top || (lp && lp.set) });
+  }
+  const seen = new Set();
+  return out.sort((a, b) => b.weeks - a.weeks).filter(x => { const k = baseName(x.name); if (seen.has(k)) return false; seen.add(k); x.name0 = x.name; return true; });
+}
+const plateauTip = p => p.weeks >= 6 ? 'Try a lighter week (about 90% of your weight), then build back up.' : 'Try a new rep range for 2 weeks, like 10 to 12 reps, or a lighter week at about 90%.';
+function plateauCard() {
+  const ps = plateaus(); if (!ps.length) return '';
+  return `<div class="card"><div class="card-h"><span class="eyebrow">Plateau alert</span><span class="cap">no new best lately</span></div>
+    <div class="list">${ps.slice(0, 3).map(p => `<div class="li"><button class="grow tl" data-a="openEx" data-name="${esc(p.name)}"><div class="t">${esc(baseName(p.name))}</div><div class="s">${p.weeks} weeks, ${p.since} sessions since your best (${p.best ? esc(setStr(p.best)) : '—'})</div></button><button class="mh32 cap" data-a="plHide" data-name="${esc(p.name)}">Hide</button></div>`).join('')}</div>
+    <div class="mt2 cap">${esc(plateauTip(ps[0]))}</div></div>`;
+}
+
+// ---------- Monthly report ----------
+const ymOf = d => d.slice(0, 7);
+const monthName = ym => new Date(+ym.slice(0, 4), +ym.slice(5) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+function monthData(ym) {
+  const I2 = ix(), ws = I2.ws.filter(w => !w.skipped && ymOf(w.date) === ym);
+  const prev = addMonths(ym, -1), pws = I2.ws.filter(w => !w.skipped && ymOf(w.date) === prev);
+  const vol = ws.reduce((a, w) => a + wVol(w), 0), pvol = pws.reduce((a, w) => a + wVol(w), 0);
+  const sets = ws.reduce((a, w) => a + wSets(w), 0), prs = I2.prs.filter(p => ymOf(p.date) === ym);
+  const top = {}; for (const p of prs) if (!top[p.ex] || e1(p.set) > e1(top[p.ex].set)) top[p.ex] = p;
+  const wl = weightList().filter(e => ymOf(e.d) === ym);
+  const mus = {}; for (const w of ws) for (const e of w.ex) { const m = exInfo(e.name).muscle; mus[m] = (mus[m] || 0) + e.sets.filter(x => x.t !== 'warm').length * (sideOf(e.name) ? .5 : 1); }
+  const st = Object.entries(S.steps || {}).filter(([d]) => ymOf(d) === ym).map(([, n]) => n);
+  const days = new Set(ws.map(w => w.date)).size;
+  const badges = badgeList().filter(b => b.at && ymOf(b.at) === ym);
+  return { ym, ws, pws, vol, pvol, sets, prs, top: Object.values(top).sort((a, b) => e1(b.set) - e1(a.set)), w0: wl[0], w1: wl[wl.length - 1], musL: Object.entries(mus).sort((a, b) => b[1] - a[1]), steps: st.length ? Math.round(st.reduce((a, b) => a + b, 0) / st.length) : 0, days, badges };
+}
+function addMonths(ym, k) { const d = new Date(+ym.slice(0, 4), +ym.slice(5) - 1 + k, 1); return d.getFullYear() + '-' + pad2(d.getMonth() + 1); }
+function reportMonths() { const s = new Set(ix().ws.filter(w => !w.skipped).map(w => ymOf(w.date))); return [...s].sort().reverse(); }
+function showMonth(ym) {
+  const d = monthData(ym), old = document.getElementById('recap'); if (old) old.remove();
+  const el = document.createElement('div'); el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Monthly report');
+  const dv = d.pvol ? (d.vol - d.pvol) / d.pvol : null, mx = d.musL.length ? d.musL[0][1] : 1;
+  const wd = d.w0 && d.w1 && d.w0 !== d.w1 ? d.w1.w - d.w0.w : null;
+  UI.seenReport = UI.seenReport && UI.seenReport > ym ? UI.seenReport : ym; lsSave();
+  el.innerHTML = `<div class="rc-body" style="--split:var(--accent);--ink:var(--accent-ink)">
+    <div class="rc-hero"><div class="rc-date">Monthly report</div><h1>${esc(monthName(ym))}</h1>
+      <div class="rc-tags"><span class="rc-tag">${d.ws.length} workout${d.ws.length === 1 ? '' : 's'}</span>${d.prs.length ? `<span class="rc-tag pr">${d.top.length} PR${d.top.length === 1 ? '' : 's'}</span>` : ''}</div></div>
+    <div class="card rc-vol"><div class="eyebrow">Volume</div><div class="rc-big num">${dvol(d.vol)}<span class="unit">${U()}</span></div>
+      ${d.pvol ? `<div class="rc-cmp"><div class="rc-bar"><span>${esc(monthName(ym).split(' ')[0])}</span><i><b style="width:${Math.round(d.vol / Math.max(d.vol, d.pvol) * 100)}%"></b></i><em class="num">${dvol(d.vol)}</em></div>
+      <div class="rc-bar was"><span>${esc(monthName(addMonths(ym, -1)).split(' ')[0])}</span><i><b style="width:${Math.round(d.pvol / Math.max(d.vol, d.pvol) * 100)}%"></b></i><em class="num">${dvol(d.pvol)}</em></div>
+      <div class="cap ${dv >= 0 ? 'c-pos' : ''}">${dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(dv * 100))}% vs last month</div></div>` : ''}</div>
+    <div class="card"><div class="kpis rc-k"><div class="kpi"><b>${d.days}</b><span>days trained</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${wd == null ? '—' : bw(wd, true)}</b><span>${U()} weight</span></div><div class="kpi"><b>${d.steps ? n0(d.steps) : '—'}</b><span>avg steps</span></div></div></div>
+    ${d.top.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.top.slice(0, 6).map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(fmtDate(p.date))} · ${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
+    ${d.musL.length ? `<div class="card"><div class="mb3 eyebrow">Sets by muscle</div>${d.musL.slice(0, 6).map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${Math.round(n)}</em></div>`).join('')}</div>` : ''}
+    ${d.badges.length ? `<div class="card"><div class="mb3 eyebrow">Badges earned</div><div class="badges">${d.badges.map(badgeHTML).join('')}</div></div>` : ''}
+    <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div></div>`;
+  document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));
+  el.querySelector('#rc-done').onclick = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('#rc-share').onclick = () => shareMonth(d);
+}
+async function shareMonth(d) {
+  const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  const F = (wt, px) => `${wt} ${px}px -apple-system, system-ui, sans-serif`;
+  g.fillStyle = v('--bg') || '#EFEBE5'; g.fillRect(0, 0, W, H);
+  g.fillStyle = v('--accent') || '#6C3FD6'; g.fillRect(0, 0, W, 330);
+  g.fillStyle = v('--accent-ink') || '#fff'; g.font = F(700, 40); g.fillText('MONTHLY REPORT', 72, 110); g.font = F(800, 120); g.fillText(monthName(d.ym), 64, 250);
+  const st = [[String(d.ws.length), 'workouts'], [dvol(d.vol), U() + ' lifted'], [String(d.top.length), 'PRs'], [d.w0 && d.w1 && d.w0 !== d.w1 ? bw(d.w1.w - d.w0.w, true) : '—', U() + ' weight']];
+  st.forEach(([a, b], i) => { const x = 56 + i * 246; g.fillStyle = v('--surface-solid') || '#fff'; g.beginPath(); g.roundRect(x, 380, 226, 190, 36); g.fill(); g.fillStyle = v('--text') || '#222'; g.font = F(800, 58); g.fillText(a, x + 26, 470); g.fillStyle = v('--text2') || '#666'; g.font = F(600, 32); g.fillText(b, x + 26, 528); });
+  let y = 670; g.font = F(700, 34); g.fillStyle = v('--text2') || '#666'; g.fillText('TOP LIFTS', 72, y); y += 70;
+  for (const p of d.top.slice(0, 7)) { g.fillStyle = v('--text') || '#222'; g.font = F(600, 44); g.fillText(p.ex.length > 26 ? p.ex.slice(0, 25) + '…' : p.ex, 72, y); g.textAlign = 'right'; g.fillText(setStr(p.set), W - 72, y); g.textAlign = 'left'; y += 72; }
+  g.fillStyle = v('--muted') || '#999'; g.font = F(800, 36); g.fillText('JobDone', 72, H - 72);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
+  const file = new File([blob], `jobdone-${d.ym}.png`, { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'JobDone ' + monthName(d.ym) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function reportCard() {
+  const t = today(), last = addMonths(ymOf(t), -1);
+  if (+t.slice(8) > 10 || !reportMonths().includes(last) || (UI.seenReport && UI.seenReport >= last)) return '';
+  return `<button class="card tl full rc-ready" data-a="month" data-k="${last}"><div class="row between"><div><div class="eyebrow">Monthly report</div><div class="mt1 f17 fw6">Your ${esc(monthName(last).split(' ')[0])} report is ready</div></div>${I.right}</div></button>`;
+}
+
+// ---------- Badges ----------
+const BADGES = [
+  ...[1, 10, 25, 50, 100, 150, 200, 300].map(n => ({ k: 'w' + n, ic: String(n), t: n === 1 ? 'First workout' : n + ' workouts', g: 'Workouts', n })),
+  ...[4, 8, 12, 26, 52].map(n => ({ k: 's' + n, ic: n + 'w', t: n + '-week streak', g: 'Streaks', n })),
+  ...[60, 80, 100, 120, 150].map(n => ({ k: 'h' + n, ic: n, t: 'First ' + n + ' kg set', g: 'Heavy', n })),
+  ...[10, 100, 500, 1000].map(n => ({ k: 'v' + n, ic: n + 't', t: n + ' tonnes lifted', g: 'Volume', n })),
+  ...[10, 50, 100, 250].map(n => ({ k: 'p' + n, ic: n, t: n + ' PRs', g: 'Records', n })),
+  ...[5, 10, 15].map(n => ({ k: 'b' + n, ic: '−' + n, t: n + ' kg down', g: 'Cut', n })),
+  { k: 'st7', ic: '7d', t: 'Step goal 7 days running', g: 'Steps', n: 7 },
+];
+function badgeList() {
+  const ws = ix().ws.filter(w => !w.skipped), at = {}, prog = {};
+  const hit = (k, d) => { if (!at[k]) at[k] = d; };
+  // workouts, heavy sets, volume
+  let vol = 0, heavy = 0;
+  ws.forEach((w, i) => { BADGES.filter(b => b.g === 'Workouts' && i + 1 >= b.n).forEach(b => hit(b.k, w.date));
+    for (const e of w.ex) for (const s of e.sets) if (validSet(s)) heavy = Math.max(heavy, s.w);
+    BADGES.filter(b => b.g === 'Heavy' && heavy >= b.n).forEach(b => hit(b.k, w.date));
+    vol += wVol(w); BADGES.filter(b => b.g === 'Volume' && vol >= b.n * 1000).forEach(b => hit(b.k, w.date)); });
+  prog.Workouts = ws.length; prog.Heavy = heavy; prog.Volume = vol / 1000;
+  // weekly streaks
+  const weeks = [...new Set(ws.map(w => mondayOf(w.date)))].sort(); let run = 0, best = 0;
+  weeks.forEach((m, i) => { run = i && daysBetween(weeks[i - 1], m) === 7 ? run + 1 : 1; best = Math.max(best, run); const last = ws.filter(w => mondayOf(w.date) === m).pop(); BADGES.filter(b => b.g === 'Streaks' && run >= b.n).forEach(b => hit(b.k, last.date)); });
+  prog.Streaks = best;
+  // PRs (sessions with a record)
+  const prs = ix().prs; prs.forEach((p, i) => BADGES.filter(b => b.g === 'Records' && i + 1 >= b.n).forEach(b => hit(b.k, p.date))); prog.Records = prs.length;
+  // weight down from the first entry
+  const wl = weightList(); let down = 0; if (wl.length) for (const e of wl) { down = Math.max(down, wl[0].w - e.w); BADGES.filter(b => b.g === 'Cut' && wl[0].w - e.w >= b.n).forEach(b => hit(b.k, e.d)); } prog.Cut = down;
+  // steps: goal hit 7 days in a row
+  const goal = S.profile.stepGoal || 10000; let sr = 0, sbest = 0, prev = null;
+  for (const d of Object.keys(S.steps || {}).sort()) { sr = S.steps[d] >= goal ? (prev && daysBetween(prev, d) === 1 ? sr + 1 : 1) : 0; prev = d; sbest = Math.max(sbest, sr); if (sr >= 7) hit('st7', d); } prog.Steps = sbest;
+  return BADGES.map(b => ({ ...b, at: at[b.k] || null, p: Math.min(1, (prog[b.g] || 0) / b.n) }));
+}
+const badgeHTML = b => `<div class="badge ${b.at ? 'on' : ''}" title="${esc(b.t)}"><div class="bd-ic" style="--p:${b.at ? 1 : b.p.toFixed(3)}"><span>${esc(String(b.ic))}</span></div><div class="bd-t">${esc(b.t)}</div><div class="bd-s">${b.at ? esc(fmtDate(b.at)) : Math.round(b.p * 100) + '%'}</div></div>`;
+function badgesCard() {
+  const l = badgeList(), got = l.filter(b => b.at).sort((a, b) => a.at < b.at ? 1 : -1), next = l.filter(b => !b.at).sort((a, b) => b.p - a.p).slice(0, 3);
+  return `<div class="card"><div class="card-h"><span class="eyebrow">Badges</span><span class="cap">${got.length} of ${l.length}</span></div>
+    <div class="badges">${got.slice(0, 8).map(badgeHTML).join('')}</div>
+    ${next.length ? `<div class="mt3 mb2 cap">Up next</div><div class="badges">${next.map(badgeHTML).join('')}</div>` : ''}
+    ${got.length > 8 ? `<button class="mt2 link" data-a="allBadges">See all badges</button>` : ''}</div>`;
+}
+function openBadges() {
+  const l = badgeList(), gs = [...new Set(l.map(b => b.g))];
+  openSheet(`<div class="stack"><div class="eyebrow">Badges</div>${gs.map(g => `<div><div class="mb2 cap">${esc(g)}</div><div class="badges">${l.filter(b => b.g === g).map(badgeHTML).join('')}</div></div>`).join('')}</div>`, { label: 'Badges' });
+}
+
+// ---------- Optional body measurements and progress photos ----------
+const MEAS = [['waist', 'Waist'], ['chest', 'Chest'], ['arms', 'Arms'], ['thighs', 'Thighs'], ['hips', 'Hips']];
+function measCard() {
+  const m = S.meas || {}, ds = Object.keys(m).sort(), f = ds[0] && m[ds[0]], l = ds.length && m[ds[ds.length - 1]];
+  const rows = MEAS.filter(([k]) => l && l[k]).map(([k, n]) => { const first = ds.map(d => m[d][k]).find(Boolean); const dd = l[k] - first; return `<tr><td>${n}</td><td class="r num">${trim(l[k])} cm</td><td class="r num ${dd < 0 ? 'c-pos' : 'sec'}">${ds.length > 1 && Math.abs(dd) > 0.05 ? (dd > 0 ? '+' : '−') + trim(Math.abs(Math.round(dd * 10) / 10)) : ''}</td></tr>`; }).join('');
+  return `<div class="card"><div class="card-h"><span class="eyebrow">Measurements</span><span class="cap">optional</span></div>
+    ${rows ? `<table class="tbl"><tr><th>Area</th><th class="r">Latest</th><th class="r">Since ${esc(fmtDate(ds[0]))}</th></tr>${rows}</table>` : `<div class="cap">The scale can hide fat loss while you keep muscle. Add a tape measurement now and then if you like. Nothing here is required.</div>`}
+    <div class="mt3 row g4"><button class="link" data-a="meas">${rows ? 'Add measurements' : 'Add measurements'}</button><button class="link" data-a="photos">Progress photos</button></div></div>`;
+}
+function openMeas() {
+  const t = today(), cur = (S.meas || {})[t] || {};
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Measurements · optional</div><div class="cap">Fill in any you like and leave the rest blank. In centimetres.</div>
+    <div class="field"><label for="ms-d">Date</label><input class="input" type="date" id="ms-d" value="${t}" max="${t}"></div>
+    <div class="sgrp">${MEAS.map(([k, n]) => `<label class="xr"><span class="grow">${n}</span><input class="xr-in num" inputmode="decimal" id="ms-${k}" value="${cur[k] || ''}" placeholder="—"><span class="xr-u">cm</span></label>`).join('')}</div>
+    <button class="btn primary block" id="ms-s">Save</button></div>`, { label: 'Measurements', mount: b => {
+    b.querySelector('#ms-s').onclick = () => {
+      const d = b.querySelector('#ms-d').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      const e = {}; for (const [k] of MEAS) { const v = parseFloat(b.querySelector('#ms-' + k).value); if (v > 0) e[k] = Math.round(v * 10) / 10; }
+      S.meas = S.meas || {}; if (Object.keys(e).length) S.meas[d] = e; else delete S.meas[d];
+      persist('jd/meta'); closeSheet(sh); rerender(); toast('Measurements saved');
+    };
+  } });
+}
+// Photos are stored one document each (photos/<date>-<n>), shrunk to 720px JPEG, and loaded only when opened.
+let PHOTOS = null;
+async function loadPhotos() {
+  if (PHOTOS) return PHOTOS;
+  if (!DB) return PHOTOS = {};
+  try { const r = await DB.collection('photos').get(); PHOTOS = {}; r.docs.forEach(d => { PHOTOS[d.id] = d.data(); }); } catch (e) { PHOTOS = null; throw e; }
+  return PHOTOS;
+}
+function shrink(file, max = 720) {
+  return new Promise((ok, no) => { const img = new Image(); img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg', .72)); }; img.onerror = no; img.src = URL.createObjectURL(file); });
+}
+async function openPhotos() {
+  if (!DB) { toast('Sign in to keep progress photos in your account.'); return; }
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Progress photos · optional</div><div id="ph-body" class="cap">Loading…</div>
+    <label class="btn primary block" for="ph-in">Add a photo</label><input type="file" id="ph-in" accept="image/*" hidden>
+    <div class="cap">Photos are private to your account. Same spot, same light and same pose make the comparison fair.</div></div>`, { label: 'Progress photos', mount: async b => {
+    const draw = () => {
+      const ks = Object.keys(PHOTOS).sort(), first = ks[0], last = ks[ks.length - 1];
+      b.querySelector('#ph-body').innerHTML = !ks.length ? 'No photos yet.' : `${ks.length > 1 ? `<div class="ph-cmp"><figure><img src="${PHOTOS[first].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[first].d, { y: true }))}${PHOTOS[first].w ? ' · ' + bw(PHOTOS[first].w) + ' ' + U() : ''}</figcaption></figure><figure><img src="${PHOTOS[last].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[last].d, { y: true }))}${PHOTOS[last].w ? ' · ' + bw(PHOTOS[last].w) + ' ' + U() : ''}</figcaption></figure></div>` : ''}
+        <div class="ph-grid">${ks.slice().reverse().map(k => `<button class="ph" data-ph="${k}"><img src="${PHOTOS[k].img}" alt="Photo from ${esc(fmtDate(PHOTOS[k].d))}"><span>${esc(fmtDate(PHOTOS[k].d))}</span></button>`).join('')}</div>`;
+      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your signal and try again.'); } } }); });
+    };
+    try { await loadPhotos(); draw(); } catch (e) { b.querySelector('#ph-body').textContent = 'Couldn’t load photos. Check your signal.'; }
+    b.querySelector('#ph-in').onchange = async ev => {
+      const f = ev.target.files && ev.target.files[0]; if (!f) return;
+      try { const img = await shrink(f), d = today(), lw = weightOn(d); let k = d, i = 1; while (PHOTOS && PHOTOS[k]) k = d + '-' + (++i);
+        const body = { img, d, w: lw ? lw.w : null }; await DB.doc('photos/' + k).set(body); PHOTOS = PHOTOS || {}; PHOTOS[k] = body; draw(); toast('Photo saved'); }
+      catch (e) { toast('Couldn’t save the photo. Check your signal and try again.'); }
+      ev.target.value = '';
+    };
+  } });
 }
 
 // ---------- plate loader ----------
@@ -2368,7 +2610,7 @@ function exMenu(ei) {
         if (m === 'up') { [A.ex[ei - 1], A.ex[ei]] = [A.ex[ei], A.ex[ei - 1]]; touchA(); }
         if (m === 'dn') { [A.ex[ei + 1], A.ex[ei]] = [A.ex[ei], A.ex[ei + 1]]; touchA(); }
         if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { A.ex.splice(ei, 1); touchA(); } });
-        if (m === 'swap') pickExercise(name => { A.ex[ei] = newExEntry(name, e.sets.length, e.rest); touchA(); }, { title: 'Swap ' + e.name });
+        if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
         if (m === 'hist') { minimizeWk(); NAV.stack.push({ v: 'exercise', name: e.name }); render(); }
         if (m === 'note') { const s2 = openSheet(`<div class="stack"><div class="eyebrow">Note for ${esc(e.name)}</div><textarea class="input" id="en-t">${esc(e.note)}</textarea><button class="btn primary block" id="en-s">Save note</button></div>`, { mount: bb => { bb.querySelector('#en-s').onclick = () => { e.note = bb.querySelector('#en-t').value.trim(); closeSheet(s2); touchA(); }; } }); }
@@ -2638,6 +2880,12 @@ const ACT = {
   addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length > 1) e.sets.pop(); touchA(); },
   exMenu: el => exMenu(+el.dataset.e),
+  swapEx: el => openSwap(+el.dataset.e),
+  plHide: el => { UI.plHide = UI.plHide || {}; UI.plHide[el.dataset.name] = today(); lsSave(); rerender(); toast('Hidden for 2 weeks'); },
+  month: el => showMonth(el.dataset.k),
+  allBadges: () => openBadges(),
+  meas: () => openMeas(),
+  photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
   wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }), 50); }),
   wkDiscard: () => confirmSheet({ title: 'Discard this workout?', body: 'Nothing from it will be saved.', ok: 'Discard', danger: true, onOk: () => { A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); } }),

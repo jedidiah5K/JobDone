@@ -590,3 +590,27 @@ input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 
 .setup span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .setup.empty { background: transparent; color: var(--text2); padding-left: 0; }
 .stack > .setup { margin-top: 0; align-self: flex-start; background: var(--surface); box-shadow: var(--shadow); padding: 10px 14px; font-size: 15px; }
+
+/* ============ Swap, plateaus, reports, badges, measurements (Oct 2026) ============ */
+.cbox { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.pl-line { margin-top: var(--s1); font-size: 13px; line-height: 18px; color: var(--yellow); font-weight: 600; }
+.rc-ready { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000)); color: var(--accent-ink); }
+.rc-ready .eyebrow { color: inherit; opacity: .8; }
+.rc-ready svg { color: inherit; }
+.badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3) var(--s2); }
+.badge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; min-width: 0; }
+.bd-ic { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--muted) calc(var(--p) * 360deg), var(--raised) 0); padding: 4px; }
+.bd-ic span { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text2); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.badge.on .bd-ic { background: linear-gradient(145deg, #FFD86B, #E0A526 60%, #B8801A); box-shadow: 0 2px 8px rgba(224, 165, 38, .35); }
+.badge.on .bd-ic span { background: linear-gradient(145deg, #F7C948, #E0A526); color: #3A2A06; box-shadow: inset 0 0 0 2px rgba(255, 236, 170, .7); }
+.bd-t { font-size: 12px; line-height: 15px; font-weight: 600; }
+.bd-s { font-size: 11px; line-height: 14px; color: var(--text2); }
+.badge:not(.on) .bd-t { color: var(--text2); }
+.ph-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-bottom: var(--s3); }
+.ph-cmp figure { margin: 0; }
+.ph-cmp img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: var(--r1); display: block; }
+.ph-cmp figcaption { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.ph-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+.ph { padding: 0; border: 0; background: none; text-align: left; }
+.ph img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; display: block; }
+.ph span { font-size: 11px; color: var(--text2); }
