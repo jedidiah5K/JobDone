@@ -1596,7 +1596,10 @@ async function shareRecap(d) {
   const F = (wt, px) => `${wt} ${px}px -apple-system, "SF Pro Display", system-ui, sans-serif`;
   try { await document.fonts.ready; } catch (e) {}
   const img = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; setTimeout(() => r(null), 2500); });
-  const col = (k, f) => { const x = v(k); return /^#|^rgb/.test(x) ? x : f; };
+  // Resolve theme tokens (including color-mix ones) to plain rgba through a 1-pixel canvas.
+  const probe = document.getElementById('col-probe') || document.body.appendChild(Object.assign(document.createElement('i'), { id: 'col-probe', hidden: true }));
+  const px = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  const col = (k, f) => { probe.style.color = f; probe.style.color = `var(${k}, ${f})`; const s = getComputedStyle(probe).color; px.clearRect(0, 0, 1, 1); px.fillStyle = f; px.fillStyle = s; px.fillRect(0, 0, 1, 1); const [r, gg, b, a] = px.getImageData(0, 0, 1, 1).data; return `rgba(${r},${gg},${b},${(a / 255).toFixed(3)})`; };
   const th = THEMES.find(x => x.k === theme()) || THEMES[0];
   const bg = col('--bg', '#EFEBE5'), text = col('--text', '#1C1C1E'), text2 = col('--text2', '#6B6B70'), acc = col('--accent', '#6C3FD6');
   const ink = col('--hdr-ink', '#fff'), ink2 = col('--hdr-ink2', 'rgba(255,255,255,.7)'), surf = col('--surface-solid', col('--surface', '#fff'));
