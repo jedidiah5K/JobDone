@@ -907,6 +907,11 @@ html.ob-on body, html.ob-on #bg { background: radial-gradient(120% 60% at 50% 0%
 
 
 
+/* Agent: week days are sniper scopes; a done day gets a white X over the scope (Job's idea). Today's scope is bright white. */
+:root[data-theme="mono"] .week .dot { width: 34px; height: 34px; border: 0 !important; border-radius: 50%; clip-path: none; filter: none !important; background: transparent url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='13' stroke='%23ffffff' stroke-opacity='0.28' stroke-width='1.3'/%3E%3Cpath d='M16 1V9M16 23V31M1 16H9M23 16H31' stroke='%23ffffff' stroke-opacity='0.28' stroke-width='1.3'/%3E%3Ccircle cx='16' cy='16' r='1.4' fill='%23ffffff' fill-opacity='0.28'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important; color: transparent !important; }
+:root[data-theme="mono"] .week .dot.today { background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='13' stroke='%23ffffff' stroke-opacity='0.95' stroke-width='1.3'/%3E%3Cpath d='M16 1V9M16 23V31M1 16H9M23 16H31' stroke='%23ffffff' stroke-opacity='0.95' stroke-width='1.3'/%3E%3Ccircle cx='16' cy='16' r='1.4' fill='%23ffffff' fill-opacity='0.95'/%3E%3C/svg%3E") !important; }
+:root[data-theme="mono"] .week .dot.done { background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='13' stroke='%23ffffff' stroke-opacity='0.35' stroke-width='1.3'/%3E%3Cpath d='M16 1V9M16 23V31M1 16H9M23 16H31' stroke='%23ffffff' stroke-opacity='0.35' stroke-width='1.3'/%3E%3Ccircle cx='16' cy='16' r='1.4' fill='%23ffffff' fill-opacity='0.35'/%3E%3Cpath d='M7 7L25 25M25 7L7 25' stroke='%23F2F3F5' stroke-width='3.2'/%3E%3C/svg%3E") !important; }
+
 /* Judge review round 2 (15 Oct) */
 .nw { white-space: nowrap; }
 .neu { color: var(--text2); }
