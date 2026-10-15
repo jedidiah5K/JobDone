@@ -660,3 +660,23 @@ a.xr { text-decoration: none; }
 #wk .wk-body > .btn, #wk .wk-body > button { background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); }
 :root[data-theme="mono"] #wk { background-position: center 96px, 0 0, 0 0; }
 #wk .wk-body > .link { padding: 8px 18px; border-radius: 999px; }
+.dwrap { position: relative; display: block; }
+.dwrap > input[type=date] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; z-index: 1; }
+.dwrap > .dtext { display: flex; align-items: center; pointer-events: none; }
+/* Readability (review, 15 Oct) */
+#tabs { background: var(--surface-solid, var(--surface)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="cliffs"] #tabs, :root:not([data-theme]) #tabs { background: #FFFFFF; }
+.cele { top: calc(env(safe-area-inset-top, 0px) + 58px); padding: 12px 18px; }
+.top .btn.sm { background: var(--surface-solid, var(--surface)); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.xr-in::placeholder, .input::placeholder, textarea::placeholder { color: var(--muted); font-style: italic; opacity: .8; }
+.plate-tray { padding-right: 24px; scroll-padding-right: 24px; }
+#wk .back { color: var(--accent); background: var(--surface-solid, var(--surface)); border-radius: 999px; padding: 6px 12px 6px 8px; box-shadow: var(--shadow); align-self: flex-start; }
+:root[data-theme="cliffs"] { --hdr-ink2: rgba(255,255,255,.96); }
+:root[data-theme="cliffs"] .top .eyebrow, :root[data-theme="cliffs"] .top .cap, :root[data-theme="cliffs"] .top p, :root[data-theme="cliffs"] .top .back, :root[data-theme="cliffs"] .top > div > div:not(.btn) { text-shadow: 0 1px 6px rgba(20,40,70,.45); }
+.info { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 4px; border-radius: 50%; font: 700 11px/1 var(--font-display, inherit); font-style: italic; color: var(--text2); background: color-mix(in srgb, var(--text) 10%, transparent); vertical-align: 1px; text-transform: none; letter-spacing: 0; position: relative; }
+.info::after { content: ""; position: absolute; inset: -12px; }
+.card.nextup .info { color: inherit; background: color-mix(in srgb, currentColor 18%, transparent); }
+.gl { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+.gl-i { padding: 12px 14px; border-radius: 14px; background: var(--raised); }
+.gl-i.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.gl-i b { font-size: 16px; } .gl-i p { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--text2); }
