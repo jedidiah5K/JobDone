@@ -23,6 +23,8 @@ const mondayOf = s => { const d = parseYmd(s); const k = (d.getDay() + 6) % 7; d
 const relDay = s => { const n = daysBetween(s, today()); return n === 0 ? 'today' : n === 1 ? 'yesterday' : n < 7 ? n + ' days ago' : fmtDate(s, { wd: true }); };
 const fmtDur = ms => { const m = Math.max(0, Math.floor(ms / 6e4)); if (m < 1) return 'under 1 min'; return m >= 60 ? Math.floor(m / 60) + 'h ' + pad2(m % 60) + 'm' : m + ' min'; };
 const clock = s => Math.floor(s / 60) + ':' + pad2(Math.floor(s % 60));
+// Wall-clock time like 3:00 pm (start of a workout, end of a rest).
+const hm = t => { const d = new Date(t); let h = d.getHours(); const ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12; return h + ':' + pad2(d.getMinutes()) + ' ' + ap; };
 const plural = (n, w, ws) => n + ' ' + (n === 1 ? w : (ws || w + 's'));
 const REST_OPTS_X = v => v && ![60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].includes(v) ? [v] : [];
 const n0 = v => Math.round(v).toLocaleString('en-US');
@@ -53,9 +55,23 @@ const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { con
 const EQUIP = ['barbell', 'dumbbell', 'machine', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
 const baseName = n => n.replace(/\s*\((L|R)\)$/, '');
+// Left and right versions of one lift (unilateral) are shown together as one row (Job, 15 Oct).
+// rows: [{ name, sets: [...] }] -> [{ name, txt }] where txt joins both sides.
+function mergeLR(rows, fmt) {
+  const out = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i], nx = rows[i + 1];
+    if (sideOf(r.name) === 'L' && nx && sideOf(nx.name) === 'R' && baseName(nx.name) === baseName(r.name)) {
+      const a = fmt(r), b = fmt(nx);
+      out.push({ name: baseName(r.name), txt: a === b ? a + ' each side' : 'L ' + a + ' · R ' + b, uni: true }); i++;
+    } else out.push({ name: r.name, txt: fmt(r) });
+  }
+  return out;
+}
 const sideOf = n => (n.match(/\((L|R)\)$/) || [])[1] || null;
 // The plate loader only makes sense where you slide plates onto a bar.
-const usesPlates = name => ['barbell', 'smith'].includes(exInfo(name).equip);
+// Plate loader opens first for anything loaded with plates (Job's machines are plate-loaded); dumbbells, cables and bodyweight go straight to the dial.
+const usesPlates = name => !['dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band'].includes(exInfo(name).equip);
 function exInfo(name) {
   const b = baseName(name);
   return (S.customEx || []).find(e => e.name === b) || LIB.find(e => e.name === b) || { name: b, muscle: 'Other', equip: 'other' };
@@ -571,17 +587,19 @@ function setViewDay(d) {
 const longDay = d => fmtDate(d, { wd: true }).replace(/^(\w+) /, (m, x) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[x] + ', '));
 const datePick = d => `<label class="cap datepick">${esc(d === today() ? 'Today, ' + fmtDate(d) : fmtDate(d, { wd: true }))} ▾<input type="date" data-in="viewDay" value="${d}" max="${today()}" aria-label="Pick a day"></label>`;
 // What was trained on a past day, or buttons to log it.
-function dayWorkoutCard(d) {
+// Exercise lists on Today fold away so the cards stay short (Job, 15 Oct).
+const foldList = (n, inner) => `<details class="fold"><summary class="fold-s"><span>${n === 1 ? 'Show 1 exercise' : `Show ${n} exercises`}</span><svg viewBox="0 0 12 12" width="12" height="12"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="list nextlist">${inner}</div></details>`;
+function dayWorkoutCard(d, label) {
   const ws = Object.values(S.workouts).filter(w => w.date === d && !w.skipped), sk = Object.values(S.workouts).some(w => w.date === d && w.skipped);
   const log = A ? `<div class="mt3 cap">Finish the workout in progress to log another one.</div>` : `<div class="mt4 cap">${ws.length ? 'Log another workout' : 'Log a workout for this day'}</div><div class="mt2 chips wrap">${S.splits.filter(x => !x.archived).map(sp => `<button class="chip" data-a="logDay" data-id="${sp.id}" data-k="${d}"><i class="sdot" style="background:${sp.color}"></i>${esc(sp.name)}</button>`).join('')}<button class="chip" data-a="logDay" data-id="" data-k="${d}">Empty</button></div>`;
   if (!ws.length) return `<div class="card"><div class="card-h"><span class="eyebrow">Workout</span></div><div class="mt2 mid">${sk ? 'Skipped' : 'Rest day'}</div><div class="cap">Nothing logged ${esc(relDay(d))}.</div>${log}</div>`;
   return ws.map(w => { const sp = wSplit(w), c = sp ? sp.color : 'var(--accent)', sets = w.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
     return `<div class="card nextup" style="--split:${c};--ink:${sp ? inkOn(sp.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow">Workout</span><span class="cap">${w.end && w.start && w.end - w.start >= 6e4 ? fmtDur(w.end - w.start) : ''}</span></div>
+    <div class="card-h"><span class="eyebrow">${esc(label || 'Workout')}</span><span class="cap">${w.end && w.start && w.end - w.start >= 6e4 ? fmtDur(w.end - w.start) : ''}</span></div>
     <div class="hero"><i class="sdot" style="background:${c}"></i>${esc(w.splitName)}</div>
     <div class="mt3 cap">${plural(w.ex.length, 'exercise')} · ${plural(sets, 'set')} · ${n0(wVol(w))} ${U()} lifted</div>
     <div class="mt4 g2 row"><button class="btn primary grow" data-a="openW" data-id="${w.id}">Open and edit</button><button class="btn" data-a="recap" data-id="${w.id}">Recap</button></div>
-    <div class="list nextlist">${w.ex.map(e => `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${e.sets.filter(x => x.w != null || x.r != null).map(setStr).join(', ') || '—'}</span></div>`).join('')}</div></div>`; }).join('');
+    ${(() => { const m = mergeLR(w.ex, e => e.sets.filter(x => x.w != null || x.r != null).map(setStr).join(', ') || '—'); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}</div>`; }).join('');
 }
 function viewToday() {
   if (VIEWDAY && VIEWDAY >= today()) VIEWDAY = null;
@@ -605,16 +623,10 @@ function viewToday() {
   const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">
   ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div><div class="eyebrow">${esc(longDay(t))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>`}
-  ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
-  ${!past && Object.values(S.workouts).some(w => w.date === T && !w.skipped) ? dayWorkoutCard(T) : ''}
-  ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
-    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      <button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
-      <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="pt3 cap">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
-      : `<div class="empty">Create a split to get started.</div>`}
-  </div>`}
-  ${past ? '' : reportCard() + plateauCard()}
+  ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
+  <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
+    <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">${past ? 'week of ' + esc(fmtDate(ws)) : esc(streakText())}</span></div>
+    <div class="week">${strip}</div></div>
   <button class="tl full card" data-a="weigh" data-k="${t}">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
@@ -622,20 +634,19 @@ function viewToday() {
     <div class="mt4 kpis"><div class="kpi"><b>${a7 ? bw(a7) : '—'}</b><span>7-day avg</span></div><div class="kpi"><b>${since == null ? '—' : bw(since, true)}</b><span>since ${fw ? esc(fmtDate(fw.d)) + (fw.src === 'estimated' ? ' (est.)' : '') : 'start'}</span></div><div class="kpi"><b>${(() => { const r = ratePerMonth(); return r == null ? '—' : bw(r, true); })()}</b><span>per month</span></div></div>
     <div class="mt3">${wchart}</div>
   </button>
-  <div class="grid2">
-    <button class="tl card" data-a="steps" data-k="${t}">
-      <div class="eyebrow">Steps</div>
-      <div class="mt3 row"><div class="ring"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--raised)" stroke-width="8"/>${frac > 0 ? `<circle cx="42" cy="42" r="36" fill="none" stroke="${frac >= 1 ? 'var(--pos)' : 'var(--text)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 36 * frac).toFixed(1)} 999"/>` : ''}</svg><div class="c">${Math.round(frac * 100)}%</div></div></div>
-      <div class="mt3 f22 mid">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div>
-    </button>
-    <div class="card">
-      <div class="eyebrow">This week</div>
-      <div class="mt3 mid">${done}<span class="unit">/ ${p.weeklyTarget}</span></div>
-      <div class="cap">workouts</div>
-      <div class="mt3 cap">${past ? 'week of ' + esc(fmtDate(ws)) : streakText()}</div>
-    </div>
-  </div>
-  <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div><div class="week">${strip}</div></div>
+  <button class="tl card row g4 steps-row" data-a="steps" data-k="${t}">
+    <div class="ring sm"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--raised)" stroke-width="9"/>${frac > 0 ? `<circle cx="42" cy="42" r="36" fill="none" stroke="${frac >= 1 ? 'var(--pos)' : 'var(--text)'}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 36 * frac).toFixed(1)} 999"/>` : ''}</svg><div class="c">${Math.round(frac * 100)}%</div></div>
+    <div class="grow"><div class="eyebrow">Steps</div><div class="mt1 f22 mid">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div></div>
+  </button>
+  ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
+    <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
+    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+      <button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
+      ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
+      : `<div class="empty">Create a split to get started.</div>`}
+  </div>`}
+  ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
+  ${past ? '' : reportCard() + plateauCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -1092,7 +1103,7 @@ function renderWorkout() {
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div class="tc grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num"><span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
+      <div class="tc grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num">Started ${hm(A.start)} · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
       <button class="btn sm primary" data-a="finish">Finish</button></div>
     <div class="mt2 f13 row between"><span class="sec"><b class="c-text num">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="c-text num">${doneSets}</b> / ${plural(totalSets, 'set')}</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}</div>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
@@ -1116,8 +1127,10 @@ function exCardHTML(e, ei) {
   }
   const dsets = e.sets.filter(s => s.done);
   const cmp = dsets.length && last ? `<div class="cmp"><span class="sec">vs last time ${infoBtn('volume')}</span><span>heaviest ${delta(topSet(dsets) ? topSet(dsets).w : null, last.top ? last.top.w : null, v => dw(v), ' ' + U())}</span><span>volume ${delta(exVol(dsets), exVol(last.sets.slice(0, dsets.length)), v => dvol(v), ' ' + U())}</span><span class="sec">(first ${plural(dsets.length, 'set')})</span></div>` : '';
-  return `<section class="card tight" id="ex-${ei}" aria-label="${esc(e.name)}">
-    <div class="row between"><div class="grow"><div class="ex-name">${esc(e.name)}</div>${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}</div><button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+  const side = sideOf(e.name), pair = side === 'L' ? A.ex[ei + 1] : side === 'R' ? A.ex[ei - 1] : null;
+  const uni = pair && baseName(pair.name) === baseName(e.name) && sideOf(pair.name) === (side === 'L' ? 'R' : 'L') ? side : '';
+  return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
+    ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div><button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg)} ${infoBtn('target')}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
@@ -1135,11 +1148,12 @@ function exCardHTML(e, ei) {
 function restLeft() { return REST ? Math.max(0, REST.paused ? REST.left : (REST.end - Date.now()) / 1000) : 0; }
 function restHTML() {
   const left = restLeft(), p = 1 - left / REST.total;
-  if (REST.min) return `<button class="restpill" data-a="restOpen" aria-label="Show rest timer"><span class="hg-mini">${hourglass(p, REST.paused)}</span><span class="t" data-rest>${clock(left)}</span></button>`;
+  if (REST.min) return `<button class="restpill" data-a="restOpen" aria-label="Show rest timer"><span class="hg-mini">${hourglass(p, REST.paused)}</span><span class="t" data-rest>${clock(left)}</span><span class="rp-end" data-rest-end2>${REST.paused ? '' : hm(Date.now() + left * 1000)}</span></button>`;
   return `<div class="restpop ${REST.paused ? 'paused' : ''}" role="timer" aria-label="Rest timer">
     <div class="row between"><span class="eyebrow">${REST.paused ? 'Paused' : 'Rest'}</span><button class="icon-btn" data-a="restMin" aria-label="Shrink rest timer">${I.down}</button></div>
     <div class="hg" data-hg style="--p:${p.toFixed(4)}">${hourglass(p, REST.paused)}</div>
     <div class="t" data-rest>${clock(left)}</div>
+    <div class="tc cap rest-end" data-rest-end>${REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000)}</div>
     <div class="g2 row" style="justify-content:center"><button class="btn sm" data-a="rest" data-d="-30">−30s</button><button class="btn sm primary" data-a="restPause">${REST.paused ? 'Resume' : 'Pause'}</button><button class="btn sm" data-a="rest" data-d="30">+30s</button></div>
     <button class="self-c link" data-a="rest" data-d="0">Skip rest</button>
   </div>`;
@@ -1298,6 +1312,8 @@ function tick() {
     const left = restLeft();
     if (left <= 0) { REST = null; SOUNDS.rest(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); return; }
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
+    const re = $('[data-rest-end]'); if (re) re.textContent = REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000);
+    const re2 = $('[data-rest-end2]'); if (re2) re2.textContent = REST.paused ? '' : hm(Date.now() + left * 1000);
     const hg = $('.restpop .hg, .restpill .hg-mini'); if (hg && !REST.paused) hg.innerHTML = hourglass(1 - left / REST.total, false);
   }
 }
@@ -1343,7 +1359,7 @@ function summaryHTML() {
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
     <div class="field"><span class="lbl">Energy</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${A.energy === n ? 'on' : ''}" data-a="energy" data-k="${n}">${n}</button>`).join('')}</div></div>
     ${changed ? `<label class="card tight row between" for="sum-upd"><span>Update the ${esc(sp.name)} split with today’s exercises</span><input type="checkbox" id="sum-upd" data-in="sumUpd" ${A.updSplit ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)"></label>` : ''}
-    <button class="btn primary block" data-a="saveWk" ${d.sets ? '' : 'disabled'}>Save workout</button>
+    ${d.sets ? `<button class="btn primary block" data-a="saveWk">Save workout</button>` : `<button class="btn block" data-a="sumBack">Back to workout</button><button class="self-c c-neg link" data-a="wkDiscard">Discard workout</button>`}
   </div>`;
 }
 function saveWorkout() {
@@ -1752,7 +1768,7 @@ function openKeypad(ei, si, f) {
   const D = f === 'w' ? { step: U() === 'lb' ? 2.5 : 1.25, every: U() === 'lb' ? 4 : 8, px: 12 } : { step: 1, every: 5, px: 24 };
   D.n = Math.round(Math.max(f === 'w' ? (U() === 'lb' ? 400 : 180) : 40, (parseFloat(cur()) || 0) * 1.5) / D.step) + 1;
   const dialHTML = () => { let t = ''; for (let i = 0; i < D.n; i++) { const m = i % D.every === 0; t += `<i class="${m ? 'm' : ''}">${m ? `<b>${trim(i * D.step)}</b>` : ''}</i>`; } return `<div class="rel"><div class="ruler" id="kp-dial" style="--tw:${D.px}px"><div class="ruler-in">${t}</div></div><span class="ruler-mark"></span></div>`; };
-  const html = () => `<div class="g4 stack"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div>${f === 'w' && usesPlates(e.name) ? `<button class="btn sm" data-k="plates" style="margin-right:8px">${PLATE_ICON} Plates</button>` : ''}<div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
+  const html = () => `<div class="g4 stack"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div>${f === 'w' ? `<button class="btn sm" data-k="plates" style="margin-right:8px">${PLATE_ICON} Plates</button>` : ''}<div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
     ${dialHTML()}
     <div class="keys">
       ${['1', '2', '3'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[0]}">${q[0]}</button>
