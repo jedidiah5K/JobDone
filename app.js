@@ -2252,7 +2252,7 @@ function finishImport(msg) {
   persist(...allPaths());
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
   render();
-  toast(msg);
+  toast(msg); const tt = document.querySelector('.toast'); if (tt) tt.classList.add('low');
 }
 // Restore a JobDone JSON backup (Me → Export JSON) or start from a CSV log.
 function stateFromBackup(o) {
@@ -2291,6 +2291,7 @@ const TEMPLATES = {
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what JobDone does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
+const OB_NAMES = { home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
 const OB_STEPS = ['home', 'tour', 'you', 'goal', 'exp', 'theme', 'prefs', 'train', 'plan'];
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
@@ -2311,7 +2312,7 @@ function obTour() {
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
 }
 function obBody(k) {
-  if (k === 'home') return `<div class="ob-hero"><h1>First, put JobDone on your Home Screen</h1><p class="sec">It opens full screen like a real app, keeps you signed in, and can tell you when rest is over.</p></div>
+  if (k === 'home') return `<div class="ob-hero"><h1>Add JobDone to your Home Screen</h1><p class="sec">It opens full screen like an app, keeps you signed in, and can notify you when rest is over.</p></div>
     ${isStandalone() ? `<div class="note ok">You’re already using JobDone from your Home Screen. Nice.</div>` : `<div class="seg"><button data-os="ios" class="${OB.os === 'ios' ? 'on' : ''}">iPhone</button><button data-os="android" class="${OB.os === 'android' ? 'on' : ''}">Android</button></div>
     ${OB.os === 'android' && installEvt ? '<button class="btn block" id="ob-inst">Install now</button>' : ''}${installSteps(OB.os)}<p class="cap">Then open JobDone from its new icon and sign in once more. You can find these steps again in Me.</p>`}`;
   if (k === 'tour') return `<h1 class="ob-t">Here’s what JobDone does</h1>${obTour()}`;
@@ -2326,18 +2327,18 @@ function obBody(k) {
     <div class="field"><span class="lbl">Workouts per week</span><div class="seg">${[2, 3, 4, 5, 6].map(n => `<button data-days="${n}" class="${OB.days === n ? 'on' : ''}">${n}</button>`).join('')}</div></div>`;
   if (k === 'exp') return `<h1 class="ob-t">How long have you been lifting?</h1><p class="sec ob-s">Newer lifters get higher reps to learn the moves. You can change any target later.</p>
     <div class="tmpl">${Object.entries(OB_EXP).map(([e, [n, d, lo, hi]]) => `<button data-exp="${e}" class="${OB.exp === e ? 'on' : ''}"><b>${n}</b><span>${d} · ${lo} to ${hi} reps</span></button>`).join('')}</div>`;
-  if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Each theme has its own scenery and its own voice when you finish a set. Change it any time in Me.</p>
-    <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i style="background:${t.sw}"></i><b>${t.name}</b><span>${esc(pick(THEME_MSG[t.k].great))}</span></button>`).join('')}</div>`;
+  if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Each theme has its own scenery and its own voice when you finish a set. You can switch any time in Me.</p>
+    <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i class="thp thp-${t.k}"></i><b>${t.name}</b><span>${esc(pick(THEME_MSG[t.k].great))}</span></button>`).join('')}</div>`;
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
-    <div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest')}
-    ${row('music', 'Keep my music playing', 'Sounds mix over your music. Turn off to hear sounds on silent mode, but iPhone pauses your music to do it')}
-    ${HOSTED ? row('push', 'Notify when rest ends', pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Works once JobDone is on your Home Screen. Turn it on later in Me') : ''}
-    ${row('autoRest', 'Start rest after each set', 'The rest timer starts by itself when you tick a set')}
+    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest')}
+    ${row('music', 'Keep my music playing', 'Sounds mix over your music. Turn off to hear sounds on silent mode; iPhone then pauses your music')}</div></section>
+    <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once JobDone is on your Home Screen. Turn it on later in Me') : ''}
+    ${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
+    <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
     ${row('wake', 'Keep screen awake', 'While a workout is open')}
-    ${row('weigh', 'Daily weigh-in reminder', 'Asks for your weight the first time you open the app each day')}
-    ${row('confetti', 'Confetti', 'For PRs and finished workouts')}</div>`;
+    ${row('confetti', 'Celebrations', 'Confetti for PRs and finished workouts')}</div></section>`;
   }
   if (k === 'train') {
     const P = OB.prefs, seg = (f, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-pv="${f}" data-v="${v}" class="${String(P[f]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -2357,10 +2358,10 @@ function obBody(k) {
 function renderWelcomePublic() {
   if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: 3, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: false, autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
   const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
-  document.documentElement.classList.add('ob-on');
-  const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Set me up' : last ? 'Start training' : 'Continue';
-  $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div><span class="cap num">${OB.step + 1}/${OB_STEPS.length}</span></div>
-    <div class="ob-body stack" data-k="${k}">${obBody(k)}</div>
+  document.documentElement.classList.add('ob-on'); document.documentElement.dataset.theme = 'mono'; delete document.documentElement.dataset.tod;
+  const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Next' : last ? 'Start training' : 'Continue';
+  $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div></div>
+    <div class="ob-body stack" data-k="${k}"><div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES[k]}</div>${obBody(k)}</div>
     <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${k === 'home' && !isStandalone() ? '<button class="self-c link" id="ob-later">I’ll do it later</button>' : ''}</div></main>`;
   const q = x => $('#app').querySelector(x), qa = x => $('#app').querySelectorAll(x);
   const keep = () => { const f = id => { const e = q(id); return e ? e.value.trim() : null; }; const n = f('#ob-name'); if (n != null) { OB.name = n; OB.w = f('#ob-w'); OB.gw = f('#ob-gw'); OB.h = f('#ob-h'); } };
@@ -2372,7 +2373,7 @@ function renderWelcomePublic() {
   qa('[data-goal]').forEach(b => b.onclick = () => { OB.goal = b.dataset.goal; if (OB.goal === 'strength' && OB.exp !== 'new') OB.exp = 'pro'; renderWelcomePublic(); });
   qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
   qa('[data-exp]').forEach(b => b.onclick = () => { OB.exp = b.dataset.exp; OB.plan = null; renderWelcomePublic(); });
-  qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; applyTheme(OB.theme); renderWelcomePublic(); });
+  qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; qa('[data-th]').forEach(x => x.classList.toggle('on', x === b)); });
   qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
   qa('[data-pf]').forEach(b => b.onclick = async () => {
     const f = b.dataset.pf, on = !OB.prefs[f];
@@ -2380,7 +2381,7 @@ function renderWelcomePublic() {
     OB.prefs[f] = on; renderWelcomePublic();
   });
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
-  const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); };
+  const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Set me up' : 'Next'; };
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
   q('#ob-next').onclick = () => {
     keep(); const err = m => { q('#ob-err').textContent = m; };
@@ -2404,7 +2405,7 @@ function obFinish() {
   for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
   if (UI) UI.lastPrompt = today();
   applyTheme(OB.theme); OB = null; document.documentElement.classList.remove('ob-on');
-  finishImport(S.splits.length ? `You’re set, ${p.name}. Your first workout is on Today.` : 'Ready. Add a split to get started.');
+  finishImport(S.splits.length ? `You’re all set, ${p.name}. Your first workout is ready.` : 'Ready. Add a split to get started.');
 }
 
 // ---------- CSV import / export ----------
