@@ -1210,6 +1210,9 @@ function hourglass(p, paused) {
 const Sound = {
   ctx: null, master: null,
   unlock() {
+    // Set the mixing mode BEFORE any audio starts: creating the audio context under the default
+    // session is what stopped Job's music the moment the app was touched.
+    if (!(S && S.profile && S.profile.soundSilent) && navigator.audioSession && navigator.audioSession.type !== 'ambient') try { navigator.audioSession.type = 'ambient'; } catch (e) {}
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
       this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
@@ -1238,6 +1241,8 @@ const Sound = {
   },
 };
 let sfxLast = null;
+// Music-friendly from the first moment the page loads.
+if (navigator.audioSession) try { navigator.audioSession.type = 'ambient'; } catch (e) {}
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => Sound.unlock(), { passive: true, capture: true }));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Sound.ctx) Sound.ctx.resume(); });
 function tones(notes, type = 'sine', vol = .22) {
