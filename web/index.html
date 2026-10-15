@@ -2714,10 +2714,12 @@ function openPlates(target, onUse, o = {}) {
   const svg = () => {
     const W = 340, cx = W / 2, H = 170, cy = H / 2;
     let xR = cx + 62, xL = cx - 62, out = '';
-    side.forEach((p, i) => { const h = plateH(p), w = p >= (U() === 'lb' ? 25 : 10) ? 15 : 10, col = PLATE_COL[p] || 'var(--accent)', nw = i === fresh ? ' new' : '';
-      out += `<g class="pl R${nw}" data-i="${i}"><rect x="${xR}" y="${cy - h / 2}" width="${w}" height="${h}" rx="4" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xR + 2}" y="${cy - h / 2 + 4}" width="3" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
-      out += `<g class="pl L${nw}" data-i="${i}"><rect x="${xL - w}" y="${cy - h / 2}" width="${w}" height="${h}" rx="4" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xL - w + 2}" y="${cy - h / 2 + 4}" width="3" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
-      xR += w + 2; xL -= w + 2; });
+    // Heavy loads: squeeze plate thickness and gaps so every plate stays on the sleeve (Job, 15 Oct: 330 kg overflowed).
+    const pw = p => p >= (U() === 'lb' ? 25 : 10) ? 15 : 10, need = side.reduce((a, p) => a + pw(p) + 2, 0), k = Math.min(1, (W - 10 - xR) / (need || 1));
+    side.forEach((p, i) => { const h = plateH(p), w = pw(p) * k, col = PLATE_COL[p] || 'var(--accent)', nw = i === fresh ? ' new' : '';
+      out += `<g class="pl R${nw}" data-i="${i}"><rect x="${xR}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xR + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
+      out += `<g class="pl L${nw}" data-i="${i}"><rect x="${xL - w}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xL - w + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
+      xR += w + 2 * k; xL -= w + 2 * k; });
     return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/><rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/><rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
   };
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
