@@ -1269,21 +1269,22 @@ function clank(big = 1, delay = 0) {
   if (!Sound.ctx) Sound.unlock(); if (!Sound.ctx || Sound.ctx.state !== 'running') { if (Sound.ctx) Sound.ctx.resume(); return; }
   const c = Sound.ctx, lo = 1 - Math.min(1, Math.max(0, big)) * .3, out = c.createGain();
   out.gain.value = 1; out.connect(Sound.master); Sound.master.gain.value = 1;
-  // Iron on iron: a hard bright clack, then a smaller bounce clack as the plate settles against the next one.
+  // Tuned to Job's clip of plates clanking (15 Oct): a ringing iron clang with resonances near 760, 1345,
+  // 2250 and 2745 Hz that rings out for about a third of a second, a soft low knock, and sometimes a small rebound.
   const hit = (t, v) => {
-    const n = c.createBuffer(1, c.sampleRate * .05, c.sampleRate), d = n.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4);
-    const src = c.createBufferSource(), hp = c.createBiquadFilter(), ng = c.createGain();
-    src.buffer = n; hp.type = 'highpass'; hp.frequency.value = 1400 * lo; ng.gain.value = .9 * v; src.connect(hp).connect(ng).connect(out); src.start(t);
-    const th = c.createOscillator(), tg = c.createGain(); th.type = 'triangle'; th.frequency.setValueAtTime(190 * lo, t); th.frequency.exponentialRampToValueAtTime(70, t + .07);
-    tg.gain.setValueAtTime(.45 * v, t); tg.gain.exponentialRampToValueAtTime(.0001, t + .09); th.connect(tg).connect(out); th.start(t); th.stop(t + .1);
-    [[1310, .22, .09], [1960, .2, .07], [2730, .16, .06], [3390, .12, .05], [4860, .08, .035], [6120, .05, .025]].forEach(([f, g0, len]) => {
-      const o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.value = f * lo * (1 + (Math.random() - .5) * .02);
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(g0 * v * .35, t + .001); g.gain.exponentialRampToValueAtTime(.0001, t + len * (1.4 - lo * .4));
-      o.connect(g).connect(out); o.start(t); o.stop(t + len + .02);
+    const n = c.createBuffer(1, c.sampleRate * .03, c.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 5);
+    const src = c.createBufferSource(), bp = c.createBiquadFilter(), ng = c.createGain();
+    src.buffer = n; bp.type = 'bandpass'; bp.frequency.value = 2600 * lo; bp.Q.value = 1.2; ng.gain.value = .8 * v; src.connect(bp).connect(ng).connect(out); src.start(t);
+    const th = c.createOscillator(), tg = c.createGain(); th.type = 'sine'; th.frequency.setValueAtTime(250 * lo, t); th.frequency.exponentialRampToValueAtTime(120, t + .08);
+    tg.gain.setValueAtTime(.12 * v, t); tg.gain.exponentialRampToValueAtTime(.0001, t + .1); th.connect(tg).connect(out); th.start(t); th.stop(t + .12);
+    [[760, .09, .7], [1345, .15, .65], [2250, .17, .5], [2745, .2, .45], [3620, .1, .28], [5100, .06, .14]].forEach(([f, g0, len]) => {
+      const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f * lo * (1 + (Math.random() - .5) * .012);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(g0 * v, t + .0015); g.gain.exponentialRampToValueAtTime(.0001, t + len * (.75 + big * .35));
+      o.connect(g).connect(out); o.start(t); o.stop(t + len * 1.15 + .02);
     });
   };
-  const t = c.currentTime + delay; hit(t, 1); hit(t + .055 + Math.random() * .02, .45);
+  const t = c.currentTime + delay; hit(t, 1); if (Math.random() < .5) hit(t + .2 + Math.random() * .08, .3);
 }
 // What a finished set says, by reps.
 
