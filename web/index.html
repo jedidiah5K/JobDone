@@ -1113,7 +1113,7 @@ let syncState = 'ok';
 let ready = false;
 let REST = null;      // {end, total}
 let welcomeOv = {};
-let DEMO = false;     // judges and visitors: a sample account in memory, nothing saved   // assumption overrides on the welcome screen
+let DEMO = false;     // sample account in memory for screenshots only (no button since Job removed it 15 Oct), nothing saved   // assumption overrides on the welcome screen
 
 function freshState() {
   return {
@@ -3900,7 +3900,6 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
     <div class="row between"><button class="link" id="si-switch">${make ? 'I have an account' : 'Create account'}</button>${make ? '' : '<button class="link" id="si-forgot">Forgot password?</button>'}</div>
     <div class="c-neg cap" id="si-msg" role="alert" style="min-height:18px">${esc(msg)}</div>
-    <button class="btn block" id="si-demo">Try the demo account</button><p class="m0 tc cap">Sample history, nothing saved. No sign-up needed.</p>
     <div class="tc cap legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></div>
   </div></main>`;
   const shownAt = Date.now();
@@ -3930,7 +3929,6 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   $('#si-go').onclick = go;
   $('#si-eye').onclick = () => { const show = $('#si-pw').type === 'password'; for (const id of ['#si-pw', '#si-pw2']) { const e = $(id); if (e) e.type = show ? 'text' : 'password'; } $('#si-eye').textContent = show ? 'Hide' : 'Show'; $('#si-eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
   for (const id of ['#si-email', '#si-pw', ...(make ? ['#si-pw2'] : [])]) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
-  $('#si-demo').onclick = () => startDemo();
   $('#si-switch').onclick = () => renderSignIn(make ? 'start' : 'create', $('#si-email').value.trim());
   if (!make) $('#si-forgot').onclick = async () => {
     const em = emailOk(); if (!em) return;
@@ -4020,7 +4018,6 @@ function livingBackground() {
 }
 async function boot() {
   applyTheme();
-  if (/^#demo$/.test(location.hash)) { livingBackground(); startDemo(); return; }
   livingBackground();
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
