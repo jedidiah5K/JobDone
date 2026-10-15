@@ -414,7 +414,7 @@ function closeSheet(sh) {
 }
 function setSheet(sh, html) { const b = sh.el.querySelector('.sheet-body'); b.innerHTML = html; if (sh.opts.mount) sh.opts.mount(b, sh); }
 function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }) {
-  const sh = openSheet(`<div class="stack"><h2>${esc(title)}</h2>${body ? `<p class="sec" style="margin:0">${body}</p>` : ''}
+  const sh = openSheet(`<div class="stack"><h2>${esc(title)}</h2>${body ? `<p class="m0 sec">${body}</p>` : ''}
     <button class="btn block ${danger ? 'danger' : 'primary'}" id="cf-ok">${esc(ok)}</button><button class="btn block ghost" data-a="closeSheet">Cancel</button></div>`, { label: title });
   sh.el.querySelector('#cf-ok').onclick = () => { closeSheet(sh); onOk(); };
 }
@@ -445,7 +445,7 @@ function render() {
   NAV.keepScroll = false;
   const tab = (k, label, ic) => `<button class="tab ${NAV.tab === k ? 'on' : ''}" data-a="tab" data-k="${k}" aria-label="${label}" ${NAV.tab === k ? 'aria-current="page"' : ''}>${ic}<span>${label}</span></button>`;
   $('#tabs').innerHTML = tab('today', 'Today', I.today) + tab('splits', 'Splits', I.splits) +
-    `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}</button>` +
+    `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
 }
@@ -509,6 +509,7 @@ function inkOn(hex) {
 // A burst of hold-coloured confetti for PRs and finished workouts.
 function confetti(n = 60) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  n = Math.min(40, Math.round(n * .4)); // brief and subtle since the Oct 2026 redesign
   const cols = ({ mono: ['#F4F5FA', '#6C7AA8', '#1C1D26'], spidey: ['#E2231A', '#FFFFFF', '#5B8CFF'], miles: ['#E3262E', '#FFE94D', '#FFFFFF', '#7FD8FF'], cliffs: ['#1F7A99', '#F2A93B', '#D2553A', '#3F8F5A', '#FFFFFF'] })[document.documentElement.dataset.theme] || ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
   for (let i = 0; i < n; i++) { const e = document.createElement('i'); e.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};--x:${(Math.random() - .5) * 160}px;--r:${(Math.random() - .5) * 900}deg;--d:${1.1 + Math.random() * .9}s;animation-delay:${Math.random() * .25}s;transform:scale(${.7 + Math.random() * .8})`; box.appendChild(e); }
   document.body.appendChild(box); setTimeout(() => box.remove(), 2600);
@@ -543,14 +544,14 @@ const datePick = d => `<label class="cap datepick">${esc(d === today() ? 'Today,
 // What was trained on a past day, or buttons to log it.
 function dayWorkoutCard(d) {
   const ws = Object.values(S.workouts).filter(w => w.date === d && !w.skipped), sk = Object.values(S.workouts).some(w => w.date === d && w.skipped);
-  const log = A ? `<div class="cap" style="margin-top:12px">Finish the workout in progress to log another one.</div>` : `<div class="cap" style="margin-top:16px">${ws.length ? 'Log another workout' : 'Log a workout for this day'}</div><div class="chips wrap" style="margin-top:8px">${S.splits.filter(x => !x.archived).map(sp => `<button class="chip" data-a="logDay" data-id="${sp.id}" data-k="${d}"><i class="sdot" style="background:${sp.color}"></i>${esc(sp.name)}</button>`).join('')}<button class="chip" data-a="logDay" data-id="" data-k="${d}">Empty</button></div>`;
-  if (!ws.length) return `<div class="card"><div class="card-h"><span class="eyebrow">Workout</span></div><div class="mid" style="margin-top:6px">${sk ? 'Skipped' : 'Rest day'}</div><div class="cap">Nothing logged ${esc(relDay(d))}.</div>${log}</div>`;
+  const log = A ? `<div class="mt3 cap">Finish the workout in progress to log another one.</div>` : `<div class="mt4 cap">${ws.length ? 'Log another workout' : 'Log a workout for this day'}</div><div class="mt2 chips wrap">${S.splits.filter(x => !x.archived).map(sp => `<button class="chip" data-a="logDay" data-id="${sp.id}" data-k="${d}"><i class="sdot" style="background:${sp.color}"></i>${esc(sp.name)}</button>`).join('')}<button class="chip" data-a="logDay" data-id="" data-k="${d}">Empty</button></div>`;
+  if (!ws.length) return `<div class="card"><div class="card-h"><span class="eyebrow">Workout</span></div><div class="mt2 mid">${sk ? 'Skipped' : 'Rest day'}</div><div class="cap">Nothing logged ${esc(relDay(d))}.</div>${log}</div>`;
   return ws.map(w => { const sp = wSplit(w), c = sp ? sp.color : 'var(--accent)', sets = w.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
     return `<div class="card nextup" style="--split:${c};--ink:${sp ? inkOn(sp.color) : '#fff'}">
     <div class="card-h"><span class="eyebrow">Workout</span><span class="cap">${w.end && w.start ? fmtDur(w.end - w.start) : ''}</span></div>
     <div class="hero"><i class="sdot" style="background:${c}"></i>${esc(w.splitName)}</div>
-    <div class="cap" style="margin-top:10px">${w.ex.length} exercises · ${sets} sets · ${n0(wVol(w))} ${U()} lifted</div>
-    <div class="row" style="margin-top:16px;gap:8px"><button class="btn primary grow" data-a="openW" data-id="${w.id}">Open and edit</button><button class="btn" data-a="recap" data-id="${w.id}">Recap</button></div>
+    <div class="mt3 cap">${w.ex.length} exercises · ${sets} sets · ${n0(wVol(w))} ${U()} lifted</div>
+    <div class="mt4 g2 row"><button class="btn primary grow" data-a="openW" data-id="${w.id}">Open and edit</button><button class="btn" data-a="recap" data-id="${w.id}">Recap</button></div>
     <div class="list nextlist">${w.ex.map(e => `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${e.sets.filter(x => x.w != null || x.r != null).map(setStr).join(', ') || '—'}</span></div>`).join('')}</div></div>`; }).join('');
 }
 function viewToday() {
@@ -575,36 +576,36 @@ function viewToday() {
   const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">
   ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div><div class="eyebrow">${esc(longDay(t))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>`}
-  ${A ? `<button class="card row between" data-a="resume" style="text-align:left;border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 style="margin-top:4px">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
+  ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow">Next up</span><button class="cap" data-a="tab" data-k="splits" style="min-height:32px">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
-    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="cap" style="margin-top:10px">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      <button class="btn primary block" style="margin-top:18px" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
-      <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="cap" style="padding-top:10px">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
+    <div class="card-h"><span class="eyebrow">Next up</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
+    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+      <button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
+      <div class="list nextlist">${nx.ex.slice(0, 4).map(e => { const l = lastSession(e.name); return `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${l ? l.sets.map(setStr).join(', ') : '—'}</span></div>`; }).join('')}${nx.ex.length > 4 ? `<div class="pt3 cap">+ ${nx.ex.length - 4} more</div>` : ''}</div>`
       : `<div class="empty">Create a split to get started.</div>`}
   </div>`}
-  <button class="card" data-a="weigh" data-k="${t}" style="text-align:left;width:100%">
+  <button class="tl full card" data-a="weigh" data-k="${t}">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
-    <div class="cap" style="text-align:right">${loggedToday && weightOn(addDays(t, -1)) && lw ? 'vs last ' + wdelta(lw.w, weightOn(addDays(t, -1)).w) : ''}</div></div>
-    <div class="kpis" style="margin-top:14px"><div class="kpi"><b>${a7 ? bw(a7) : '—'}</b><span>7-day avg</span></div><div class="kpi"><b>${since == null ? '—' : bw(since, true)}</b><span>since ${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${(() => { const r = ratePerMonth(); return r == null ? '—' : bw(r, true); })()}</b><span>per month</span></div></div>
-    <div style="margin-top:12px">${wchart}</div>
+    <div class="tr cap">${loggedToday && weightOn(addDays(t, -1)) && lw ? 'vs last ' + wdelta(lw.w, weightOn(addDays(t, -1)).w) : ''}</div></div>
+    <div class="mt4 kpis"><div class="kpi"><b>${a7 ? bw(a7) : '—'}</b><span>7-day avg</span></div><div class="kpi"><b>${since == null ? '—' : bw(since, true)}</b><span>since ${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${(() => { const r = ratePerMonth(); return r == null ? '—' : bw(r, true); })()}</b><span>per month</span></div></div>
+    <div class="mt3">${wchart}</div>
   </button>
   <div class="grid2">
-    <button class="card" data-a="steps" data-k="${t}" style="text-align:left">
+    <button class="tl card" data-a="steps" data-k="${t}">
       <div class="eyebrow">Steps</div>
-      <div class="row" style="margin-top:10px"><div class="ring"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--raised)" stroke-width="8"/>${frac > 0 ? `<circle cx="42" cy="42" r="36" fill="none" stroke="${frac >= 1 ? 'var(--pos)' : 'var(--text)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 36 * frac).toFixed(1)} 999"/>` : ''}</svg><div class="c">${Math.round(frac * 100)}%</div></div></div>
-      <div class="mid" style="margin-top:10px;font-size:24px">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div>
+      <div class="mt3 row"><div class="ring"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--raised)" stroke-width="8"/>${frac > 0 ? `<circle cx="42" cy="42" r="36" fill="none" stroke="${frac >= 1 ? 'var(--pos)' : 'var(--text)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 36 * frac).toFixed(1)} 999"/>` : ''}</svg><div class="c">${Math.round(frac * 100)}%</div></div></div>
+      <div class="mt3 f22 mid">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div>
     </button>
     <div class="card">
       <div class="eyebrow">This week</div>
-      <div class="mid" style="margin-top:10px">${done}<span class="unit">/ ${p.weeklyTarget}</span></div>
+      <div class="mt3 mid">${done}<span class="unit">/ ${p.weeklyTarget}</span></div>
       <div class="cap">workouts</div>
-      <div class="cap" style="margin-top:12px">${past ? 'week of ' + esc(fmtDate(ws)) : streakText()}</div>
+      <div class="mt3 cap">${past ? 'week of ' + esc(fmtDate(ws)) : streakText()}</div>
     </div>
   </div>
   <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div><div class="week">${strip}</div></div>
-  ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="cap" data-a="prog" data-k="strength" style="min-height:32px">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
+  ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
 function ratePerMonth() {
@@ -621,7 +622,7 @@ function streakText() {
   return k ? `${k}-week streak` : 'Train this week to start a streak';
 }
 function prRow(p) {
-  return `<button class="li" data-a="openEx" data-name="${esc(p.ex)}"><div class="grow"><div class="t">${esc(p.ex)}</div><div class="s">${esc(fmtDate(p.date, { wd: true }))} · ${p.types.map(t => esc(t)).join(', ')}</div></div><span class="num" style="font-weight:650">${setStr(p.set)}</span><span class="pill pr">PR</span></button>`;
+  return `<button class="li" data-a="openEx" data-name="${esc(p.ex)}"><div class="grow"><div class="t">${esc(p.ex)}</div><div class="s">${esc(fmtDate(p.date, { wd: true }))} · ${p.types.map(t => esc(t)).join(', ')}</div></div><span class="fw6 num">${setStr(p.set)}</span><span class="pill pr">PR</span></button>`;
 }
 
 // ---------- Splits ----------
@@ -637,13 +638,13 @@ function viewSplits() {
   const card = sp => {
     const l = lastOfSplit(sp);
     const vols = ix().ws.filter(w => !w.skipped && (w.splitId === sp.id || (!w.splitId && w.splitName === sp.name))).slice(-8).map(wVol);
-    return `<button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="row" style="gap:8px"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="cap" style="margin-top:3px">${sp.ex.length} exercises · ${l ? relDay(l.date) : 'never done'}</div>${splitMuscles(sp)}</div>${sparkline(vols, sp.color)}${I.right}</button>`;
+    return `<button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${sp.ex.length} exercises · ${l ? relDay(l.date) : 'never done'}</div>${splitMuscles(sp)}</div>${sparkline(vols, sp.color)}${I.right}</button>`;
   };
   return `<div class="stack">
   <div class="top"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
-  <button class="card tight row between" data-a="rotation" style="text-align:left"><div><div class="eyebrow">Rotation</div><div style="margin-top:4px;font-weight:600">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div></div><span class="cap">Edit</span></button>
+  <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div></div><span class="cap">Edit</span></button>
   ${act.map(card).join('')}
-  ${arc.length ? `<details><summary class="link">Archived (${arc.length})</summary><div class="stack" style="margin-top:8px">${arc.map(card).join('')}</div></details>` : ''}
+  ${arc.length ? `<details><summary class="link">Archived (${arc.length})</summary><div class="mt2 stack">${arc.map(card).join('')}</div></details>` : ''}
 </div>`;
 }
 const targetStr = e => `${e.sets} × ${e.repMin}${e.repMax !== e.repMin ? '–' + e.repMax : ''} · ${clock(e.rest)} rest`;
@@ -651,26 +652,26 @@ function viewSplit({ id }) {
   const sp = splitById(id); if (!sp) return backBtn();
   const l = lastOfSplit(sp);
   return `<div class="stack">${backBtn('Splits')}
-  <div class="top" style="padding-top:0"><div class="grow"><div class="eyebrow" style="color:${sp.color}">Split</div><h1>${esc(sp.name)}</h1><div class="cap" style="margin-top:6px">${sp.ex.length} exercises · ${l ? 'last done ' + fmtDate(l.date, { wd: true }) : 'never done'}</div></div></div>
+  <div class="pt0 top"><div class="grow"><div class="eyebrow" style="color:${sp.color}">Split</div><h1>${esc(sp.name)}</h1><div class="mt2 cap">${sp.ex.length} exercises · ${l ? 'last done ' + fmtDate(l.date, { wd: true }) : 'never done'}</div></div></div>
   <div class="row"><button class="btn primary grow" data-a="startSplit" data-id="${sp.id}" ${A ? 'disabled' : ''}>${A ? 'Workout in progress' : 'Start ' + esc(sp.name)}</button><button class="btn" data-a="editSplit" data-id="${sp.id}">Edit</button></div>
-  <div class="card"><div class="list">${sp.ex.map(e => { const ls = lastSession(e.name); return `<button class="li" data-a="openEx" data-name="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${targetStr(e)}</div><div class="s num" style="margin-top:2px">Last time: ${ls ? ls.sets.map(setStr).join(', ') + ' · ' + relDay(ls.date) : '—'}</div>${e.note ? `<div class="s" style="font-style:italic">${esc(e.note)}</div>` : ''}</div>${I.right}</button>`; }).join('') || '<div class="empty">No exercises yet. Tap Edit to add some.</div>'}</div></div>
+  <div class="card"><div class="list">${sp.ex.map(e => { const ls = lastSession(e.name); return `<button class="li" data-a="openEx" data-name="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${targetStr(e)}</div><div class="mt1 s num">Last time: ${ls ? ls.sets.map(setStr).join(', ') + ' · ' + relDay(ls.date) : '—'}</div>${e.note ? `<div class="it s">${esc(e.note)}</div>` : ''}</div>${I.right}</button>`; }).join('') || '<div class="empty">No exercises yet. Tap Edit to add some.</div>'}</div></div>
 </div>`;
 }
 function viewSplitEdit({ id }) {
   const sp = splitById(id); if (!sp) return backBtn();
-  return `<div class="stack"><div class="row between"><h2 style="margin:0">Edit split</h2><button class="btn sm primary" data-a="back">Done</button></div>
+  return `<div class="stack"><div class="row between"><h2 class="m0">Edit split</h2><button class="btn sm primary" data-a="back">Done</button></div>
   <div class="field"><label for="sp-name">Name</label><input class="input" id="sp-name" data-in="spName" data-id="${sp.id}" value="${esc(sp.name)}" maxlength="30"></div>
   <div class="field"><span class="lbl">Colour</span><div class="chips">${PALETTE.map(c => `<button class="chip ${sp.color === c ? 'on' : ''}" data-a="spColor" data-id="${sp.id}" data-c="${c}" aria-label="Colour ${c}"><span style="width:14px;height:14px;border-radius:50%;background:${c};display:inline-block"></span></button>`).join('')}</div></div>
   <h2>Exercises</h2>
-  ${sp.ex.map((e, i) => `<div class="card tight stack" style="gap:8px">
-    <div class="row"><div class="grow ex-name" style="font-size:16px">${esc(e.name)}</div>
+  ${sp.ex.map((e, i) => `<div class="g2 card tight stack">
+    <div class="row"><div class="f17 grow ex-name">${esc(e.name)}</div>
       <button class="icon-btn" data-a="spMove" data-id="${sp.id}" data-i="${i}" data-d="-1" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>${I.up1}</button>
       <button class="icon-btn" data-a="spMove" data-id="${sp.id}" data-i="${i}" data-d="1" aria-label="Move down" ${i === sp.ex.length - 1 ? 'disabled' : ''}>${I.dn1}</button>
       <button class="icon-btn" data-a="spRemove" data-id="${sp.id}" data-i="${i}" aria-label="Remove ${esc(e.name)}">${I.x}</button></div>
-    <div class="row wrap" style="gap:8px">
-      <label class="row cap" style="gap:6px">Sets <input class="input sm num" style="width:52px" inputmode="numeric" id="se-${i}-sets" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="sets" value="${e.sets}"></label>
-      <label class="row cap" style="gap:6px">Reps <input class="input sm num" style="width:48px" inputmode="numeric" id="se-${i}-min" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="repMin" value="${e.repMin}">–<input class="input sm num" style="width:48px" inputmode="numeric" id="se-${i}-max" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="repMax" value="${e.repMax}"></label>
-      <label class="row cap" style="gap:6px">Rest <input class="input sm num" style="width:60px" inputmode="numeric" id="se-${i}-rest" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="rest" value="${e.rest}">s</label>
+    <div class="g2 row wrap">
+      <label class="g2 row cap">Sets <input class="input sm num" style="width:52px" inputmode="numeric" id="se-${i}-sets" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="sets" value="${e.sets}"></label>
+      <label class="g2 row cap">Reps <input class="input sm num" style="width:48px" inputmode="numeric" id="se-${i}-min" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="repMin" value="${e.repMin}">–<input class="input sm num" style="width:48px" inputmode="numeric" id="se-${i}-max" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="repMax" value="${e.repMax}"></label>
+      <label class="g2 row cap">Rest <input class="input sm num" style="width:60px" inputmode="numeric" id="se-${i}-rest" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="rest" value="${e.rest}">s</label>
     </div>
     <input class="input sm" placeholder="Note: seat height, grip, cue" id="se-${i}-note" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="note" value="${esc(e.note || '')}">
   </div>`).join('')}
@@ -695,15 +696,15 @@ function progBody() {
   const bmi = w => p.heightCm ? (w / ((p.heightCm / 100) ** 2)).toFixed(1) : '—';
   const st = steps30();
   return `<div class="card"><div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${U()}</span></div>
-    <div class="chips" style="margin-bottom:10px">${Object.keys(ranges).map(k => `<button class="chip ${NAV.range === k ? 'on' : ''}" data-a="range" data-k="${k}">${k}</button>`).join('')}</div>
+    <div class="mb3 seg">${Object.keys(ranges).map(k => `<button class="${NAV.range === k ? 'on' : ''}" data-a="range" data-k="${k}">${k}</button>`).join('')}</div>
     ${lineChart({ series: [{ pts: list.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--text2)', dots: true, dotsOnly: list.length > 1, noArea: true, noEnd: true }, { pts: trend, color: 'var(--accent)', width: 2.6 }], h: 190, yfmt: v => bw(v) })}
-    <div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Trend</span><span><i style="background:var(--text2);width:6px;height:6px;border-radius:50%"></i>Logged</span><span><i style="background:transparent;border:1.5px solid var(--text2);width:7px;height:7px;border-radius:50%"></i>Estimated</span></div>
+    <div class="mt2 legend"><span><i style="background:var(--accent)"></i>Trend</span><span><i style="background:var(--text2);width:6px;height:6px;border-radius:50%"></i>Logged</span><span><i style="background:transparent;border:1.5px solid var(--text2);width:7px;height:7px;border-radius:50%"></i>Estimated</span></div>
   </div>
   <div class="card"><div class="kpis"><div class="kpi"><b>${fw ? bw(fw.w) : '—'}</b><span>${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div><div class="kpi"><b>${lw ? bw(lw.w) : '—'}</b><span>now</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>total change</span></div></div>
-    <div class="cap" style="margin-top:12px">${p.heightCm && fw ? `BMI ${bmi(fw.w)} → ${lw ? bmi(lw.w) : '—'} · ` : ''}${(() => { const r = ratePerMonth(); return r == null ? '' : 'about ' + bw(Math.abs(r)) + ' ' + U() + (r < 0 ? ' down' : ' up') + ' per month'; })()}</div>
+    <div class="mt3 cap">${p.heightCm && fw ? `BMI ${bmi(fw.w)} → ${lw ? bmi(lw.w) : '—'} · ` : ''}${(() => { const r = ratePerMonth(); return r == null ? '' : 'about ' + bw(Math.abs(r)) + ' ' + U() + (r < 0 ? ' down' : ' up') + ' per month'; })()}</div>
     <button class="link" data-a="weights">All weight entries</button></div>
-  <div class="card"><div class="card-h"><span class="eyebrow">Steps · last 30 days</span><button class="cap" data-a="steps" style="min-height:32px">Add</button></div>
-    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="legend" style="margin-top:8px"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Apple Health).</div>'}
+  <div class="card"><div class="card-h"><span class="eyebrow">Steps · last 30 days</span><button class="mh32 cap" data-a="steps">Add</button></div>
+    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Apple Health).</div>'}
   </div>`;
 }
 function steps30() {
@@ -714,9 +715,9 @@ function steps30() {
 }
 function viewWeights() {
   const l = weightList().reverse();
-  return `<div class="stack">${backBtn('Progress')}<div class="top" style="padding-top:0"><h1>Weight log</h1><button class="btn sm" data-a="weighDate">Add entry</button></div>
-  <p class="cap" style="margin:0">Hollow points on the chart are estimates from your starting numbers. Tap any entry to correct it.</p>
-  <div class="card"><div class="list">${l.map(e => `<button class="li" data-a="weighDate" data-d="${e.d}"><div class="grow"><div class="t">${esc(fmtDate(e.d, { wd: true, y: true }))}</div><div class="s">${e.src === 'estimated' ? 'Estimated' : e.src === 'import' ? 'Imported' : 'Logged'}</div></div><span class="num" style="font-weight:650">${bw(e.w)} ${U()}</span>${I.right}</button>`).join('')}</div></div></div>`;
+  return `<div class="stack">${backBtn('Progress')}<div class="pt0 top"><h1>Weight log</h1><button class="btn sm" data-a="weighDate">Add entry</button></div>
+  <p class="m0 cap">Hollow points on the chart are estimates from your starting numbers. Tap any entry to correct it.</p>
+  <div class="card"><div class="list">${l.map(e => `<button class="li" data-a="weighDate" data-d="${e.d}"><div class="grow"><div class="t">${esc(fmtDate(e.d, { wd: true, y: true }))}</div><div class="s">${e.src === 'estimated' ? 'Estimated' : e.src === 'import' ? 'Imported' : 'Logged'}</div></div><span class="fw6 num">${bw(e.w)} ${U()}</span>${I.right}</button>`).join('')}</div></div></div>`;
 }
 function exerciseGroups() {
   const h = ix().hist, groups = {};
@@ -736,7 +737,7 @@ function progStrength() {
     const h = ix().hist[n]; const cur = ix().best[n] ? ix().best[n].e1 : 0;
     const old = h.filter(s => daysBetween(s.date, today()) >= 28 && s.e1 > 0).map(s => s.e1);
     const prev = old.length ? Math.max(...old) : null;
-    return `<button class="li" data-a="openEx" data-name="${esc(g.names[0])}"><div class="grow"><div class="t">${esc(g.b)}${g.names.length > 1 ? ' <span class="cap">L / R</span>' : ''}</div><div class="s">${g.n} sessions · last ${relDay(g.last)}</div></div><div style="text-align:right"><div class="num" style="font-weight:650">${e1f(cur)}</div><div class="cap">${prev && cur ? delta(cur, prev, v => e1f(v)) + ' vs 4 wk' : ''}</div></div>${I.right}</button>`;
+    return `<button class="li" data-a="openEx" data-name="${esc(g.names[0])}"><div class="grow"><div class="t">${esc(g.b)}${g.names.length > 1 ? ' <span class="cap">L / R</span>' : ''}</div><div class="s">${g.n} sessions · last ${relDay(g.last)}</div></div><div class="tr"><div class="fw6 num">${e1f(cur)}</div><div class="cap">${prev && cur ? delta(cur, prev, v => e1f(v)) + ' vs 4 wk' : ''}</div></div>${I.right}</button>`;
   }).join('')}</div></div>`;
 }
 function weekKey(d) { return mondayOf(d); }
@@ -764,9 +765,9 @@ function progVolume() {
   }
   return `<div class="card"><div class="card-h"><span class="eyebrow">Weekly volume</span><span class="cap">${U()} lifted, last 12 weeks</span></div>${barChart({ bars, h: 160, yfmt: v => v >= 1000 ? trim(v / 1000) + 'k' : n0(v) })}</div>
   <div class="card"><div class="card-h"><span class="eyebrow">Sets per muscle</span><span class="cap">this week · <span style="color:var(--muted)">▮</span> 4-week avg</span></div>
-    <div class="stack" style="gap:8px">${musc.map(m => `<div class="hbar"><span class="sec">${m}</span><div class="b" style="position:relative"><i style="width:${(cur[m] || 0) / mx * 100}%;background:var(--text)"></i><span style="position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--muted);left:${(prev4[m] || 0) / mx * 100}%"></span></div><span class="num" style="text-align:right">${trim(cur[m] || 0)}</span></div>`).join('') || '<div class="empty">No sets this week yet.</div>'}</div>
-    ${note ? `<div class="note" style="margin-top:12px">${note}</div>` : ''}
-    <div class="cap" style="margin-top:10px">Left and right sides of one exercise count as one set together.</div></div>`;
+    <div class="g2 stack">${musc.map(m => `<div class="hbar"><span class="sec">${m}</span><div class="rel b"><i style="width:${(cur[m] || 0) / mx * 100}%;background:var(--text)"></i><span style="position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--muted);left:${(prev4[m] || 0) / mx * 100}%"></span></div><span class="tr num">${trim(cur[m] || 0)}</span></div>`).join('') || '<div class="empty">No sets this week yet.</div>'}</div>
+    ${note ? `<div class="mt3 note">${note}</div>` : ''}
+    <div class="mt3 cap">Left and right sides of one exercise count as one set together.</div></div>`;
 }
 function progHistory() {
   const ws = ix().ws.slice().reverse();
@@ -783,14 +784,14 @@ function progHistory() {
   let lastM = '', list = '';
   for (const w of ws) {
     const m = w.date.slice(0, 7);
-    if (m !== lastM) { list += `${lastM ? '</div></div>' : ''}<div class="card"><div class="eyebrow" style="margin-bottom:4px">${MON[+m.slice(5) - 1]} ${m.slice(0, 4)}</div><div class="list">`; lastM = m; }
+    if (m !== lastM) { list += `${lastM ? '</div></div>' : ''}<div class="card"><div class="mb1 eyebrow">${MON[+m.slice(5) - 1]} ${m.slice(0, 4)}</div><div class="list">`; lastM = m; }
     const sp = wSplit(w);
-    list += `<button class="li" data-a="openWk" data-id="${w.id}"><span class="tag" style="width:6px;height:32px;border-radius:3px;background:${sp ? sp.color : 'var(--muted)'};flex:none"></span><div class="grow"><div class="t">${esc(w.splitName || 'Workout')}${w.skipped ? ' <span class="pill" style="color:var(--neg)">Skipped</span>' : ''}</div><div class="s">${esc(fmtDate(w.date, { wd: true }))}${w.skipped ? '' : ' · ' + w.ex.length + ' exercises · ' + wSets(w) + ' sets'}${w.end && w.start ? ' · ' + fmtDur(w.end - w.start) : ''}</div></div><span class="num sec">${w.skipped ? '' : dvol(wVol(w))}</span>${I.right}</button>`;
+    list += `<button class="li" data-a="openWk" data-id="${w.id}"><span class="tag" style="width:6px;height:32px;border-radius:3px;background:${sp ? sp.color : 'var(--muted)'};flex:none"></span><div class="grow"><div class="t">${esc(w.splitName || 'Workout')}${w.skipped ? ' <span class="c-neg pill">Skipped</span>' : ''}</div><div class="s">${esc(fmtDate(w.date, { wd: true }))}${w.skipped ? '' : ' · ' + w.ex.length + ' exercises · ' + wSets(w) + ' sets'}${w.end && w.start ? ' · ' + fmtDur(w.end - w.start) : ''}</div></div><span class="num sec">${w.skipped ? '' : dvol(wVol(w))}</span>${I.right}</button>`;
   }
   if (lastM) list += '</div></div>';
   const trained = ws.filter(w => !w.skipped).length;
   return `<div class="card"><div class="card-h"><span class="eyebrow">Training days</span><span class="cap">${trained} workouts since ${fmtDate(start)}</span></div><div class="heat" aria-label="Calendar of training days">${cells}</div>
-  <div class="legend" style="margin-top:8px"><span><i style="background:var(--accent);height:8px;width:8px;border-radius:2px"></i>Heavier day</span><span><i style="background:#3a4a1a;height:8px;width:8px;border-radius:2px"></i>Lighter day</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--neg);height:8px;width:8px;border-radius:2px"></i>Skipped</span></div></div>
+  <div class="mt2 legend"><span><i style="background:var(--accent);height:8px;width:8px;border-radius:2px"></i>Heavier day</span><span><i style="background:#3a4a1a;height:8px;width:8px;border-radius:2px"></i>Lighter day</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--neg);height:8px;width:8px;border-radius:2px"></i>Skipped</span></div></div>
   ${list || '<div class="empty">No workouts yet.</div>'}`;
 }
 
@@ -815,13 +816,13 @@ function viewExercise(v) {
   const histSessions = sel.flatMap(n => (h[n] || []).map(s => ({ ...s, n }))).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.n < b.n ? -1 : 1);
   const info = exInfo(b);
   return `<div class="stack">${backBtn()}
-  <div class="top" style="padding-top:0"><div><button class="eyebrow" data-a="exCat" data-k="${esc(b)}" style="min-height:28px">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>
+  <div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set vol</span></div></div>
-  ${bw && B.e1 ? `<div class="cap" style="margin-top:10px">Strength-to-weight: e1RM is <b class="num" style="color:var(--text)">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
-  <div class="card"><div class="seg" style="margin-bottom:12px">${[['e1', 'e1RM'], ['top', 'Top set'], ['vol', 'Volume']].map(([k, l]) => `<button class="${v.metric === k ? 'on' : ''}" data-a="exMetric" data-k="${k}">${l}</button>`).join('')}</div>
+  ${bw && B.e1 ? `<div class="mt3 cap">Strength-to-weight: e1RM is <b class="c-text num">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
+  <div class="card"><div class="mb3 seg">${[['e1', 'e1RM'], ['top', 'Top set'], ['vol', 'Volume']].map(([k, l]) => `<button class="${v.metric === k ? 'on' : ''}" data-a="exMetric" data-k="${k}">${l}</button>`).join('')}</div>
     ${lineChart({ series, h: 180, yfmt: x => v.metric === 'vol' ? n0(x) : trim(Math.round(x * 10) / 10) })}
-    ${sel.length > 1 ? `<div class="legend" style="margin-top:8px">${sel.map((n, i) => `<span><i style="background:${colors[i]}"></i>${sideOf(n) === 'L' ? 'Left' : 'Right'}</span>`).join('')}</div>` : ''}
+    ${sel.length > 1 ? `<div class="mt2 legend">${sel.map((n, i) => `<span><i style="background:${colors[i]}"></i>${sideOf(n) === 'L' ? 'Left' : 'Right'}</span>`).join('')}</div>` : ''}
   </div>
   <div class="card"><div class="card-h"><span class="eyebrow">Best sets${sel.length > 1 ? ' · right side' : ''}</span><span class="cap">heaviest weight for at least N reps</span></div>
     <table class="tbl"><tr><th>Reps</th><th class="r">Weight</th><th class="r">Set</th><th class="r">Date</th></tr>${[1, 3, 5, 8, 10, 12].map(n => { const s = bestFor(n); return `<tr><td>${n}+</td><td class="r num">${s ? dw(s.w) + ' ' + U() : '—'}</td><td class="r num sec">${s ? setStr(s) : ''}</td><td class="r sec">${s ? fmtDate(s.date) : ''}</td></tr>`; }).join('')}</table></div>
@@ -834,14 +835,14 @@ function viewWorkout(v) {
   const w = S.workouts[v.id]; if (!w) return backBtn();
   const pr = new Map(ix().prs.filter(p => p.wid === w.id).map(p => [p.ex, p]));
   const ed = !!v.edit;
-  return `<div class="stack"><div class="row between">${backBtn()}<div class="row" style="gap:8px">${!ed && !w.skipped ? '<button class="btn sm" data-a="recap">Recap</button>' : ''}<button class="btn sm" data-a="wkEdit">${ed ? 'Done' : 'Edit'}</button></div></div>
-  <div class="top" style="padding-top:0"><div><div class="eyebrow">${esc(fmtDate(w.date, { wd: true, y: true }))}${w.src === 'import' ? ' · imported' : ''}</div><h1>${esc(w.splitName || 'Workout')}</h1></div></div>
+  return `<div class="stack"><div class="row between">${backBtn()}<div class="g2 row">${!ed && !w.skipped ? '<button class="btn sm" data-a="recap">Recap</button>' : ''}<button class="btn sm" data-a="wkEdit">${ed ? 'Done' : 'Edit'}</button></div></div>
+  <div class="pt0 top"><div><div class="eyebrow">${esc(fmtDate(w.date, { wd: true, y: true }))}${w.src === 'import' ? ' · imported' : ''}</div><h1>${esc(w.splitName || 'Workout')}</h1></div></div>
   ${ed ? `<div class="grid2"><div class="field"><label for="wk-date">Date</label><input class="input" type="date" id="wk-date" data-in="wkDate" value="${w.date}"></div><div class="field"><label for="wk-split">Split</label><select class="input" id="wk-split" data-in="wkSplit">${S.splits.map(s => `<option value="${s.id}" ${wSplit(w) === s ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div></div>` : ''}
-  ${w.skipped ? `<div class="card"><div class="empty">This session was skipped.</div></div>` : `<div class="card"><div class="kpis"><div class="kpi"><b>${dvol(wVol(w))}</b><span>${U()} volume</span></div><div class="kpi"><b>${wSets(w)}</b><span>sets</span></div><div class="kpi"><b>${w.end && w.start ? fmtDur(w.end - w.start) : '—'}</b><span>duration</span></div></div>${w.energy ? `<div class="cap" style="margin-top:10px">Energy ${w.energy}/5</div>` : ''}${w.note ? `<div class="note" style="margin-top:10px">${esc(w.note)}</div>` : ''}</div>`}
-  ${w.ex.map((e, ei) => `<div class="card tight"><div class="row between"><button class="ex-name" data-a="openEx" data-name="${esc(e.name)}" style="font-size:16px">${esc(e.name)}</button>${pr.has(e.name) ? `<span class="pill pr">PR · ${esc(pr.get(e.name).types[0])}</span>` : ''}</div>
-    ${e.note ? `<div class="cap" style="margin-top:2px">${esc(e.note)}</div>` : ''}
-    ${ed ? `<div class="stack" style="gap:6px;margin-top:8px">${e.sets.map((s, si) => `<div class="row" style="gap:6px"><span class="cap" style="width:22px">${si + 1}</span><input class="input sm num" style="width:84px" inputmode="decimal" id="ws-${ei}-${si}-w" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="w" value="${s.w == null ? '' : dw(s.w)}" aria-label="Weight"><span class="cap">${U()} ×</span><input class="input sm num" style="width:60px" inputmode="numeric" id="ws-${ei}-${si}-r" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="r" value="${s.r == null ? '' : s.r}" aria-label="Reps"><button class="icon-btn" data-a="wsDel" data-e="${ei}" data-s="${si}" aria-label="Delete set">${I.x}</button></div>`).join('')}</div>`
-      : `<div class="num sec" style="margin-top:6px;font-size:15px">${e.sets.map(setStr).join('  ·  ')}</div>`}
+  ${w.skipped ? `<div class="card"><div class="empty">This session was skipped.</div></div>` : `<div class="card"><div class="kpis"><div class="kpi"><b>${dvol(wVol(w))}</b><span>${U()} volume</span></div><div class="kpi"><b>${wSets(w)}</b><span>sets</span></div><div class="kpi"><b>${w.end && w.start ? fmtDur(w.end - w.start) : '—'}</b><span>duration</span></div></div>${w.energy ? `<div class="mt3 cap">Energy ${w.energy}/5</div>` : ''}${w.note ? `<div class="mt3 note">${esc(w.note)}</div>` : ''}</div>`}
+  ${w.ex.map((e, ei) => `<div class="card tight"><div class="row between"><button class="f17 ex-name" data-a="openEx" data-name="${esc(e.name)}">${esc(e.name)}</button>${pr.has(e.name) ? `<span class="pill pr">PR · ${esc(pr.get(e.name).types[0])}</span>` : ''}</div>
+    ${e.note ? `<div class="mt1 cap">${esc(e.note)}</div>` : ''}
+    ${ed ? `<div class="g2 mt2 stack">${e.sets.map((s, si) => `<div class="g2 row"><span class="cap" style="width:22px">${si + 1}</span><input class="input sm num" style="width:84px" inputmode="decimal" id="ws-${ei}-${si}-w" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="w" value="${s.w == null ? '' : dw(s.w)}" aria-label="Weight"><span class="cap">${U()} ×</span><input class="input sm num" style="width:60px" inputmode="numeric" id="ws-${ei}-${si}-r" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="r" value="${s.r == null ? '' : s.r}" aria-label="Reps"><button class="icon-btn" data-a="wsDel" data-e="${ei}" data-s="${si}" aria-label="Delete set">${I.x}</button></div>`).join('')}</div>`
+      : `<div class="mt2 f15 num sec">${e.sets.map(setStr).join('  ·  ')}</div>`}
   </div>`).join('')}
   ${ed ? `<div class="field"><label for="wk-note">Note</label><textarea class="input" id="wk-note" data-in="wkNote">${esc(w.note || '')}</textarea></div><button class="btn block danger" data-a="wkDelete">Delete this workout</button>` : ''}
 </div>`;
@@ -852,25 +853,25 @@ function viewMe() {
   const p = S.profile, lw = latestWeight(), fw = firstWeight();
   return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div></div>
   <div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>since ${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div></div>
-    <div class="cap" style="margin-top:12px">${ix().ws.filter(w => !w.skipped).length} workouts logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</div></div>
+    <div class="mt3 cap">${ix().ws.filter(w => !w.skipped).length} workouts logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</div></div>
   <h2>Settings</h2>
   <div class="card stack">
     <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
-    <div class="row between"><span>Sounds <button class="link" data-a="soundTest" style="margin-left:8px;font-size:14px">Test</button></span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
-    <button class="row between" data-a="plates" style="width:100%;min-height:44px;text-align:left"><span>Plate loader</span>${I.right}</button>
-    <button class="row between" data-a="myEx" style="width:100%;min-height:44px;text-align:left"><span>My exercises and muscle groups</span>${I.right}</button>
+    <div class="row between"><span>Sounds <button class="f15 link" data-a="soundTest" style="margin-left:8px">Test</button></span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
+    <button class="full mh44 tl row between" data-a="plates"><span>Plate loader</span>${I.right}</button>
+    <button class="full mh44 tl row between" data-a="myEx"><span>My exercises and muscle groups</span>${I.right}</button>
     <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
-    <label class="row between"><span>Daily step goal</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
-    <label class="row between"><span>Workouts per week</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-week" data-in="prof" data-f="weeklyTarget" value="${p.weeklyTarget}"></label>
-    <label class="row between"><span>Rest timer (seconds)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-rest" data-in="prof" data-f="defaultRest" value="${p.defaultRest}"></label>
-    <label class="row between"><span>Height (cm)</span><input class="input sm num" style="width:110px;text-align:right" inputmode="numeric" id="set-h" data-in="prof" data-f="heightCm" value="${p.heightCm || ''}" placeholder="170"></label>
+    <label class="row between"><span>Daily step goal</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
+    <label class="row between"><span>Workouts per week</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-week" data-in="prof" data-f="weeklyTarget" value="${p.weeklyTarget}"></label>
+    <label class="row between"><span>Rest timer (seconds)</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-rest" data-in="prof" data-f="defaultRest" value="${p.defaultRest}"></label>
+    <label class="row between"><span>Height (cm)</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-h" data-in="prof" data-f="heightCm" value="${p.heightCm || ''}" placeholder="170"></label>
   </div>
   <h2>Steps from QWatch</h2>
   <div class="card stack">
-    ${HOSTED && USER ? `<p class="sec" style="margin:0;font-size:14px">QWatch Pro sends your steps to Apple Health. An evening Apple Shortcut then sends them from Health to JobDone by itself, with no app opening. It needs a sync key, which you make once here.</p>
+    ${HOSTED && USER ? `<p class="m0 f15 sec">QWatch Pro sends your steps to Apple Health. An evening Apple Shortcut then sends them from Health to JobDone by itself, with no app opening. It needs a sync key, which you make once here.</p>
     <button class="btn block" data-a="syncKey">Create sync key</button>
     <details><summary class="link">Set up the evening Shortcut (one time)</summary>
-      <ol class="sec" style="font-size:14px;padding-left:20px;display:flex;flex-direction:column;gap:6px;margin:6px 0 0">
+      <ol class="f15 g2 m0 mt2 sec" style="padding-left:20px;display:flex;flex-direction:column">
         <li>Make a sync key above and copy it.</li>
         <li>Open Shortcuts, tap +, and name it “JobDone steps”.</li>
         <li>Add <b>Find Health Samples</b>: Type is Steps, Start Date is in the last 3 days, Group By Day.</li>
@@ -879,10 +880,10 @@ function viewMe() {
         <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
         <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
         <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “JobDone steps”.</li>
-      </ol></details>` : `<p class="sec" style="margin:0;font-size:14px">Your QWatch steps reach Apple Health. Type them on Today, or copy them from an Apple Shortcut and paste them here. Sign in on the JobDone website to have a Shortcut send them automatically every evening.</p>`}
+      </ol></details>` : `<p class="m0 f15 sec">Your QWatch steps reach Apple Health. Type them on Today, or copy them from an Apple Shortcut and paste them here. Sign in on the JobDone website to have a Shortcut send them automatically every evening.</p>`}
     <button class="btn ${HOSTED && USER ? 'ghost ' : ''}block" data-a="steps">Add or paste steps by hand</button>
   </div>
-  ${HOSTED && USER ? `<h2>Account</h2><div class="card stack"><div class="row between"><div class="grow"><div class="cap">Signed in as</div><div style="font-weight:600;overflow-wrap:anywhere">${esc(USER.email || 'your account')}</div></div><button class="btn sm" data-a="signOut">Sign out</button></div><button class="btn block" data-a="setPassword">Set or change password</button></div>` : ''}
+  ${HOSTED && USER ? `<h2>Account</h2><div class="card stack"><div class="row between"><div class="grow"><div class="cap">Signed in as</div><div class="fw6" style="overflow-wrap:anywhere">${esc(USER.email || 'your account')}</div></div><button class="btn sm" data-a="signOut">Sign out</button></div><button class="btn block" data-a="setPassword">Set or change password</button></div>` : ''}
   <h2>Your data</h2>
   <div class="card stack">
     <div class="note">${HOSTED ? (mode === 'cloud' ? 'Saved to your JobDone account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div>
@@ -891,7 +892,7 @@ function viewMe() {
     <div class="row"><button class="btn grow" data-a="export" data-k="json">Export JSON</button><button class="btn grow" data-a="export" data-k="csv">Export CSV</button></div>
     <button class="btn block ghost danger" data-a="reset">Erase all data</button>
   </div>
-  <p class="cap" style="text-align:center">JobDone · built from your build prompt, Oct 2026</p>
+  <p class="tc cap">JobDone · built from your build prompt, Oct 2026</p>
 </div>`;
 }
 
@@ -928,7 +929,7 @@ function openDay(d) {
     const list = () => {
       const v = b.querySelector('#dy-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
       const ws = Object.values(S.workouts).filter(w => w.date === v && !w.skipped);
-      b.querySelector('#dy-list').innerHTML = `<div class="stack" style="gap:10px">
+      b.querySelector('#dy-list').innerHTML = `<div class="g3 stack">
         ${ws.length ? `<div class="cap">Logged on ${esc(relDay(v))}</div>` + ws.map(w => `<button class="btn block" data-dw="${w.id}">Edit ${esc(w.splitName)}</button>`).join('') : `<div class="cap">Nothing logged ${v === t ? 'today' : 'on ' + esc(fmtDate(v, { wd: true }))} yet.</div>`}
         ${A ? `<div class="cap">Finish or discard the workout in progress to log another one.</div>` : S.splits.map(sp => `<button class="btn ${ws.length ? '' : 'primary'} block" data-ds="${sp.id}">Log ${esc(sp.name)} for ${esc(relDay(v))}</button>`).join('') + `<button class="btn ghost block" data-ds="">Log an empty workout</button>`}</div>`;
     };
@@ -978,14 +979,14 @@ function renderWorkout() {
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div style="text-align:center" class="grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num"><span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
+      <div class="tc grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num"><span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
       <button class="btn sm primary" data-a="finish">Finish</button></div>
-    <div class="row between" style="margin-top:8px;font-size:13px"><span class="sec"><b class="num" style="color:var(--text)">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="num" style="color:var(--text)">${doneSets}</b> / ${totalSets} sets</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' to match last'}</span>` : ''}</div>
+    <div class="mt2 f13 row between"><span class="sec"><b class="c-text num">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="c-text num">${doneSets}</b> / ${totalSets} sets</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' to match last'}</span>` : ''}</div>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
   </div>
   <div class="wk-body">${A.ex.map(exCardHTML).join('')}
     <button class="btn block" data-a="wkAddEx">Add exercise</button>
-    <button class="link" data-a="wkDiscard" style="align-self:center;color:var(--neg)">Discard workout</button>
+    <button class="self-c c-neg link" data-a="wkDiscard">Discard workout</button>
   </div>
   ${REST ? restHTML() : ''}`;
   el.innerHTML = resolveVars(el.innerHTML);
@@ -1002,9 +1003,9 @@ function exCardHTML(e, ei) {
   const cmp = dsets.length && last ? `<div class="cmp"><span class="sec">vs last:</span><span>top ${delta(topSet(dsets) ? topSet(dsets).w : null, last.top ? last.top.w : null, v => dw(v))}</span><span>vol ${delta(exVol(dsets), exVol(last.sets.slice(0, dsets.length)), v => dvol(v))}</span><span class="sec">(${dsets.length} set${dsets.length > 1 ? 's' : ''})</span></div>` : '';
   return `<section class="card tight" id="ex-${ei}" aria-label="${esc(e.name)}">
     <div class="row between"><div class="grow"><div class="ex-name">${esc(e.name)}</div>${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}</div><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
-    ${sugg ? `<div class="cap" style="margin:4px 0 2px;color:var(--text)">↗ ${esc(sugg)}</div>` : ''}
-    ${e.note ? `<div class="cap" style="font-style:italic">${esc(e.note)}</div>` : ''}
-    <table class="sets" style="margin-top:6px"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
+    ${sugg ? `<div class="m0 mt1 c-text cap">↗ ${esc(sugg)}</div>` : ''}
+    ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}
+    <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const pv = last && last.sets[si]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}" id="row-${ei}-${si}">
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
       <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
@@ -1012,7 +1013,7 @@ function exCardHTML(e, ei) {
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}</button></td>
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button></td></tr>`; }).join('')}
     </tbody></table>
-    <div class="row between" style="margin-top:6px"><button class="btn sm ghost" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 ? `<button class="btn sm ghost" data-a="rmSet" data-e="${ei}" style="color:var(--text2)">Remove last</button>` : ''}</div>
+    <div class="mt2 row between"><button class="btn sm ghost" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="btn sm ghost sec" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
     ${cmp}
   </section>`;
 }
@@ -1024,8 +1025,8 @@ function restHTML() {
     <div class="row between"><span class="eyebrow">${REST.paused ? 'Paused' : 'Rest'}</span><button class="icon-btn" data-a="restMin" aria-label="Shrink rest timer">${I.down}</button></div>
     <div class="hg" data-hg style="--p:${p.toFixed(4)}">${hourglass(p, REST.paused)}</div>
     <div class="t" data-rest>${clock(left)}</div>
-    <div class="row" style="gap:8px;justify-content:center"><button class="btn sm" data-a="rest" data-d="-30">−30s</button><button class="btn sm primary" data-a="restPause">${REST.paused ? 'Resume' : 'Pause'}</button><button class="btn sm" data-a="rest" data-d="30">+30s</button></div>
-    <button class="link" data-a="rest" data-d="0" style="align-self:center">Skip rest</button>
+    <div class="g2 row" style="justify-content:center"><button class="btn sm" data-a="rest" data-d="-30">−30s</button><button class="btn sm primary" data-a="restPause">${REST.paused ? 'Resume' : 'Pause'}</button><button class="btn sm" data-a="rest" data-d="30">+30s</button></div>
+    <button class="self-c link" data-a="rest" data-d="0">Skip rest</button>
   </div>`;
 }
 // Sand drains from the top bulb into the bottom one as the rest runs out.
@@ -1082,10 +1083,11 @@ const SOUNDS = {
 };
 // What a finished set says, by reps.
 function setVerdict(r) {
-  if (r <= 4) return { k: 'low', title: 'Easy, champ', sub: 'Drop the weight a little. Good form beats ego lifting.', bits: 0 };
-  if (r <= 6) return { k: 'nice', title: 'Nice!', sub: 'Solid set.', bits: 24 };
-  if (r <= 8) return { k: 'great', title: 'Great set!', sub: 'Almost time to move up.', bits: 45 };
-  return { k: 'amazing', title: 'Amazing!', sub: 'Time to add weight next session.', bits: 90 };
+  // Oct 2026 redesign: same tiers Job set, said in a calmer voice.
+  if (r <= 4) return { k: 'low', title: 'Go lighter', sub: 'Drop the weight a little. Form first.', bits: 0 };
+  if (r <= 6) return { k: 'nice', title: 'Solid set', sub: 'Right in the range.', bits: 0 };
+  if (r <= 8) return { k: 'great', title: 'Strong set', sub: 'Nearly time to add weight.', bits: 0 };
+  return { k: 'amazing', title: 'Add weight next time', sub: 'You beat the top of the range.', bits: 40 };
 }
 function celebrate(v, delay = 0) {
   setTimeout(() => {
@@ -1123,7 +1125,7 @@ function logSet(ei, si) {
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
-        celebrate({ k: 'next', title: 'Woohoo!', sub: nx ? 'On to ' + nx.name + '.' : 'Every set done. Finish when you’re ready.', bits: 50, ms: 2600 }, 1500);
+        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', bits: 0, ms: 2200 }, 1200);
         if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
       }
     }
@@ -1144,9 +1146,9 @@ function summaryHTML() {
   const changed = sp && JSON.stringify(A.ex.map(e => e.name)) !== JSON.stringify(sp.ex.map(e => e.name));
   return `<div class="wk-body" style="padding-top:calc(16px + env(safe-area-inset-top, 0px))">
     <button class="back" data-a="sumBack">${I.left}Back to workout</button>
-    <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="cap daychip" data-a="wkDay" style="margin-top:6px">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
+    <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur(Date.now() - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
-    <div class="card"><div class="eyebrow" style="margin-bottom:4px">Compared with last time</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div><div style="text-align:right;font-size:13px" class="num"><div>top ${r.last ? delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v)) : '<span class="sec">first time</span>'}</div><div>vol ${r.last ? delta(r.vol, r.last.vol, v => dvol(v)) : ''}</div></div></div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
+    <div class="card"><div class="mb1 eyebrow">Compared with last time</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div><div class="tr f13 num"><div>top ${r.last ? delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v)) : '<span class="sec">first time</span>'}</div><div>vol ${r.last ? delta(r.vol, r.last.vol, v => dvol(v)) : ''}</div></div></div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
     <div class="field"><span class="lbl">Energy</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${A.energy === n ? 'on' : ''}" data-a="energy" data-k="${n}">${n}</button>`).join('')}</div></div>
     ${changed ? `<label class="card tight row between" for="sum-upd"><span>Update the ${esc(sp.name)} split with today’s exercises</span><input type="checkbox" id="sum-upd" data-in="sumUpd" ${A.updSplit ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)"></label>` : ''}
@@ -1191,18 +1193,18 @@ function showRecap(id, fresh) {
   const pr = new Map(d.prs.map(p => [p.ex, p])), mx = d.musL.length ? d.musL[0][1] : 1;
   el.innerHTML = `<div class="rc-body">
     <div class="rc-hero"><div class="rc-check">${fresh ? '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>' : '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>'}</div>
-      <div class="eyebrow">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1><div class="sec">${esc(d.w.splitName || 'Workout')}${d.prs.length ? ` · <b style="color:var(--text)">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</b>` : ''}</div></div>
+      <div class="eyebrow">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1><div class="sec">${esc(d.w.splitName || 'Workout')}${d.prs.length ? ` · <b class="c-text">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</b>` : ''}</div></div>
     <div class="rc-stats">
       <div class="rc-st"><b>${d.dur ? fmtDur(d.dur) : '—'}</b><span>time</span></div>
       <div class="rc-st"><b>${dvol(d.vol)}</b><span>${U()} lifted</span></div>
       <div class="rc-st"><b>${d.sets}</b><span>sets</span></div>
       <div class="rc-st"><b>${d.reps}</b><span>reps</span></div>
     </div>
-    <div class="card rc-fun"><span class="rc-emoji" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span><div>That's like lifting <b>${esc(d.heavy)}</b>.${d.dv != null ? `<div class="cap" style="margin-top:2px">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% volume vs your last ${esc(d.w.splitName || 'workout')}</div>` : ''}</div></div>
-    ${d.prs.length ? `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/><path d="M9.5 15l1.7 1.7L14.8 13" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
-    <div class="card"><div class="eyebrow" style="margin-bottom:10px">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n % 1 ? n.toFixed(1) : n} sets</em></div>`).join('')}</div>
-    <div class="card"><div class="eyebrow" style="margin-bottom:4px">Exercises</div><div class="list">${d.w.ex.map(e => { const t = topSet(e.sets); return `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><span class="num sec">${t ? 'best ' + setStr(t) : ''}</span></div>`; }).join('')}</div></div>
-    <div class="cap" style="text-align:center">${esc(streakText())}</div>
+    <div class="card rc-fun"><span class="rc-emoji" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span><div>That's like lifting <b>${esc(d.heavy)}</b>.${d.dv != null ? `<div class="mt1 cap">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% volume vs your last ${esc(d.w.splitName || 'workout')}</div>` : ''}</div></div>
+    ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/><path d="M9.5 15l1.7 1.7L14.8 13" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
+    <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n % 1 ? n.toFixed(1) : n} sets</em></div>`).join('')}</div>
+    <div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${d.w.ex.map(e => { const t = topSet(e.sets); return `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><span class="num sec">${t ? 'best ' + setStr(t) : ''}</span></div>`; }).join('')}</div></div>
+    <div class="tc cap">${esc(streakText())}</div>
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
   document.body.appendChild(el);
@@ -1269,14 +1271,14 @@ function openPlates(target, onUse, o = {}) {
     return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/><rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/><rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
   };
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
-  const sh = openSheet(`<div class="stack" style="gap:12px"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
+  const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
     <div class="cap" id="pl-msg"></div>
     <div class="bar-wrap" id="pl-bar"></div>
     <div class="field"><span class="lbl">Bar</span><div class="seg" id="pl-barw">${bars.map(b => `<button data-b="${b}" class="${b === bar ? 'on' : ''}">${b ? b + ' ' + U() : 'Plates only'}</button>`).join('')}</div></div>
     <div><span class="lbl">Drag a plate onto the bar, or tap it. Tap a plate on the bar to take it off.</span><div class="plate-tray" id="pl-tray">${tray()}</div></div>
-    <div class="row" style="gap:8px"><input class="input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})" style="flex:1"><button class="btn" id="pl-cadd">Add plate</button></div>
-    <div class="row" style="gap:8px"><input class="input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}" style="flex:1"><button class="btn" id="pl-auto">Load it</button></div>
-    ${onUse ? `<div class="row" style="gap:8px">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Dial / keypad</button>` : ''}<button class="btn primary block" id="pl-use" style="flex:1">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
+    <div class="g2 row"><input class="flex1 input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})"><button class="btn" id="pl-cadd">Add plate</button></div>
+    <div class="g2 row"><input class="flex1 input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}"><button class="btn" id="pl-auto">Load it</button></div>
+    ${onUse ? `<div class="g2 row">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Dial / keypad</button>` : ''}<button class="flex1 btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
   </div>`, { label: 'Plate loader', mount: b => {
     const draw = () => {
       b.querySelector('#pl-bar').innerHTML = svg(); fresh = -1;
@@ -1327,15 +1329,15 @@ function openKeypad(ei, si, f) {
   // scale-style dial: weight in 1.25 kg / 2.5 lb steps, reps in 1s
   const D = f === 'w' ? { step: U() === 'lb' ? 2.5 : 1.25, every: U() === 'lb' ? 4 : 8, px: 12 } : { step: 1, every: 5, px: 24 };
   D.n = Math.round(Math.max(f === 'w' ? (U() === 'lb' ? 400 : 180) : 40, (parseFloat(cur()) || 0) * 1.5) / D.step) + 1;
-  const dialHTML = () => { let t = ''; for (let i = 0; i < D.n; i++) { const m = i % D.every === 0; t += `<i class="${m ? 'm' : ''}">${m ? `<b>${trim(i * D.step)}</b>` : ''}</i>`; } return `<div style="position:relative"><div class="ruler" id="kp-dial" style="--tw:${D.px}px"><div class="ruler-in">${t}</div></div><span class="ruler-mark"></span></div>`; };
-  const html = () => `<div class="stack" style="gap:14px"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div>${f === 'w' ? `<button class="btn sm" data-k="plates" style="margin-right:8px">${PLATE_ICON} Plates</button>` : ''}<div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
+  const dialHTML = () => { let t = ''; for (let i = 0; i < D.n; i++) { const m = i % D.every === 0; t += `<i class="${m ? 'm' : ''}">${m ? `<b>${trim(i * D.step)}</b>` : ''}</i>`; } return `<div class="rel"><div class="ruler" id="kp-dial" style="--tw:${D.px}px"><div class="ruler-in">${t}</div></div><span class="ruler-mark"></span></div>`; };
+  const html = () => `<div class="g4 stack"><div class="row between"><div><div class="cap">${esc(e.name)} · set ${si + 1}</div><div class="big" id="kp-val">${esc(cur() || '–')}<span class="unit">${f === 'w' ? U() : 'reps'}</span></div></div>${f === 'w' ? `<button class="btn sm" data-k="plates" style="margin-right:8px">${PLATE_ICON} Plates</button>` : ''}<div class="seg" style="width:130px"><button class="${f === 'w' ? 'on' : ''}" data-kf="w">${U()}</button><button class="${f === 'r' ? 'on' : ''}" data-kf="r">reps</button></div></div>
     ${dialHTML()}
     <div class="keys">
       ${['1', '2', '3'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[0]}">${q[0]}</button>
       ${['4', '5', '6'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[1]}">+${q[1]}</button>
       ${['7', '8', '9'].map(k => `<button data-k="${k}">${k}</button>`).join('')}<button class="q" data-q="${q[2]}">${q[2]}</button>
-      <button data-k="." ${f === 'r' ? 'disabled style="opacity:.3"' : ''}>.</button><button data-k="0">0</button><button data-k="del" aria-label="Delete">⌫</button><button class="q" data-q="${q[3]}">+${q[3]}</button>
-      <button class="q" data-k="next" style="grid-column:span 2">${f === 'w' ? 'Reps →' : 'Next set →'}</button><button class="done" data-k="done" style="grid-column:span 2">Done</button>
+      <button data-k="." ${f === 'r' ? 'disabled class="dim"' : ''}>.</button><button data-k="0">0</button><button data-k="del" aria-label="Delete">⌫</button><button class="q" data-q="${q[3]}">+${q[3]}</button>
+      <button class="span2 q" data-k="next">${f === 'w' ? 'Reps →' : 'Next set →'}</button><button class="span2 done" data-k="done">Done</button>
     </div></div>`;
   const commit = () => {
     if (buf == null) return;
@@ -1385,10 +1387,10 @@ function openWeighIn(date, prompt) {
   const n = Math.round((hi - lo) * 10) + 1;
   let ticks = ''; for (let i = 0; i < n; i++) { const v = lo + i / 10; const m = i % 10 === 0; ticks += `<i class="${m ? 'm' : ''}">${m ? `<b>${Math.round(v)}</b>` : ''}</i>`; }
   const isToday = date === today();
-  const sh = openSheet(`<div class="stack" style="gap:14px">
-    <div><div class="eyebrow">${isToday ? 'Morning weigh-in' : 'Weight entry'}</div>${isToday ? '' : `<input class="input" type="date" id="wi-date" value="${date}" style="margin-top:8px">`}</div>
-    <div class="row between"><button class="icon-btn" data-wd="-1" aria-label="Decrease by 0.1" style="font-size:24px;background:var(--surface)">−</button><div class="big" style="text-align:center" id="wi-val">${val.toFixed(1)}<span class="unit">${U()}</span></div><button class="icon-btn" data-wd="1" aria-label="Increase by 0.1" style="font-size:24px;background:var(--surface)">+</button></div>
-    <div style="position:relative"><div class="ruler" id="wi-ruler"><div class="ruler-in">${ticks}</div></div><span class="ruler-mark"></span></div>
+  const sh = openSheet(`<div class="g4 stack">
+    <div><div class="eyebrow">${isToday ? 'Morning weigh-in' : 'Weight entry'}</div>${isToday ? '' : `<input class="mt2 input" type="date" id="wi-date" value="${date}">`}</div>
+    <div class="row between"><button class="f22 icon-btn" data-wd="-1" aria-label="Decrease by 0.1" style="background:var(--surface)">−</button><div class="tc big" id="wi-val">${val.toFixed(1)}<span class="unit">${U()}</span></div><button class="f22 icon-btn" data-wd="1" aria-label="Increase by 0.1" style="background:var(--surface)">+</button></div>
+    <div class="rel"><div class="ruler" id="wi-ruler"><div class="ruler-in">${ticks}</div></div><span class="ruler-mark"></span></div>
     <button class="btn primary block" id="wi-save">Save</button>
     ${prompt ? `<button class="btn ghost block" id="wi-skip">Skip today</button>` : ex ? `<button class="btn ghost block danger" id="wi-del">Delete this entry</button>` : `<button class="btn ghost block" data-a="closeSheet">Cancel</button>`}
   </div>`, {
@@ -1435,7 +1437,7 @@ function parseStepText(txt) {
 function openSyncKey() {
   const url = CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/steps';
   openSheet(`<div class="stack"><div class="eyebrow">Steps sync key</div>
-    <p class="sec" style="margin:0;font-size:14px">A new key replaces any key you made before, so an old Shortcut stops working until you paste the new key in. JobDone shows the key only once.</p>
+    <p class="m0 f15 sec">A new key replaces any key you made before, so an old Shortcut stops working until you paste the new key in. JobDone shows the key only once.</p>
     <div id="sk-out"></div>
     <button class="btn primary block" id="sk-make">Create key</button>
     <button class="btn ghost block" data-a="closeSheet">Close</button></div>`, { label: 'Steps sync key', mount: el => {
@@ -1449,7 +1451,7 @@ function openSyncKey() {
       const { error } = await SB.from('jobdone_sync_keys').upsert({ user_id: USER.id, key_hash, created_at: new Date().toISOString() });
       if (error) throw error;
       b.remove();
-      el.querySelector('#sk-out').innerHTML = `<div class="stack" style="gap:10px">
+      el.querySelector('#sk-out').innerHTML = `<div class="g3 stack">
         <div class="field"><label>Your key</label><textarea class="input num" readonly rows="2" style="min-height:0">${esc(key)}</textarea></div>
         <button class="btn block" data-copy="${esc(key)}">Copy key</button>
         <div class="field"><label>Shortcut address</label><textarea class="input num" readonly rows="2" style="min-height:0">${esc(url)}</textarea></div>
@@ -1464,7 +1466,7 @@ function openSteps(day) {
   const sh = openSheet(`<div class="stack"><div class="eyebrow">Steps</div>
     <div class="grid2"><div class="field"><label for="st-date">Date</label><input class="input" type="date" id="st-date" value="${d0}" max="${t}"></div><div class="field"><label for="st-n">Steps</label><input class="input num" id="st-n" inputmode="numeric" placeholder="8,500" value="${S.steps[d0] || ''}"></div></div>
     <button class="btn primary block" id="st-save">Save</button>
-    <div class="field" style="margin-top:8px"><label for="st-paste">Or paste from your “JobDone steps” shortcut</label><textarea class="input num" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea></div>
+    <div class="mt2 field"><label for="st-paste">Or paste from your “JobDone steps” shortcut</label><textarea class="input num" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea></div>
     <button class="btn block" id="st-import">Import pasted steps</button><div class="cap" id="st-msg"></div></div>`, {
     label: 'Steps',
     mount: b => {
@@ -1508,7 +1510,7 @@ function pickExercise(onPick, opts = {}) {
   };
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(opts.title || 'Add exercise')}</div><input class="input" id="pk-q" placeholder="Search exercises" autocomplete="off">
     <div class="chips" id="pk-m">${MUSCLES.map(m => `<button class="chip" data-m="${m}">${m}</button>`).join('')}</div>
-    <label class="row cap" style="gap:8px"><input type="checkbox" id="pk-side" style="accent-color:var(--accent)"> Log left and right sides separately</label>
+    <label class="g2 row cap"><input type="checkbox" id="pk-side" style="accent-color:var(--accent)"> Log left and right sides separately</label>
     <div class="list" id="pk-list">${rows()}</div></div>`, {
     label: 'Exercise picker',
     mount: b => {
@@ -1579,9 +1581,9 @@ function openStart() {
 }
 function openRotation() {
   let order = S.rotation.slice();
-  const html = () => `<div class="stack"><div class="eyebrow">Rotation</div><p class="cap" style="margin:0">Today suggests the split after the last one you did, in this order.</p>
+  const html = () => `<div class="stack"><div class="eyebrow">Rotation</div><p class="m0 cap">Today suggests the split after the last one you did, in this order.</p>
     <div class="list">${order.map((id, i) => { const sp = splitById(id); return sp ? `<div class="li"><span class="tag" style="width:8px;height:28px;border-radius:4px;background:${sp.color};flex:none"></span><div class="grow t">${i + 1}. ${esc(sp.name)}</div><button class="icon-btn" data-ro="up" data-i="${i}" aria-label="Move up">${I.up1}</button><button class="icon-btn" data-ro="dn" data-i="${i}" aria-label="Move down">${I.dn1}</button><button class="icon-btn" data-ro="rm" data-i="${i}" aria-label="Remove">${I.x}</button></div>` : ''; }).join('') || '<div class="empty">Add splits below.</div>'}</div>
-    <div class="chips wrap" style="flex-wrap:wrap">${S.splits.filter(s => !s.archived).map(s => `<button class="chip" data-ro="add" data-id="${s.id}">+ ${esc(s.name)}</button>`).join('')}</div>
+    <div class="chips wrap">${S.splits.filter(s => !s.archived).map(s => `<button class="chip" data-ro="add" data-id="${s.id}">+ ${esc(s.name)}</button>`).join('')}</div>
     <button class="btn primary block" data-ro="save">Save rotation</button></div>`;
   const sh = openSheet(html(), {
     label: 'Rotation',
@@ -1603,7 +1605,7 @@ function exMenu(ei) {
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(e.name)}</div>
     <button class="btn block" data-m="note">${e.note ? 'Edit note' : 'Add note'}</button>
     <div class="row"><button class="btn grow" data-m="up" ${ei === 0 ? 'disabled' : ''}>Move up</button><button class="btn grow" data-m="dn" ${ei === A.ex.length - 1 ? 'disabled' : ''}>Move down</button></div>
-    <label class="row between card tight"><span>Rest after each set</span><span class="row" style="gap:6px"><input class="input sm num" style="width:70px;text-align:right" inputmode="numeric" id="em-rest" value="${e.rest}">s</span></label>
+    <label class="row between card tight"><span>Rest after each set</span><span class="g2 row"><input class="tr input sm num" style="width:70px" inputmode="numeric" id="em-rest" value="${e.rest}">s</span></label>
     <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>
     <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
@@ -1657,20 +1659,20 @@ function renderWelcome() {
   const app = $('#app');
   const wk = SEED_LOG.filter(o => !o.skip).length, sets = SEED_LOG.reduce((a, o) => a + o.x.reduce((b, x) => b + x[1].length, 0), 0);
   const splitNames = [...new Set(SEED_LOG.map(o => o.s))];
-  app.innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="stack" style="gap:16px;padding-top:24px">
+  app.innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="g4 pt6 stack">
     <div class="wordmark">Job<span>Done</span></div>
-    <div><h1>Welcome back, ${esc(firstName())}</h1><p class="sec" style="margin:8px 0 0">Your profile and training log are ready to load. Check the guesses below, then import.</p></div>
-    ${(() => { const w0 = SEED_WEIGHTS[0], t = SEED.today; if (!w0 || !t) return ''; const mo = daysBetween(w0[0], t[0]) / 30.44; return `<div class="card"><div class="eyebrow" style="margin-bottom:10px">Profile</div><div class="kpis"><div class="kpi"><b>${SEED.profile.heightCm || '—'} cm</b><span>height</span></div><div class="kpi"><b>${w0[1].toFixed(1)} → ${t[1].toFixed(1)}</b><span>kg since ${esc(fmtDate(w0[0]))}</span></div><div class="kpi"><b>${bwRaw((t[1] - w0[1]) / mo)}</b><span>kg per month</span></div></div><div class="cap" style="margin-top:10px">Monthly weights up to ${esc(fmtDate(SEED_WEIGHTS[SEED_WEIGHTS.length - 1][0]))} are marked as estimates (hollow dots) so you can correct them later. Today’s ${t[1].toFixed(1)} kg is logged as real.</div></div>`; })()}
-    <div class="card"><div class="eyebrow" style="margin-bottom:10px">Training log</div><div class="kpis"><div class="kpi"><b>${wk}</b><span>workouts</span></div><div class="kpi"><b>${n0(sets)}</b><span>sets</span></div><div class="kpi"><b>${splitNames.length}</b><span>splits</span></div></div>
-      <div class="cap" style="margin-top:10px">4 May to 13 Oct 2026, plus Legs on 23 May marked as skipped. Splits: ${esc(splitNames.join(', '))}. Each one uses the exercises from the last time you did it. Rotation starts as Push → Pull.</div></div>
+    <div><h1>Welcome back, ${esc(firstName())}</h1><p class="m0 mt2 sec">Your profile and training log are ready to load. Check the guesses below, then import.</p></div>
+    ${(() => { const w0 = SEED_WEIGHTS[0], t = SEED.today; if (!w0 || !t) return ''; const mo = daysBetween(w0[0], t[0]) / 30.44; return `<div class="card"><div class="mb3 eyebrow">Profile</div><div class="kpis"><div class="kpi"><b>${SEED.profile.heightCm || '—'} cm</b><span>height</span></div><div class="kpi"><b>${w0[1].toFixed(1)} → ${t[1].toFixed(1)}</b><span>kg since ${esc(fmtDate(w0[0]))}</span></div><div class="kpi"><b>${bwRaw((t[1] - w0[1]) / mo)}</b><span>kg per month</span></div></div><div class="mt3 cap">Monthly weights up to ${esc(fmtDate(SEED_WEIGHTS[SEED_WEIGHTS.length - 1][0]))} are marked as estimates (hollow dots) so you can correct them later. Today’s ${t[1].toFixed(1)} kg is logged as real.</div></div>`; })()}
+    <div class="card"><div class="mb3 eyebrow">Training log</div><div class="kpis"><div class="kpi"><b>${wk}</b><span>workouts</span></div><div class="kpi"><b>${n0(sets)}</b><span>sets</span></div><div class="kpi"><b>${splitNames.length}</b><span>splits</span></div></div>
+      <div class="mt3 cap">4 May to 13 Oct 2026, plus Legs on 23 May marked as skipped. Splits: ${esc(splitNames.join(', '))}. Each one uses the exercises from the last time you did it. Rotation starts as Push → Pull.</div></div>
     <div class="card stack"><div class="eyebrow">Check these guesses</div>
-      <p class="cap" style="margin:0">Five dates were written twice, so each repeat moved to the next likely day. Change any that are wrong.</p>
-      ${MOVED.map(m => { const i = findSeedIdx(m.d, m.s); if (i < 0) return ''; const cur = (welcomeOv[i] || {}).d || m.d; return `<label class="row between" style="gap:10px"><span class="grow" style="font-size:14px">${esc(m.label)}</span><input class="input sm" type="date" style="width:160px" id="mv-${i}" data-in="wlDate" data-i="${i}" value="${cur}"></label>`; }).join('')}
-      ${(() => { const i = findSeedIdx(NONAME.d, NONAME.s); if (i < 0) return ''; const cur = (welcomeOv[i] || {}).s || NONAME.s; return `<label class="row between" style="gap:10px"><span class="grow" style="font-size:14px">${esc(fmtDate(NONAME.d))} had no split name. It matches</span><select class="input sm" style="width:160px" id="nn-${i}" data-in="wlSplit" data-i="${i}">${splitNames.map(s => `<option ${s === cur ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`; })()}
+      <p class="m0 cap">Five dates were written twice, so each repeat moved to the next likely day. Change any that are wrong.</p>
+      ${MOVED.map(m => { const i = findSeedIdx(m.d, m.s); if (i < 0) return ''; const cur = (welcomeOv[i] || {}).d || m.d; return `<label class="g3 row between"><span class="f15 grow">${esc(m.label)}</span><input class="input sm" type="date" style="width:160px" id="mv-${i}" data-in="wlDate" data-i="${i}" value="${cur}"></label>`; }).join('')}
+      ${(() => { const i = findSeedIdx(NONAME.d, NONAME.s); if (i < 0) return ''; const cur = (welcomeOv[i] || {}).s || NONAME.s; return `<label class="g3 row between"><span class="f15 grow">${esc(fmtDate(NONAME.d))} had no split name. It matches</span><select class="input sm" style="width:160px" id="nn-${i}" data-in="wlSplit" data-i="${i}">${splitNames.map(s => `<option ${s === cur ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`; })()}
       <details><summary class="link">Other cleanup (${ASSUMPTIONS.length})</summary><ul class="assume">${ASSUMPTIONS.map(a => `<li>${esc(a)}</li>`).join('')}</ul><p class="cap">You can fix any single workout later from Progress → History → Edit.</p></details>
     </div>
-    <button class="btn primary block" data-a="doImport" style="min-height:52px;font-size:16px">Import and open JobDone</button>
-    <button class="link" data-a="skipImport" style="align-self:center">Start without my history</button>
+    <button class="mh52 f17 btn primary block" data-a="doImport">Import and open JobDone</button>
+    <button class="self-c link" data-a="skipImport">Start without my history</button>
   </div></main>`;
 }
 async function doImport(withHistory) {
@@ -1716,12 +1718,12 @@ function restoreFile(file, replacing) {
   rd.readAsText(file);
 }
 function renderWelcomePublic() {
-  $('#app').innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="stack" style="gap:16px;padding-top:24px">
+  $('#app').innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="g4 pt6 stack">
     <div class="wordmark">Job<span>Done</span></div>
-    <div><h1>Welcome, ${esc(firstName())}</h1><p class="sec" style="margin:8px 0 0">Bring in your training log, or start fresh.</p></div>
-    <div class="card stack"><div class="eyebrow">Restore a backup</div><p class="cap" style="margin:0">From the Claude version of JobDone: Me → Export JSON. This brings over your workouts, weights, steps and splits.</p>
+    <div><h1>Welcome, ${esc(firstName())}</h1><p class="m0 mt2 sec">Bring in your training log, or start fresh.</p></div>
+    <div class="card stack"><div class="eyebrow">Restore a backup</div><p class="m0 cap">From the Claude version of JobDone: Me → Export JSON. This brings over your workouts, weights, steps and splits.</p>
       <label class="btn primary block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden>
-      <p class="cap" style="margin:0">A CSV log works too (JobDone, Strong or Hevy). Splits are made from the last session of each one.</p></div>
+      <p class="m0 cap">A CSV log works too (JobDone, Strong or Hevy). Splits are made from the last session of each one.</p></div>
     <button class="btn block" data-a="doImport">Start fresh</button>
   </div></main>`;
 }
@@ -1810,7 +1812,7 @@ async function doExport(kind) {
     try { await DL.save({ filename, data }); toast('Export saved'); return; }
     catch (e) { if (e && e.code === 'declined') return; if (e && e.code === 'rate_limited') { toast('A save prompt is already open.'); return; } }
   }
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Export</div><p class="cap" style="margin:0">Saving files isn’t available here. Copy the text below instead.</p><textarea class="input num" style="min-height:240px;font-size:12px" readonly id="ex-t"></textarea><button class="btn primary block" id="ex-c">Copy</button></div>`, {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Export</div><p class="m0 cap">Saving files isn’t available here. Copy the text below instead.</p><textarea class="f13 input num" style="min-height:240px" readonly id="ex-t"></textarea><button class="btn primary block" id="ex-c">Copy</button></div>`, {
     mount: b => { const t = b.querySelector('#ex-t'); t.value = data; b.querySelector('#ex-c').onclick = () => { navigator.clipboard.writeText(data).then(() => toast('Copied'), () => { t.focus(); t.select(); }); }; },
   });
 }
@@ -1987,14 +1989,14 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   ready = false; S = null; A = null;
   $('#wk').hidden = true;
   const make = stage === 'create';
-  $('#app').innerHTML = `<main id="screen" style="padding-bottom:32px"><div class="stack" style="gap:18px;padding-top:40px;max-width:420px;margin:0 auto">
+  $('#app').innerHTML = `<main id="screen" class="pb8"><div class="g3 pt6 stack" style="max-width:420px;margin:0 auto">
     <div class="wordmark">Job<span>Done</span></div>
-    <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="sec" style="margin:8px 0 0">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
+    <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="m0 mt2 sec">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
     <div class="field"><label for="si-pw">Password</label><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 6 characters' : ''}"></div>
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
     <div class="row between"><button class="link" id="si-switch">${make ? 'I have an account' : 'Create account'}</button>${make ? '' : '<button class="link" id="si-forgot">Forgot password?</button>'}</div>
-    <div class="cap" id="si-msg" role="alert" style="min-height:18px;color:var(--neg)">${esc(msg)}</div>
+    <div class="c-neg cap" id="si-msg" role="alert" style="min-height:18px">${esc(msg)}</div>
   </div></main>`;
   const m = (t, ok) => { const e = $('#si-msg'); e.textContent = t; e.style.color = ok ? 'var(--text2)' : 'var(--neg)'; };
   const emailOk = () => { const em = $('#si-email').value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { m('Enter your email address.'); return null; } return em; };
@@ -2020,9 +2022,9 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
 }
 function openSetPassword(title = 'Set a password') {
   openSheet(`<div class="stack"><div class="eyebrow">${esc(title)}</div>
-    <p class="sec" style="margin:0;font-size:14px">Use this with your email to sign in on any device.</p>
+    <p class="m0 f15 sec">Use this with your email to sign in on any device.</p>
     <div class="field"><label for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
-    <button class="btn primary block" id="pw-save">Save password</button><div class="cap" id="pw-msg" style="color:var(--neg)"></div>
+    <button class="btn primary block" id="pw-save">Save password</button><div class="c-neg cap" id="pw-msg"></div>
     <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: title, mount: el => {
     el.querySelector('#pw-save').onclick = async ev => {
       const pw = el.querySelector('#pw-new').value; if (pw.length < 6) { el.querySelector('#pw-msg').textContent = 'At least 6 characters.'; return; }
