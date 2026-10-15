@@ -1000,7 +1000,7 @@ function viewMe() {
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
     ${slink('Play a test sound', 'soundTest', 'act')}
-  </div></section>
+  </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your iPhone is on silent: flip the switch on the side (or turn off Silent Mode in Control Centre) to hear them. iPhone doesn’t let websites play sounds on silent without pausing your music.</div></section>
   <section><div class="sgh">App</div><div class="sgrp">
     ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add Jobs Done to your Home Screen', 'a2hs')}
   </div></section>
@@ -2613,7 +2613,7 @@ const ACT = {
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
   soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent) { if (navigator.audioSession) try { navigator.audioSession.type = 'auto'; } catch (e) {} if (Sound.media) { try { Sound.media.pause(); } catch (e) {} Sound.media = null; } } Sound.unlock(); rerender(); },
-  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast((sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound.') + ` (audio ${Sound.ctx ? Sound.ctx.state : 'none'}, ${navigator.audioSession ? navigator.audioSession.type : 'no session'})`, 4000)); },
+  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast(sfxLast ? `Sound blocked (${esc(sfxLast.name || String(sfxLast))}). Tap again.` : 'Played a test sound. Heard nothing? Your phone is on silent.', 4200)); },
   restPush: async () => {
     if (S.profile.restPush) { S.profile.restPush = false; persist('jd/meta'); rerender(); pushOff(); return; }
     if (!pushReady()) { toast('Add Jobs Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
