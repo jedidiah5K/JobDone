@@ -500,7 +500,7 @@ function render() {
   // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
   // Oct 2026: Job removed the Miles theme; anyone on it moves to Cliffs.
   if (S && S.profile && S.profile.theme === 'miles') { S.profile.theme = 'cliffs'; persist('jd/meta'); }
-  if (S && S.profile && !S.profile.cliffs1) { S.profile.theme = 'cliffs'; S.profile.cliffs1 = true; persist('jd/meta'); }
+  if (S && S.profile && !S.profile.cliffs1) { S.profile.theme = S.profile.theme || 'mono'; S.profile.cliffs1 = true; persist('jd/meta'); }
   if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
   // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
@@ -531,12 +531,12 @@ function render() {
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
 // and in localStorage (so the right colours show before the data loads).
 const THEMES = [
-  { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
-  { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
-  { k: 'mono', name: 'Hitman', bar: '#121216', sw: 'linear-gradient(180deg, #121216 0.0% 33.3%, #F2F2F4 33.3% 66.7%, #C8102E 66.7% 100.0%)' },
-  { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
+  { k: 'mono', name: 'Agent', bar: '#121216', sw: 'linear-gradient(180deg, #121216 0.0% 33.3%, #F2F2F4 33.3% 66.7%, #C8102E 66.7% 100.0%)' },
+  { k: 'cliffs', name: 'Summit', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
+  { k: 'climb', name: 'Boulder', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
+  { k: 'spidey', name: 'Skyline', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
 ];
-const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
+const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'mono';
 // Cliffs sky follows the local clock: night, sunrise, day, sunset. Colours blend between these stops.
 const SKY = [
   [0, '#070B1E', '#121A3A', '#1E2A50', [10, 16, 48, .62], 1],
