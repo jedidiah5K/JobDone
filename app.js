@@ -455,7 +455,7 @@ function render() {
 const THEMES = [
   { k: 'cliffs', name: 'Cliffs', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
   { k: 'climb', name: 'Climbing', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
-  { k: 'mono', name: 'Venom', bar: '#050507', sw: 'linear-gradient(180deg, #050507 0.0% 33.3%, #6C7AA8 33.3% 66.7%, #F4F5FA 66.7% 100.0%)' },
+  { k: 'mono', name: 'Symbiote', bar: '#050507', sw: 'linear-gradient(180deg, #050507 0.0% 33.3%, #6C7AA8 33.3% 66.7%, #F4F5FA 66.7% 100.0%)' },
   { k: 'spidey', name: 'Spider', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
 ];
 const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'cliffs';
@@ -508,7 +508,7 @@ function inkOn(hex) {
 }
 // A burst of hold-coloured confetti for PRs and finished workouts.
 function confetti(n = 60) {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || S.profile.noConfetti) return;
   n = Math.min(40, Math.round(n * .4)); // brief and subtle since the Oct 2026 redesign
   const cols = ({ mono: ['#F4F5FA', '#6C7AA8', '#1C1D26'], spidey: ['#E2231A', '#FFFFFF', '#5B8CFF'], miles: ['#E3262E', '#FFE94D', '#FFFFFF', '#7FD8FF'], cliffs: ['#1F7A99', '#F2A93B', '#D2553A', '#3F8F5A', '#FFFFFF'] })[document.documentElement.dataset.theme] || ['#6C3FD6', '#F4B728', '#2E8B4E', '#E0412F', '#4A78E0'], box = document.createElement('div'); box.className = 'confetti';
   for (let i = 0; i < n; i++) { const e = document.createElement('i'); e.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};--x:${(Math.random() - .5) * 160}px;--r:${(Math.random() - .5) * 900}deg;--d:${1.1 + Math.random() * .9}s;animation-delay:${Math.random() * .25}s;transform:scale(${.7 + Math.random() * .8})`; box.appendChild(e); }
@@ -552,6 +552,7 @@ function dayWorkoutCard(d) {
     <div class="hero"><i class="sdot" style="background:${c}"></i>${esc(w.splitName)}</div>
     <div class="mt3 cap">${w.ex.length} exercises · ${sets} sets · ${n0(wVol(w))} ${U()} lifted</div>
     <div class="mt4 g2 row"><button class="btn primary grow" data-a="openW" data-id="${w.id}">Open and edit</button><button class="btn" data-a="recap" data-id="${w.id}">Recap</button></div>
+    <button class="btn ghost block danger mt2" data-a="wkDelete" data-id="${w.id}">Delete workout</button>
     <div class="list nextlist">${w.ex.map(e => `<div class="row between"><span class="sec">${esc(e.name)}</span><span class="num muted">${e.sets.filter(x => x.w != null || x.r != null).map(setStr).join(', ') || '—'}</span></div>`).join('')}</div></div>`; }).join('');
 }
 function viewToday() {
@@ -577,6 +578,7 @@ function viewToday() {
   return `<div class="stack">
   ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div><div class="eyebrow">${esc(longDay(t))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>`}
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
+  ${!past && Object.values(S.workouts).some(w => w.date === T && !w.skipped) ? dayWorkoutCard(T) : ''}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     <div class="card-h"><span class="eyebrow">Next up</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${nx.ex.length} exercises · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
@@ -844,34 +846,57 @@ function viewWorkout(v) {
     ${ed ? `<div class="g2 mt2 stack">${e.sets.map((s, si) => `<div class="g2 row"><span class="cap" style="width:22px">${si + 1}</span><input class="input sm num" style="width:84px" inputmode="decimal" id="ws-${ei}-${si}-w" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="w" value="${s.w == null ? '' : dw(s.w)}" aria-label="Weight"><span class="cap">${U()} ×</span><input class="input sm num" style="width:60px" inputmode="numeric" id="ws-${ei}-${si}-r" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="r" value="${s.r == null ? '' : s.r}" aria-label="Reps"><button class="icon-btn" data-a="wsDel" data-e="${ei}" data-s="${si}" aria-label="Delete set">${I.x}</button></div>`).join('')}</div>`
       : `<div class="mt2 f15 num sec">${e.sets.map(setStr).join('  ·  ')}</div>`}
   </div>`).join('')}
-  ${ed ? `<div class="field"><label for="wk-note">Note</label><textarea class="input" id="wk-note" data-in="wkNote">${esc(w.note || '')}</textarea></div><button class="btn block danger" data-a="wkDelete">Delete this workout</button>` : ''}
+  ${ed ? `<div class="field"><label for="wk-note">Note</label><textarea class="input" id="wk-note" data-in="wkNote">${esc(w.note || '')}</textarea></div>` : ''}
+  <button class="btn block danger" data-a="wkDelete">Delete this workout</button>
 </div>`;
 }
 
 // ---------- Me ----------
+// iOS-style settings rows: one group per topic, hairlines between rows.
+const swi = (on, a, extra = '') => `<button class="xsw ${on ? 'on' : ''}" role="switch" aria-checked="${on}" data-a="${a}" ${extra}></button>`;
+const srow = (t, right, sub) => `<div class="xr"><span class="grow">${t}${sub ? `<span class="s">${sub}</span>` : ''}</span>${right}</div>`;
+const snum = (t, id, f, v, ph, unit) => `<label class="xr"><span class="grow">${t}</span><input class="xr-in ${f === 'name' ? '' : 'num'}" inputmode="${f === 'name' ? 'text' : 'decimal'}" id="${id}" data-in="${f === 'name' ? 'profT' : f === 'goalW' ? 'profW' : 'prof'}" data-f="${f}" value="${v == null ? '' : v}" placeholder="${ph || ''}">${unit ? `<span class="xr-u">${unit}</span>` : ''}</label>`;
+const slink = (t, a, cls = '', extra = '') => `<button class="xr ${cls}" data-a="${a}" ${extra}><span class="grow">${t}</span>${cls ? '' : I.right}</button>`;
 function viewMe() {
-  const p = S.profile, lw = latestWeight(), fw = firstWeight();
+  const p = S.profile, lw = latestWeight(), fw = firstWeight(), on = f => !p[f];
+  const goal = p.goalW ? `${bw(Math.abs(lw ? lw.w - p.goalW : 0))} ${U()} to your goal of ${bw(p.goalW)} ${U()}` : '';
   return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div></div>
   <div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>since ${fw ? esc(fmtDate(fw.d)) : 'start'}</span></div></div>
-    <div class="mt3 cap">${ix().ws.filter(w => !w.skipped).length} workouts logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</div></div>
-  <h2>Settings</h2>
-  <div class="card stack">
-    <div class="field"><span>Theme</span><div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div></div>
-    <div class="row between"><span>Sounds <button class="f15 link" data-a="soundTest" style="margin-left:8px">Test</button></span><div class="seg" style="width:140px"><button class="${S.profile.sound !== false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound !== false ? 'disabled' : ''}>On</button><button class="${S.profile.sound === false ? 'on' : ''}" data-a="soundToggle" ${S.profile.sound === false ? 'disabled' : ''}>Off</button></div></div>
-    <button class="full mh44 tl row between" data-a="plates"><span>Plate loader</span>${I.right}</button>
-    <button class="full mh44 tl row between" data-a="myEx"><span>My exercises and muscle groups</span>${I.right}</button>
-    <div class="row between"><span>Units</span><div class="seg" style="width:140px"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div></div>
-    <label class="row between"><span>Daily step goal</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-steps" data-in="prof" data-f="stepGoal" value="${p.stepGoal}"></label>
-    <label class="row between"><span>Workouts per week</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-week" data-in="prof" data-f="weeklyTarget" value="${p.weeklyTarget}"></label>
-    <label class="row between"><span>Rest timer (seconds)</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-rest" data-in="prof" data-f="defaultRest" value="${p.defaultRest}"></label>
-    <label class="row between"><span>Height (cm)</span><input class="tr input sm num" style="width:110px" inputmode="numeric" id="set-h" data-in="prof" data-f="heightCm" value="${p.heightCm || ''}" placeholder="170"></label>
-  </div>
-  <h2>Steps from QWatch</h2>
-  <div class="card stack">
-    ${HOSTED && USER ? `<p class="m0 f15 sec">QWatch Pro sends your steps to Apple Health. An evening Apple Shortcut then sends them from Health to JobDone by itself, with no app opening. It needs a sync key, which you make once here.</p>
-    <button class="btn block" data-a="syncKey">Create sync key</button>
-    <details><summary class="link">Set up the evening Shortcut (one time)</summary>
-      <ol class="f15 g2 m0 mt2 sec" style="padding-left:20px;display:flex;flex-direction:column">
+    <div class="mt3 cap">${ix().ws.filter(w => !w.skipped).length} workouts logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}${goal && lw ? ' · ' + goal : ''}</div></div>
+  <section><div class="sgh">You</div><div class="sgrp">
+    ${snum('Name', 'set-name', 'name', esc(p.name || ''), 'Your name')}
+    ${snum('Height', 'set-h', 'heightCm', p.heightCm || '', '170', 'cm')}
+    ${snum('Goal weight', 'set-goal', 'goalW', p.goalW ? bw(p.goalW) : '', 'none', U())}
+    ${srow('Units', `<div class="seg w140"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div>`)}
+  </div></section>
+  <section><div class="sgh">Goals</div><div class="sgrp">
+    ${snum('Daily steps', 'set-steps', 'stepGoal', p.stepGoal, '10000')}
+    ${snum('Workouts per week', 'set-week', 'weeklyTarget', p.weeklyTarget, '4')}
+  </div></section>
+  <section><div class="sgh">Workouts</div><div class="sgrp">
+    ${snum('Rest timer', 'set-rest', 'defaultRest', p.defaultRest, '300', 'sec')}
+    ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
+    ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
+    ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
+    ${slink('Plate loader', 'plates')}
+    ${slink('My exercises and muscle groups', 'myEx')}
+  </div></section>
+  <section><div class="sgh">Reminders</div><div class="sgrp">
+    ${srow('Morning weigh-in pop-up', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
+  </div></section>
+  <section><div class="sgh">Sounds</div><div class="sgrp">
+    ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
+    ${srow('Play when on silent', swi(!!p.soundSilent, 'soundSilent', `data-k="${p.soundSilent ? '' : '1'}"`), 'Pauses music while a sound plays')}
+    ${slink('Play a test sound', 'soundTest', 'act')}
+  </div></section>
+  <section><div class="sgh">Theme</div><div class="sgrp pad">
+    <div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div>
+  </div></section>
+  <section><div class="sgh">Steps from QWatch</div><div class="sgrp">
+    ${HOSTED && USER ? `<p class="xr-p">QWatch Pro sends your steps to Apple Health, and an evening Apple Shortcut sends them on to JobDone. It needs a sync key, made once here.</p>
+    ${slink('Create sync key', 'syncKey', 'act')}
+    <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
+      <ol class="f15 m0 sec xr-ol">
         <li>Make a sync key above and copy it.</li>
         <li>Open Shortcuts, tap +, and name it “JobDone steps”.</li>
         <li>Add <b>Find Health Samples</b>: Type is Steps, Start Date is in the last 3 days, Group By Day.</li>
@@ -880,19 +905,22 @@ function viewMe() {
         <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
         <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
         <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “JobDone steps”.</li>
-      </ol></details>` : `<p class="m0 f15 sec">Your QWatch steps reach Apple Health. Type them on Today, or copy them from an Apple Shortcut and paste them here. Sign in on the JobDone website to have a Shortcut send them automatically every evening.</p>`}
-    <button class="btn ${HOSTED && USER ? 'ghost ' : ''}block" data-a="steps">Add or paste steps by hand</button>
-  </div>
-  ${HOSTED && USER ? `<h2>Account</h2><div class="card stack"><div class="row between"><div class="grow"><div class="cap">Signed in as</div><div class="fw6" style="overflow-wrap:anywhere">${esc(USER.email || 'your account')}</div></div><button class="btn sm" data-a="signOut">Sign out</button></div><button class="btn block" data-a="setPassword">Set or change password</button></div>` : ''}
-  <h2>Your data</h2>
-  <div class="card stack">
-    <div class="note">${HOSTED ? (mode === 'cloud' ? 'Saved to your JobDone account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div>
-    <label class="btn block" for="csv-file">Import workouts from CSV</label><input type="file" id="csv-file" accept=".csv,text/csv" data-in="csvFile" hidden>
-    <label class="btn block" for="bk-file">Restore from a backup (JSON)</label><input type="file" id="bk-file" accept=".json,application/json" data-in="bkFile" hidden>
-    <div class="row"><button class="btn grow" data-a="export" data-k="json">Export JSON</button><button class="btn grow" data-a="export" data-k="csv">Export CSV</button></div>
-    <button class="btn block ghost danger" data-a="reset">Erase all data</button>
-  </div>
-  <p class="tc cap">JobDone · built from your build prompt, Oct 2026</p>
+      </ol></details>` : `<p class="xr-p">Your QWatch steps reach Apple Health. Type them on Today, or paste them here. Sign in on the JobDone website to have a Shortcut send them every evening.</p>`}
+    ${slink('Add or paste steps by hand', 'steps', 'act')}
+  </div></section>
+  ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
+    ${srow('Signed in as', `<span class="xr-v">${esc(USER.email || 'your account')}</span>`)}
+    ${slink('Set or change password', 'setPassword')}
+    ${slink('Sign out', 'signOut', 'neg')}
+  </div></section>` : ''}
+  <section><div class="sgh">Your data</div><div class="sgrp">
+    <label class="xr" for="csv-file"><span class="grow">Import workouts from CSV</span>${I.right}</label><input type="file" id="csv-file" accept=".csv,text/csv" data-in="csvFile" hidden>
+    <label class="xr" for="bk-file"><span class="grow">Restore from a backup</span>${I.right}</label><input type="file" id="bk-file" accept=".json,application/json" data-in="bkFile" hidden>
+    ${slink('Export backup (JSON)', 'export', '', 'data-k="json"')}
+    ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
+    ${slink('Erase all data', 'reset', 'neg')}
+  </div><div class="sgf">${HOSTED ? (mode === 'cloud' ? 'Saved to your JobDone account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+  <p class="tc cap">JobDone · Oct 2026</p>
 </div>`;
 }
 
@@ -957,7 +985,7 @@ function touchA() { A.touched = Date.now(); persist('jd/active'); renderWorkout(
 let wakeLock = null;
 async function openWk() {
   A.open = true; renderWorkout();
-  try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {}
+  try { if (navigator.wakeLock && !wakeLock && !S.profile.noWake) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {}
 }
 function minimizeWk() { if (A) A.open = false; if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); }
 function ghostVol() {
@@ -1052,6 +1080,19 @@ const Sound = {
       this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') this.ctx.resume();
+    // iPhone: Web Audio is muted by the ring/silent switch. Asking for a 'playback' session (iOS 17+)
+    // and playing a silent <audio> clip once from a tap moves the page onto the media channel,
+    // so sounds play like a video does (Jedris has the same limit on silent mode).
+    // Only when Job turns on Me → Sounds → "Play on silent": a playback session pauses music apps.
+    if (!(S && S.profile && S.profile.soundSilent)) return;
+    if (navigator.audioSession && navigator.audioSession.type !== 'playback') try { navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (!this.media) try {
+      const n = 800, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+      b.setUint32(24, 8000, true); b.setUint32(28, 16000, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); w(36, 'data'); b.setUint32(40, n * 2, true);
+      this.media = new Audio(URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }))); this.media.setAttribute('playsinline', '');
+      const pr = this.media.play(); if (pr && pr.catch) pr.catch(() => { this.media = null; });
+    } catch (e) { this.media = null; }
   },
   tone(freq, dur, type = 'sine', vol = .1, delay = 0) {
     const c = this.ctx, t0 = c.currentTime + delay, osc = c.createOscillator(), g = c.createGain();
@@ -1117,7 +1158,7 @@ function logSet(ei, si) {
     buzz(10);
     const pr = livePR(e)[si];
     const secs = S.profile.defaultRest || 300;
-    REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    if (!S.profile.noAutoRest) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     touchA();
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
@@ -1866,7 +1907,7 @@ const ACT = {
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
-  wkDelete: () => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; confirmSheet({ title: 'Delete this workout?', body: `${esc(w.splitName)} on ${esc(fmtDate(w.date, { wd: true }))}. This can’t be undone.`, ok: 'Delete', danger: true, onOk: () => { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); back(); toast('Workout deleted'); } }); },
+  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; confirmSheet({ title: 'Delete this workout?', body: `${esc(w.splitName)} on ${esc(fmtDate(w.date, { wd: true }))}. This can’t be undone.`, ok: 'Delete', danger: true, onOk: () => { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted'); } }); },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
@@ -1892,7 +1933,9 @@ const ACT = {
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
-  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast(sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound. If you heard nothing, turn the volume up.', 4000)); },
+  soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent && navigator.audioSession) try { navigator.audioSession.type = 'auto'; } catch (e) {} Sound.unlock(); rerender(); },
+  soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast((sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound.') + ` (audio ${Sound.ctx ? Sound.ctx.state : 'none'}, ${navigator.audioSession ? navigator.audioSession.type : 'no session'})`, 4000)); },
+  pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };
 document.addEventListener('click', ev => {
@@ -1903,6 +1946,8 @@ const IN = {
   viewDay: el => { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) setViewDay(el.value); },
   spName: (el, live) => { const sp = splitById(el.dataset.id); const v = el.value.trim(); if (!v) return; sp.name = v; Object.values(S.workouts).forEach(w => { if (w.splitId === sp.id) w.splitName = v; }); persist('jd/meta', ...(live ? [] : allPaths().filter(p => p.startsWith('months/')))); },
   spEx: el => { const sp = splitById(el.dataset.id), e = sp.ex[+el.dataset.i], f = el.dataset.f; if (f === 'note') e.note = el.value; else { const v = parseInt(el.value, 10); if (!isNaN(v) && v >= 0) e[f] = v; if (e.repMax < e.repMin) e.repMax = e.repMin; } persist('jd/meta'); },
+  profT: el => { const v = el.value.trim().slice(0, 30); if (v) { S.profile.name = v; persist('jd/meta'); } },
+  profW: el => { const v = parseFloat(el.value); S.profile.goalW = !isNaN(v) && v > 0 ? Math.round(toKg(v) * 100) / 100 : null; persist('jd/meta'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
   wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; invalidate(); persist(old, monthPath(w.date)); rerender(); },
   wkSplit: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const sp = splitById(el.value); w.splitId = sp.id; w.splitName = sp.name; invalidate(); persist(monthPath(w.date)); rerender(); },
@@ -1961,7 +2006,7 @@ document.addEventListener('touchend', () => {
 function maybePrompt() {
   if (!S || !S.imported && !S.splits.length) return;
   const t = today();
-  if (S.weights[t] || UI.lastPrompt === t || (A && A.open)) return;
+  if (S.profile.noWeighPrompt || S.weights[t] || UI.lastPrompt === t || (A && A.open)) return;
   UI.lastPrompt = t; lsSave();
   setTimeout(() => openWeighIn(t, true), 500);
 }
