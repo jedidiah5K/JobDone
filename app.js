@@ -316,6 +316,7 @@ const I = {
   left: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>',
   down: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
   more: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  grip: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8h14M5 12h14M5 16h14"/></svg>',
   up1: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 15l6-6 6 6"/></svg>',
   dn1: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
   x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -705,17 +706,15 @@ function viewSplitEdit({ id }) {
   <div class="field"><label for="sp-name">Name</label><input class="input" id="sp-name" data-in="spName" data-id="${sp.id}" value="${esc(sp.name)}" maxlength="30"></div>
   <div class="field"><span class="lbl">Colour</span><div class="chips">${PALETTE.map(c => `<button class="chip ${sp.color === c ? 'on' : ''}" data-a="spColor" data-id="${sp.id}" data-c="${c}" aria-label="Colour ${c}"><span style="width:14px;height:14px;border-radius:50%;background:${c};display:inline-block"></span></button>`).join('')}</div></div>
   <h2>Exercises</h2>
-  ${sp.ex.map((e, i) => `<div class="g2 card tight stack">
-    <div class="row"><div class="f17 grow ex-name">${esc(e.name)}</div>
-      <button class="icon-btn" data-a="spMove" data-id="${sp.id}" data-i="${i}" data-d="-1" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>${I.up1}</button>
-      <button class="icon-btn" data-a="spMove" data-id="${sp.id}" data-i="${i}" data-d="1" aria-label="Move down" ${i === sp.ex.length - 1 ? 'disabled' : ''}>${I.dn1}</button>
+  <div class="stack dsort" data-sort="split" data-id="${sp.id}">${sp.ex.map((e, i) => `<div class="g2 card tight stack" data-dragitem>
+    <div class="row"><button class="drag-h" data-drag aria-label="Drag to move ${esc(e.name)}">${I.grip}</button><div class="f17 grow ex-name">${esc(e.name)}</div>
       <button class="icon-btn" data-a="spRemove" data-id="${sp.id}" data-i="${i}" aria-label="Remove ${esc(e.name)}">${I.x}</button></div>
     <div class="g2 row wrap">
       <label class="g2 row cap">Sets <input class="input sm num" style="width:52px" inputmode="numeric" id="se-${i}-sets" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="sets" value="${e.sets}"></label>
       <label class="g2 row cap">Reps <input class="input sm num" style="width:48px" inputmode="numeric" id="se-${i}-min" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="repMin" value="${e.repMin}">–<input class="input sm num" style="width:48px" inputmode="numeric" id="se-${i}-max" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="repMax" value="${e.repMax}"></label>
     </div>
     <input class="input sm" placeholder="Note: seat height, grip, cue" id="se-${i}-note" data-in="spEx" data-id="${sp.id}" data-i="${i}" data-f="note" value="${esc(e.note || '')}">
-  </div>`).join('')}
+  </div>`).join('')}</div>
   <button class="btn block" data-a="spAdd" data-id="${sp.id}">Add exercise</button>
   <div class="row"><button class="btn grow" data-a="spDup" data-id="${sp.id}">Duplicate</button><button class="btn grow" data-a="spArchive" data-id="${sp.id}">${sp.archived ? 'Unarchive' : 'Archive'}</button></div>
 </div>`;
@@ -2051,12 +2050,13 @@ function openStart() {
 function openRotation() {
   let order = S.rotation.slice();
   const html = () => `<div class="stack"><div class="eyebrow">Rotation</div><p class="m0 cap">Today suggests the split after the last one you did, in this order.</p>
-    <div class="list">${order.map((id, i) => { const sp = splitById(id); return sp ? `<div class="li"><span class="tag" style="width:8px;height:28px;border-radius:4px;background:${sp.color};flex:none"></span><div class="grow t">${i + 1}. ${esc(sp.name)}</div><button class="icon-btn" data-ro="up" data-i="${i}" aria-label="Move up">${I.up1}</button><button class="icon-btn" data-ro="dn" data-i="${i}" aria-label="Move down">${I.dn1}</button><button class="icon-btn" data-ro="rm" data-i="${i}" aria-label="Remove">${I.x}</button></div>` : ''; }).join('') || '<div class="empty">Add splits below.</div>'}</div>
+    <div class="list dsort" data-sort="rot">${order.map((id, i) => { const sp = splitById(id); return sp ? `<div class="li" data-dragitem><button class="drag-h" data-drag aria-label="Drag to move">${I.grip}</button><span class="tag" style="width:8px;height:28px;border-radius:4px;background:${sp.color};flex:none"></span><div class="grow t">${i + 1}. ${esc(sp.name)}</div><button class="icon-btn" data-ro="up" data-i="${i}" aria-label="Move up">${I.up1}</button><button class="icon-btn" data-ro="dn" data-i="${i}" aria-label="Move down">${I.dn1}</button><button class="icon-btn" data-ro="rm" data-i="${i}" aria-label="Remove">${I.x}</button></div>` : ''; }).join('') || '<div class="empty">Add splits below.</div>'}</div>
     <div class="chips wrap">${S.splits.filter(s => !s.archived).map(s => `<button class="chip" data-ro="add" data-id="${s.id}">+ ${esc(s.name)}</button>`).join('')}</div>
     <button class="btn primary block" data-ro="save">Save rotation</button></div>`;
   const sh = openSheet(html(), {
     label: 'Rotation',
     mount: b => {
+      b.addEventListener('dsort', ev => { const [x] = order.splice(ev.detail.from, 1); order.splice(ev.detail.to, 0, x); b.innerHTML = html(); });
       b.onclick = ev => {
         const x = ev.target.closest('[data-ro]'); if (!x) return; const i = +x.dataset.i;
         if (x.dataset.ro === 'save') { S.rotation = order; persist('jd/meta'); closeSheet(sh); rerender(); toast('Rotation saved'); return; }
@@ -2086,11 +2086,47 @@ function openSetup(name) {
     };
   } });
 }
+// Drag the three-line handle to reorder today's exercises (Job, 15 Oct).
+function openReorder() {
+  const html = () => `<div class="stack"><div class="eyebrow">Reorder exercises</div><p class="m0 cap">Drag the handle up or down.</p>
+    <div class="list dsort" data-sort="wk">${A.ex.map(e => `<div class="li" data-dragitem><button class="drag-h" data-drag aria-label="Drag to move ${esc(e.name)}">${I.grip}</button><div class="grow t">${esc(e.name)}</div><span class="cap">${plural(e.sets.length, 'set')}</span></div>`).join('')}</div>
+    <button class="btn primary block" data-a="closeSheet">Done</button></div>`;
+  openSheet(html(), { label: 'Reorder exercises', mount: b => b.addEventListener('dsort', ev => { const [x] = A.ex.splice(ev.detail.from, 1); A.ex.splice(ev.detail.to, 0, x); touchA(); b.innerHTML = html(); }) });
+}
+// Pointer drag for any .dsort list: grab a [data-drag] handle, the row follows your finger, the others make room.
+// On drop a 'dsort' event bubbles with { from, to }; split lists save straight away.
+function dragSort(ev) {
+  const h = ev.target.closest('[data-drag]'); if (!h) return;
+  const item = h.closest('[data-dragitem]'), box = item && item.parentElement; if (!box || !box.classList.contains('dsort')) return;
+  ev.preventDefault();
+  const items = [...box.children].filter(x => x.hasAttribute('data-dragitem')), from = items.indexOf(item);
+  const rects = items.map(x => x.getBoundingClientRect()), y0 = ev.clientY, hgt = rects[from].height + (rects[1] ? Math.abs(rects[1].top - rects[0].bottom) : 8);
+  let to = from;
+  item.classList.add('dragging'); try { h.setPointerCapture(ev.pointerId); } catch (e) {}
+  const scroller = item.closest('#screen, .sheet-body, .wk-body');
+  const move = e => {
+    const dy = e.clientY - y0; item.style.transform = `translateY(${dy}px)`;
+    const mid = rects[from].top + rects[from].height / 2 + dy;
+    to = from; items.forEach((x, i) => { if (i === from) return; const c = rects[i].top + rects[i].height / 2; let sh = 0;
+      if (i > from && mid > c) { sh = -hgt; to = Math.max(to, i); } else if (i < from && mid < c) { sh = hgt; to = Math.min(to, i); }
+      x.style.transform = sh ? `translateY(${sh}px)` : ''; });
+    if (scroller) { const r = scroller.getBoundingClientRect(); if (e.clientY < r.top + 40) scroller.scrollTop -= 8; else if (e.clientY > r.bottom - 40) scroller.scrollTop += 8; }
+  };
+  const up = () => {
+    h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+    items.forEach(x => { x.style.transform = ''; }); item.classList.remove('dragging');
+    if (to === from) return;
+    if (box.dataset.sort === 'split') { const sp = splitById(box.dataset.id); const [x] = sp.ex.splice(from, 1); sp.ex.splice(to, 0, x); persist('jd/meta'); NAV.keepScroll = true; rerender(); return; }
+    box.dispatchEvent(new CustomEvent('dsort', { bubbles: true, detail: { from, to } }));
+  };
+  h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+}
+document.addEventListener('pointerdown', dragSort);
 function exMenu(ei) {
   const e = A.ex[ei];
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(e.name)}</div>
     <button class="btn block" data-m="note">${e.note ? 'Edit note' : 'Add note'}</button>
-    <div class="row"><button class="btn grow" data-m="up" ${ei === 0 ? 'disabled' : ''}>Move up</button><button class="btn grow" data-m="dn" ${ei === A.ex.length - 1 ? 'disabled' : ''}>Move down</button></div>
+    <button class="btn block" data-m="order">${I.grip} Reorder exercises</button>
     <button class="btn block" data-m="setup">Machine setup</button>
     <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>
     <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
@@ -2099,8 +2135,7 @@ function exMenu(ei) {
     mount: b => {
       b.onclick = ev => {
         const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m; closeSheet(sh);
-        if (m === 'up') { [A.ex[ei - 1], A.ex[ei]] = [A.ex[ei], A.ex[ei - 1]]; touchA(); }
-        if (m === 'dn') { [A.ex[ei + 1], A.ex[ei]] = [A.ex[ei], A.ex[ei + 1]]; touchA(); }
+        if (m === 'order') openReorder();
         if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { A.ex.splice(ei, 1); touchA(); } });
         if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
@@ -2168,7 +2203,7 @@ async function doImport(withHistory) {
   finishImport(withHistory ? `Imported ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}` : 'Ready. Your splits are set up.');
 }
 function finishImport(msg) {
-  invalidate();
+  invalidate(); OB = null; document.documentElement.classList.remove('ob-on');
   if (UI.a2hs && S && S.profile) S.profile.a2hs = UI.a2hs;
   UI.lastPrompt = today();
   $('#app').innerHTML = '';
@@ -2211,24 +2246,96 @@ const TEMPLATES = {
   fb: { n: 'Full body', d: 'One workout, 2 to 3 times a week', s: [['Full Body', ['Back Squat', 'Bench Press', 'Barbell Row', 'Shoulder Press', 'Romanian Deadlift']]] },
   none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
 };
+// First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what JobDone does,
+// then the few things it needs: you, your goal, your experience, a look, a plan.
+let OB = null;
+const OB_STEPS = ['home', 'tour', 'you', 'goal', 'exp', 'theme', 'plan'];
+const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
+const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
+const obPlan = () => OB.days >= 5 ? 'ppl' : OB.days === 4 ? 'ul' : OB.exp === 'new' ? 'fb' : 'ppl';
+function obTour() {
+  const mock = (cls, inner) => `<div class="ob-mock ${cls}">${inner}</div>`;
+  const slides = [
+    ['Log a set in two taps', 'Last time’s numbers sit next to every set. Tap kg and load plates onto a bar instead of doing maths.',
+      mock('m-log', `<div class="m-h">Bench Press</div><div class="m-row m-hd"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div><div class="m-row done"><span>1</span><span class="mu">60×8</span><b>62.5</b><b>8</b><i class="m-ck">${I.check}</i></div><div class="m-row"><span>2</span><span class="mu">60×7</span><b>62.5</b><b class="mu">–</b><i class="m-ck off">${I.check}</i></div><div class="m-plates"><i style="background:#D9342B;height:46px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#F2B632;height:32px"></i><span></span><i style="background:#F2B632;height:32px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#D9342B;height:46px"></i></div>`)],
+    ['Beat last time, every time', 'A target for each lift, a bar that races your last session, and a message after every set.',
+      mock('m-beat', `<div class="m-toast"><b>Strong set</b><span>Nearly time to add weight.</span></div><div class="m-tgt">Target: same weight, one more rep than last time.</div><div class="m-race"><i class="g" style="width:82%"></i><i class="me" style="width:64%"></i></div><div class="m-cap">240 kg to match last time</div>`)],
+    ['Watch yourself get stronger', 'PRs, a weight vs strength chart and plateau alerts tell you what is working and what to change.',
+      mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
+    ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
+      mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job done.</div>`)],
+  ];
+  return `<div class="ob-tour" id="ob-tour">${slides.map(([t, d, m]) => `<section class="ob-slide">${m}<h2>${t}</h2><p class="sec">${d}</p></section>`).join('')}</div>
+    <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
+}
+function obBody(k) {
+  if (k === 'home') return `<div class="ob-hero"><img src="icons/apple-touch-icon.png?v=6" alt="" width="72" height="72" onerror="this.remove()"><h1>First, put JobDone on your Home Screen</h1><p class="sec">It opens full screen like a real app, keeps you signed in, and can tell you when rest is over.</p></div>
+    ${isStandalone() ? `<div class="note ok">You’re already using JobDone from your Home Screen. Nice.</div>` : `<div class="seg"><button data-os="ios" class="${OB.os === 'ios' ? 'on' : ''}">iPhone</button><button data-os="android" class="${OB.os === 'android' ? 'on' : ''}">Android</button></div>
+    ${OB.os === 'android' && installEvt ? '<button class="btn block" id="ob-inst">Install now</button>' : ''}${installSteps(OB.os)}<p class="cap">Then open JobDone from its new icon and sign in once more. You can find these steps again in Me.</p>`}`;
+  if (k === 'tour') return `<h1 class="ob-t">Here’s what JobDone does</h1>${obTour()}`;
+  if (k === 'you') return `<h1 class="ob-t">About you</h1><p class="sec ob-s">Used for your progress charts. Only you can see it.</p>
+    <div class="field"><label for="ob-name">First name</label><input class="input" id="ob-name" maxlength="40" value="${esc(OB.name)}" placeholder="What should we call you?" autocomplete="given-name"></div>
+    <div class="field"><span class="lbl">Units</span><div class="seg"><button data-unit="kg" class="${OB.unit === 'kg' ? 'on' : ''}">kg</button><button data-unit="lb" class="${OB.unit === 'lb' ? 'on' : ''}">lb</button></div></div>
+    <div class="grid2"><div class="field"><label for="ob-w">Weight today (${OB.unit})</label><input class="input num" id="ob-w" inputmode="decimal" value="${esc(OB.w)}" placeholder="For example 72.5"></div>
+    <div class="field"><label for="ob-gw">Goal weight (${OB.unit})</label><input class="input num" id="ob-gw" inputmode="decimal" value="${esc(OB.gw)}" placeholder="Optional"></div></div>
+    <div class="field"><label for="ob-h">Height (cm)</label><input class="input num" id="ob-h" inputmode="decimal" value="${esc(OB.h)}" placeholder="Optional"></div>`;
+  if (k === 'goal') return `<h1 class="ob-t">What’s your goal?</h1><p class="sec ob-s">It sets your rep ranges and the plan we suggest.</p>
+    <div class="tmpl">${Object.entries(OB_GOALS).map(([g, [n, d]]) => `<button data-goal="${g}" class="${OB.goal === g ? 'on' : ''}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>
+    <div class="field"><span class="lbl">Workouts per week</span><div class="seg">${[2, 3, 4, 5, 6].map(n => `<button data-days="${n}" class="${OB.days === n ? 'on' : ''}">${n}</button>`).join('')}</div></div>`;
+  if (k === 'exp') return `<h1 class="ob-t">How long have you been lifting?</h1><p class="sec ob-s">Newer lifters get higher reps to learn the moves. You can change any target later.</p>
+    <div class="tmpl">${Object.entries(OB_EXP).map(([e, [n, d, lo, hi]]) => `<button data-exp="${e}" class="${OB.exp === e ? 'on' : ''}"><b>${n}</b><span>${d} · ${lo} to ${hi} reps</span></button>`).join('')}</div>`;
+  if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Each theme has its own scenery and its own voice when you finish a set. Change it any time in Me.</p>
+    <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i style="background:${t.sw}"></i><b>${t.name}</b><span>${esc(pick(THEME_MSG[t.k].great))}</span></button>`).join('')}</div>`;
+  const rec = obPlan();
+  return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">Based on ${OB.days} workouts a week. Every split can be renamed and edited later.</p>
+    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
+    <details><summary class="link">Already have a log? Import it instead</summary><div class="mt3 stack"><p class="m0 cap">A JobDone backup (JSON), or a CSV export from Strong or Hevy.</p>
+      <label class="btn block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
+}
 function renderWelcomePublic() {
-  let pick = 'ppl';
-  $('#app').innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="g4 pt6 stack" style="max-width:480px;margin:0 auto">
-    <div class="wordmark">Job<span>Done</span></div>
-    <div><h1>Welcome, ${esc(firstName())}</h1><p class="m0 mt2 sec">Log your lifts, see last time’s numbers, and watch your strength climb.</p></div>
-    <div class="field"><label for="wl-name">What should we call you?</label><input class="input" id="wl-name" maxlength="40" value="${esc(firstName() === 'there' ? '' : firstName())}" placeholder="Your first name"></div>
-    <div><div class="mb2 eyebrow">Pick a starting plan</div><div class="tmpl">${Object.entries(TEMPLATES).map(([k, t]) => `<button data-t="${k}" class="${k === pick ? 'on' : ''}"><b>${esc(t.n)}</b><span>${esc(t.d)}</span></button>`).join('')}</div></div>
-    <button class="mh52 f17 btn primary block" id="wl-go">Start</button>
-    <details><summary class="link">Already have a log? Import it</summary><div class="mt3 stack"><p class="m0 cap">A JobDone backup (JSON), or a CSV export from Strong or Hevy.</p>
-      <label class="btn block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>
-  </div></main>`;
-  document.querySelectorAll('.tmpl [data-t]').forEach(b => b.onclick = () => { pick = b.dataset.t; document.querySelectorAll('.tmpl [data-t]').forEach(x => x.classList.toggle('on', x === b)); });
-  $('#wl-go').onclick = () => {
-    S = freshState(); S.imported = true; S.profile.legacy = 0;
-    const nm = $('#wl-name').value.trim(); if (nm) S.profile.name = nm.slice(0, 40);
-    for (const [name, ex] of TEMPLATES[pick].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: 6, repMax: 10, rest: 120, note: '' })) }); S.rotation.push(id); }
-    finishImport(S.splits.length ? 'You’re set. Your first workout is on Today.' : 'Ready. Add a split to get started.');
+  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: 3, exp: 'some', theme: theme(), plan: null };
+  const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
+  document.documentElement.classList.add('ob-on');
+  const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Set me up' : last ? 'Start training' : 'Continue';
+  $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div><span class="cap num">${OB.step + 1}/${OB_STEPS.length}</span></div>
+    <div class="ob-body stack" data-k="${k}">${obBody(k)}</div>
+    <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${k === 'home' && !isStandalone() ? '<button class="self-c link" id="ob-later">I’ll do it later</button>' : ''}</div></main>`;
+  const q = x => $('#app').querySelector(x), qa = x => $('#app').querySelectorAll(x);
+  const keep = () => { const f = id => { const e = q(id); return e ? e.value.trim() : null; }; const n = f('#ob-name'); if (n != null) { OB.name = n; OB.w = f('#ob-w'); OB.gw = f('#ob-gw'); OB.h = f('#ob-h'); } };
+  const go = d => { keep(); OB.step = Math.max(0, Math.min(OB_STEPS.length - 1, OB.step + d)); renderWelcomePublic(); const sc = $('#screen'); if (sc) sc.scrollTop = 0; };
+  q('#ob-back').onclick = () => go(-1);
+  qa('[data-os]').forEach(b => b.onclick = () => { OB.os = b.dataset.os; renderWelcomePublic(); });
+  const ib = q('#ob-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; renderWelcomePublic(); };
+  qa('[data-unit]').forEach(b => b.onclick = () => { keep(); OB.unit = b.dataset.unit; renderWelcomePublic(); });
+  qa('[data-goal]').forEach(b => b.onclick = () => { OB.goal = b.dataset.goal; if (OB.goal === 'strength' && OB.exp !== 'new') OB.exp = 'pro'; renderWelcomePublic(); });
+  qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
+  qa('[data-exp]').forEach(b => b.onclick = () => { OB.exp = b.dataset.exp; OB.plan = null; renderWelcomePublic(); });
+  qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; applyTheme(OB.theme); renderWelcomePublic(); });
+  qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
+  const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); };
+  const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
+  q('#ob-next').onclick = () => {
+    keep(); const err = m => { q('#ob-err').textContent = m; };
+    if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: 'smooth' }); return; }
+    if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (!(w > 20 && w < 700)) return err('Add your weight today so your charts have a starting point.'); }
+    if (!last) return go(1);
+    obFinish();
   };
+}
+function obFinish() {
+  S = freshState(); S.imported = true; S.profile.legacy = 0;
+  const p = S.profile, num = x => { const v = parseFloat(x); return isNaN(v) ? null : v; };
+  p.name = OB.name.slice(0, 40); p.unit = OB.unit; p.weeklyTarget = OB.days; p.goal = OB.goal; p.exp = OB.exp; p.theme = OB.theme; p.cliffs1 = true; p.onboarded = today();
+  if (!OB.skippedHome) p.a2hs = today();
+  const toKg2 = v => v == null ? null : Math.round((OB.unit === 'lb' ? v / LB : v) * 100) / 100;
+  const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
+  if (w) S.weights[today()] = { w, src: 'manual' };
+  if (gw) p.goalW = gw; if (h && h > 90 && h < 250) p.heightCm = Math.round(h);
+  const [, , lo, hi] = OB_EXP[OB.exp]; const lo2 = OB.goal === 'strength' ? lo - 1 : lo, hi2 = OB.goal === 'strength' ? hi - 2 : hi;
+  for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: 120, note: '' })) }); S.rotation.push(id); }
+  if (UI) UI.lastPrompt = today();
+  applyTheme(OB.theme); OB = null; document.documentElement.classList.remove('ob-on');
+  finishImport(S.splits.length ? `You’re set, ${p.name}. Your first workout is on Today.` : 'Ready. Add a split to get started.');
 }
 
 // ---------- CSV import / export ----------
