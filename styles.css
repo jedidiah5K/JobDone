@@ -542,3 +542,42 @@ button.xr:active, label.xr[for]:active { opacity: .6; }
 .xsw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .2s var(--ease); }
 .xsw.on { background: var(--pos); box-shadow: none; }
 .xsw.on::after { transform: translateX(20px); }
+
+/* ============ Recap v2 (Oct 2026) ============ */
+#recap .rc-body { padding-top: 0; }
+.rc-hero { margin: 0 calc(-1 * var(--s4)); padding: calc(var(--s8) + env(safe-area-inset-top, 0px)) var(--s4) var(--s6); border-radius: 0 0 var(--r3) var(--r3); background: linear-gradient(160deg, var(--split), color-mix(in srgb, var(--split) 70%, #000)); color: var(--ink, #fff); }
+.rc-hero h1 { color: inherit; font-size: 40px; line-height: 46px; letter-spacing: -.02em; }
+.rc-hero .rc-check circle { fill: color-mix(in srgb, var(--ink, #fff) 22%, transparent); }
+.rc-hero .rc-check path { stroke: var(--ink, #fff); }
+.rc-date { font-size: 15px; line-height: 20px; font-weight: 500; opacity: .85; }
+.rc-tags { display: flex; gap: var(--s2); justify-content: center; margin-top: var(--s2); }
+.rc-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; padding: 4px 12px; border-radius: 999px; background: color-mix(in srgb, var(--ink, #fff) 18%, transparent); }
+.rc-tag .sdot { width: 8px; height: 8px; background: var(--ink, #fff); }
+.rc-tag.pr { background: var(--pr); color: #221E2B; }
+.rc-big { font-size: 44px; line-height: 50px; font-weight: 700; letter-spacing: -.02em; margin-top: var(--s1); }
+.rc-big .unit { font-size: 20px; }
+.rc-cmp { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--s2); }
+.rc-bar { display: grid; grid-template-columns: 92px 1fr 56px; align-items: center; gap: var(--s3); font-size: 13px; color: var(--text2); }
+.rc-bar i { height: 10px; border-radius: 5px; background: var(--raised); overflow: hidden; }
+.rc-bar i b { display: block; height: 100%; border-radius: 5px; background: var(--split); animation: grow .6s .2s var(--ease) both; transform-origin: left; }
+.rc-bar.was i b { background: var(--muted); }
+.rc-bar em { font-style: normal; text-align: right; color: var(--text); font-weight: 600; }
+.c-pos { color: var(--pos); }
+.rc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.rc-dl { font-size: 12px; line-height: 16px; font-weight: 600; padding: 1px 7px; border-radius: 6px; background: var(--raised); color: var(--text2); white-space: nowrap; }
+.rc-dl.up { color: var(--pos); background: color-mix(in srgb, var(--pos) 14%, transparent); }
+.rc-dl.dn { color: var(--neg); background: color-mix(in srgb, var(--neg) 12%, transparent); }
+.rc-dl.new { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.rc-mu i b { background: var(--split); }
+.rc-week { display: flex; flex-direction: column; gap: var(--s3); }
+.rc-dots { display: flex; gap: var(--s2); }
+.rc-dots i { flex: 1; height: 8px; border-radius: 4px; background: var(--raised); }
+.rc-dots i.on { background: var(--split); }
+
+/* iOS date inputs ignore width and spill into the next box; make them behave like normal fields */
+input[type=date].input { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; text-align: left; line-height: 44px; }
+input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.field { min-width: 0; }
+.grid2 > * { min-width: 0; }
+.kpis.rc-k { display: grid; grid-template-columns: repeat(4, 1fr); }
+.kpis.rc-k .kpi { padding: 0 var(--s2); } .kpis.rc-k .kpi:first-child { padding-left: 0; }

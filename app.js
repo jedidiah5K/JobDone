@@ -1232,20 +1232,35 @@ function showRecap(id, fresh) {
   const old = document.getElementById('recap'); if (old) old.remove();
   const el = document.createElement('div'); el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Workout recap');
   const pr = new Map(d.prs.map(p => [p.ex, p])), mx = d.musL.length ? d.musL[0][1] : 1;
-  el.innerHTML = `<div class="rc-body">
-    <div class="rc-hero"><div class="rc-check">${fresh ? '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>' : '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>'}</div>
-      <div class="eyebrow">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1><div class="sec">${esc(d.w.splitName || 'Workout')}${d.prs.length ? ` · <b class="c-text">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</b>` : ''}</div></div>
-    <div class="rc-stats">
-      <div class="rc-st"><b>${d.dur ? fmtDur(d.dur) : '—'}</b><span>time</span></div>
-      <div class="rc-st"><b>${dvol(d.vol)}</b><span>${U()} lifted</span></div>
-      <div class="rc-st"><b>${d.sets}</b><span>sets</span></div>
-      <div class="rc-st"><b>${d.reps}</b><span>reps</span></div>
+  const h = d.w.ex.map(e => { const H = ix().hist[e.name] || [], k = H.findIndex(x => x.wid === d.w.id), p = k > 0 ? H[k - 1] : null, t = topSet(e.sets);
+    let dl = '<span class="rc-dl new">New</span>';
+    if (p && p.top && t) { const dk = t.w - p.top.w, dr = t.r - p.top.r;
+      dl = dk > 0.01 ? `<span class="rc-dl up">▲ ${dw(dk)} ${U()}</span>` : dk < -0.01 ? `<span class="rc-dl dn">▼ ${dw(-dk)} ${U()}</span>` : dr > 0 ? `<span class="rc-dl up">▲ ${dr} rep${dr > 1 ? 's' : ''}</span>` : dr < 0 ? `<span class="rc-dl dn">▼ ${-dr} rep${dr < -1 ? 's' : ''}</span>` : '<span class="rc-dl">Same as last</span>'; }
+    return { e, t, dl }; });
+  const pv = d.prev ? wVol(d.prev) : 0, top = Math.max(d.vol, pv, 1);
+  const wk = ix().ws.filter(x => !x.skipped && mondayOf(x.date) === mondayOf(d.w.date)).length, tgt = Math.max(wk, S.profile.weeklyTarget || 4);
+  const sp = wSplit(d.w), col = sp ? sp.color : 'var(--accent)', nx = nextSplit();
+  const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
+  el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
+    <div class="rc-hero"><div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
+      <div class="rc-date">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Job done!</h1>
+      <div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div></div>
+    <div class="card rc-vol">
+      <div class="eyebrow">Volume</div>
+      <div class="rc-big num">${dvol(d.vol)}<span class="unit">${U()}</span></div>
+      <div class="cap">That's like lifting ${esc(d.heavy)}.</div>
+      ${d.prev ? `<div class="rc-cmp">
+        <div class="rc-bar"><span>Today</span><i><b style="width:${Math.round(d.vol / top * 100)}%"></b></i><em class="num">${dvol(d.vol)}</em></div>
+        <div class="rc-bar was"><span>Last ${esc(fmtDate(d.prev.date))}</span><i><b style="width:${Math.round(pv / top * 100)}%"></b></i><em class="num">${dvol(pv)}</em></div>
+        <div class="cap ${d.dv >= 0 ? 'c-pos' : ''}">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% vs your last ${esc(d.w.splitName || 'workout')}</div></div>` : ''}
     </div>
-    <div class="card rc-fun"><span class="rc-emoji" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span><div>That's like lifting <b>${esc(d.heavy)}</b>.${d.dv != null ? `<div class="mt1 cap">${d.dv >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d.dv * 100))}% volume vs your last ${esc(d.w.splitName || 'workout')}</div>` : ''}</div></div>
-    ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/><path d="M9.5 15l1.7 1.7L14.8 13" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
-    <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n % 1 ? n.toFixed(1) : n} sets</em></div>`).join('')}</div>
-    <div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${d.w.ex.map(e => { const t = topSet(e.sets); return `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><span class="num sec">${t ? 'best ' + setStr(t) : ''}</span></div>`; }).join('')}</div></div>
-    <div class="tc cap">${esc(streakText())}</div>
+    <div class="card"><div class="kpis rc-k"><div class="kpi"><b>${d.dur >= 6e4 ? fmtDur(d.dur) : '—'}</b><span>time</span></div><div class="kpi"><b>${d.w.ex.length}</b><span>exercises</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.reps}</b><span>reps</span></div></div></div>
+    ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
+    <div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${h.map(({ e, t, dl }) => `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><div class="rc-right"><b class="num">${t ? setStr(t) : '—'}</b>${dl}</div></div>`).join('')}</div></div>
+    <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n1(n)}</em></div>`).join('')}</div>
+    <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
+      <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="cap">${wk} of ${S.profile.weeklyTarget || 4} workouts${nx ? ` · Next up: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
   document.body.appendChild(el);
