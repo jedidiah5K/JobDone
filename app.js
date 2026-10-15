@@ -527,7 +527,9 @@ function skyNow(h) {
   return { s1: col(a[1], b[1]), s2: col(a[2], b[2]), s3: col(a[3], b[3]), tint: `rgba(${t.slice(0, 3).map(Math.round).join(',')},${t[3].toFixed(2)})`, stars: a[5] + (b[5] - a[5]) * f };
 }
 function applySky() {
-  const R = document.documentElement; if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
+  const R = document.documentElement;
+  if (R.dataset.theme === 'spidey') { const hh = new Date().getHours() + new Date().getMinutes() / 60; R.dataset.tod = hh >= 19.5 || hh < 6 ? 'night' : 'day'; const mc = document.querySelector('meta[name=theme-color]'); if (mc) mc.content = R.dataset.tod === 'day' ? '#BFDDF0' : '#0A1230'; clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3); return; }
+  if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
   const n = new Date(), h = n.getHours() + n.getMinutes() / 60, k = skyNow(h), st = R.style;
   st.setProperty('--sky1', k.s1); st.setProperty('--sky2', k.s2); st.setProperty('--sky3', k.s3); st.setProperty('--tint', k.tint); st.setProperty('--stars', k.stars.toFixed(2));
   const day = h >= 6 && h < 19, p = day ? (h - 6) / 13 : ((h + 24 - 19) % 24) / 11;
