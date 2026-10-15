@@ -627,7 +627,8 @@ function applySky() {
   const day = h >= 6 && h < 19, p = day ? (h - 6) / 13 : ((h + 24 - 19) % 24) / 11;
   st.setProperty('--sunx', (10 + p * 80).toFixed(1) + '%'); st.setProperty('--suny', (58 - Math.sin(Math.PI * p) * 46).toFixed(1) + '%');
   const sun = document.querySelector('#bg .sky-sun'); if (sun) sun.classList.toggle('moon', !day);
-  R.dataset.tod = h >= 19.5 || h < 5.5 ? 'night' : 'day';
+  // Cards follow the sky (Job, 16 Oct): dusky glass at sunrise and sunset, sky-tinted light by day, dark at night.
+  R.dataset.tod = h >= 19.5 || h < 5.5 ? 'night' : h < 8 || h >= 17 ? 'dusk' : 'day';
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = k.s1;
   clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3);
 }
@@ -2426,7 +2427,7 @@ function finishImport(msg) {
   persist(...allPaths());
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
   render();
-  toast(msg); const tt = document.querySelector('.toast'); if (tt) tt.classList.add('low');
+  if (msg) { toast(msg); const tt = document.querySelector('.toast'); if (tt) tt.classList.add('low'); }
 }
 // Restore a Jobs Done JSON backup (Me → Export JSON) or start from a CSV log.
 function stateFromBackup(o) {
@@ -2473,8 +2474,8 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Jobs Done does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
-const OB_NAMES = { home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
-const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan'];
+const OB_NAMES = { move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
+const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan', 'move'];
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
@@ -2532,11 +2533,18 @@ function obBody(k) {
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div>
     <div class="xr"><span class="grow">Plateau alerts<span class="s">A heads-up when a lift hasn’t improved for a few weeks</span></span>${swi(!!P.plateau, '', 'data-pf="plateau"')}</div></div>`;
   }
+  if (k === 'move') {
+    const f = OB.importFile;
+    return `<h1 class="ob-t">Coming from another app?</h1><p class="sec ob-s">If you logged workouts in Strong, Hevy or another app, bring them with you so your history, PRs and charts start where you left off.</p>
+    <div class="seg"><button data-mv="1" class="${OB.move === true ? 'on' : ''}">Yes, I have a log</button><button data-mv="0" class="${OB.move === false ? 'on' : ''}">No, starting fresh</button></div>
+    ${OB.move ? `<div class="card stack"><p class="m0">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here.</p>
+      <label class="btn block ${f ? '' : 'primary'}" for="ob-file">${f ? 'Chosen: ' + esc(f.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
+      <p class="m0 cap">${f ? 'It will be added when you tap Start training.' : 'No file yet? Skip it for now.'}</p></div>` : ''}
+    <p class="m0 cap">You can import any time later in Me → Import workouts from CSV.</p>`;
+  }
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
-    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
-    <details><summary class="link">Already have a log? Import it instead</summary><div class="mt3 stack"><p class="m0 cap">A Jobs Done backup (JSON), or a CSV export from Strong or Hevy.</p>
-      <label class="btn block" for="wl-file">Choose backup or CSV file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
+    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>`;
 }
 function renderWelcomePublic() {
   if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
@@ -2564,6 +2572,8 @@ function renderWelcomePublic() {
     if (f === 'push' && on) { if (!pushReady()) { toast('Add Jobs Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
     OB.prefs[f] = on; renderWelcomePublic();
   });
+  qa('[data-mv]').forEach(b => b.onclick = () => { OB.move = b.dataset.mv === '1'; renderWelcomePublic(); });
+  const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; renderWelcomePublic(); } };
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
   const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Set me up' : 'Next'; };
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
@@ -2590,7 +2600,9 @@ function obFinish() {
   const [, , lo, hi] = OB_EXP[OB.exp]; const lo2 = OB.goal === 'strength' ? lo - 1 : lo, hi2 = OB.goal === 'strength' ? hi - 2 : hi;
   for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
   if (UI) UI.lastPrompt = today();
+  const imp = OB.move && OB.importFile;
   applyTheme(OB.theme); OB = null; document.documentElement.classList.remove('ob-on');
+  if (imp) { finishImport(''); setTimeout(() => importCSVFile(imp), 500); return; }
   finishImport(S.splits.length ? `You’re all set, ${p.name}. Your first workout is ready.` : 'Ready. Add a split to get started.');
 }
 
@@ -2629,7 +2641,7 @@ function csvToWorkouts(text) {
     e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t });
     const nt = c.note >= 0 ? (r[c.note] || '').trim() : ''; if (nt && !e.note) e.note = nt;
   }
-  return { list: Object.values(map) };
+  return { list: Object.values(map), lb: c.w < 0 && c.lb >= 0 };
 }
 function importCSVFile(file) {
   const rd = new FileReader();
@@ -2643,7 +2655,7 @@ function importCSVFile(file) {
     const dates = fresh.map(w => w.date).sort();
     const sh = openSheet(`<div class="stack"><div class="eyebrow">Import preview</div>
       <div class="kpis"><div class="kpi"><b>${fresh.length}</b><span>new workouts</span></div><div class="kpi"><b>${fresh.reduce((a, w) => a + wSets(w), 0)}</b><span>sets</span></div><div class="kpi"><b>${res.list.length - fresh.length}</b><span>already here</span></div></div>
-      ${dates.length ? `<div class="cap">${fmtDate(dates[0], { y: true })} to ${fmtDate(dates[dates.length - 1], { y: true })}. Weights are read as kg.</div>` : ''}
+      ${dates.length ? `<div class="cap">${fmtDate(dates[0], { y: true })} to ${fmtDate(dates[dates.length - 1], { y: true })}. ${res.lb ? 'Pounds are converted to kg.' : 'Weights are read as kg.'}</div>` : ''}
       ${unknown.length ? `<div class="note">New exercise names (added as custom): ${esc(unknown.join(', '))}</div>` : ''}
       <button class="btn primary block" id="ci-go" ${fresh.length ? '' : 'disabled'}>Import ${plural(fresh.length, 'workout')}</button><button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, {
       label: 'Import preview',
