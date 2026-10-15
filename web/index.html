@@ -673,7 +673,7 @@ a.xr { text-decoration: none; }
 :root[data-theme="mono"] #wk { background: var(--band-art) center 0 / 100% auto no-repeat, var(--band), var(--bg); }
 :root:not([data-theme]) #wk { background: linear-gradient(rgba(239,235,229,.4), rgba(239,235,229,.4)), var(--wall), var(--bg); }
 .wk-head { background: color-mix(in srgb, var(--surface) 78%, transparent); }
-#wk .wk-body > .btn, #wk .wk-body > button { background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); }
+#wk .wk-body > .btn:not(.primary), #wk .wk-body > button:not(.primary) { background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); }
 :root[data-theme="mono"] #wk { background-position: center 0, 0 0, 0 0; }
 #wk .wk-body > .link { padding: 8px 18px; border-radius: 999px; }
 .dwrap { position: relative; display: block; }
@@ -855,6 +855,19 @@ html.ob-on .ob-prog { background: var(--raised); }
 }
 :root[data-theme="spidey"][data-tod="day"] #tabs, :root[data-theme="spidey"][data-tod="day"] .wk-head { background: rgba(255,255,255,.92); }
 :root[data-theme="spidey"][data-tod="day"] .tab.on { color: var(--accent); }
+
+/* Skyline (Spider): always the night wallpaper, with extra cobwebs */
+:root[data-theme="spidey"] #bg .l2 { display: block !important; position: absolute; inset: 0; z-index: 1; background: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844' preserveAspectRatio='xMidYMin slice'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.16' stroke-width='.8'%3E%3Cpath d='M0 250L120 250'/%3E%3Cpath d='M0 250L85 335'/%3E%3Cpath d='M0 250L0 370'/%3E%3Cpath d='M0 250L-85 335'/%3E%3Cpath d='M0 250L-120 250'/%3E%3Cpath d='M0 250L-85 165'/%3E%3Cpath d='M0 250L-0 130'/%3E%3Cpath d='M0 250L85 165'/%3E%3Ccircle cx='0' cy='250' r='24'/%3E%3Ccircle cx='0' cy='250' r='48'/%3E%3Ccircle cx='0' cy='250' r='72'/%3E%3Ccircle cx='0' cy='250' r='96'/%3E%3Cpath d='M390 560L530 560'/%3E%3Cpath d='M390 560L489 659'/%3E%3Cpath d='M390 560L390 700'/%3E%3Cpath d='M390 560L291 659'/%3E%3Cpath d='M390 560L250 560'/%3E%3Cpath d='M390 560L291 461'/%3E%3Cpath d='M390 560L390 420'/%3E%3Cpath d='M390 560L489 461'/%3E%3Ccircle cx='390' cy='560' r='28'/%3E%3Ccircle cx='390' cy='560' r='56'/%3E%3Ccircle cx='390' cy='560' r='84'/%3E%3Ccircle cx='390' cy='560' r='112'/%3E%3Cpath d='M40 800L150 800'/%3E%3Cpath d='M40 800L118 878'/%3E%3Cpath d='M40 800L40 910'/%3E%3Cpath d='M40 800L-38 878'/%3E%3Cpath d='M40 800L-70 800'/%3E%3Cpath d='M40 800L-38 722'/%3E%3Cpath d='M40 800L40 690'/%3E%3Cpath d='M40 800L118 722'/%3E%3Ccircle cx='40' cy='800' r='22'/%3E%3Ccircle cx='40' cy='800' r='44'/%3E%3Ccircle cx='40' cy='800' r='66'/%3E%3Ccircle cx='40' cy='800' r='88'/%3E%3Cpath d='M0 120Q120 180 200 140M390 330Q300 380 250 300M120 844Q170 700 320 760'/%3E%3C/g%3E%3C/svg%3E") center top / cover no-repeat; }
+/* Summit: craggy mountain-rock dots; Skyline: web-cell hexagons (Job liked Boulder's rock dots) */
+:root[data-theme="cliffs"] .dot, :root[data-theme="cliffs"] .sdot, :root[data-theme="cliffs"] .split .tag { border-radius: 0; clip-path: polygon(8% 62%, 22% 28%, 40% 12%, 56% 20%, 70% 6%, 88% 30%, 100% 62%, 92% 92%, 50% 100%, 6% 92%); }
+:root[data-theme="cliffs"] .week .d:nth-child(2n) .dot { clip-path: polygon(4% 70%, 18% 34%, 34% 26%, 48% 4%, 66% 22%, 82% 18%, 98% 52%, 96% 90%, 54% 100%, 10% 94%); }
+:root[data-theme="cliffs"] .dot { width: 38px; height: 34px; border: 0; background: var(--raised); box-shadow: inset 0 -5px 0 rgba(0,0,0,.14), inset 4px 4px 0 rgba(255,255,255,.3); }
+:root[data-theme="cliffs"] .dot.done { box-shadow: inset 0 -5px 0 rgba(0,0,0,.25), inset 4px 4px 0 rgba(255,255,255,.25); }
+:root[data-theme="spidey"] .dot, :root[data-theme="spidey"] .sdot, :root[data-theme="spidey"] .split .tag { border-radius: 0; clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+:root[data-theme="spidey"] .dot { width: 36px; height: 38px; border: 0; background: var(--raised) url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 38'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.18' stroke-width='.8'%3E%3Cpath d='M18 0V38M2 9.5L34 28.5M34 9.5L2 28.5'/%3E%3Cpath d='M18 8L27 13V25L18 30L9 25V13Z'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100%; }
+:root[data-theme="spidey"] .dot.today { outline: 0; box-shadow: inset 0 0 0 2px var(--accent); }
+:root[data-theme="cliffs"] .split .tag, :root[data-theme="spidey"] .split .tag { align-self: center; min-height: 0; width: 34px; height: 30px; }
+:root[data-theme="spidey"] .dot.today { box-shadow: none; background-color: color-mix(in srgb, var(--accent) 45%, var(--raised)); }
 
 body { margin: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); }
 [hidden] { display: none !important; }
@@ -1430,7 +1443,6 @@ function skyNow(h) {
 }
 function applySky() {
   const R = document.documentElement;
-  if (R.dataset.theme === 'spidey') { const hh = new Date().getHours() + new Date().getMinutes() / 60; R.dataset.tod = hh >= 19.5 || hh < 6 ? 'night' : 'day'; const mc = document.querySelector('meta[name=theme-color]'); if (mc) mc.content = R.dataset.tod === 'day' ? '#BFDDF0' : '#0A1230'; clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3); return; }
   if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
   const n = new Date(), h = n.getHours() + n.getMinutes() / 60, k = skyNow(h), st = R.style;
   st.setProperty('--sky1', k.s1); st.setProperty('--sky2', k.s2); st.setProperty('--sky3', k.s3); st.setProperty('--tint', k.tint); st.setProperty('--stars', k.stars.toFixed(2));

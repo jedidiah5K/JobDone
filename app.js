@@ -560,7 +560,6 @@ function skyNow(h) {
 }
 function applySky() {
   const R = document.documentElement;
-  if (R.dataset.theme === 'spidey') { const hh = new Date().getHours() + new Date().getMinutes() / 60; R.dataset.tod = hh >= 19.5 || hh < 6 ? 'night' : 'day'; const mc = document.querySelector('meta[name=theme-color]'); if (mc) mc.content = R.dataset.tod === 'day' ? '#BFDDF0' : '#0A1230'; clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3); return; }
   if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
   const n = new Date(), h = n.getHours() + n.getMinutes() / 60, k = skyNow(h), st = R.style;
   st.setProperty('--sky1', k.s1); st.setProperty('--sky2', k.s2); st.setProperty('--sky3', k.s3); st.setProperty('--tint', k.tint); st.setProperty('--stars', k.stars.toFixed(2));
