@@ -27,7 +27,22 @@ for root, _, files in os.walk(src):
         os.makedirs(os.path.dirname(dst), exist_ok=True); shutil.copy2(os.path.join(root, n), dst)
 if not os.path.exists(os.path.join(web, 'config.js')):
     shutil.copy2(os.path.join(src, 'config.example.js'), os.path.join(web, 'config.js'))
-open(os.path.join(web, 'index.html'), 'w').write(fill(open(os.path.join(src, 'index-shell.html')).read(), False))
+# Optional: minify the website's script and styles when esbuild is available (set JOBDONE_ESBUILD to its path).
+esb = os.environ.get('JOBDONE_ESBUILD')
+if esb and os.path.exists(esb):
+    run = lambda txt, loader: subprocess.run([esb, '--minify', '--loader=' + loader, '--target=safari15', '--log-level=error'], input=txt.encode(), capture_output=True, check=True).stdout.decode()
+    _js, _css = src_js, css
+    src_js, css = run(src_js, 'js'), run(css, 'css')
+html = fill(open(os.path.join(src, 'index-shell.html')).read(), False)
+if esb and os.path.exists(esb): src_js, css = _js, _css
+# Content security policy: only our own files, Supabase, and the inline app script (pinned by its hash) may run.
+import re, hashlib, base64
+hashes = ' '.join("'sha256-%s'" % base64.b64encode(hashlib.sha256(m.encode()).digest()).decode() for m in re.findall(r'<script>(.*?)</script>', html, re.S))
+sb = 'https://xvyibgnjibzopwtxajin.supabase.co'
+csp = ("default-src 'self'; script-src 'self' %s; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; "
+       "connect-src 'self' %s wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'") % (hashes, sb)
+html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
+open(os.path.join(web, 'index.html'), 'w').write(html)
 z = os.path.join(dist, 'jobdone-web.zip')
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as f:
     for root, _, files in os.walk(web):
