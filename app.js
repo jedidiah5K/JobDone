@@ -2540,7 +2540,9 @@ function obBody(k) {
     ${OB.move ? `<div class="card stack"><p class="m0">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here.</p>
       <label class="btn block ${f ? '' : 'primary'}" for="ob-file">${f ? 'Chosen: ' + esc(f.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
       <p class="m0 cap">${f ? 'It will be added when you tap Start training.' : 'No file yet? Skip it for now.'}</p></div>` : ''}
-    <p class="m0 cap">You can import any time later in Me → Import workouts from CSV.</p>`;
+    <p class="m0 cap">You can import any time later in Me → Import workouts from CSV.</p>
+    <details><summary class="link">Have a Jobs Done backup? Restore it</summary><div class="mt3 stack"><p class="m0 cap">A JSON file from Me → Export.</p>
+      <label class="btn block" for="wl-file">Choose backup file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
   }
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
