@@ -2121,20 +2121,18 @@ function hourglass(p, paused) {
 const Sound = {
   ctx: null, master: null,
   unlock() {
-    // Set the mixing mode BEFORE any audio starts: creating the audio context under the default
-    // session is what stopped Job's music the moment the app was touched.
-    if (!(S && S.profile && S.profile.soundSilent) && navigator.audioSession && navigator.audioSession.type !== 'ambient') try { navigator.audioSession.type = 'ambient'; } catch (e) {}
+    // Exactly what Jedris does (Job's music keeps playing there): one Web Audio context, created and
+    // resumed from a tap, and no audio session or <audio> element at all. iPhone mixes Web Audio over music.
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
       this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') this.ctx.resume();
-    // iPhone: Web Audio is muted by the ring/silent switch. Asking for a 'playback' session (iOS 17+)
-    // and playing a silent <audio> clip once from a tap moves the page onto the media channel,
-    // so sounds play like a video does (Jedris has the same limit on silent mode).
-    // Only when Job turns on Me → Sounds → "Play on silent": a playback session pauses music apps.
-    // Default: an 'ambient' session mixes our sounds over whatever music is playing and never pauses it.
-    if (!(S && S.profile && S.profile.soundSilent)) { if (navigator.audioSession && navigator.audioSession.type !== 'ambient') try { navigator.audioSession.type = 'ambient'; } catch (e) {} if (this.media) { try { this.media.pause(); } catch (e) {} this.media = null; } return; }
+  },
+  // Only for Me → Sounds → "Play when on silent", and only when a sound actually plays: a 'playback'
+  // session plus a silent clip moves sounds onto the media channel, which pauses music apps.
+  silentMode() {
+    if (!(S && S.profile && S.profile.soundSilent)) return;
     if (navigator.audioSession && navigator.audioSession.type !== 'playback') try { navigator.audioSession.type = 'playback'; } catch (e) {}
     if (!this.media) try {
       const n = 800, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
@@ -2152,14 +2150,13 @@ const Sound = {
   },
 };
 let sfxLast = null;
-// Music-friendly from the first moment the page loads.
-if (navigator.audioSession) try { navigator.audioSession.type = 'ambient'; } catch (e) {}
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => Sound.unlock(), { passive: true, capture: true }));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Sound.ctx) Sound.ctx.resume(); });
 function tones(notes, type = 'sine', vol = .22) {
   if (S && S.profile && S.profile.sound === false) return;
   if (type === 'tick') type = 'sine';
   if (!Sound.ctx) Sound.unlock();
+  Sound.silentMode();
   if (!Sound.ctx) { sfxLast = { name: 'no Web Audio' }; return; }
   const go = () => { Sound.master.gain.value = 1; for (const [f, at, len = .18] of notes) Sound.tone(f, len, type, vol * .6, at); };
   if (Sound.ctx.state === 'running') { go(); return; }
@@ -3502,7 +3499,7 @@ const ACT = {
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
   restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
-  soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent && navigator.audioSession) try { navigator.audioSession.type = 'ambient'; } catch (e) {} Sound.unlock(); rerender(); },
+  soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent) { if (navigator.audioSession) try { navigator.audioSession.type = 'auto'; } catch (e) {} if (Sound.media) { try { Sound.media.pause(); } catch (e) {} Sound.media = null; } } Sound.unlock(); rerender(); },
   soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast((sfxLast ? `Sound blocked: ${esc(sfxLast.name || String(sfxLast))}` : 'Played a test sound.') + ` (audio ${Sound.ctx ? Sound.ctx.state : 'none'}, ${navigator.audioSession ? navigator.audioSession.type : 'no session'})`, 4000)); },
   restPush: async () => {
     if (S.profile.restPush) { S.profile.restPush = false; persist('jd/meta'); rerender(); pushOff(); return; }
