@@ -628,10 +628,10 @@ function render() {
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
 // and in localStorage (so the right colours show before the data loads).
 const THEMES = [
-  { k: 'mono', name: 'Agent', bar: '#121216', sw: 'linear-gradient(180deg, #121216 0.0% 33.3%, #F2F2F4 33.3% 66.7%, #C8102E 66.7% 100.0%)' },
-  { k: 'cliffs', name: 'Summit', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
-  { k: 'climb', name: 'Boulder', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
-  { k: 'spidey', name: 'Skyline', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
+  { k: 'mono', name: 'Agent', desc: 'Dark and sharp with a red glow, and spy-style messages.', bar: '#121216', sw: 'linear-gradient(180deg, #121216 0.0% 33.3%, #F2F2F4 33.3% 66.7%, #C8102E 66.7% 100.0%)' },
+  { k: 'cliffs', name: 'Summit', desc: 'A mountain sky that changes with the time of day.', bar: '#6FB3E6', sw: 'linear-gradient(180deg, #6FB3E6 0.0% 33.3%, #8A5A40 33.3% 66.7%, #1F7A99 66.7% 100.0%)' },
+  { k: 'climb', name: 'Boulder', desc: 'A light look on a chalky climbing wall.', bar: '#EFEBE5', sw: 'linear-gradient(180deg, #EFEBE5 0.0% 33.3%, #6C3FD6 33.3% 66.7%, #F4B728 66.7% 100.0%)' },
+  { k: 'spidey', name: 'Skyline', desc: 'A city at night, with webs and comic-book wins.', bar: '#0D1A45', sw: 'linear-gradient(180deg, #0D1A45 0.0% 33.3%, #E2231A 33.3% 66.7%, #FFFFFF 66.7% 100.0%)' },
 ];
 const theme = () => (S && S.profile && S.profile.theme) || (() => { try { return localStorage.getItem('jobdone-theme'); } catch (e) { return null; } })() || 'mono';
 // Cliffs sky follows the local clock: night, sunrise, day, sunset. Colours blend between these stops.
@@ -2840,7 +2840,7 @@ function obBody(k) {
   if (k === 'exp') return `<h1 class="ob-t">How long have you been lifting?</h1><p class="sec ob-s">Newer lifters get higher reps to learn the moves. You can change any target later.</p>
     <div class="tmpl">${Object.entries(OB_EXP).map(([e, [n, d, lo, hi]]) => `<button data-exp="${e}" class="${OB.exp === e ? 'on' : ''}"><b>${n}</b><span>${d} · ${lo} to ${hi} reps</span></button>`).join('')}</div>`;
   if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Tap one to try it on this screen. Each theme has its own scenery and its own voice when you finish a set. You can switch any time in Me.</p>
-    <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i class="thp thp-${t.k}"></i><b>${t.name}</b><span>${esc(pick(THEME_MSG[t.k].great))}</span></button>`).join('')}</div>`;
+    <div class="ob-themes">${THEMES.map(t => `<button data-th="${t.k}" class="${OB.theme === t.k ? 'on' : ''}"><i class="thp thp-${t.k}"></i><b>${t.name}</b><em class="ob-desc">${t.desc}</em><span>“${esc(pick(THEME_MSG[t.k].great))}”</span></button>`).join('')}</div>`;
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
