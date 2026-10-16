@@ -1680,62 +1680,211 @@ function showRecap(id, fresh) {
   el.querySelector('#rc-share').onclick = () => shareRecap(d);
   if (fresh) { const w0 = S.workouts[id]; if (!(w0 && w0.planned && wSets(w0) < w0.planned)) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
 }
-// Draw the recap as a 1080x1350 image in the current theme's colours and hand it to the share sheet.
-async function shareRecap(d) {
-  // Poster-style share card (4:5): the theme's own header scenery, one big headline, four stats, best lifts (Job, 15 Oct).
-  const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
+// Draw the recap as a 1080x1350 share card. Each theme has its own card (Job, 16 Oct):
+// Agent = mission debrief, Skyline = night patrol comic, Summit = summit log with an elevation profile, Boulder = route tag on the wall.
+async function drawShare(d) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-  const F = (wt, px) => `${wt} ${px}px -apple-system, "SF Pro Display", system-ui, sans-serif`;
+  const SANS = '-apple-system, "SF Pro Display", system-ui, sans-serif', MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
+  const F = (wt, px, fam = SANS) => `${wt} ${px}px ${fam}`;
   try { await document.fonts.ready; } catch (e) {}
-  const img = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; setTimeout(() => r(null), 2500); });
-  // Resolve theme tokens (including color-mix ones) to plain rgba through a 1-pixel canvas.
-  const probe = document.getElementById('col-probe') || document.body.appendChild(Object.assign(document.createElement('i'), { id: 'col-probe', hidden: true }));
-  const px = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
-  const col = (k, f) => { probe.style.color = f; probe.style.color = `var(${k}, ${f})`; const s = getComputedStyle(probe).color; px.clearRect(0, 0, 1, 1); px.fillStyle = f; px.fillStyle = s; px.fillRect(0, 0, 1, 1); const [r, gg, b, a] = px.getImageData(0, 0, 1, 1).data; return `rgba(${r},${gg},${b},${(a / 255).toFixed(3)})`; };
-  const th = THEMES.find(x => x.k === theme()) || THEMES[0];
-  const bg = col('--bg', '#EFEBE5'), text = col('--text', '#1C1C1E'), text2 = col('--text2', '#6B6B70'), acc = col('--accent', '#6C3FD6');
-  const ink = col('--hdr-ink', '#fff'), ink2 = col('--hdr-ink2', 'rgba(255,255,255,.7)'), surf = col('--surface-solid', col('--surface', '#fff'));
-  const HH = 640;
-  // header: sky / band colours, then the theme's scenery art across the bottom of it
-  const top = theme() === 'cliffs' ? col('--sky1', th.bar) : th.bar, mid = theme() === 'cliffs' ? col('--sky2', th.bar) : th.bar;
-  let gr = g.createLinearGradient(0, 0, 0, HH); gr.addColorStop(0, top); gr.addColorStop(.6, mid); gr.addColorStop(1, bg);
-  g.fillStyle = bg; g.fillRect(0, 0, W, H); g.fillStyle = gr; g.fillRect(0, 0, W, HH);
-  const art = (/url\(\s*"(data:.*)"\s*\)/.exec(v('--band-art')) || /url\(\s*'?(data:[^')]+)'?\s*\)/.exec(v('--band-art')) || [])[1];
-  if (art) { const i = await img(art.replace(/\\"/g, '"')); if (i) { const h = W * (i.naturalHeight || 236) / (i.naturalWidth || 400); g.drawImage(i, 0, theme() === 'mono' ? 0 : HH - h, W, h); } }
-  gr = g.createLinearGradient(0, HH - 260, 0, HH); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, bg); g.fillStyle = gr; g.fillRect(0, HH - 260, W, 260);
-  // wordmark
-  const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
-  let x0 = 72; if (icon) { g.save(); g.beginPath(); g.roundRect(72, 64, 72, 72, 18); g.clip(); g.drawImage(icon, 72, 64, 72, 72); g.restore(); x0 = 164; }
-  g.fillStyle = ink; g.font = F(800, 38); g.fillText('Jobs Done', x0, 114);
-  // headline
-  const light = /^#(f|e|d)/i.test(ink) || /255/.test(ink); if (light) { g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 18; g.shadowOffsetY = 2; }
-  g.fillStyle = ink; g.font = F(900, 150); g.fillText('Jobs done!', 64, 300);
+  const img = src => new Promise(r => { if (!src) return r(null); const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; setTimeout(() => r(null), 3000); });
+  const urlOf = s => { const m = /url\(\s*"((?:[^"\\]|\\.)*)"\s*\)/.exec(s || '') || /url\(\s*'?([^')]+)'?\s*\)/.exec(s || ''); return m ? m[1].replace(/\\"/g, '"') : null; };
+  const bgOf = (sel, pseudo) => { const el = document.querySelector(sel); return el ? urlOf(getComputedStyle(el, pseudo || null).backgroundImage) : null; };
+  const cover = (i, x = 0, y = 0, w = W, h = H, ay = 0) => { if (!i) return; const iw = i.naturalWidth || 390, ih = i.naturalHeight || 844, s = Math.max(w / iw, h / ih); g.drawImage(i, x + (w - iw * s) / 2, y + (h - ih * s) * ay, iw * s, ih * s); };
+  const cs = getComputedStyle(document.documentElement), tok = (k, f) => (cs.getPropertyValue(k).trim() || f);
+  const fit = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;
+  const RR = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+  const sp = (t, ls) => { g.letterSpacing = ls + 'px'; return t; };
   const line = d.line || RC_LINE[d.w.id] || doneLine(d.w);
-  g.font = F(600, 40); g.fillStyle = ink2; g.fillText(line.length > 46 ? line.slice(0, 45) + '…' : line, 70, 362); g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
-  // split pill
-  const pill = `${d.w.splitName || 'Workout'} · #${d.num} · ${fmtDate(d.w.date, { wd: true })}`; g.font = F(700, 34); const pw = g.measureText(pill).width + 56;
-  g.fillStyle = acc; g.beginPath(); g.roundRect(70, 404, pw, 68, 34); g.fill(); g.fillStyle = col('--accent-ink', '#fff'); g.fillText(pill, 98, 450);
-  // stats card
-  g.fillStyle = surf; g.beginPath(); g.roundRect(56, 520, W - 112, 210, 40); g.fill();
-  const st = [d.dur ? [fmtDur(d.dur), 'time'] : [String(d.reps), 'reps'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.prs.length), d.prs.length === 1 ? 'PR' : 'PRs']];
-  const cw = (W - 112) / 4;
-  st.forEach(([a, b], i) => { const x = 56 + i * cw; if (i) { g.fillStyle = col('--border', 'rgba(0,0,0,.08)'); g.fillRect(x, 560, 2, 130); }
-    g.fillStyle = i === 3 && d.prs.length ? col('--pr', acc) : text; g.font = F(800, a.length > 6 ? 46 : 60); g.fillText(a, x + 34, 632); g.fillStyle = text2; g.font = F(600, 30); g.fillText(b, x + 34, 682); });
-  // lifts
-  let y = 800; g.fillStyle = text2; g.font = F(700, 30); g.fillText(`THAT'S LIKE LIFTING ${String(d.heavy).toUpperCase()}`, 72, y); y += 64;
   const prn = new Map(d.prs.map(p => [p.ex, p.set]));
-  const rows = mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), e => { const t = prn.get(e.name) || topSet(e.sets); return t ? setStr(t) : '—'; })
-    .map(r => ({ ...r, pr: d.w.ex.some(e => baseName(e.name) === baseName(r.name) && prn.has(e.name)) }));
-  rows.sort((a, b) => b.pr - a.pr);
-  for (const r of rows.slice(0, 6)) {
-    if (y > H - 150) break;
-    g.fillStyle = surf; g.beginPath(); g.roundRect(56, y - 50, W - 112, 76, 24); g.fill();
-    g.fillStyle = text; g.font = F(700, 36); g.fillText(r.name.length > 24 ? r.name.slice(0, 23) + '…' : r.name, 88, y);
-    g.textAlign = 'right'; g.font = F(800, 36); const tx = r.txt.replace(' each side', ''); g.fillText(tx.length > 22 ? tx.slice(0, 21) + '…' : tx, W - (r.pr ? 186 : 88), y);
-    if (r.pr) { g.fillStyle = col('--pr', acc); g.beginPath(); g.roundRect(W - 168, y - 36, 80, 48, 24); g.fill(); g.fillStyle = '#fff'; g.font = F(800, 26); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 4); }
-    g.textAlign = 'left'; y += 92;
+  const lifts = mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), e => { const t = prn.get(e.name) || topSet(e.sets); return t ? setStr(t) : '—'; })
+    .map(r => ({ ...r, txt: r.txt.replace(' each side', ''), pr: d.w.ex.some(e => baseName(e.name) === baseName(r.name) && prn.has(e.name)),
+      vol: d.w.ex.filter(e => baseName(e.name) === baseName(r.name)).reduce((a, e) => a + exVol(e.sets), 0) }));
+  const stats = [d.dur ? [fmtDur(d.dur), 'time'] : [String(d.reps), 'reps'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.prs.length), d.prs.length === 1 ? 'PR' : 'PRs']];
+  const date = fmtDate(d.w.date, { wd: true }), split = d.w.splitName || 'Workout';
+  const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
+  const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Jobs Done', 0), x0, y); };
+  const k = theme();
+
+  if (k === 'mono') {
+    // Agent: mission debrief on the obsidian wallpaper
+    g.fillStyle = '#0B0B0E'; g.fillRect(0, 0, W, H);
+    cover(await img(bgOf('#bg', '::before')));
+    let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(8,8,10,.25)'); gr.addColorStop(.45, 'rgba(8,8,10,.72)'); gr.addColorStop(1, 'rgba(8,8,10,.92)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const RED = '#E0303C', DIM = 'rgba(255,255,255,.55)';
+    // scope reticle behind the headline
+    g.save(); g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 3; const cx = 820, cy = 300;
+    [210, 140].forEach(r => { g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); });
+    g.beginPath(); g.moveTo(cx - 260, cy); g.lineTo(cx - 40, cy); g.moveTo(cx + 40, cy); g.lineTo(cx + 260, cy); g.moveTo(cx, cy - 260); g.lineTo(cx, cy - 40); g.moveTo(cx, cy + 40); g.lineTo(cx, cy + 260); g.stroke();
+    g.fillStyle = 'rgba(224,48,60,.55)'; g.beginPath(); g.arc(cx, cy, 8, 0, 7); g.fill(); g.restore();
+    g.fillStyle = RED; g.font = F(700, 26, MONO); g.fillText(sp(`DEBRIEF · FILE ${String(d.num).padStart(3, '0')} · ${date.toUpperCase()}`, 4), 72, 110);
+    g.textAlign = 'right'; g.fillStyle = DIM; g.fillText(sp('EYES ONLY', 4), W - 72, 110); g.textAlign = 'left';
+    g.fillStyle = '#fff'; g.font = F(900, 128); g.fillText(sp('MISSION', -2), 64, 270); g.fillText(sp('COMPLETE', -2), 64, 396);
+    // red stamp
+    g.save(); g.translate(78, 556); g.rotate(-.05); g.strokeStyle = RED; g.lineWidth = 6; RR(-10, -58, 400, 84, 10); g.stroke();
+    g.fillStyle = RED; g.font = F(900, 50, MONO); g.fillText(sp('JOBS DONE', 6), 22, 2); g.restore();
+    g.fillStyle = DIM; g.font = F(500, 34); g.fillText(sp(fit(line, 40), 0), 70, 470);
+    // dossier rows
+    let y = 680; const row = (a, b, hot) => { g.font = F(600, 28, MONO); g.fillStyle = DIM; g.fillText(sp(a, 3), 72, y); const aw = g.measureText(a).width;
+      g.font = F(700, 38); g.letterSpacing = '0px'; const bw = g.measureText(b).width; g.fillStyle = 'rgba(255,255,255,.22)'; for (let x = 72 + aw + 24; x < W - 72 - bw - 20; x += 16) g.fillRect(x, y - 6, 6, 3);
+      g.fillStyle = hot ? RED : '#fff'; g.textAlign = 'right'; g.fillText(b, W - 72, y + 2); g.textAlign = 'left'; y += 60; };
+    row('OPERATION', fit(split, 22)); stats.forEach(([a, b], i) => row(b.toUpperCase().replace(' LIFTED', ' MOVED'), a, i === 3 && d.prs.length));
+    y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('TARGETS', 4), 72, y + 8); y += 64;
+    for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 5)) {
+      if (y > H - 120) break;
+      g.fillStyle = '#fff'; g.font = F(700, 36); g.fillText(sp(fit(r.name, 22), 0), 72, y);
+      g.textAlign = 'right'; g.font = F(700, 34, MONO); g.fillStyle = r.pr ? RED : 'rgba(255,255,255,.8)'; g.fillText(sp(fit(r.txt, 16), 0), W - (r.pr ? 230 : 72), y);
+      if (r.pr) { g.strokeStyle = RED; g.lineWidth = 3; RR(W - 214, y - 34, 142, 46, 6); g.stroke(); g.fillStyle = RED; g.font = F(800, 22, MONO); g.textAlign = 'center'; g.fillText(sp('NEW RECORD', 1), W - 143, y - 3); }
+      g.textAlign = 'left'; y += 66;
+    }
+    g.letterSpacing = '0px'; mark(72, H - 56, 'rgba(255,255,255,.7)', .8);
+    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.4)'; g.font = F(600, 24, MONO); g.fillText(sp('LEAVE NO TRACE', 3), W - 72, H - 62); g.textAlign = 'left';
+  } else if (k === 'spidey') {
+    // Skyline: night patrol over the city
+    g.fillStyle = '#0D1A45'; g.fillRect(0, 0, W, H);
+    cover(await img(bgOf('#bg', '::before')), 0, 0, W, H, 1);
+    let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(9,16,44,.35)'); gr.addColorStop(.5, 'rgba(9,16,44,.75)'); gr.addColorStop(1, 'rgba(9,16,44,.55)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const RED = '#E2231A';
+    // web in the top corner
+    g.save(); g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = 2.5; const R = 330;
+    for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2; g.beginPath(); g.moveTo(W, 0); g.lineTo(W - Math.cos(a) * R, Math.sin(a) * R); g.stroke(); }
+    for (let r = 70; r <= R; r += 64) { g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2, x = W - Math.cos(a) * r, y = Math.sin(a) * r; if (!i) g.moveTo(x, y); else { const pa = (i - .5) / 6 * Math.PI / 2, q = r * .86; g.quadraticCurveTo(W - Math.cos(pa) * q, Math.sin(pa) * q, x, y); } } g.stroke(); }
+    g.restore();
+    mark(72, 92, '#fff', .8);
+    // comic burst headline, BAM! style (Job's reference, 16 Oct): halftone dots, red burst, yellow rim, white core, extruded orange letters
+    const BX = 540, BY = 360, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
+    const burst = (n, rIn, rOut, sx, sy, rot, jit) => { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + jit * Math.sin(i * 7.3)); g.lineTo(BX + Math.cos(a) * r * sx, BY + Math.sin(a) * r * sy); } g.closePath(); };
+    g.save(); burst(13, 230, 420, 1.25, .78, .1, .18); g.clip();
+    for (let y = BY - 360; y < BY + 360; y += 22) for (let x = BX - 560; x < BX + 560; x += 22) { const dx = (x - BX) / 1.25, dy = (y - BY) / .78, dd = Math.hypot(dx, dy), r = Math.max(0, 7.5 * (1 - Math.abs(dd - 330) / 140)); if (r > .6) { g.fillStyle = RED; g.beginPath(); g.arc(x + ((y / 22) % 2 ? 11 : 0), y, r, 0, 7); g.fill(); } }
+    g.restore();
+    burst(11, 210, 330, 1.25, .78, .25, .22); g.fillStyle = RED; g.fill(); g.lineWidth = 6; g.strokeStyle = '#7A0D0A'; g.stroke();
+    burst(11, 190, 262, 1.25, .78, .27, .15); g.fillStyle = BAM.rim; g.fill();
+    burst(11, 172, 240, 1.25, .78, .27, .15); g.fillStyle = BAM.core; g.fill();
+    // Letters drawn one by one, each with its own width, height and tilt, then the whole word is bent like a hand-lettered BAM!:
+    // Job picked the per-letter warp without the perspective bend (16 Oct), so the bend is off (from = to = 1).
+    const glyph = (q, ch, px, sx, sy) => {
+      q.save(); q.scale(sx, sy); q.font = F(900, px); q.textAlign = 'center'; q.lineJoin = 'round';
+      for (let k = 16; k > 0; k -= 2) { q.fillStyle = '#111'; q.fillText(ch, k / sx, k / sy); }
+      q.lineWidth = 15 / Math.min(sx, sy); q.strokeStyle = '#111'; q.strokeText(ch, 0, 0);
+      const gr2 = q.createLinearGradient(0, -px * .8, 0, 0); gr2.addColorStop(0, BAM.l[0]); gr2.addColorStop(.6, BAM.l[1]); gr2.addColorStop(1, BAM.l[2]); q.fillStyle = gr2; q.fillText(ch, 0, 0);
+      q.globalCompositeOperation = 'source-atop'; q.fillStyle = BAM.dots; const cw = q.measureText(ch).width;
+      for (let yy = -px * .78; yy < 6; yy += 13) for (let xx = -cw / 2 - 6; xx < cw / 2 + 6; xx += 13) { const r = 3.6 * Math.max(0, (yy + px * .78) / (px * .78)); if (r > .5) { q.beginPath(); q.arc(xx + (Math.round(yy / 13) % 2 ? 6.5 : 0), yy, r, 0, 7); q.fill(); } }
+      q.globalCompositeOperation = 'source-over'; q.restore(); };
+    const word = (t, cx, cy, px, spec, warp) => {
+      const o = document.createElement('canvas'), OW = 1000, OH = Math.round(px * 2.6); o.width = OW; o.height = OH; const q = o.getContext('2d');
+      q.font = F(900, px); const ws = [...t].map((ch, i) => q.measureText(ch).width * spec[i][0] * .97); const tot = ws.reduce((a, b) => a + b, 0);
+      let x = OW / 2 - tot / 2; const base = OH * .66;
+      [...t].forEach((ch, i) => { const [sx, sy, rot, dy] = spec[i]; q.save(); q.translate(x + ws[i] / 2, base + dy); q.rotate(rot); q.transform(1, 0, -.1, 1, 0, 0); glyph(q, ch, px, sx, sy); q.restore(); x += ws[i]; });
+      // bend: draw in thin columns, each stretched by its position (small on the left, huge on the right) and lifted on an arc
+      const x0 = OW / 2 - tot / 2 - 40, x1 = OW / 2 + tot / 2 + 60, span = x1 - x0;
+      for (let sx0 = x0; sx0 < x1; sx0 += 2) {
+        const u = (sx0 - x0) / span, k = warp.from + (warp.to - warp.from) * Math.pow(u, 1.15), lift = Math.sin(u * Math.PI) * warp.arc;
+        const dx = cx - span * warp.wide / 2 + (sx0 - x0) * warp.wide;
+        g.drawImage(o, sx0, 0, 2, OH, dx, cy - base * k - lift, 2 * warp.wide + .6, OH * k);
+      }
+    };
+    word('JOBS', BX - 14, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('DONE!', BX + 10, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
+    g.letterSpacing = '0px';
+    // caption box
+    g.letterSpacing = '0px'; g.font = F(700, 32); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
+    g.save(); g.translate(72, 610); g.rotate(.015); g.fillStyle = '#FFF8E7'; g.fillRect(0, 0, cw, 70); g.strokeStyle = '#0D1A45'; g.lineWidth = 5; g.strokeRect(0, 0, cw, 70);
+    g.fillStyle = '#0D1A45'; g.fillText(cap, 28, 47); g.restore();
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.font = F(700, 28); g.fillText(sp(`${split.toUpperCase()} · PATROL #${d.num} · ${date.toUpperCase()}`, 2), 72, 736);
+    // stats as web cells
+    const hex = (x, y, r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); };
+    stats.forEach(([a, b], i) => { const x = 72 + 117 + i * 234, y = 880; hex(x, y, 112); g.fillStyle = i === 3 && d.prs.length ? RED : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
+      g.textAlign = 'center'; g.fillStyle = '#fff'; g.letterSpacing = '0px'; g.font = F(800, a.length > 6 ? 40 : 54); g.fillText(a, x, y + 6); g.font = F(700, 22); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 46); g.textAlign = 'left'; });
+    let y = 1060;
+    for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 3)) {
+      g.letterSpacing = '0px'; g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 50, W - 112, 72, 12); g.fill(); g.strokeStyle = r.pr ? RED : 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
+      g.fillStyle = '#fff'; g.font = F(700, 34); g.fillText(fit(r.name, 24), 88, y); g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 18), W - (r.pr ? 180 : 88), y);
+      if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 6); }
+      g.textAlign = 'left'; y += 86;
+    }
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp('Patrol logged with Jobs Done', 0), 72, H - 48);
+  } else if (k === 'cliffs') {
+    // Summit: the sky right now, the ridges, and the session drawn as an elevation profile
+    const s1 = tok('--sky1', '#5B9BCF'), s2 = tok('--sky2', '#93C2E3'), s3 = tok('--sky3', '#CFE5F1');
+    const night = document.documentElement.dataset.tod === 'night';
+    let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, s1); gr.addColorStop(.3, s2); gr.addColorStop(.55, s3); gr.addColorStop(1, s2); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const rid = await img(urlOf(tok('--ridges', ''))); if (rid) { g.globalAlpha = .9; cover(rid, 0, 260, W, H - 260, 0); g.globalAlpha = 1; }
+    const INK = night ? '#fff' : '#12304A', INK2 = night ? 'rgba(255,255,255,.75)' : 'rgba(18,48,74,.7)', CARD = night ? 'rgba(14,24,40,.78)' : 'rgba(255,255,255,.82)';
+    mark(72, 110, INK, .9);
+    g.textAlign = 'right'; g.fillStyle = INK2; g.font = F(700, 26); g.fillText(sp('SUMMIT LOG', 4), W - 72, 104); g.textAlign = 'left'; g.letterSpacing = '0px';
+    g.fillStyle = INK; g.font = F(900, 132); g.fillText(sp('Summit', -3), 64, 280); g.fillText(sp('reached.', -3), 64, 400);
+    g.letterSpacing = '0px'; g.fillStyle = INK2; g.font = F(600, 34); g.fillText(fit(line, 44), 70, 462);
+    // elevation profile card
+    const px = 56, py = 520, pw = W - 112, ph = 380; g.fillStyle = CARD; RR(px, py, pw, ph, 32); g.fill();
+    g.fillStyle = INK2; g.font = F(700, 24); g.fillText(sp(`${split.toUpperCase()} · ROUTE #${d.num} · ${date.toUpperCase()}`, 2), px + 36, py + 56); g.letterSpacing = '0px';
+    g.fillStyle = INK; g.font = F(800, 52); g.fillText(`${dvol(d.vol)} ${U()}`, px + 36, py + 124); const vw = g.measureText(`${dvol(d.vol)} ${U()}`).width; g.fillStyle = INK2; g.font = F(600, 30); g.fillText('climbed', px + 52 + vw, py + 124);
+    const pts = []; let cum = 0; const tot = Math.max(1, lifts.reduce((a, r) => a + r.vol, 0));
+    lifts.forEach(r => { cum += r.vol; pts.push(cum / tot); });
+    const gx = px + 48, gw = pw - 110, gy = py + ph - 44, gh = ph - 230;
+    const P = [[gx, gy]].concat(pts.map((v, i) => [gx + (i + 1) / pts.length * gw, gy - v * gh * (.55 + .45 * ((i % 2) ? .8 : 1))]));
+    P[P.length - 1][1] = gy - gh;
+    gr = g.createLinearGradient(0, gy - gh, 0, gy); gr.addColorStop(0, night ? 'rgba(150,190,230,.55)' : 'rgba(31,122,153,.45)'); gr.addColorStop(1, 'rgba(31,122,153,0)');
+    g.beginPath(); g.moveTo(gx, gy); P.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(gx + gw, gy); g.closePath(); g.fillStyle = gr; g.fill();
+    g.beginPath(); P.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.strokeStyle = INK; g.lineWidth = 5; g.lineJoin = 'round'; g.stroke();
+    P.slice(1).forEach(([x, y], i) => { g.fillStyle = lifts[i] && lifts[i].pr ? '#E0A100' : INK; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); });
+    const [fx, fy] = P[P.length - 1]; g.strokeStyle = INK; g.lineWidth = 4; g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx, fy - 70); g.stroke();
+    g.fillStyle = '#E0303C'; g.beginPath(); g.moveTo(fx, fy - 70); g.lineTo(fx - 54, fy - 56); g.lineTo(fx, fy - 42); g.fill();
+    // stats
+    g.letterSpacing = '0px'; const cw = pw / 4; g.fillStyle = CARD; RR(px, 930, pw, 150, 28); g.fill();
+    stats.forEach(([a, b], i) => { const x = px + i * cw + 36; g.fillStyle = i === 3 && d.prs.length ? '#C98A00' : INK; g.font = F(800, a.length > 6 ? 38 : 50); g.fillText(a, x, 1004); g.fillStyle = INK2; g.font = F(600, 26); g.fillText(b, x, 1046); });
+    // waypoints
+    g.letterSpacing = '0px'; let y = 1140; g.font = F(700, 30);
+    lifts.slice(0, 3).forEach((r, i) => { g.fillStyle = CARD; RR(px, y - 44, pw, 64, 20); g.fill(); g.fillStyle = INK; g.font = F(800, 24); g.beginPath(); g.arc(px + 40, y - 12, 18, 0, 7); g.fill();
+      g.fillStyle = night ? '#0E1828' : '#fff'; g.textAlign = 'center'; g.fillText(String(i + 1), px + 40, y - 3); g.textAlign = 'left'; g.fillStyle = INK; g.font = F(700, 30); g.fillText(fit(r.name, 26), px + 76, y);
+      g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? 'PR  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 76; });
+  } else {
+    // Boulder: a route tag taped to the chalk wall
+    g.fillStyle = '#EFEBE5'; g.fillRect(0, 0, W, H);
+    cover(await img(bgOf('#bg', '::before')));
+    g.fillStyle = 'rgba(120,108,96,.10)'; g.fillRect(0, 0, W, H);
+    // chalk dust: soft smudges, speckle and a few finger swipes (Job: chalky, not too much)
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    let CH = '255,255,255'; const dust = (x, y, r, a) => { const gr3 = g.createRadialGradient(x, y, 0, x, y, r); gr3.addColorStop(0, `rgba(${CH},${a})`); gr3.addColorStop(1, `rgba(${CH},0)`); g.fillStyle = gr3; g.beginPath(); g.ellipse(x, y, r, r * .8, rnd() * 3, 0, 7); g.fill();
+      for (let i = 0; i < r * 1.6; i++) { const t = rnd() * 7, d = Math.pow(rnd(), .7) * r; g.fillStyle = `rgba(${CH},${Math.min(1, a + .3) * rnd()})`; g.fillRect(x + Math.cos(t) * d, y + Math.sin(t) * d * .8, 1.5 + rnd() * 2.5, 1.5 + rnd() * 2.5); } };
+    const swipe = (x, y, len, ang, a) => { for (let f = 0; f < 3; f++) { const ox = Math.cos(ang + Math.PI / 2) * f * 16, oy = Math.sin(ang + Math.PI / 2) * f * 16, l = len * (.7 + rnd() * .3);
+      for (let i = 0; i < l; i += 2) { const fade = 1 - i / l; g.fillStyle = `rgba(${CH},${a * fade * (.4 + rnd() * .6)})`; g.fillRect(x + ox + Math.cos(ang) * i + (rnd() - .5) * 5, y + oy + Math.sin(ang) * i + (rnd() - .5) * 5, 2 + rnd() * 3, 2 + rnd() * 3); } } };
+    const chalkMarks = (spots, swipes) => { spots.forEach(([x, y, r, a]) => dust(x, y, r, a)); swipes.forEach(([x, y, l, ang, a]) => swipe(x, y, l, ang, a)); };
+    chalkMarks([[40, 260, 90, .85], [1040, 520, 70, .8], [60, 1180, 110, .8], [990, 1290, 80, .75], [520, 30, 70, .7]], [[20, 760, 120, -.5, .9], [930, 120, 110, 2.6, .85]]);
+    const PUR = '#6C3FD6', MUS = '#F4B728', INK = '#2B213A', INK2 = 'rgba(43,33,58,.62)', HOLDS = ['#E2453C', '#2F7FD8', '#2E8B4E', '#F4B728', '#6C3FD6', '#F07A2B'];
+    // rope down the right edge
+    g.strokeStyle = PUR; g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(W - 46, -20); g.bezierCurveTo(W - 10, 400, W - 90, 800, W - 36, H + 20); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.setLineDash([10, 14]); g.stroke(); g.setLineDash([]);
+    // the tag
+    g.save(); g.translate(W / 2 - 20, 690); g.rotate(-.025);
+    const TW = 900, TH = 1180; g.shadowColor = 'rgba(43,33,58,.28)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#FFFDFA'; RR(-TW / 2, -TH / 2, TW, TH, 22); g.fill(); g.shadowColor = 'transparent';
+    g.fillStyle = 'rgba(232,214,170,.75)'; [[-TW / 2 + 40, -TH / 2 - 22, -.5], [TW / 2 - 150, -TH / 2 - 22, .45]].forEach(([x, y, r]) => { g.save(); g.translate(x + 55, y + 22); g.rotate(r); g.fillRect(-70, -20, 140, 44); g.restore(); });
+    const L = -TW / 2 + 60; let y = -TH / 2 + 110;
+    g.fillStyle = INK2; g.font = F(800, 26); g.fillText(sp('ROUTE CARD', 4), L, y);
+    g.textAlign = 'right'; g.fillText(sp(date.toUpperCase(), 2), TW / 2 - 60, y); g.textAlign = 'left';
+    y += 150; g.fillStyle = PUR; g.font = F(900, 170); g.fillText(sp('SENT!', -4), L - 6, y);
+    // grade badge
+    const hold = (x, y, r, col, seed = 1) => { g.beginPath(); for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, rr = r * (.82 + .18 * Math.abs(Math.sin(seed * 7 + i * 2.3))); g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .9); } g.closePath(); g.fillStyle = col; g.fill(); g.fillStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.arc(x + r * .1, y + r * .1, r * .16, 0, 7); g.fill(); };
+    hold(TW / 2 - 150, y - 60, 92, MUS, 3); g.fillStyle = INK; g.font = F(900, 54); g.textAlign = 'center'; g.letterSpacing = '0px'; g.fillText('#' + d.num, TW / 2 - 150, y - 42); g.textAlign = 'left';
+    y += 60; g.fillStyle = INK2; g.font = F(600, 34); g.fillText(fit(line, 40), L, y);
+    y += 70; g.font = F(800, 30); const tg = split.toUpperCase(), tw = g.measureText(tg).width + 48; g.fillStyle = PUR; RR(L, y - 40, tw, 58, 29); g.fill(); g.fillStyle = '#fff'; g.fillText(sp(tg, 2), L + 24, y - 2);
+    // stats on holds
+    y += 120; stats.forEach(([a, b], i) => { const x = L + 95 + i * 196; hold(x, y, 84, i === 3 && d.prs.length ? MUS : ['#E7E0F7', '#DDEBF7', '#E3F1E6', '#FFF1CF'][i], i + 5);
+      g.fillStyle = INK; g.textAlign = 'center'; g.letterSpacing = '0px'; g.font = F(900, a.length > 6 ? 34 : 46); g.fillText(a, x, y + 10); g.fillStyle = INK2; g.font = F(800, 20); g.fillText(sp(b.toUpperCase(), 1), x, y + 112); g.textAlign = 'left'; });
+    y += 210; g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp('PROBLEMS SENT', 4), L, y); y += 64;
+    lifts.sort((a, b) => b.pr - a.pr).slice(0, 5).forEach((r, i) => { hold(L + 18, y - 12, 20, HOLDS[i % HOLDS.length], i + 2); g.letterSpacing = '0px'; g.fillStyle = INK; g.font = F(700, 34); g.fillText(fit(r.name, 22), L + 56, y);
+      g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 16), TW / 2 - (r.pr ? 170 : 60), y);
+      if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText('PR', TW / 2 - 105, y - 4); }
+      g.textAlign = 'left'; y += 66; });
+    // a little chalk on the card itself, from chalky hands
+    CH = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 56, .22], [TW / 2 - 36, -TH / 2 + 260, 44, .2]], [[TW / 2 - 210, TH / 2 - 44, 90, -.35, .35], [-TW / 2 + 40, -TH / 2 + 170, 70, .4, .3]]);
+    g.restore(); g.letterSpacing = '0px';
+    mark(80, H - 34, INK, .7);
   }
-  g.fillStyle = text2; g.font = F(600, 28); g.fillText('Logged with Jobs Done', 72, H - 56);
+  g.letterSpacing = '0px';
+  return c;
+}
+async function shareRecap(d) {
+  const c = await drawShare(d);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Jobs done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
