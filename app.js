@@ -971,17 +971,48 @@ function progHistory() {
 }
 
 // ---------- exercise detail ----------
-// How-to pictures (Job, 15 Oct): public-domain photos from free-exercise-db, cut out and restyled into one look (web/ex).
-let HOWTO = null, HOWTO_LOADING = false;
+// How-to pictures (Job, 16 Oct): Everkinetic line drawings (CC BY-SA 4.0) in one style, recoloured by the theme, plus a
+// body map that lights up the muscles worked. One-side lifts ("X (L)") use a one-arm/one-leg drawing when there is one.
+let HOWTO = null, HOWTO_LOADING = false, BODY = null;
+const HT_SVG = {};
 function howtoFor(name) {
-  if (!HOWTO && !HOWTO_LOADING && HOSTED) { HOWTO_LOADING = true; fetch('ex/index.json').then(r => r.ok ? r.json() : {}).then(j => { HOWTO = j || {}; rerender(); }).catch(() => { HOWTO = {}; }); }
+  if (!HOWTO && !HOWTO_LOADING && HOSTED) {
+    HOWTO_LOADING = true;
+    Promise.all([fetch('ex/index.json').then(r => r.ok ? r.json() : {}), fetch('ex/body.json').then(r => r.ok ? r.json() : null)])
+      .then(([j, b]) => { HOWTO = j || {}; BODY = b; rerender(); }).catch(() => { HOWTO = {}; });
+  }
   return HOWTO && HOWTO[baseName(name)];
 }
+// Front and back body outlines with worked muscles filled: p = main, q = helping. side 'L'/'R' lights one side only.
+function bodyMapHTML(p, q, side) {
+  if (!BODY) return '';
+  const k = side === 'L' ? ['l'] : side === 'R' ? ['r'] : ['l', 'r'];
+  const fig = (parts, outline, vb) => `<svg class="bm" viewBox="${vb}" aria-hidden="true"><path class="bm-o" d="${outline}"/>${parts.map(m => {
+    const c = p.includes(m.s) ? 'bm-p' : q.includes(m.s) ? 'bm-q' : '';
+    return ['l', 'r'].map(sd => m[sd].map(d => `<path class="${c && k.includes(sd) ? c : 'bm-n'}" d="${d}"/>`).join('')).join('');
+  }).join('')}</svg>`;
+  return `<div class="bm-row">${fig(BODY.f, BODY.of, '0 0 724 1448')}${fig(BODY.b, BODY.ob, '724 0 724 1448')}</div>`;
+}
+const MUSCLE_NAMES = { chest: 'Chest', abs: 'Abs', obliques: 'Obliques', biceps: 'Biceps', triceps: 'Triceps', deltoids: 'Shoulders', trapezius: 'Traps', 'upper-back': 'Upper back', 'lower-back': 'Lower back', forearm: 'Forearms', gluteal: 'Glutes', adductors: 'Inner thighs', quadriceps: 'Quads', hamstring: 'Hamstrings', calves: 'Calves', tibialis: 'Shins' };
 function howtoHTML(name, open) {
   const h = howtoFor(name); if (!h) return '';
-  return `<div class="card howto"><div class="ht-pic" role="img" aria-label="${esc(baseName(name))}, start and finish positions"><img src="ex/${h.f}-0.webp" alt="" loading="lazy" decoding="async"><img class="b" src="ex/${h.f}-1.webp" alt="" loading="lazy" decoding="async"></div>
-  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${h.s.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${h.m ? `<p class="cap">Shown: ${esc(h.m)}. Yours may differ slightly.</p>` : ''}<p class="cap ht-cr">Photos: free-exercise-db, public domain</p></details></div>`;
+  const side = sideOf(name), id = side && h.u ? h.u : h.f;
+  const mn = a => a.map(m => MUSCLE_NAMES[m] || m).join(', ');
+  const steps = side ? ['Work one side at a time: do all your reps on one side, then switch.', ...h.s] : h.s;
+  return `<div class="card howto">${side ? '<div class="ht-tag">One side at a time</div>' : ''}
+  ${id ? `<div class="ht-pic" role="img" aria-label="${esc(baseName(name))}${side ? ', one side' : ''}, start and finish positions"><div class="ht-fr" data-src="ex/${id}-0.svg"></div><span class="ht-arr" aria-hidden="true"></span><div class="ht-fr" data-src="ex/${id}-1.svg"></div></div>` : ''}
+  <div class="ht-mus">${bodyMapHTML(h.p, h.q, side)}<div class="grow"><div class="eyebrow">Muscles worked</div><div class="ht-ml"><i class="bm-key p"></i>${esc(mn(h.p))}</div>${h.q.length ? `<div class="ht-ml sec"><i class="bm-key q"></i>${esc(mn(h.q))}</div>` : ''}</div></div>
+  ${side && id && !h.u ? '<p class="cap ht-note">Drawn with both sides working. Do the same move one side at a time.</p>' : ''}
+  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${h.m ? `<p class="cap">Drawing shows: ${esc(h.m)}. Yours may differ slightly.</p>` : ''}<p class="cap ht-cr">Drawings: Everkinetic, CC BY-SA 4.0. Body map: react-muscle-highlighter, MIT.</p></details></div>`;
 }
+// Drawings are inline SVG so they take the theme's colours; fetch each once and drop it in when a card appears.
+function htHydrate(root) {
+  for (const el of root.querySelectorAll('.ht-fr[data-src]:not([data-done])')) {
+    el.dataset.done = '1'; const src = el.dataset.src;
+    (HT_SVG[src] = HT_SVG[src] || fetch(src).then(r => r.ok ? r.text() : '').catch(() => '')).then(t => { if (/^<svg[\s>]/.test(t)) el.innerHTML = t; });
+  }
+}
+if (typeof MutationObserver !== 'undefined') new MutationObserver(() => { if (document.querySelector('.ht-fr[data-src]:not([data-done])')) htHydrate(document); }).observe(document.documentElement, { childList: true, subtree: true });
 function openHowto(name) {
   const h = howtoFor(name);
   if (!h) return toast(HOWTO ? 'No how-to pictures for this one yet.' : 'Loading pictures, try again in a second.');
@@ -1009,7 +1040,7 @@ function viewExercise(v) {
   return `<div class="stack">${backBtn()}
   <div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
-  ${setupHTML(b)}${howtoHTML(b)}
+  ${setupHTML(b)}${howtoHTML(main)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
   ${bw && B.e1 && ['barbell', 'dumbbell', 'smith'].includes(exInfo(main).equip) ? `<div class="mt3 cap">Strength-to-weight: e1RM is <b class="c-text num">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
   <div class="card"><div class="mb3 seg">${[['e1', 'e1RM'], ['top', 'Top set'], ['vol', 'Volume']].map(([k, l]) => `<button class="${v.metric === k ? 'on' : ''}" data-a="exMetric" data-k="${k}">${l}</button>`).join('')}</div>

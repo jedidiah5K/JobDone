@@ -952,12 +952,27 @@ html:not(.ob-on) .ob-foot .btn.primary { background: var(--accent); color: var(-
 .rpe-v { font-size:11px; opacity:.6; margin-left:2px; font-weight:500; }
 .ss-line { margin-top:6px; font-size:13px; font-weight:600; color: var(--accent); }
 /* How-to pictures (15 Oct): one restyled look, start and finish positions crossfading */
-.howto { padding: 0; overflow: hidden; }
-.ht-pic { position: relative; aspect-ratio: 3 / 2; max-width: 100%; background: #111; }
-.ht-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ht-pic img.b { animation: htfade 3.2s ease-in-out infinite; }
-@keyframes htfade { 0%, 38% { opacity: 0; } 50%, 88% { opacity: 1; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .ht-pic img.b { animation: none; opacity: 0; } }
+.howto { padding: 0; overflow: hidden; --fig-line: var(--text); --fig-fill: color-mix(in srgb, var(--text) 17%, var(--surface-solid, var(--surface))); }
+.ht-tag { margin: 12px 16px 0; align-self: flex-start; display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ht-pic { display: flex; align-items: center; justify-content: center; gap: 6px; height: 196px; max-width: 100%; padding: 14px 16px 8px; box-sizing: border-box; }
+.ht-fr { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--fig-line); }
+.ht-fr svg { max-width: 100%; max-height: 100%; width: auto; height: 100%; display: block; }
+.ht-fr .fig-fill { fill: var(--fig-fill); }
+.ht-arr { flex: none; width: 14px; height: 14px; opacity: .45; background: currentColor; color: var(--text2); -webkit-mask: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 2l6 6-6 6' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 2l6 6-6 6' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+.ht-mus { display: flex; align-items: center; gap: 14px; padding: 8px 16px 4px; border-top: 1px solid var(--border); margin-top: 4px; }
+.bm-row { display: flex; gap: 2px; flex: none; }
+.bm { height: 124px; width: auto; display: block; }
+.bm .bm-o { fill: none; stroke: color-mix(in srgb, var(--text) 40%, transparent); stroke-width: 6; }
+.bm .bm-n { fill: color-mix(in srgb, var(--text) 13%, transparent); }
+.bm .bm-p { fill: var(--hl, var(--accent)); }
+.bm .bm-q { fill: color-mix(in srgb, var(--hl, var(--accent)) 42%, transparent); }
+.ht-ml { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.ht-ml.sec { font-weight: 400; color: var(--text2); font-size: 14px; }
+.bm-key { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--hl, var(--accent)); transform: translateY(-1px); }
+.bm-key.q { background: color-mix(in srgb, var(--hl, var(--accent)) 42%, transparent); }
+:root[data-theme="mono"] .howto { --hl: #E0303C; }
+:root[data-theme="mono"] .ht-tag { color: #fff; background: rgba(224,48,60,.28); }
+.ht-note { margin: 6px 16px 0; }
 .howto details { padding: 12px 16px 14px; }
 .howto summary { cursor: pointer; list-style: none; }
 .howto summary::after { content: ' ▾'; }

@@ -1,0 +1,4 @@
+Exercise drawings (*.svg): Everkinetic open data (https://github.com/everkinetic/data), CC BY-SA 4.0.
+Adapted for Jobs Done: background removed, cropped, body filled so the theme can colour it. The adapted drawings are shared under CC BY-SA 4.0 too.
+Body map (body.json): react-muscle-highlighter by soroojshehryar, MIT licence.
+How-to steps (index.json "s"): free-exercise-db, public domain.
