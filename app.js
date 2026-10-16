@@ -1775,9 +1775,9 @@ async function drawShare(d) {
     for (let r = 70; r <= R; r += 64) { g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2, x = W - Math.cos(a) * r, y = Math.sin(a) * r; if (!i) g.moveTo(x, y); else { const pa = (i - .5) / 6 * Math.PI / 2, q = r * .86; g.quadraticCurveTo(W - Math.cos(pa) * q, Math.sin(pa) * q, x, y); } } g.stroke(); }
     g.restore();
     // comic burst headline, BAM! style (Job's reference, 16 Oct): halftone dots, red burst, yellow rim, white core, extruded orange letters
-    const BX = 380, BY = 300, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
+    const BX = 330, BY = 310, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
     const burst = (n, rIn, rOut, sx, sy, rot, jit) => { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + jit * Math.sin(i * 7.3)); g.lineTo(BX + Math.cos(a) * r * sx, BY + Math.sin(a) * r * sy); } g.closePath(); };
-    g.save(); g.translate(BX, BY); g.rotate(-.13); g.scale(.72, .72); g.translate(-BX, -BY); // the whole burst leans, kept small in the top left
+    g.save(); g.translate(BX, BY); g.rotate(-.13); g.scale(.84, .84); g.translate(-BX, -BY); // the whole burst leans, kept small in the top left
     g.save(); burst(13, 230, 420, 1.25, .78, .1, .18); g.clip();
     for (let y = BY - 360; y < BY + 360; y += 22) for (let x = BX - 560; x < BX + 560; x += 22) { const dx = (x - BX) / 1.25, dy = (y - BY) / .78, dd = Math.hypot(dx, dy), r = Math.max(0, 7.5 * (1 - Math.abs(dd - 330) / 140)); if (r > .6) { g.fillStyle = RED; g.beginPath(); g.arc(x + ((y / 22) % 2 ? 11 : 0), y, r, 0, 7); g.fill(); } }
     g.restore();

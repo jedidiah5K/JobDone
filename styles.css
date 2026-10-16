@@ -1074,3 +1074,12 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 .fin-hold svg { clip-path: polygon(30% 2%, 72% 6%, 96% 34%, 92% 72%, 62% 98%, 24% 94%, 3% 64%, 6% 26%); }
 .fin-boulder .rc-tag { background: rgba(108,63,214,.12); color: #6C3FD6; } .fin-boulder .rc-tag .sdot { background: #6C3FD6; }
 @keyframes finTag { from { transform: rotate(-8deg) translateY(-30px); opacity: 0; } }
+/* Bigger "Jobs done!" in the finish tops without growing them (Job, 16 Oct) */
+.rc-hero.fin h1 { font-size: 42px; line-height: 44px; letter-spacing: -.03em; font-weight: 900; }
+.rc-hero.fin .rc-tags { margin-top: 4px; }
+.fin-agent .fin-stamp { margin: 2px 0 0; }
+.fin-bam i { font-size: 48px; }
+.fin-boulder h1 { font-size: 54px !important; line-height: 52px !important; }
+.fin-tag { padding: 14px 18px 12px; gap: 2px; }
+.fin-burst { margin-top: -14px; margin-bottom: -4px; }
+:root[data-theme="cliffs"] .fin-summit { padding-bottom: 86px; }
