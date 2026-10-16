@@ -302,18 +302,19 @@ tr.pop .check { animation: pop .3s var(--ease); }
 #wk:has(.restpop) .wk-body { padding-bottom: calc(330px + env(safe-area-inset-bottom, 0px)); }
 
 /* ============ 14. Set feedback (calm) ============ */
-.cele { position: fixed; z-index: 85; left: 50%; top: 40%; transform: translate(-50%, -50%); width: min(280px, calc(100% - 48px)); display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+.cele { position: fixed; z-index: 85; left: 50%; top: 40%; transform: translate(-50%, 0); width: min(280px, calc(100% - 48px)); display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
   padding: var(--s5) var(--s4); border-radius: var(--r3); background: var(--surface); box-shadow: 0 16px 48px rgba(0,0,0,.22); border-top: 3px solid var(--accent);
-  animation: celeIn .25s var(--ease) both, celeOut .25s ease-in 1.6s forwards; }
+  animation: celeIn .25s var(--ease) both, celeOut .25s ease-in var(--out, 1.6s) forwards; }
 .cele b { font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -.015em; }
 .cele span { font-size: 15px; line-height: 20px; color: var(--text2); }
+.cele i { font-style: normal; font-size: 13px; line-height: 18px; color: var(--text2); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); width: 100%; }
 .cele-low { border-top-color: var(--blue); }
 .cele-nice { border-top-color: var(--green); }
 .cele-great { border-top-color: var(--yellow); }
 .cele-amazing { border-top-color: var(--accent); }
 .cele-next { border-top-color: var(--green); }
-@keyframes celeIn { from { transform: translate(-50%, -46%) scale(.96); opacity: 0; } }
-@keyframes celeOut { to { transform: translate(-50%, -54%); opacity: 0; } }
+@keyframes celeIn { from { transform: translate(-50%, 6px) scale(.96); opacity: 0; } }
+@keyframes celeOut { to { transform: translate(-50%, -8px); opacity: 0; } }
 .confetti { position: fixed; inset: 0; z-index: 90; pointer-events: none; overflow: hidden; }
 .confetti i { position: absolute; top: -12px; width: 6px; height: 10px; border-radius: 1px; animation: fall var(--d, 1.4s) cubic-bezier(.25, .6, .4, 1) forwards; }
 @keyframes fall { to { transform: translate(var(--x), 105vh) rotate(var(--r)); } }
@@ -666,7 +667,7 @@ a.xr { text-decoration: none; }
 /* Readability (review, 15 Oct) */
 #tabs { background: var(--surface-solid, var(--surface)); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-theme="cliffs"] #tabs, :root:not([data-theme]) #tabs { background: #FFFFFF; }
-.cele { top: calc(env(safe-area-inset-top, 0px) + 58px); padding: 12px 18px; }
+.cele { top: calc(env(safe-area-inset-top, 0px) + 24px); padding: 12px 18px; }
 .top .btn.sm { background: var(--surface-solid, var(--surface)); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .xr-in::placeholder, .input::placeholder, textarea::placeholder { color: var(--muted); font-style: italic; opacity: .8; }
 .plate-tray { padding-right: 24px; scroll-padding-right: 24px; }

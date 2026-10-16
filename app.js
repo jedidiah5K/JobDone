@@ -1502,6 +1502,18 @@ function splitTag(name) {
   const others = names.filter(n => n !== name).flatMap(cands);
   return cands(name).find(c => !others.includes(c)) || cands(name)[0];
 }
+// Gym manners after the last set of a lift, in the theme's voice (Job, 16 Oct). Re-rack only for plates and dumbbells.
+const TIDY = {
+  mono: { rack: ['A good agent leaves no trace. Wipe it down and re-rack your weights.', 'No fingerprints, no loose plates. Wipe down and re-rack before you move out.', 'Clean exit, agent: weights back on the rack, sweat wiped off the scene.'],
+    wipe: ['A good agent leaves no trace. Wipe it down before you move out.', 'No fingerprints left behind. Give the station a wipe, agent.'] },
+  spidey: { rack: ['Be a friendly neighbour: wipe it down and re-rack the weights.', 'With great strength comes great responsibility. Re-rack your weights and wipe it down.', 'Your friendly neighbourhood lifter puts the weights back. Wipe and re-rack.'],
+    wipe: ['Be a friendly neighbour and wipe down the equipment.', 'With great strength comes great responsibility. Give it a wipe.'] },
+  cliffs: { rack: ['Leave no trace. Wipe it down and re-rack the weights.', 'Pack it in, pack it out: weights back on the rack, bench wiped clean.'],
+    wipe: ['Leave no trace. Give it a wipe before you head on.', 'Leave the trail cleaner than you found it. Wipe it down.'] },
+  climb: { rack: ['Brush your holds: wipe it down and re-rack the weights for the next climber.', 'Clean the route for the next send. Re-rack and wipe down.'],
+    wipe: ['Brush your holds: wipe it down for the next climber.', 'Clean the route for the next send. Give it a wipe.'] },
+};
+const tidyLine = name => { const t = TIDY[theme()] || TIDY.cliffs; return pick(['barbell', 'dumbbell', 'smith', 'kettlebell'].includes(exInfo(name).equip) ? t.rack : t.wipe); };
 const themeMsg = () => THEME_MSG[theme()] || THEME_MSG.cliffs;
 function setVerdict(r) {
   const m = themeMsg();
@@ -1522,8 +1534,8 @@ function doneLine(w) {
 function celebrate(v, delay = 0) {
   setTimeout(() => {
     document.querySelectorAll('.cele').forEach(c => c.remove());
-    const c = document.createElement('div'); c.className = 'cele cele-' + v.k; c.setAttribute('role', 'status');
-    c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>`;
+    const c = document.createElement('div'); c.className = 'cele cele-' + v.k; c.setAttribute('role', 'status'); if (v.ms) c.style.setProperty('--out', (v.ms - 600) + 'ms');
+    c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>${v.note ? `<i>${esc(v.note)}</i>` : ''}`;
     document.body.appendChild(c); setTimeout(() => c.remove(), v.ms || 2200);
     if (v.bits) confetti(v.bits);
     (SOUNDS[v.k] || (() => {}))();
@@ -1560,7 +1572,7 @@ function logSet(ei, si) {
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
-        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', bits: 0, ms: 2200 }, 1200);
+        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 3800 }, 1200);
         if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
       }
     }
