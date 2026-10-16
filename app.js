@@ -1635,6 +1635,32 @@ function recapData(id) {
   return { w, num, prev, vol, sets, reps, prs, musL, dur, heavy: `${times % 1 ? times.toFixed(1) : times}× ${h[1]}`, dv: prev ? (vol - wVol(prev)) / Math.max(1, wVol(prev)) : null };
 }
 const RC_LINE = {};
+// The top of the finish page, dressed for each theme (Job, 16 Oct: "more interesting", smaller title).
+function finHero(d) {
+  const k = theme(), num = String(d.num).padStart(3, '0'), when = esc(fmtDate(d.w.date, { wd: true }));
+  const line = esc(d.line || (d.line = doneLine(d.w)));
+  const tags = `<div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div>`;
+  const check = `<div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>`;
+  if (k === 'mono') return `<div class="rc-hero fin fin-agent"><svg class="fin-scope" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="56"/><path d="M100 0v70M100 130v70M0 100h70M130 100h70"/><circle class="dot" cx="100" cy="100" r="4"/></svg>
+    <div class="fin-eb">Mission complete · File ${num}</div><h1>Jobs done!</h1><div class="fin-stamp">Target down</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
+  if (k === 'spidey') {
+    const sp = (t, a) => [...t].map((ch, i) => `<i style="--sx:${a[i][0]};--sy:${a[i][1]};--r:${a[i][2]}deg;--dy:${a[i][3]}px">${ch}</i>`).join('');
+    return `<div class="rc-hero fin fin-sky"><svg class="fin-web" viewBox="0 0 120 120" aria-hidden="true"><path d="M120 0L0 0M120 0L10 60M120 0L40 104M120 0L84 118M120 0L120 120M30 0Q60 22 76 26Q100 46 120 30M60 0Q76 22 84 48Q100 64 120 62M90 0Q96 20 102 40Q110 44 120 92"/></svg>
+      <div class="fin-burst"><svg viewBox="0 0 300 190" aria-hidden="true"><path class="b1" d="${burstPath(150, 95, 13, 70, 140, 1, .62)}"/><path class="b2" d="${burstPath(150, 95, 11, 62, 104, .25, .62)}"/><path class="b3" d="${burstPath(150, 95, 11, 55, 92, .27, .62)}"/></svg>
+      <div class="fin-bam"><span>${sp('JOBS', [[.95, .8, -10, 4], [1.3, 1, -4, 0], [1.4, 1.12, 2, -3], [1.2, 1.28, 8, 2]])}</span><span>${sp('DONE!', [[1.1, .84, -8, 3], [1.4, 1.04, -3, 0], [1.3, 1.16, 3, -2], [1.15, 1.3, 6, 1], [.9, 1.5, 10, 5]])}</span></div></div>
+      <div class="rc-line">${line}</div><div class="fin-sub">Patrol #${d.num} · ${when}</div>${tags}</div>`;
+  }
+  if (k === 'cliffs') return `<div class="rc-hero fin fin-summit"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
+    <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Jobs done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
+  return `<div class="rc-hero fin fin-boulder"><div class="fin-tag"><i class="tape l"></i><i class="tape r"></i>
+    <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold">${check}</div></div>
+    <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
+}
+// A comic burst outline: n spikes between radii rIn and rOut, squashed vertically by sy.
+function burstPath(cx, cy, n, rIn, rOut, rot, sy) {
+  let p = ''; for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + .16 * Math.sin(i * 7.3)); p += (i ? 'L' : 'M') + (cx + Math.cos(a) * r).toFixed(1) + ' ' + (cy + Math.sin(a) * r * sy).toFixed(1); }
+  return p + 'Z';
+}
 function showRecap(id, fresh) {
   const d = recapData(id); if (!d.w) return;
   d.line = RC_LINE[id] || (RC_LINE[id] = doneLine(d.w));
@@ -1651,9 +1677,7 @@ function showRecap(id, fresh) {
   const sp = wSplit(d.w), col = sp ? sp.color : 'var(--accent)', nx = nextSplit();
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
-    <div class="rc-hero"><div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
-      <div class="rc-date">Workout #${d.num} · ${esc(fmtDate(d.w.date, { wd: true }))}</div><h1>Jobs done!</h1><div class="rc-line">${esc(d.line || (d.line = doneLine(d.w)))}</div>
-      <div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div></div>
+    ${finHero(d)}
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
       <div class="rc-big num">${dvol(d.vol)}<span class="unit">${U()}</span></div>
@@ -1751,12 +1775,12 @@ async function drawShare(d) {
     for (let r = 70; r <= R; r += 64) { g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2, x = W - Math.cos(a) * r, y = Math.sin(a) * r; if (!i) g.moveTo(x, y); else { const pa = (i - .5) / 6 * Math.PI / 2, q = r * .86; g.quadraticCurveTo(W - Math.cos(pa) * q, Math.sin(pa) * q, x, y); } } g.stroke(); }
     g.restore();
     // comic burst headline, BAM! style (Job's reference, 16 Oct): halftone dots, red burst, yellow rim, white core, extruded orange letters
-    const BX = 470, BY = 318, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
+    const BX = 380, BY = 300, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
     const burst = (n, rIn, rOut, sx, sy, rot, jit) => { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + jit * Math.sin(i * 7.3)); g.lineTo(BX + Math.cos(a) * r * sx, BY + Math.sin(a) * r * sy); } g.closePath(); };
+    g.save(); g.translate(BX, BY); g.rotate(-.13); g.scale(.72, .72); g.translate(-BX, -BY); // the whole burst leans, kept small in the top left
     g.save(); burst(13, 230, 420, 1.25, .78, .1, .18); g.clip();
     for (let y = BY - 360; y < BY + 360; y += 22) for (let x = BX - 560; x < BX + 560; x += 22) { const dx = (x - BX) / 1.25, dy = (y - BY) / .78, dd = Math.hypot(dx, dy), r = Math.max(0, 7.5 * (1 - Math.abs(dd - 330) / 140)); if (r > .6) { g.fillStyle = RED; g.beginPath(); g.arc(x + ((y / 22) % 2 ? 11 : 0), y, r, 0, 7); g.fill(); } }
     g.restore();
-    g.save(); g.translate(BX, BY); g.rotate(-.13); g.translate(-BX, -BY); // the whole burst leans
     burst(11, 210, 330, 1.25, .78, .25, .22); g.fillStyle = RED; g.fill(); g.lineWidth = 6; g.strokeStyle = '#7A0D0A'; g.stroke();
     burst(11, 190, 262, 1.25, .78, .27, .15); g.fillStyle = BAM.rim; g.fill();
     burst(11, 172, 240, 1.25, .78, .27, .15); g.fillStyle = BAM.core; g.fill();
@@ -1789,14 +1813,14 @@ async function drawShare(d) {
     g.restore(); mark(72, 92, '#fff', .8);
     // caption box
     g.letterSpacing = '0px'; g.font = F(700, 32); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
-    g.save(); g.translate(72, 610); g.rotate(.015); g.fillStyle = '#FFF8E7'; g.fillRect(0, 0, cw, 70); g.strokeStyle = '#0D1A45'; g.lineWidth = 5; g.strokeRect(0, 0, cw, 70);
+    g.save(); g.translate(72, 540); g.rotate(.015); g.fillStyle = '#FFF8E7'; g.fillRect(0, 0, cw, 70); g.strokeStyle = '#0D1A45'; g.lineWidth = 5; g.strokeRect(0, 0, cw, 70);
     g.fillStyle = '#0D1A45'; g.fillText(cap, 28, 47); g.restore();
-    g.fillStyle = 'rgba(255,255,255,.7)'; g.font = F(700, 28); g.fillText(sp(`${split.toUpperCase()} · PATROL #${d.num} · ${date.toUpperCase()}`, 2), 72, 736);
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.font = F(700, 28); g.fillText(sp(`${split.toUpperCase()} · PATROL #${d.num} · ${date.toUpperCase()}`, 2), 72, 680);
     // stats as web cells
     const hex = (x, y, r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); };
-    stats.forEach(([a, b], i) => { const x = 72 + 117 + i * 234, y = 880; hex(x, y, 112); g.fillStyle = i === 3 && d.prs.length ? RED : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
+    stats.forEach(([a, b], i) => { const x = 72 + 117 + i * 234, y = 830; hex(x, y, 112); g.fillStyle = i === 3 && d.prs.length ? RED : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
       g.textAlign = 'center'; g.fillStyle = '#fff'; g.letterSpacing = '0px'; g.font = F(800, a.length > 6 ? 40 : 54); g.fillText(a, x, y + 6); g.font = F(700, 22); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 46); g.textAlign = 'left'; });
-    let y = 1060;
+    let y = 1030;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 3)) {
       g.letterSpacing = '0px'; g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 50, W - 112, 72, 12); g.fill(); g.strokeStyle = r.pr ? RED : 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
       g.fillStyle = '#fff'; g.font = F(700, 34); g.fillText(fit(r.name, 24), 88, y); g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 18), W - (r.pr ? 180 : 88), y);
