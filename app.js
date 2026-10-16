@@ -1539,6 +1539,7 @@ function celebrate(v, delay = 0) {
     document.querySelectorAll('.cele').forEach(c => c.remove());
     const c = document.createElement('div'); c.className = 'cele cele-' + v.k; c.setAttribute('role', 'status'); if (v.ms) c.style.setProperty('--out', (v.ms - 600) + 'ms');
     c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>${v.note ? `<i>${esc(v.note)}</i>` : ''}`;
+    c.onclick = () => c.remove(); // tap to close early
     document.body.appendChild(c); setTimeout(() => c.remove(), v.ms || 2200);
     if (v.bits) confetti(v.bits);
     (SOUNDS[v.k] || (() => {}))();
@@ -1575,7 +1576,7 @@ function logSet(ei, si) {
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
-        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 3800 }, 1200);
+        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 7000 }, 1200);
         if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
       }
     }
