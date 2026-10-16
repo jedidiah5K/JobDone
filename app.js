@@ -1504,16 +1504,18 @@ function splitTag(name) {
 }
 // Gym manners after the last set of a lift, in the theme's voice (Job, 16 Oct). Re-rack only for plates and dumbbells.
 const TIDY = {
-  mono: { rack: ['A good agent leaves no trace. Wipe it down and re-rack your weights.', 'No fingerprints, no loose plates. Wipe down and re-rack before you move out.', 'Clean exit, agent: weights back on the rack, sweat wiped off the scene.'],
-    wipe: ['A good agent leaves no trace. Wipe it down before you move out.', 'No fingerprints left behind. Give the station a wipe, agent.'] },
-  spidey: { rack: ['Be a friendly neighbour: wipe it down and re-rack the weights.', 'With great strength comes great responsibility. Re-rack your weights and wipe it down.', 'Your friendly neighbourhood lifter puts the weights back. Wipe and re-rack.'],
-    wipe: ['Be a friendly neighbour and wipe down the equipment.', 'With great strength comes great responsibility. Give it a wipe.'] },
-  cliffs: { rack: ['Leave no trace. Wipe it down and re-rack the weights.', 'Pack it in, pack it out: weights back on the rack, bench wiped clean.'],
-    wipe: ['Leave no trace. Give it a wipe before you head on.', 'Leave the trail cleaner than you found it. Wipe it down.'] },
-  climb: { rack: ['Brush your holds: wipe it down and re-rack the weights for the next climber.', 'Clean the route for the next send. Re-rack and wipe down.'],
-    wipe: ['Brush your holds: wipe it down for the next climber.', 'Clean the route for the next send. Give it a wipe.'] },
+  mono: { rack: ['A good agent leaves no trace. Wipe down {g} and re-rack your weights.', 'No fingerprints, no loose plates. Wipe down {g} and re-rack before you move out.', 'Clean exit, agent: weights back on the rack, {g} wiped down.', 'The mission isn’t over until you’ve re-racked and wiped down {g}.'],
+    wipe: ['A good agent leaves no trace. Wipe down {g} before you move out.', 'No fingerprints left behind. Wipe down {g}, agent.', 'Clean exit, agent: wipe down {g}, then secure the scene.', 'The mission isn’t over until you’ve wiped down {g}.'] },
+  spidey: { rack: ['Be a friendly neighbour: wipe down {g} and re-rack the weights.', 'With great strength comes great responsibility. Re-rack your weights and wipe down {g}.', 'Your friendly neighbourhood lifter puts the weights back. Re-rack and wipe down {g}.', 'Even heroes clean up after a fight. Re-rack the weights and wipe down {g}.'],
+    wipe: ['Be a friendly neighbour and wipe down {g}.', 'With great strength comes great responsibility. Wipe down {g}.', 'Your friendly neighbourhood lifter leaves no sweat behind. Wipe down {g}.', 'Even heroes clean up after a fight. Give {g} a wipe.'] },
+  cliffs: { rack: ['Leave no trace. Wipe down {g} and re-rack the weights.', 'Pack it in, pack it out: weights back on the rack, {g} wiped clean.', 'Leave the trail better than you found it. Re-rack and wipe down {g}.', 'Good climbers clean up camp. Weights on the rack, {g} wiped down.'],
+    wipe: ['Leave no trace. Wipe down {g} before you head on.', 'Pack it in, pack it out. Give {g} a wipe.', 'Leave the trail better than you found it. Wipe down {g}.', 'Good climbers clean up camp. Wipe down {g} before the next ascent.'] },
+  climb: { rack: ['Brush your holds: wipe down {g} and re-rack the weights for the next climber.', 'Clean the route for the next send. Re-rack and wipe down {g}.', 'Chalk off, weights back. Re-rack and wipe down {g}.', 'Respect the wall: weights back on the rack, {g} wiped clean.'],
+    wipe: ['Brush your holds: wipe down {g} for the next climber.', 'Clean the route for the next send. Wipe down {g}.', 'Chalk off, sweat off. Wipe down {g}.', 'Respect the wall: wipe down {g} before you move on.'] },
 };
-const tidyLine = name => { const t = TIDY[theme()] || TIDY.cliffs; return pick(['barbell', 'dumbbell', 'smith', 'kettlebell'].includes(exInfo(name).equip) ? t.rack : t.wipe); };
+// What to wipe: machines and cables have a seat, free weights a bench.
+const TIDY_GEAR = { machine: 'the machine and seat', cable: 'the machine and seat', smith: 'the bench', barbell: 'the bench', dumbbell: 'the bench', kettlebell: 'your spot' };
+const tidyLine = name => { const t = TIDY[theme()] || TIDY.cliffs, eq = exInfo(name).equip; return pick(['barbell', 'dumbbell', 'smith', 'kettlebell'].includes(eq) ? t.rack : t.wipe).replace('{g}', TIDY_GEAR[eq] || 'your station'); };
 const themeMsg = () => THEME_MSG[theme()] || THEME_MSG.cliffs;
 function setVerdict(r) {
   const m = themeMsg();
