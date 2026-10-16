@@ -1779,6 +1779,10 @@ function drawBam(g, BX, BY) {
     g.letterSpacing = '0px';
   g.restore();
 }
+// A small invite at the foot of every share card, in the theme's voice (Job, 16 Oct), and in the text that goes with it.
+const APP_URL = 'jobdone-peach.vercel.app';
+const INVITE = { mono: 'Your mission awaits', spidey: 'Start your own patrol', cliffs: 'Start your own climb', climb: 'Send your own routes' };
+const inviteText = () => `Job’s Done! ${INVITE[theme()] || INVITE.cliffs} at https://${APP_URL}`;
 async function drawShare(d) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
   const SANS = '-apple-system, "SF Pro Display", system-ui, sans-serif', MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
@@ -1835,7 +1839,7 @@ async function drawShare(d) {
       g.textAlign = 'left'; y += 66;
     }
     g.letterSpacing = '0px'; mark(72, H - 56, 'rgba(255,255,255,.7)', .8);
-    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.4)'; g.font = F(600, 24, MONO); g.fillText(sp('LEAVE NO TRACE', 3), W - 72, H - 62); g.textAlign = 'left';
+    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 24, MONO); g.fillText(sp(('Recruiting · ' + APP_URL).toUpperCase(), 2), W - 72, H - 62); g.textAlign = 'left';
   } else if (k === 'spidey') {
     // Skyline: night patrol over the city
     g.fillStyle = '#0D1A45'; g.fillRect(0, 0, W, H);
@@ -1866,7 +1870,7 @@ async function drawShare(d) {
       if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 6); }
       g.textAlign = 'left'; y += 86;
     }
-    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp('Patrol logged with Job’s Done', 0), 72, H - 48);
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp(`Job’s Done! ${INVITE.spidey} at ${APP_URL}`, 0), 72, H - 48);
   } else if (k === 'cliffs') {
     // Summit: the sky right now, the ridges, and the session drawn as an elevation profile
     const sk = skyOfW(d.w), s1 = sk.s1, s2 = sk.s2, s3 = sk.s3;
@@ -1897,10 +1901,11 @@ async function drawShare(d) {
     g.letterSpacing = '0px'; const cw = pw / 4; g.fillStyle = CARD; RR(px, 930, pw, 150, 28); g.fill();
     stats.forEach(([a, b], i) => { const x = px + i * cw + 36; g.fillStyle = i === 3 && d.prs.length ? '#C98A00' : INK; g.font = F(800, a.length > 6 ? 38 : 50); g.fillText(a, x, 1004); g.fillStyle = INK2; g.font = F(600, 26); g.fillText(b, x, 1046); });
     // waypoints
-    g.letterSpacing = '0px'; let y = 1140; g.font = F(700, 30);
+    g.letterSpacing = '0px'; let y = 1118; g.font = F(700, 30);
     lifts.slice(0, 3).forEach((r, i) => { g.fillStyle = CARD; RR(px, y - 44, pw, 64, 20); g.fill(); g.fillStyle = INK; g.font = F(800, 24); g.beginPath(); g.arc(px + 40, y - 12, 18, 0, 7); g.fill();
       g.fillStyle = night ? '#0E1828' : '#fff'; g.textAlign = 'center'; g.fillText(String(i + 1), px + 40, y - 3); g.textAlign = 'left'; g.fillStyle = INK; g.font = F(700, 30); g.fillText(fit(r.name, 26), px + 76, y);
-      g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? 'PR  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 76; });
+      g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? 'PR  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 70; });
+    g.fillStyle = INK2; g.font = F(600, 24); g.textAlign = 'center'; g.fillText(`Job’s Done! ${INVITE.cliffs} at ${APP_URL}`, W / 2, H - 26); g.textAlign = 'left';
   } else {
     // Boulder: a route tag taped to the chalk wall
     g.fillStyle = '#EFEBE5'; g.fillRect(0, 0, W, H);
@@ -1950,6 +1955,7 @@ async function drawShare(d) {
     CH = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 70, .34], [TW / 2 - 36, -TH / 2 + 260, 56, .3], [TW / 2 - 80, TH / 2 - 120, 50, .26]], [[TW / 2 - 210, TH / 2 - 44, 110, -.35, .5], [-TW / 2 + 40, -TH / 2 + 170, 90, .4, .45]]);
     g.restore(); g.letterSpacing = '0px';
     mark(80, H - 34, INK, .7);
+    g.fillStyle = INK; g.font = F(700, 23); g.textAlign = 'right'; g.fillText(`${INVITE.climb} at ${APP_URL}`, W - 84, H - 40); g.textAlign = 'left';
   }
   g.letterSpacing = '0px';
   return c;
@@ -1958,7 +1964,7 @@ async function shareRecap(d) {
   const c = await drawShare(d);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s done!', text: inviteText() }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
