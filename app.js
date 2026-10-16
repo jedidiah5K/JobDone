@@ -1015,14 +1015,14 @@ function howtoHTML(name, open) {
   const h = howtoFor(name); if (!h) return '';
   // Only show a drawing made with the same equipment (Job, 16 Oct: a machine fly must not show dumbbells).
   const eq = exInfo(name).equip, fits = e => e === eq;
-  const side = sideOf(name), id = side && h.u && fits(h.ue) ? h.u : h.f && fits(h.e) ? h.f : null, oneSide = !!(side && id && id === h.u);
+  const side = sideOf(name), id = side && h.u && fits(h.ue) ? h.u : h.f && fits(h.e) ? h.f : (h.v || {})[eq] || null, oneSide = !!(side && id && id === h.u);
   const mn = a => a.map(m => MUSCLE_NAMES[m] || m).join(', ');
   const steps = side ? ['Work one side at a time: do all your reps on one side, then switch.', ...h.s] : h.s;
   return `<div class="card howto">${side ? '<div class="ht-tag">One side at a time</div>' : ''}
   ${id ? `<div class="ht-pic" role="img" aria-label="${esc(baseName(name))}${side ? ', one side' : ''}, start and finish positions"><div class="ht-fr" data-src="ex/${id}-0.svg"></div><span class="ht-arr" aria-hidden="true"></span><div class="ht-fr" data-src="ex/${id}-1.svg"></div></div>` : ''}
   <div class="ht-mus">${bodyMapHTML(h.p, h.q, side)}<div class="grow"><div class="eyebrow">Muscles worked</div><div class="ht-ml"><i class="bm-key p"></i>${esc(mn(h.p))}</div>${h.q.length ? `<div class="ht-ml sec"><i class="bm-key q"></i>${esc(mn(h.q))}</div>` : ''}</div></div>
-  ${side && id && !oneSide ? '<p class="cap ht-note">Drawn with both sides working. Do the same move one side at a time.</p>' : ''}${!id && (h.f || h.u) ? `<p class="cap ht-note">No drawing of the ${esc(eq)} version yet, so only the muscles are shown.</p>` : ''}
-  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${h.m && id ? `<p class="cap">Drawing shows: ${esc(h.m)}. Yours may differ slightly.</p>` : ''}<p class="cap ht-cr">Drawings: Everkinetic, CC BY-SA 4.0. Body map: react-muscle-highlighter, MIT.</p></details></div>`;
+  ${side && id && !oneSide ? '<p class="cap ht-note">Drawn with both sides working. Do the same move one side at a time.</p>' : ''}${!id && (h.f || h.u || h.v) ? `<p class="cap ht-note">No drawing of the ${esc(eq)} version yet, so only the muscles are shown.</p>` : ''}
+  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${h.m && id && id === h.f ? `<p class="cap">Drawing shows: ${esc(h.m)}. Yours may differ slightly.</p>` : ''}<p class="cap ht-cr">Drawings: Everkinetic, CC BY-SA 4.0, and traced from free-exercise-db photos (public domain). Body map: react-muscle-highlighter, MIT.</p></details></div>`;
 }
 // Drawings are inline SVG so they take the theme's colours; fetch each once and drop it in when a card appears.
 function htHydrate(root) {
@@ -1097,6 +1097,18 @@ const swi = (on, a, extra = '') => `<button class="xsw ${on ? 'on' : ''}" role="
 const srow = (t, right, sub) => `<div class="xr"><span class="grow">${t}${sub ? `<span class="s">${sub}</span>` : ''}</span>${right}</div>`;
 const snum = (t, id, f, v, ph, unit) => `<label class="xr"><span class="grow">${t}</span><input class="xr-in ${f === 'name' ? '' : 'num'}" inputmode="${f === 'name' ? 'text' : 'decimal'}" id="${id}" data-in="${f === 'name' ? 'profT' : f === 'goalW' ? 'profW' : 'prof'}" data-f="${f}" value="${v == null ? '' : v}" placeholder="${ph || ''}">${unit ? `<span class="xr-u">${unit}</span>` : ''}</label>`;
 const slink = (t, a, cls = '', extra = '') => `<button class="xr ${cls}" data-a="${a}" ${extra}><span class="grow">${t}</span>${cls ? '' : I.right}</button>`;
+// Rep range picker: two numbers, "from" and "to". Either can be left on Skip.
+function repPick(lo, hi, where) {
+  const opt = (v, cur) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v || 'Skip'}</option>`, nums = [0, ...Array.from({ length: 29 }, (_, i) => i + 1)];
+  const at = where === 'ob' ? 'data-rr' : 'data-in="repR" data-rr';
+  return `<div class="row rr"><select class="input rr-s" ${at}="0" aria-label="Lowest reps">${nums.map(v => opt(v, lo || 0)).join('')}</select><span class="sec">to</span><select class="input rr-s" ${at}="1" aria-label="Highest reps">${nums.map(v => opt(v, hi || 0)).join('')}</select><span class="sec">reps</span></div>`;
+}
+// If both numbers are set the wrong way round, swap them.
+function fixRR(o, a, b) { if (o[a] && o[b] && o[a] > o[b]) [o[a], o[b]] = [o[b], o[a]]; if (o[a] && o[a] === o[b]) o[b] = o[a] + 1; }
+function repRangeRow() {
+  const r = S.profile.repRange || [], set = r[0] && r[1];
+  return `<div class="xr rr-row"><span class="grow">Rep range<span class="s">${set ? `Move up a weight once you hit ${r[1]} reps, then start again at ${r[0]}` : 'Optional. Your desired rep range before moving up a weight. Skipped means 6 to 9'}</span></span>${repPick(r[0], r[1], 'me')}</div>`;
+}
 function viewMe() {
   const p = S.profile, lw = latestWeight(), fw = firstWeight(), on = f => !p[f];
   const goal = p.goalW ? `${bw(Math.abs(lw ? lw.w - p.goalW : 0))} ${U()} to your goal of ${bw(p.goalW)} ${U()}` : '';
@@ -1115,7 +1127,8 @@ function viewMe() {
   </div></section>
   <section><div class="sgh">Workouts</div><div class="sgrp">
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
-    ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), '9+ reps last time adds weight, otherwise one more rep')}
+    ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
+    ${repRangeRow()}
     ${srow('Plateau alerts', swi(on('noPlateau'), 'pset', 'data-f="noPlateau"'), 'A heads-up when a lift stops improving')}
     ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
@@ -1179,11 +1192,14 @@ function viewMe() {
 
 // ---------- active workout ----------
 // Today's target for a set, from the same set last time, using the rep tiers:
-// 9+ reps means add weight (aim for 6), anything less means same weight, one more rep.
+// Reaching the top of your rep range means add weight (aim for the bottom), anything less means same weight, one more rep.
+// Rep range is optional (Job, 16 Oct): without one it's 6 to 9, the original tiers.
+const repRange = () => { const r = S.profile.repRange; return r && r[0] && r[1] > r[0] ? r : [6, 9]; };
 const TGT_UP = () => U() === 'lb' ? 5 / LB : 2.5;
 function targetOf(p) {
   if (!p || p.w == null || p.r == null || p.t === 'warm' || S.profile.noTargets) return p ? { w: p.w, r: p.r } : null;
-  if (p.r >= 9) return { w: Math.round((p.w + TGT_UP()) * 1000) / 1000, r: 6, up: true };
+  const [lo, hi] = repRange();
+  if (p.r >= hi) return { w: Math.round((p.w + TGT_UP()) * 1000) / 1000, r: lo, up: true };
   return { w: p.w, r: p.r + 1 };
 }
 function newExEntry(name, nSets, rest, tip) {
@@ -1288,8 +1304,8 @@ function exCardHTML(e, ei) {
   const sp = A.splitId && splitById(A.splitId); const tgt = sp && sp.ex.find(x => x.name === e.name);
   let sugg = '';
   if (last && !S.profile.noTargets) {
-    const ws = last.sets.filter(validSet), up = ws.filter(x => x.r >= 9).length;
-    if (ws.length) sugg = up ? `Target: add ${dw(TGT_UP())} ${U()} on ${up === ws.length ? 'every set' : up + ' set' + (up > 1 ? 's' : '')}, you hit 9+ reps last time.` : 'Target: same weight, one more rep than last time.';
+    const hi = repRange()[1], ws = last.sets.filter(validSet), up = ws.filter(x => x.r >= hi).length;
+    if (ws.length) sugg = up ? `Target: add ${dw(TGT_UP())} ${U()} on ${up === ws.length ? 'every set' : up + ' set' + (up > 1 ? 's' : '')}, you hit ${hi}+ reps last time.` : 'Target: same weight, one more rep than last time.';
   }
   const dsets = e.sets.filter(s => s.done);
   const cmp = dsets.length && last ? `<div class="cmp"><span class="sec">vs last time ${infoBtn('volume')}</span><span>heaviest ${delta(topSet(dsets) ? topSet(dsets).w : null, last.top ? last.top.w : null, v => dw(v), ' ' + U())}</span><span>volume ${delta(exVol(dsets), exVol(last.sets.slice(0, dsets.length)), v => dvol(v), ' ' + U())}</span><span class="sec">(first ${plural(dsets.length, 'set')})</span></div>` : '';
@@ -1426,7 +1442,7 @@ const GLOSSARY = [
   ['e1rm', 'e1RM (estimated one-rep max)', 'The most you could likely lift for a single rep, worked out from a set you did. 80 kg for 8 reps works out to about 100 kg. It lets sets with different reps be compared fairly.'],
   ['volume', 'Volume', 'Weight × reps, added up across sets. 3 sets of 10 at 50 kg is 1,500 kg. Warm-up sets don’t count.'],
   ['pr', 'PRs (personal records)', 'You get at most one PR per exercise per workout, and left and right sides count as one lift. Heaviest: more weight than ever before. e1RM: your strongest set ever once reps are taken into account. Reps: more reps than ever at a weight you’ve lifted before.'],
-  ['target', 'Today’s target', 'If you hit 9 or more reps last time, the target adds a small weight jump and aims for 6 reps. Otherwise it keeps the weight and asks for one more rep. You can turn this off in Me.'],
+  ['target', 'Today’s target', 'If you reached the top of your rep range last time, the target adds a small weight jump and aims for the bottom of the range. Otherwise it keeps the weight and asks for one more rep. Without a rep range set in Me, that’s 6 to 9 reps. You can turn targets off in Me too.'],
   ['plateau', 'Plateau alert', 'A lift that hasn’t set a record of any kind for 3 to 12 weeks across at least 3 sessions. A lighter week or a new rep range usually gets it moving again.'],
   ['muscle', 'Sets per muscle', 'Working sets this week for each muscle, with the grey marker showing your 4-week average. Left and right sides of one exercise count as half a set each, which is why you can see 3.5.'],
   ['strength', 'Weight vs strength', 'Both lines start at 100% in the same week. Strength is the middle value of your e1RMs across lifts. If weight falls while strength holds, you are losing fat and keeping muscle.'],
@@ -1476,10 +1492,11 @@ function splitTag(name) {
 const themeMsg = () => THEME_MSG[theme()] || THEME_MSG.cliffs;
 function setVerdict(r) {
   const m = themeMsg();
-  if (r <= 4) return { k: 'low', title: pick(m.low), sub: 'Drop the weight a little. Form first.', bits: 0 };
-  if (r <= 6) return { k: 'nice', title: pick(m.nice), sub: 'Right in the range.', bits: 0 };
-  if (r <= 8) return { k: 'great', title: pick(m.great), sub: 'Nearly time to add weight.', bits: 0 };
-  return { k: 'amazing', title: pick(m.amazing), sub: 'Add weight next time. You beat the top of the range.', bits: 40 };
+  const [lo, hi] = repRange();
+  if (r <= lo - 2) return { k: 'low', title: pick(m.low), sub: 'Drop the weight a little. Form first.', bits: 0 };
+  if (r <= lo) return { k: 'nice', title: pick(m.nice), sub: 'Right in the range.', bits: 0 };
+  if (r < hi) return { k: 'great', title: pick(m.great), sub: 'Nearly time to add weight.', bits: 0 };
+  return { k: 'amazing', title: pick(m.amazing), sub: 'Add weight next time. You hit the top of your range.', bits: 40 };
 }
 // One line under "Jobs done!" in the theme's voice. Cliffs follows the time of day like its sky.
 function doneLine(w) {
@@ -2585,6 +2602,7 @@ function obBody(k) {
     return `<h1 class="ob-t">How you train</h1><p class="sec ob-s">A few defaults for your workouts. All of them live in Me if you change your mind.</p>
     <div class="field"><span class="lbl">Rest between sets</span>${seg('rest', [[90, '1:30'], [120, '2:00'], [180, '3:00'], [240, '4:00'], [300, '5:00']])}</div>
     <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
+    <div class="field"><span class="lbl">Rep range <span class="cap">(optional)</span></span><p class="m0 cap">Your desired rep range before you move up to a heavier weight. Not sure? Skip it and we’ll use 6 to 9.</p>${repPick(P.repLo, P.repHi, 'ob')}</div>
     <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div>
     <div class="xr"><span class="grow">Plateau alerts<span class="s">A heads-up when a lift hasn’t improved for a few weeks</span></span>${swi(!!P.plateau, '', 'data-pf="plateau"')}</div></div>`;
@@ -2624,6 +2642,7 @@ function renderWelcomePublic() {
   qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
   qa('[data-exp]').forEach(b => b.onclick = () => { OB.exp = b.dataset.exp; OB.plan = null; renderWelcomePublic(); });
   qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; const y = $('#screen') ? $('#screen').scrollTop : 0; renderWelcomePublic(); if ($('#screen')) $('#screen').scrollTop = y; });
+  qa('[data-rr]').forEach(el => el.onchange = () => { OB.prefs[el.dataset.rr === '0' ? 'repLo' : 'repHi'] = +el.value || null; fixRR(OB.prefs, 'repLo', 'repHi'); renderWelcomePublic(); });
   qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
   qa('[data-pf]').forEach(b => b.onclick = async () => {
     const f = b.dataset.pf, on = !OB.prefs[f];
@@ -2650,7 +2669,7 @@ function obFinish() {
   const p = S.profile, num = x => { const v = parseFloat(x); return isNaN(v) ? null : v; };
   p.name = OB.name.slice(0, 40); p.unit = OB.unit; p.weeklyTarget = OB.days || 3; p.goal = OB.goal; p.exp = OB.exp; p.theme = OB.theme; p.cliffs1 = true; p.onboarded = today();
   if (!OB.skippedHome) p.a2hs = today();
-  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = false; p.music2 = true; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.plateau === false) p.noPlateau = true;
+  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = false; p.music2 = true; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.plateau === false) p.noPlateau = true; if (pf.repLo && pf.repHi > pf.repLo) p.repRange = [pf.repLo, pf.repHi];
   const toKg2 = v => v == null ? null : Math.round((OB.unit === 'lb' ? v / LB : v) * 100) / 100;
   const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
   if (w) S.weights[today()] = { w, src: 'manual' };
@@ -2872,6 +2891,7 @@ const IN = {
   spEx: el => { const sp = splitById(el.dataset.id), e = sp.ex[+el.dataset.i], f = el.dataset.f; if (f === 'note') e.note = el.value; else { const v = parseInt(el.value, 10); if (!isNaN(v) && v >= 0) e[f] = v; if (e.repMax < e.repMin) e.repMax = e.repMin; } persist('jd/meta'); },
   profT: el => { const v = el.value.trim().slice(0, 30); if (v) { S.profile.name = v; persist('jd/meta'); } },
   profW: el => { const v = parseFloat(el.value); S.profile.goalW = !isNaN(v) && v > 0 ? Math.round(toKg(v) * 100) / 100 : null; persist('jd/meta'); },
+  repR: el => { const r = (S.profile.repRange || [null, null]).slice(); r[+el.dataset.rr] = +el.value || null; const o = { lo: r[0], hi: r[1] }; fixRR(o, 'lo', 'hi'); S.profile.repRange = o.lo && o.hi ? [o.lo, o.hi] : o.lo || o.hi ? [o.lo, o.hi] : null; persist('jd/meta'); rerender(); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
   wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; invalidate(); persist(old, monthPath(w.date)); rerender(); },
   wkSplit: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const sp = splitById(el.value); w.splitId = sp.id; w.splitName = sp.name; invalidate(); persist(monthPath(w.date)); rerender(); },

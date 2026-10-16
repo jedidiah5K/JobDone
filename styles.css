@@ -1012,3 +1012,10 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 :root:not([data-theme]) body::before { background: linear-gradient(180deg, rgba(40,30,50,.34), rgba(40,30,50,.16)); }
 :root[data-theme="cliffs"][data-tod="day"] body::before { background: linear-gradient(180deg, rgba(20,50,80,.22), rgba(20,50,80,.10)); }
+
+/* Rep range picker (intro + Me) */
+.rr { gap: 8px; align-items: center; flex-wrap: nowrap; }
+.rr-s { width: 78px; min-width: 0; padding-left: 12px; padding-right: 6px; text-align: center; }
+.rr-row { flex-wrap: wrap; row-gap: 8px; }
+.rr-row > .grow { flex-basis: 100%; }
+.rr-row .rr { margin-left: 0; }
