@@ -1750,13 +1750,13 @@ async function drawShare(d) {
     for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2; g.beginPath(); g.moveTo(W, 0); g.lineTo(W - Math.cos(a) * R, Math.sin(a) * R); g.stroke(); }
     for (let r = 70; r <= R; r += 64) { g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2, x = W - Math.cos(a) * r, y = Math.sin(a) * r; if (!i) g.moveTo(x, y); else { const pa = (i - .5) / 6 * Math.PI / 2, q = r * .86; g.quadraticCurveTo(W - Math.cos(pa) * q, Math.sin(pa) * q, x, y); } } g.stroke(); }
     g.restore();
-    mark(72, 92, '#fff', .8);
     // comic burst headline, BAM! style (Job's reference, 16 Oct): halftone dots, red burst, yellow rim, white core, extruded orange letters
-    const BX = 540, BY = 360, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
+    const BX = 470, BY = 318, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
     const burst = (n, rIn, rOut, sx, sy, rot, jit) => { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + jit * Math.sin(i * 7.3)); g.lineTo(BX + Math.cos(a) * r * sx, BY + Math.sin(a) * r * sy); } g.closePath(); };
     g.save(); burst(13, 230, 420, 1.25, .78, .1, .18); g.clip();
     for (let y = BY - 360; y < BY + 360; y += 22) for (let x = BX - 560; x < BX + 560; x += 22) { const dx = (x - BX) / 1.25, dy = (y - BY) / .78, dd = Math.hypot(dx, dy), r = Math.max(0, 7.5 * (1 - Math.abs(dd - 330) / 140)); if (r > .6) { g.fillStyle = RED; g.beginPath(); g.arc(x + ((y / 22) % 2 ? 11 : 0), y, r, 0, 7); g.fill(); } }
     g.restore();
+    g.save(); g.translate(BX, BY); g.rotate(-.13); g.translate(-BX, -BY); // the whole burst leans
     burst(11, 210, 330, 1.25, .78, .25, .22); g.fillStyle = RED; g.fill(); g.lineWidth = 6; g.strokeStyle = '#7A0D0A'; g.stroke();
     burst(11, 190, 262, 1.25, .78, .27, .15); g.fillStyle = BAM.rim; g.fill();
     burst(11, 172, 240, 1.25, .78, .27, .15); g.fillStyle = BAM.core; g.fill();
@@ -1783,9 +1783,10 @@ async function drawShare(d) {
         g.drawImage(o, sx0, 0, 2, OH, dx, cy - base * k - lift, 2 * warp.wide + .6, OH * k);
       }
     };
-    word('JOBS', BX - 64, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
-    word('DONE!', BX - 40, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('JOBS', BX - 40, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('DONE!', BX - 16, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
     g.letterSpacing = '0px';
+    g.restore(); mark(72, 92, '#fff', .8);
     // caption box
     g.letterSpacing = '0px'; g.font = F(700, 32); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
     g.save(); g.translate(72, 610); g.rotate(.015); g.fillStyle = '#FFF8E7'; g.fillRect(0, 0, cw, 70); g.strokeStyle = '#0D1A45'; g.lineWidth = 5; g.strokeRect(0, 0, cw, 70);
