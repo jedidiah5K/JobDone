@@ -1783,8 +1783,8 @@ async function drawShare(d) {
         g.drawImage(o, sx0, 0, 2, OH, dx, cy - base * k - lift, 2 * warp.wide + .6, OH * k);
       }
     };
-    word('JOBS', BX - 14, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
-    word('DONE!', BX + 10, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('JOBS', BX - 64, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('DONE!', BX - 40, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
     g.letterSpacing = '0px';
     // caption box
     g.letterSpacing = '0px'; g.font = F(700, 32); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
