@@ -1017,7 +1017,7 @@ function howtoHTML(name, open) {
   const eq = exInfo(name).equip, fits = e => e === eq;
   const side = sideOf(name), id = side && h.u && fits(h.ue) ? h.u : h.f && fits(h.e) ? h.f : (h.v || {})[eq] || null, oneSide = !!(side && id && id === h.u);
   const mn = a => a.map(m => MUSCLE_NAMES[m] || m).join(', ');
-  const steps = side ? ['Work one side at a time: do all your reps on one side, then switch.', ...h.s] : h.s;
+  const base = (h.x && h.x[eq]) || h.s, steps = side ? ['Work one side at a time: do all your reps on one side, then switch.', ...base] : base;
   return `<div class="card howto">${side ? '<div class="ht-tag">One side at a time</div>' : ''}
   ${id ? `<div class="ht-pic" role="img" aria-label="${esc(baseName(name))}${side ? ', one side' : ''}, start and finish positions"><div class="ht-fr" data-src="ex/${id}-0.svg"></div><span class="ht-arr" aria-hidden="true"></span><div class="ht-fr" data-src="ex/${id}-1.svg"></div></div>` : ''}
   <div class="ht-mus">${bodyMapHTML(h.p, h.q, side)}<div class="grow"><div class="eyebrow">Muscles worked</div><div class="ht-ml"><i class="bm-key p"></i>${esc(mn(h.p))}</div>${h.q.length ? `<div class="ht-ml sec"><i class="bm-key q"></i>${esc(mn(h.q))}</div>` : ''}</div></div>
