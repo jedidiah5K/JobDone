@@ -2310,18 +2310,18 @@ function openRotation() {
 }
 // Machine setup notes (seat height, pin, bench angle…) kept per exercise, with older versions.
 const setupOf = name => { const l = (S.setup || {})[baseName(name)]; return l && l.length ? l[l.length - 1] : null; };
-const setupHTML = name => { const s = setupOf(name); return `<button class="setup ${s ? '' : 'empty'}" data-a="setup" data-name="${esc(baseName(name))}">${I.wrench}<span>${s ? esc(s.t) : 'Add machine setup'}</span></button>`; };
+const setupHTML = name => { const s = setupOf(name); return `<button class="setup ${s ? '' : 'empty'}" data-a="setup" data-name="${esc(baseName(name))}">${I.wrench}<span>${s ? esc(s.t) : 'Add machine setup notes'}</span></button>`; };
 function openSetup(name) {
   const hist = ((S.setup || {})[name] || []).slice().reverse();
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Machine setup · ${esc(name)}</div>
-    <textarea class="input" id="su-t" maxlength="160" placeholder="For example: seat 4, pin 7, handles wide">${hist[0] ? esc(hist[0].t) : ''}</textarea>
-    <button class="btn primary block" id="su-s">Save setup</button>
-    ${hist.length > 1 ? `<div class="cap">Earlier</div><div class="list">${hist.slice(1, 6).map(x => `<div class="li"><div class="grow"><div class="t f15">${esc(x.t)}</div><div class="s">${esc(fmtDate(x.d))}</div></div></div>`).join('')}</div>` : ''}</div>`, { label: 'Machine setup', mount: b => {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Machine setup notes · ${esc(name)}</div>
+    <textarea class="input" id="su-t" maxlength="160" placeholder="For example: seat 4, pin 7, handles wide, slow on the way down">${hist[0] ? esc(hist[0].t) : ''}</textarea>
+    <button class="btn primary block" id="su-s">Save setup notes</button>
+    ${hist.length > 1 ? `<div class="cap">Earlier</div><div class="list">${hist.slice(1, 6).map(x => `<div class="li"><div class="grow"><div class="t f15">${esc(x.t)}</div><div class="s">${esc(fmtDate(x.d))}</div></div></div>`).join('')}</div>` : ''}</div>`, { label: 'Machine setup notes', mount: b => {
     b.querySelector('#su-s').onclick = () => {
       const t = b.querySelector('#su-t').value.trim(); S.setup = S.setup || {}; const l = S.setup[name] || [];
       if (t) { if (!l.length || l[l.length - 1].t !== t) l.push({ t, d: today() }); if (l.length > 10) l.splice(0, l.length - 10); S.setup[name] = l; }
       else delete S.setup[name];
-      persist('jd/meta'); closeSheet(sh); if (A && A.open) renderWorkout(); else rerender(); toast(t ? 'Setup saved' : 'Setup cleared');
+      persist('jd/meta'); closeSheet(sh); if (A && A.open) renderWorkout(); else rerender(); toast(t ? 'Setup notes saved' : 'Setup notes cleared');
     };
   } });
 }
@@ -2366,7 +2366,7 @@ function exMenu(ei) {
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(e.name)}</div>
     <button class="btn block" data-m="note">${e.note ? 'Edit note' : 'Add note'}</button>
     <button class="btn block" data-m="order">${I.grip} Reorder exercises</button>
-    <button class="btn block" data-m="setup">Machine setup</button>
+    <button class="btn block" data-m="setup">Machine setup notes</button>
     <button class="btn block" data-m="warm">${e.sets.some(x => x.t === 'warm') ? 'Remove warm-up sets' : 'Add warm-up sets'}</button>
     ${ei < A.ex.length - 1 ? `<button class="btn block" data-m="ss">${e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))}</button>` : ''}
     <button class="btn block" data-m="rest">Rest for this exercise: ${fmtRest(restFor(e.name))}${(S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'}</button>
