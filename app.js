@@ -88,7 +88,7 @@ const sideOf = n => (n.match(/\((L|R)\)$/) || [])[1] || null;
 // The plate loader only makes sense where you slide plates onto a bar.
 // Plate loader opens first for anything loaded with plates (Job's machines are plate-loaded); dumbbells, cables and bodyweight go straight to the dial.
 // Job's existing Shortcut is called JobDone steps; everyone else gets the app's real name.
-const SC_NAME = () => S && S.profile && S.profile.owner ? 'JobDone steps' : 'Jobs Done steps';
+const SC_NAME = () => S && S.profile && S.profile.owner ? 'JobDone steps' : 'Job’s Done steps';
 // Rest: one default in Me, with an optional override per exercise (from its ⋯ menu).
 const restFor = name => ((S.profile.restBy || {})[baseName(name)]) || S.profile.defaultRest || 120;
 const usesPlates = name => !['dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band'].includes(exInfo(name).equip);
@@ -128,7 +128,7 @@ const b64u = s => { const b = atob((s + '='.repeat((4 - s.length % 4) % 4)).repl
 async function pushOn() {
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { toast('Notifications are off for Jobs Done. Turn them on in Settings, Notifications, Jobs Done.'); return false; }
+    if (perm !== 'granted') { toast('Notifications are off for Job’s Done. Turn them on in Settings, Notifications, Job’s Done.'); return false; }
     const reg = await navigator.serviceWorker.ready;
     const k = await restFn({ action: 'key' }); if (!k || !k.key) { toast('Could not reach the server. Try again.'); return false; }
     let sub = await reg.pushManager.getSubscription();
@@ -552,8 +552,8 @@ function shareSplit(sp) {
   if (!sp) return;
   const tok = toB64u(JSON.stringify({ n: sp.name, c: sp.color, x: sp.ex.map(e => [e.name, e.sets, e.repMin, e.repMax, e.rest]) }));
   const url = location.origin + location.pathname + '#split=' + tok;
-  if (navigator.share) return navigator.share({ title: sp.name + ' on Jobs Done', text: sp.name + ': ' + sp.ex.map(e => baseName(e.name)).join(', '), url }).catch(() => {});
-  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Link copied. Anyone with Jobs Done can add ' + esc(sp.name) + ' from it.'), () => openSheet(`<div class="stack"><h2>Share ${esc(sp.name)}</h2><p class="cap">Copy this link and send it.</p><textarea class="input" rows="4" readonly>${esc(url)}</textarea><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Share split' }));
+  if (navigator.share) return navigator.share({ title: sp.name + ' on Job’s Done', text: sp.name + ': ' + sp.ex.map(e => baseName(e.name)).join(', '), url }).catch(() => {});
+  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Link copied. Anyone with Job’s Done can add ' + esc(sp.name) + ' from it.'), () => openSheet(`<div class="stack"><h2>Share ${esc(sp.name)}</h2><p class="cap">Copy this link and send it.</p><textarea class="input" rows="4" readonly>${esc(url)}</textarea><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Share split' }));
 }
 const SHARED_SPLIT = (() => { try { const m = location.hash.match(/^#split=([\w-]{4,6000})$/); if (m) { sessionStorage.setItem('jd-split', m[1]); history.replaceState(null, '', location.pathname + location.search); } return sessionStorage.getItem('jd-split'); } catch (e) { return null; } })();
 function maybeImportSplit() {
@@ -1148,7 +1148,7 @@ function viewMe() {
     ${repRangeRow()}
     ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
-    ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Jobs Done to your Home Screen first, then turn this on') : ''}
+    ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Job’s Done to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
     ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
     ${slink('Plate loader', 'plates')}
@@ -1162,13 +1162,13 @@ function viewMe() {
     ${slink('Play a test sound', 'soundTest', 'act')}
   </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your iPhone is on silent: flip the switch on the side (or turn off Silent Mode in Control Centre) to hear them. iPhone doesn’t let websites play sounds on silent without pausing your music.</div></section>
   <section><div class="sgh">App</div><div class="sgrp">
-    ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add Jobs Done to your Home Screen', 'a2hs')}
+    ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add Job’s Done to your Home Screen', 'a2hs')}
   </div></section>
   <section><div class="sgh">Theme</div><div class="sgrp pad">
     <div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div>
   </div></section>
   <section><div class="sgh">${p.stepSrc ? 'Steps from ' + esc(p.stepSrc) : 'Steps from Apple Health'}</div><div class="sgrp">
-    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to Apple Health' : 'Your iPhone (and any watch that syncs to it) counts steps in Apple Health'}, and an evening Apple Shortcut sends them on to Jobs Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
+    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to Apple Health' : 'Your iPhone (and any watch that syncs to it) counts steps in Apple Health'}, and an evening Apple Shortcut sends them on to Job’s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
     ${slink('Create sync key', 'syncKey', 'act')}
     <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
       <ol class="f15 m0 sec xr-ol">
@@ -1180,7 +1180,7 @@ function viewMe() {
         <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
         <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
         <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “${SC_NAME()}”.</li>
-      </ol></details>` : `<p class="xr-p">Your steps are in Apple Health. Type them on Today, or paste them here. Sign in on the Jobs Done website to have a Shortcut send them every evening.</p>`}
+      </ol></details>` : `<p class="xr-p">Your steps are in Apple Health. Type them on Today, or paste them here. Sign in on the Job’s Done website to have a Shortcut send them every evening.</p>`}
     ${slink('Add or paste steps by hand', 'steps', 'act')}
   </div></section>
   ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
@@ -1194,7 +1194,7 @@ function viewMe() {
     ${slink('Export backup (JSON)', 'export', '', 'data-k="json"')}
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'danger')}
-  </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Jobs Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+  </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
     ${p.owner && HOSTED && USER ? slink('Feedback inbox', 'fbInbox') : ''}
@@ -1202,7 +1202,7 @@ function viewMe() {
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED && USER ? slink('Delete account', 'delAccount', 'danger') : ''}
   </div></section>
-  <p class="tc cap">Jobs Done early beta · Oct 2026</p>
+  <p class="tc cap">Job’s Done early beta · Oct 2026</p>
 </div>`;
 }
 
@@ -1526,7 +1526,7 @@ function setVerdict(r) {
   if (r < hi) return { k: 'great', title: pick(m.great), sub: 'Nearly time to add weight.', bits: 0 };
   return { k: 'amazing', title: pick(m.amazing), sub: 'Add weight next time. You hit the top of your range.', bits: 40 };
 }
-// One line under "Jobs done!" in the theme's voice. Cliffs follows the time of day like its sky.
+// One line under "Job’s done!" in the theme's voice. Cliffs follows the time of day like its sky.
 function doneLine(w) {
   const m = themeMsg();
   if (w && w.planned && wSets(w) < w.planned) return pick(m.part);
@@ -1623,7 +1623,7 @@ function saveWorkout() {
   showRecap(w.id, true);
 }
 
-// ---------- Job Done recap (after saving, or from a past workout) ----------
+// ---------- Job’s Done recap (after saving, or from a past workout) ----------
 const HEAVY = [[20000, 'a city bus', 12000], [5000, 'an elephant', 5000], [1500, 'a car', 1500], [600, 'a polar bear', 600], [300, 'a grand piano', 300], [0, 'a fridge', 100]];
 function recapData(id) {
   const w = S.workouts[id], I2 = ix(), ws = I2.ws.filter(x => !x.skipped);
@@ -1645,14 +1645,14 @@ function finHero(d) {
   const tags = `<div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div>`;
   const check = `<div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>`;
   if (k === 'mono') return `<div class="rc-hero fin fin-agent"><svg class="fin-scope" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="56"/><path d="M100 0v70M100 130v70M0 100h70M130 100h70"/><circle class="dot" cx="100" cy="100" r="4"/></svg>
-    <div class="fin-eb">Mission complete · File ${num}</div><h1>Jobs done!</h1><div class="fin-stamp">Target down</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
+    <div class="fin-eb">Mission complete · File ${num}</div><h1>Job’s done!</h1><div class="fin-stamp">Target down</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
   if (k === 'spidey') {
     return `<div class="rc-hero fin fin-sky">${halftoneSVG()}${webSVG('fin-web')}
-      <canvas class="fin-bamc" width="860" height="580" aria-label="Jobs done!"></canvas>
+      <canvas class="fin-bamc" width="860" height="580" aria-label="Job’s done!"></canvas>
       <div class="fin-cap"><div class="rc-line">${line}</div><div class="fin-sub">Patrol #${d.num} · ${when}</div></div>${tags}</div>`;
   }
   if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
-    <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Jobs done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
+    <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Job’s done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
   return `<div class="rc-hero fin fin-boulder">${chalkSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
     <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold">${check}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
@@ -1773,7 +1773,7 @@ function drawBam(g, BX, BY) {
         g.drawImage(o, sx0, 0, 2, OH, dx, cy - base * k - lift, 2 * warp.wide + .6, OH * k);
       }
     };
-    word('JOBS', BX - 40, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('JOB’S', BX - 34, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [.9, 1.1, .08, -14], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
     word('DONE!', BX - 16, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
     g.letterSpacing = '0px';
   g.restore();
@@ -1799,7 +1799,7 @@ async function drawShare(d) {
   const stats = [d.dur ? [fmtDur(d.dur), 'time'] : [String(d.reps), 'reps'], [dvol(d.vol), U() + ' lifted'], [String(d.sets), 'sets'], [String(d.prs.length), d.prs.length === 1 ? 'PR' : 'PRs']];
   const date = fmtDate(d.w.date, { wd: true }), split = d.w.splitName || 'Workout';
   const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
-  const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Jobs Done', 0), x0, y); };
+  const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Job’s Done', 0), x0, y); };
   const k = theme();
 
   if (k === 'mono') {
@@ -1818,7 +1818,7 @@ async function drawShare(d) {
     g.fillStyle = '#fff'; g.font = F(900, 128); g.fillText(sp('MISSION', -2), 64, 270); g.fillText(sp('COMPLETE', -2), 64, 396);
     // red stamp
     g.save(); g.translate(78, 556); g.rotate(-.05); g.strokeStyle = RED; g.lineWidth = 6; RR(-10, -58, 400, 84, 10); g.stroke();
-    g.fillStyle = RED; g.font = F(900, 50, MONO); g.fillText(sp('JOBS DONE', 6), 22, 2); g.restore();
+    g.fillStyle = RED; g.font = F(900, 50, MONO); g.fillText(sp('JOB’S DONE', 6), 22, 2); g.restore();
     g.fillStyle = DIM; g.font = F(500, 34); g.fillText(sp(fit(line, 40), 0), 70, 470);
     // dossier rows
     let y = 680; const row = (a, b, hot) => { g.font = F(600, 28, MONO); g.fillStyle = DIM; g.fillText(sp(a, 3), 72, y); const aw = g.measureText(a).width;
@@ -1865,7 +1865,7 @@ async function drawShare(d) {
       if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 6); }
       g.textAlign = 'left'; y += 86;
     }
-    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp('Patrol logged with Jobs Done', 0), 72, H - 48);
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp('Patrol logged with Job’s Done', 0), 72, H - 48);
   } else if (k === 'cliffs') {
     // Summit: the sky right now, the ridges, and the session drawn as an elevation profile
     const sk = skyOfW(d.w), s1 = sk.s1, s2 = sk.s2, s3 = sk.s3;
@@ -1957,7 +1957,7 @@ async function shareRecap(d) {
   const c = await drawShare(d);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Jobs done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s done!' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
@@ -2060,10 +2060,10 @@ async function shareMonth(d) {
   st.forEach(([a, b], i) => { const x = 56 + i * 246; g.fillStyle = v('--surface-solid') || '#fff'; g.beginPath(); g.roundRect(x, 380, 226, 190, 36); g.fill(); g.fillStyle = v('--text') || '#222'; g.font = F(800, 58); g.fillText(a, x + 26, 470); g.fillStyle = v('--text2') || '#666'; g.font = F(600, 32); g.fillText(b, x + 26, 528); });
   let y = 670; g.font = F(700, 34); g.fillStyle = v('--text2') || '#666'; g.fillText('TOP LIFTS', 72, y); y += 70;
   for (const p of d.top.slice(0, 7)) { g.fillStyle = v('--text') || '#222'; g.font = F(600, 44); g.fillText(p.ex.length > 26 ? p.ex.slice(0, 25) + '…' : p.ex, 72, y); g.textAlign = 'right'; g.fillText(setStr(p.set), W - 72, y); g.textAlign = 'left'; y += 72; }
-  g.fillStyle = v('--muted') || '#999'; g.font = F(800, 36); g.fillText('Jobs Done', 72, H - 72);
+  g.fillStyle = v('--muted') || '#999'; g.font = F(800, 36); g.fillText('Job’s Done', 72, H - 72);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.ym}.png`, { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Jobs Done ' + monthName(d.ym) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s Done ' + monthName(d.ym) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 function reportCard() {
@@ -2372,7 +2372,7 @@ function parseStepText(txt) {
 function openSyncKey() {
   const url = CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/steps';
   openSheet(`<div class="stack"><div class="eyebrow">Steps sync key</div>
-    <p class="m0 f15 sec">A new key replaces any key you made before, so an old Shortcut stops working until you paste the new key in. Jobs Done shows the key only once.</p>
+    <p class="m0 f15 sec">A new key replaces any key you made before, so an old Shortcut stops working until you paste the new key in. Job’s Done shows the key only once.</p>
     <div id="sk-out"></div>
     <button class="btn primary block" id="sk-make">Create key</button>
     <button class="btn ghost block" data-a="closeSheet">Close</button></div>`, { label: 'Steps sync key', mount: el => {
@@ -2716,7 +2716,7 @@ function renderWelcome() {
   const wk = SEED_LOG.filter(o => !o.skip).length, sets = SEED_LOG.reduce((a, o) => a + o.x.reduce((b, x) => b + x[1].length, 0), 0);
   const splitNames = [...new Set(SEED_LOG.map(o => o.s))];
   app.innerHTML = `<main id="screen" style="padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))"><div class="g4 pt6 stack">
-    <div class="wordmark">Jobs <span>Done</span></div>
+    <div class="wordmark">Job’s <span>Done</span></div>
     <div><h1>Welcome back, ${esc(firstName())}</h1><p class="m0 mt2 sec">Your profile and training log are ready to load. Check the guesses below, then import.</p></div>
     ${(() => { const w0 = SEED_WEIGHTS[0], t = SEED.today; if (!w0 || !t) return ''; const mo = daysBetween(w0[0], t[0]) / 30.44; return `<div class="card"><div class="mb3 eyebrow">Profile</div><div class="kpis"><div class="kpi"><b>${SEED.profile.heightCm || '—'} cm</b><span>height</span></div><div class="kpi"><b>${w0[1].toFixed(1)} → ${t[1].toFixed(1)}</b><span>kg since ${esc(fmtDate(w0[0]))}</span></div><div class="kpi"><b>${bwRaw((t[1] - w0[1]) / mo)}</b><span>kg per month</span></div></div><div class="mt3 cap">Monthly weights up to ${esc(fmtDate(SEED_WEIGHTS[SEED_WEIGHTS.length - 1][0]))} are marked as estimates (hollow dots) so you can correct them later. Today’s ${t[1].toFixed(1)} kg is logged as real.</div></div>`; })()}
     <div class="card"><div class="mb3 eyebrow">Training log</div><div class="kpis"><div class="kpi"><b>${wk}</b><span>workouts</span></div><div class="kpi"><b>${n0(sets)}</b><span>sets</span></div><div class="kpi"><b>${splitNames.length}</b><span>splits</span></div></div>
@@ -2727,7 +2727,7 @@ function renderWelcome() {
       ${(() => { const i = findSeedIdx(NONAME.d, NONAME.s); if (i < 0) return ''; const cur = (welcomeOv[i] || {}).s || NONAME.s; return `<label class="g3 row between"><span class="f15 grow">${esc(fmtDate(NONAME.d))} had no split name. It matches</span><select class="input sm" style="width:160px" id="nn-${i}" data-in="wlSplit" data-i="${i}">${splitNames.map(s => `<option ${s === cur ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>`; })()}
       <details><summary class="link">Other cleanup (${ASSUMPTIONS.length})</summary><ul class="assume">${ASSUMPTIONS.map(a => `<li>${esc(a)}</li>`).join('')}</ul><p class="cap">You can fix any single workout later from Progress → History → Edit.</p></details>
     </div>
-    <button class="mh52 f17 btn primary block" data-a="doImport">Import and open Jobs Done</button>
+    <button class="mh52 f17 btn primary block" data-a="doImport">Import and open Job’s Done</button>
     <button class="self-c link" data-a="skipImport">Start without my history</button>
   </div></main>`;
 }
@@ -2747,7 +2747,7 @@ function finishImport(msg) {
   render();
   if (msg) { toast(msg); const tt = document.querySelector('.toast'); if (tt) tt.classList.add('low'); }
 }
-// Restore a Jobs Done JSON backup (Me → Export JSON) or start from a CSV log.
+// Restore a Job’s Done JSON backup (Me → Export JSON) or start from a CSV log.
 function stateFromBackup(o) {
   if (!o || typeof o !== 'object' || !o.workouts || typeof o.workouts !== 'object') return null;
   const st = freshState();
@@ -2763,7 +2763,7 @@ function restoreFile(file, replacing) {
     const txt = String(rd.result); let st = null, what = '';
     if (/\.json$/i.test(file.name) || /^\s*\{/.test(txt)) {
       try { st = stateFromBackup(JSON.parse(txt)); } catch (e) { st = null; }
-      if (!st) { toast('That file isn’t a Jobs Done backup. In the Claude version, use Me → Export JSON.', 4500); return; }
+      if (!st) { toast('That file isn’t a Job’s Done backup. In the Claude version, use Me → Export JSON.', 4500); return; }
       what = 'Restored your backup';
     } else {
       const res = csvToWorkouts(txt); if (res.err) { toast(esc(res.err), 4500); return; }
@@ -2789,7 +2789,7 @@ const TEMPLATES = {
   none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
 };
 TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
-// First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Jobs Done does,
+// First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Job’s Done does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
 const OB_NAMES = { move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
@@ -2808,16 +2808,16 @@ function obTour() {
     ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.',
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
-      mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Jobs done!</div>`)],
+      mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job’s done!</div>`)],
   ];
   return `<div class="ob-tour" id="ob-tour">${slides.map(([t, d, m]) => `<section class="ob-slide">${m}<h2>${t}</h2><p class="sec">${d}</p></section>`).join('')}</div>
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
 }
 function obBody(k) {
-  if (k === 'home') return `<div class="ob-hero"><h1>Add Jobs Done to your Home Screen</h1><p class="sec">It opens full screen like an app, keeps you signed in, and can notify you when rest is over.</p></div>
-    ${isStandalone() ? `<div class="note ok">You’re already using Jobs Done from your Home Screen. Nice.</div>` : `<div class="seg"><button data-os="ios" class="${OB.os === 'ios' ? 'on' : ''}">iPhone</button><button data-os="android" class="${OB.os === 'android' ? 'on' : ''}">Android</button></div>
-    ${OB.os === 'android' && installEvt ? '<button class="btn block" id="ob-inst">Install now</button>' : ''}${installSteps(OB.os)}<p class="cap">Then open Jobs Done from its new icon and sign in once more. You can find these steps again in Me.</p>`}`;
-  if (k === 'tour') return `<h1 class="ob-t">Here’s what Jobs Done does</h1>${obTour()}`;
+  if (k === 'home') return `<div class="ob-hero"><h1>Add Job’s Done to your Home Screen</h1><p class="sec">It opens full screen like an app, keeps you signed in, and can notify you when rest is over.</p></div>
+    ${isStandalone() ? `<div class="note ok">You’re already using Job’s Done from your Home Screen. Nice.</div>` : `<div class="seg"><button data-os="ios" class="${OB.os === 'ios' ? 'on' : ''}">iPhone</button><button data-os="android" class="${OB.os === 'android' ? 'on' : ''}">Android</button></div>
+    ${OB.os === 'android' && installEvt ? '<button class="btn block" id="ob-inst">Install now</button>' : ''}${installSteps(OB.os)}<p class="cap">Then open Job’s Done from its new icon and sign in once more. You can find these steps again in Me.</p>`}`;
+  if (k === 'tour') return `<h1 class="ob-t">Here’s what Job’s Done does</h1>${obTour()}`;
   if (k === 'you') return `<h1 class="ob-t">About you</h1><p class="sec ob-s">Used for your progress charts. Only you can see it.</p>
     <div class="field"><label for="ob-name">First name</label><input class="input" id="ob-name" maxlength="40" value="${esc(OB.name)}" placeholder="What should we call you?" autocomplete="given-name"></div>
     <div class="field"><span class="lbl">Units</span><div class="seg"><button data-unit="kg" class="${OB.unit === 'kg' ? 'on' : ''}">kg</button><button data-unit="lb" class="${OB.unit === 'lb' ? 'on' : ''}">lb</button></div></div>
@@ -2836,7 +2836,7 @@ function obBody(k) {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
     <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}
-    <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Jobs Done is on your Home Screen. Turn it on later in Me') : ''}
+    <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Job’s Done is on your Home Screen. Turn it on later in Me') : ''}
     ${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
     <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
     ${row('wake', 'Keep screen awake', 'While a workout is open')}
@@ -2859,7 +2859,7 @@ function obBody(k) {
       <label class="btn block ${f ? '' : 'primary'}" for="ob-file">${f ? 'Chosen: ' + esc(f.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
       <p class="m0 cap">${f ? 'It will be added when you tap Start training.' : 'No file yet? Skip it for now.'}</p></div>` : ''}
     <p class="m0 cap">You can import any time later in Me → Import workouts from CSV.</p>
-    <details><summary class="link">Have a Jobs Done backup? Restore it</summary><div class="mt3 stack"><p class="m0 cap">A JSON file from Me → Export.</p>
+    <details><summary class="link">Have a Job’s Done backup? Restore it</summary><div class="mt3 stack"><p class="m0 cap">A JSON file from Me → Export.</p>
       <label class="btn block" for="wl-file">Choose backup file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
   }
   const rec = obPlan();
@@ -2890,7 +2890,7 @@ function renderWelcomePublic() {
   qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
   qa('[data-pf]').forEach(b => b.onclick = async () => {
     const f = b.dataset.pf, on = !OB.prefs[f];
-    if (f === 'push' && on) { if (!pushReady()) { toast('Add Jobs Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
+    if (f === 'push' && on) { if (!pushReady()) { toast('Add Job’s Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
     OB.prefs[f] = on; renderWelcomePublic();
   });
   qa('[data-mv]').forEach(b => b.onclick = () => { OB.move = b.dataset.mv === '1'; renderWelcomePublic(); });
@@ -2945,7 +2945,7 @@ function csvToWorkouts(text) {
   const h = rows[0].map(x => x.trim().toLowerCase());
   const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
   const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), note: col('notes', 'note', 'exercise_notes') };
-  if (c.date < 0 || c.ex < 0) return { err: 'Couldn’t find date and exercise columns. Expected Jobs Done, Strong or Hevy CSV headers.' };
+  if (c.date < 0 || c.ex < 0) return { err: 'Couldn’t find date and exercise columns. Expected Job’s Done, Strong or Hevy CSV headers.' };
   const map = {};
   for (const r of rows.slice(1)) {
     const raw = (r[c.date] || '').trim(); let d = (raw.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
@@ -3119,7 +3119,7 @@ const ACT = {
   soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast(sfxLast ? `Sound blocked (${esc(sfxLast.name || String(sfxLast))}). Tap again.` : 'Played a test sound. Heard nothing? Your phone is on silent.', 4200)); },
   restPush: async () => {
     if (S.profile.restPush) { S.profile.restPush = false; persist('jd/meta'); rerender(); pushOff(); return; }
-    if (!pushReady()) { toast('Add Jobs Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
+    if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
@@ -3193,8 +3193,8 @@ document.addEventListener('touchend', () => {
 // ---------- boot ----------
 // ---------- Feedback and account deletion ----------
 function openFeedback() {
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Send feedback</div><div class="cap">Ideas, bugs, anything that felt off. It goes straight to the person who builds Jobs Done.</div>
-    <textarea class="input" id="fb-t" maxlength="2000" rows="5" placeholder="What happened, or what would make Jobs Done better?"></textarea>
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Send feedback</div><div class="cap">Ideas, bugs, anything that felt off. It goes straight to the person who builds Job’s Done.</div>
+    <textarea class="input" id="fb-t" maxlength="2000" rows="5" placeholder="What happened, or what would make Job’s Done better?"></textarea>
     <button class="btn primary block" id="fb-s">Send</button></div>`, { label: 'Send feedback', mount: b => {
     b.querySelector('#fb-s').onclick = async ev => {
       const t = b.querySelector('#fb-t').value.trim(); if (!t) return;
@@ -3256,16 +3256,16 @@ function installSteps(os) {
 }
 function openInstallGuide(first) {
   let os = devOS();
-  const sh = openSheet(`<div class="stack"><div class="a2-hero"><div><div class="f22 fw7">${first ? 'Put Jobs Done on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
-    ${isStandalone() ? '<div class="note">You’re already using Jobs Done from your Home Screen.</div>' : ''}
+  const sh = openSheet(`<div class="stack"><div class="a2-hero"><div><div class="f22 fw7">${first ? 'Put Job’s Done on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
+    ${isStandalone() ? '<div class="note">You’re already using Job’s Done from your Home Screen.</div>' : ''}
     <div class="seg"><button data-os="ios">iPhone</button><button data-os="android">Android</button></div>
     <div id="a2-body"></div>
     <button class="btn primary block" id="a2-ok">${first ? 'Got it' : 'Done'}</button></div>`, { label: 'Add to Home Screen', mount: b => {
     const draw = () => {
       b.querySelectorAll('[data-os]').forEach(x => x.classList.toggle('on', x.dataset.os === os));
       b.querySelector('#a2-body').innerHTML = (os === 'android' && installEvt ? '<button class="btn block" id="a2-inst">Install now</button><div class="mt3 mb2 cap tc">or do it yourself:</div>' : '') + installSteps(os)
-        + `<div class="mt3 cap">${os === 'ios' ? 'Then open Jobs Done from its new icon. If you added it before, remove the old icon first to get the newest one.' : 'Then open Jobs Done from its new icon on your Home Screen.'} You can find these steps again in Me.</div>`;
-      const ib = b.querySelector('#a2-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { const r = await installEvt.userChoice; if (r.outcome === 'accepted') { closeSheet(sh); toast('Installed. Open Jobs Done from your Home Screen.'); } } catch (e) {} installEvt = null; draw(); };
+        + `<div class="mt3 cap">${os === 'ios' ? 'Then open Job’s Done from its new icon. If you added it before, remove the old icon first to get the newest one.' : 'Then open Job’s Done from its new icon on your Home Screen.'} You can find these steps again in Me.</div>`;
+      const ib = b.querySelector('#a2-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { const r = await installEvt.userChoice; if (r.outcome === 'accepted') { closeSheet(sh); toast('Installed. Open Job’s Done from your Home Screen.'); } } catch (e) {} installEvt = null; draw(); };
     };
     b.querySelectorAll('[data-os]').forEach(x => x.onclick = () => { os = x.dataset.os; draw(); });
     b.querySelector('#a2-ok').onclick = () => closeSheet(sh);
@@ -3317,7 +3317,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   $('#wk').hidden = true;
   const make = stage === 'create';
   $('#app').innerHTML = `<main id="screen" class="pb8"><div class="g3 pt6 stack" style="max-width:420px;margin:0 auto">
-    <div class="wordmark">Jobs <span>Done</span></div>
+    <div class="wordmark">Job’s <span>Done</span></div>
     <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="m0 mt2 sec">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
     ${make ? `<div class="field"><label for="si-name">Your first name</label><input class="input" id="si-name" autocomplete="given-name" maxlength="40" placeholder="Alex"></div>` : ''}
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
@@ -3361,7 +3361,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   if (!make) $('#si-forgot').onclick = async () => {
     const em = emailOk(); if (!em) return;
     const { error } = await SB.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
-    m(error && /rate/i.test(error.message) ? 'Too many reset emails. Wait an hour, then try again.' : 'If that email has an account, a reset link is on its way (check spam too). If nothing arrives within 10 minutes, ask whoever shared Jobs Done with you to reset it.', !(error && /rate/i.test(error.message)));
+    m(error && /rate/i.test(error.message) ? 'Too many reset emails. Wait an hour, then try again.' : 'If that email has an account, a reset link is on its way (check spam too). If nothing arrives within 10 minutes, ask whoever shared Job’s Done with you to reset it.', !(error && /rate/i.test(error.message)));
   };
 }
 function openSetPassword(recovery = false) {
@@ -3462,7 +3462,7 @@ async function boot() {
   livingBackground();
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-    $('#app').innerHTML = `<div class="splash"><div class="wordmark">Jobs <span>Done</span></div></div>`;
+    $('#app').innerHTML = `<div class="splash"><div class="wordmark">Job’s <span>Done</span></div></div>`;
     try { await startHosted(); } catch (e) { renderSignIn('start', '', 'Couldn’t reach the sign-in service. Check your connection and reload.'); }
     return;
   }

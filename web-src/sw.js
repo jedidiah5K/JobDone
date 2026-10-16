@@ -1,5 +1,5 @@
 // Offline support: the app shell is cached; pages load from the network first so updates arrive.
-const CACHE = 'jobdone-v29';
+const CACHE = 'jobdone-v30';
 // Pages come from the network so updates arrive, but a slow gym signal falls back to the saved copy after 2.5 s.
 function pageFirst(e) {
   const net = fetch(e.request).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); } return r; });
