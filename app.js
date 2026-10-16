@@ -1030,16 +1030,13 @@ function bodyMapHTML(p, q, side) {
 const MUSCLE_NAMES = { chest: 'Chest', abs: 'Abs', obliques: 'Obliques', biceps: 'Biceps', triceps: 'Triceps', deltoids: 'Shoulders', trapezius: 'Traps', 'upper-back': 'Upper back', 'lower-back': 'Lower back', forearm: 'Forearms', gluteal: 'Glutes', adductors: 'Inner thighs', quadriceps: 'Quads', hamstring: 'Hamstrings', calves: 'Calves', tibialis: 'Shins' };
 function howtoHTML(name, open) {
   const h = howtoFor(name); if (!h) return '';
-  // Only show a drawing made with the same equipment (Job, 16 Oct: a machine fly must not show dumbbells).
-  const eq = exInfo(name).equip, fits = e => e === eq;
-  const side = sideOf(name), id = side && h.u && fits(h.ue) ? h.u : h.f && fits(h.e) ? h.f : (h.v || {})[eq] || null, oneSide = !!(side && id && id === h.u);
+  // No exercise pictures (Job, 16 Oct: too much). Muscle map and steps for the equipment you picked.
+  const eq = exInfo(name).equip, side = sideOf(name);
   const mn = a => a.map(m => MUSCLE_NAMES[m] || m).join(', ');
   const base = (h.x && h.x[eq]) || h.s, steps = side ? ['Work one side at a time: do all your reps on one side, then switch.', ...base] : base;
   return `<div class="card howto">${side ? '<div class="ht-tag">One side at a time</div>' : ''}
-  ${id ? `<div class="ht-pic" role="img" aria-label="${esc(baseName(name))}${side ? ', one side' : ''}, start and finish positions"><div class="ht-fr" data-src="ex/${id}-0.svg"></div><span class="ht-arr" aria-hidden="true"></span><div class="ht-fr" data-src="ex/${id}-1.svg"></div></div>` : ''}
   <div class="ht-mus">${bodyMapHTML(h.p, h.q, side)}<div class="grow"><div class="eyebrow">Muscles worked</div><div class="ht-ml"><i class="bm-key p"></i>${esc(mn(h.p))}</div>${h.q.length ? `<div class="ht-ml sec"><i class="bm-key q"></i>${esc(mn(h.q))}</div>` : ''}</div></div>
-  ${side && id && !oneSide ? '<p class="cap ht-note">Drawn with both sides working. Do the same move one side at a time.</p>' : ''}${!id && (h.f || h.u || h.v) ? `<p class="cap ht-note">No drawing of the ${esc(eq)} version yet, so only the muscles are shown.</p>` : ''}
-  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${h.m && id && id === h.f ? `<p class="cap">Drawing shows: ${esc(h.m)}. Yours may differ slightly.</p>` : ''}<p class="cap ht-cr">Drawings: Everkinetic, CC BY-SA 4.0, and traced from free-exercise-db photos (public domain). Body map: react-muscle-highlighter, MIT.</p></details></div>`;
+  <details ${open ? 'open' : ''}><summary class="eyebrow">How to do it</summary><ol class="ht-steps">${steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol><p class="cap ht-cr">Body map: react-muscle-highlighter, MIT.</p></details></div>`;
 }
 // Drawings are inline SVG so they take the theme's colours; fetch each once and drop it in when a card appears.
 function htHydrate(root) {
