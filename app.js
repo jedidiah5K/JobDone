@@ -3177,13 +3177,26 @@ async function startHosted() {
   SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' } });
   SB.auth.onAuthStateChange((ev, session) => {
     if (ev === 'SIGNED_IN' && session && (!USER || USER.id !== session.user.id)) { USER = session.user; openData(); }
+    if (ev === 'TOKEN_REFRESHED') { reconnect(); if (pend().size) retrySoon(300); }
     if (ev === 'PASSWORD_RECOVERY') setTimeout(() => openSetPassword(true), 600);
     if (ev === 'SIGNED_OUT') { USER = null; openedFor = null; DB = null; mode = 'local'; renderSignIn(); }
   });
-  const { data } = await SB.auth.getSession();
+  const { data, error } = await SB.auth.getSession();
   if (data && data.session) { USER = data.session.user; await openData(); }
-  else if (!USER) renderSignIn();
+  else if (!USER) {
+    // No signal and the sign-in token is due a refresh: open this phone's saved data instead of the sign-in page.
+    const u = savedUser();
+    if (u && (error || navigator.onLine === false)) { USER = u; await openData(); } else renderSignIn();
+  }
 }
+function savedUser() {
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^sb-.*-auth-token$/.test(k)) { const v = JSON.parse(localStorage.getItem(k)); if (v && v.user && v.user.id) return v.user; } } } catch (e) {}
+  return null;
+}
+// Opened without signal: once it's back, send what was saved on this phone and load the account.
+let reconnecting = false;
+function reconnect() { if (reconnecting || mode !== 'local' || !SB || !USER || openedFor !== USER.id) return; reconnecting = true; connect(supaDB()).finally(() => { reconnecting = false; }); }
+addEventListener('online', () => setTimeout(reconnect, 1500));
 let openedFor = null;
 async function openData() {
   if (openedFor === USER.id) return; openedFor = USER.id;
