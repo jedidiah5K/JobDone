@@ -53,6 +53,21 @@ Stiff-Leg Deadlift|Hamstrings|barbell;Romanian Deadlift|Hamstrings|barbell;Dumbb
 Hip Thrust|Glutes|barbell;Glute Bridge|Glutes|barbell;Cable Kickback|Glutes|cable;Abductor|Glutes|machine;Glute Drive|Glutes|machine;Adductor|Adductors|machine;Copenhagen Plank|Adductors|bodyweight;
 Calf Raise|Calves|machine;Seated Calf Raise|Calves|machine;Standing Calf Raise|Calves|machine;Leg Press Calf Raise|Calves|machine;Donkey Calf Raise|Calves|machine`;
 const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [name, muscle, equip] = s.split('|'); return { name, muscle, equip }; });
+// Equipment each built-in lift can really be done with (b barbell, d dumbbell, m machine, c cable, s smith, w bodyweight, n band, k kettlebell).
+// Built-in lifts keep their muscle group; only custom exercises can be re-grouped (Job, 16 Oct).
+const EQ_CODE = { b: 'barbell', d: 'dumbbell', m: 'machine', c: 'cable', s: 'smith', w: 'bodyweight', n: 'band', k: 'kettlebell' };
+const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:bs;Incline Bench Press:bs;Decline Bench Press:bs;Dumbbell Bench Press:d;Incline Dumbbell Press:d;Chest Press:m;Smith Bench Press:s;Cable Crossover:c;Low-to-High Cable Fly:c;Dumbbell Fly:d;Pec Deck:m;Push-Up:w;Dip:wm;
+Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:b;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:b;Rack Pull:b;Back Extension:wm;Shrug:dbsm;Face Pull:cn;
+Shoulder Press:ms;Overhead Press:bs;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
+Preacher Curl:mbd;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:b;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
+Tricep Vulken:mc;Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:bd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
+Cable Crunch:c;Oblique Crunch:cw;Hanging Leg Raise:w;Ab Wheel:w;Crunch Machine:m;Plank:w;Russian Twist:wdk;Pallof Press:cn;Woodchopper:cn;
+Leg Press:m;Leg Extension:m;Back Squat:b;Front Squat:b;Hack Squat:m;Smith Squat:s;Goblet Squat:dk;Bulgarian Split Squat:dbsw;Walking Lunge:dbw;Pendulum Squat:m;Step-Up:dbw;Sissy Squat:wm;
+Stiff-Leg Deadlift:bd;Romanian Deadlift:b;Dumbbell RDL:d;Leg Curl:m;Seated Leg Curl:m;Lying Leg Curl:m;Nordic Curl:w;Good Morning:bs;
+Hip Thrust:bms;Glute Bridge:bwd;Cable Kickback:c;Abductor:m;Glute Drive:m;Adductor:m;Copenhagen Plank:w;
+Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:m;Donkey Calf Raise:mw`.split(';').map(s => s.trim()).filter(Boolean).map(s => { const i = s.lastIndexOf(':'); return [s.slice(0, i), [...s.slice(i + 1)].map(c => EQ_CODE[c])]; }));
+const libEx = n => LIB.find(e => e.name === n);
+const eqOptions = n => libEx(n) ? (EQ_OK[n] || [libEx(n).equip]) : EQUIP;
 const EQUIP = ['barbell', 'dumbbell', 'machine', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
 const baseName = n => n.replace(/\s*\((L|R)\)$/, '');
@@ -79,7 +94,9 @@ const restFor = name => ((S.profile.restBy || {})[baseName(name)]) || S.profile.
 const usesPlates = name => !['dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band'].includes(exInfo(name).equip);
 function exInfo(name) {
   const b = baseName(name);
-  return (S.customEx || []).find(e => e.name === b) || LIB.find(e => e.name === b) || { name: b, muscle: 'Other', equip: 'other' };
+  const c = (S.customEx || []).find(e => e.name === b), l = libEx(b);
+  if (l) return c && eqOptions(b).includes(c.equip) ? { name: b, muscle: l.muscle, equip: c.equip } : l;
+  return c || { name: b, muscle: 'Other', equip: 'other' };
 }
 
 // ---------- seed data (section 4 + section 10 of the build prompt) ----------
@@ -2187,24 +2204,27 @@ function pickExercise(onPick, opts = {}) {
   });
 }
 
-// Create a custom exercise, or change any exercise's muscle group and equipment.
+// Create a custom exercise, or change its muscle group and equipment. Built-in lifts only swap between equipment that fits them.
 function openExForm(name, o = {}) {
   const cur = name ? exInfo(name) : null, known = name && (LIB.some(e => e.name === name) || (S.customEx || []).some(e => e.name === name));
-  let mu = o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : null;
+  const lib = !!(name && libEx(name));
+  let mu = lib ? cur.muscle : o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : null;
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${known ? 'Exercise group' : 'New exercise'}</div>
     <div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(name || '')}" placeholder="e.g. Hammer Curl" ${known ? 'disabled' : ''}></div>
-    <div class="field"><span class="lbl">Muscle group</span><div class="chips wrap" id="ef-m">${MUSCLES.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>
-    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${EQUIP.map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div></div>
+    ${lib ? `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap"><span class="chip on" aria-disabled="true">${esc(mu)}</span></div><p class="cap m0">Built-in lifts keep their muscle group.</p></div>`
+      : `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap" id="ef-m">${MUSCLES.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>`}
+    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${eqOptions(lib ? name : '').map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>${lib && eqOptions(name).length === 1 ? `<p class="cap m0">This lift only uses this equipment.</p>` : ''}</div>
     <button class="btn primary block" id="ef-ok">Save</button>
     ${known && (S.customEx || []).some(e => e.name === name) && !LIB.some(e => e.name === name) ? '' : ''}
     <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: 'Exercise', mount: b => {
     const pick = (id, set) => b.querySelector(id).onclick = ev => { const c = ev.target.closest('[data-m]'); if (!c) return; set(c.dataset.m); b.querySelectorAll(id + ' .chip').forEach(x => x.classList.toggle('on', x === c)); };
-    pick('#ef-m', v => mu = v); pick('#ef-e', v => eq = v);
+    if (!lib) pick('#ef-m', v => mu = v); pick('#ef-e', v => eq = v);
     b.querySelector('#ef-ok').onclick = () => {
       const n = (b.querySelector('#ef-n').value || '').trim().replace(/\s+/g, ' ');
       if (!n) { toast('Give it a name'); return; }
       if (!mu) { toast('Pick a muscle group'); return; }
-      S.customEx = (S.customEx || []).filter(e => e.name !== n); S.customEx.push({ name: n, muscle: mu, equip: eq || 'other' });
+      S.customEx = (S.customEx || []).filter(e => e.name !== n);
+      if (!lib || eq !== libEx(n).equip) S.customEx.push({ name: n, muscle: mu, equip: eq || (lib ? libEx(n).equip : 'other') });
       persist('jd/meta'); invalidate(); closeSheet(sh);
       if (o.onSave) o.onSave(n); else { rerender(); toast(`${esc(n)} · ${esc(mu)}`); }
     };
