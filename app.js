@@ -599,7 +599,7 @@ function render() {
   // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
   if (S && S.profile && S.profile.legacy == null) { const old = (S.created || Date.now()) < Date.UTC(2026, 9, 15, 6); S.profile.legacy = old ? 1 : 0; if (old) { if (S.profile.barW == null) S.profile.barW = 0; if (!S.profile.stepSrc) S.profile.stepSrc = 'QWatch Pro'; S.profile.owner = true; } persist('jd/meta'); }
   // Job's own Home Screen icon (Skyline blazer, 16 Oct): only on the owner account; iOS reads it when Add to Home Screen is tapped.
-  if (S && S.profile && S.profile.owner) { const ic = document.querySelector('link[rel="apple-touch-icon"]'); if (ic && !/job-skyline/.test(ic.href)) ic.href = 'icons/job-skyline-180.png?v=1'; try { localStorage.setItem('jd-owner-icon', '1'); } catch (e) {} }
+  if (S && S.profile && S.profile.owner) { const ic = document.querySelector('link[rel="apple-touch-icon"]'); if (ic && !/job-skyline/.test(ic.href)) ic.href = 'icons/job-skyline-180.png?v=2'; try { localStorage.setItem('jd-owner-icon', '1'); } catch (e) {} }
   // Job (15 Oct): sounds AND music together, like Jedris. 'Play when on silent' paused music, so it is retired for everyone.
   if (S && S.profile && (!S.profile.musicOk || !S.profile.music2)) { S.profile.soundSilent = false; S.profile.musicOk = true; S.profile.music2 = true; persist('jd/meta'); }
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
