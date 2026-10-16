@@ -782,13 +782,11 @@ html.ob-on .ob-prog { background: var(--raised); }
    Cream panels pinned to the wall with the wall showing through, uppercase labels,
    boxed kg/reps cells, chunky buttons and a floating tab bar with a raised purple Start button. */
 :root:not([data-theme]) { --surface: #FFFDFA; --raised: #F6F2EC; --r2: 18px; --edge: rgba(43,33,58,.14); --lift: 0 1px 0 rgba(43,33,58,.04), 0 10px 26px -16px rgba(43,33,58,.28); }
-:root:not([data-theme]) .card { border: 1px solid rgba(43,33,58,.08); box-shadow: var(--lift); border-radius: 18px; }
+:root:not([data-theme]) .card { border: 0; box-shadow: inset 0 0 0 1px rgba(43,33,58,.08), var(--lift); border-radius: 18px; }
 :root:not([data-theme]) .card:not(.nextup) { background: color-mix(in srgb, #FFFDFA 90%, transparent); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); }
 :root:not([data-theme]) .card.nextup { border-color: transparent; }
 :root:not([data-theme]) .eyebrow { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
 :root:not([data-theme]) .card.nextup .eyebrow { text-transform: none; letter-spacing: 0; font-size: 13px; }
-:root:not([data-theme]) .kpis { gap: 8px; border-top: 0; padding-top: 0; }
-:root:not([data-theme]) .kpi { padding: 12px; border-radius: 18px; background: var(--raised); border: 0 !important; }
 :root:not([data-theme]) .btn { border-radius: 14px; border: 1.5px solid var(--edge); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 600; }
 :root:not([data-theme]) .btn.primary, :root:not([data-theme]) .card.nextup .btn { border-color: transparent; }
 :root:not([data-theme]) .btn.ghost, :root:not([data-theme]) .btn.link { border-color: transparent; box-shadow: none; }
@@ -843,7 +841,7 @@ html.ob-on .ob-prog { background: var(--raised); }
 :root[data-theme="cliffs"] .dot { width: 38px; height: 34px; border: 0; background: var(--raised); box-shadow: inset 0 -5px 0 rgba(0,0,0,.14), inset 4px 4px 0 rgba(255,255,255,.3); }
 :root[data-theme="cliffs"] .dot.done { box-shadow: inset 0 -5px 0 rgba(0,0,0,.25), inset 4px 4px 0 rgba(255,255,255,.25); }
 :root[data-theme="spidey"] .dot, :root[data-theme="spidey"] .sdot, :root[data-theme="spidey"] .split .tag { border-radius: 0; clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
-:root[data-theme="spidey"] .dot { width: 36px; height: 38px; border: 0; background: var(--raised) url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 38'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.18' stroke-width='.8'%3E%3Cpath d='M18 0V38M2 9.5L34 28.5M34 9.5L2 28.5'/%3E%3Cpath d='M18 8L27 13V25L18 30L9 25V13Z'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100%; }
+:root[data-theme="spidey"] .dot { width: 34px; height: 34px; border: 0; background: var(--raised) url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 38'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.18' stroke-width='.8'%3E%3Cpath d='M18 0V38M2 9.5L34 28.5M34 9.5L2 28.5'/%3E%3Cpath d='M18 8L27 13V25L18 30L9 25V13Z'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100%; }
 :root[data-theme="spidey"] .dot.today { outline: 0; box-shadow: inset 0 0 0 2px var(--accent); }
 :root[data-theme="cliffs"] .split .tag, :root[data-theme="spidey"] .split .tag { align-self: center; min-height: 0; width: 34px; height: 30px; }
 :root[data-theme="spidey"] .dot.today { box-shadow: none; background-color: color-mix(in srgb, var(--accent) 45%, var(--raised)); }
@@ -1024,5 +1022,5 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 .sgh, .eyebrow { font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
 .sets th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .card.nextup .eyebrow { text-transform: none; letter-spacing: 0; font-size: 13px; }
-/* Summit: labels sit on the mountains, so give them a small frosted chip to stay readable at any time of day */
-:root[data-theme="cliffs"] .sgh { display: inline-block; padding: 2px 8px; border-radius: 999px; color: var(--text2); background: color-mix(in srgb, var(--surface-solid, var(--surface)) 72%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); margin-left: var(--s3); }
+/* Same label box in every theme: no chip in Summit (Job, 16 Oct). */
+.sgh, :root:not([data-theme]) .sgh, :root[data-theme] .sgh { display: block; margin: 0 0 var(--s2) var(--s4); padding: 0; background: none; font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; }
