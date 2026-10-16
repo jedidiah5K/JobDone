@@ -3323,6 +3323,7 @@ function supaDB() {
 }
 function renderSignIn(stage = 'start', email = '', msg = '') {
   ready = false; S = null; A = null;
+  applyTheme('mono'); // Job (16 Oct): signed out always looks like Agent, whatever the last account used
   $('#wk').hidden = true;
   const make = stage === 'create';
   $('#app').innerHTML = `<main id="screen" class="pb8"><div class="g3 pt6 stack" style="max-width:420px;margin:0 auto">
