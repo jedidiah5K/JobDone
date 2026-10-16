@@ -1095,3 +1095,15 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 @keyframes finPop { from { transform: rotate(-7.5deg) scale(.3); opacity: 0; } }
 .fin-bam { padding-left: 28px; }
 .fin-sky .rc-line { margin-top: 0; }
+/* Skyline comic polish (Job, 16 Oct): real comic lettering, one black ink line, graded halftone, a proper web, a caption box */
+:root[data-theme="spidey"] .fin-sky { background: radial-gradient(120% 90% at 100% 100%, #1B2E78, #0D1A45 70%); }
+.fin-dots { position: absolute; inset: 0; width: 100%; height: 100%; fill: #5B8CFF; opacity: .2; z-index: 0; }
+.fin-web { width: 132px; height: 132px; stroke: rgba(255,255,255,.4); stroke-width: 1.1; stroke-linecap: round; }
+/* the share card's burst, drawn by the same code (drawBam), leaning and cut off on the left */
+.fin-bamc { display: block; width: 320px; max-width: 100%; height: auto; aspect-ratio: 860 / 580; margin: -60px 0 -46px calc(-1 * var(--s4)); animation: finPop .45s .1s cubic-bezier(.2,1.5,.4,1) both; }
+@keyframes finPop { from { transform: scale(.3); opacity: 0; } }
+.fin-cap { position: relative; z-index: 2; align-self: flex-start; margin: 0 0 2px 2px; padding: 5px 12px 6px; background: #FFD21F; color: #111; border: 2.5px solid #111; box-shadow: 4px 4px 0 #111; transform: rotate(-1.2deg); }
+.fin-cap .rc-line { margin: 0; font-size: 15px; line-height: 20px; font-weight: 800; opacity: 1; }
+.fin-cap .fin-sub { font-size: 12px; line-height: 16px; font-weight: 600; opacity: .72; }
+.fin-sky .rc-tags { margin-top: 8px; }
+.fin-sky { padding-bottom: 14px !important; }

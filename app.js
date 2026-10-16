@@ -1644,11 +1644,9 @@ function finHero(d) {
   if (k === 'mono') return `<div class="rc-hero fin fin-agent"><svg class="fin-scope" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="56"/><path d="M100 0v70M100 130v70M0 100h70M130 100h70"/><circle class="dot" cx="100" cy="100" r="4"/></svg>
     <div class="fin-eb">Mission complete · File ${num}</div><h1>Jobs done!</h1><div class="fin-stamp">Target down</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
   if (k === 'spidey') {
-    const sp = (t, a) => [...t].map((ch, i) => `<i style="--sx:${a[i][0]};--sy:${a[i][1]};--r:${a[i][2]}deg;--dy:${a[i][3]}px">${ch}</i>`).join('');
-    return `<div class="rc-hero fin fin-sky"><svg class="fin-web" viewBox="0 0 120 120" aria-hidden="true"><path d="M120 0L0 0M120 0L10 60M120 0L40 104M120 0L84 118M120 0L120 120M30 0Q60 22 76 26Q100 46 120 30M60 0Q76 22 84 48Q100 64 120 62M90 0Q96 20 102 40Q110 44 120 92"/></svg>
-      <div class="fin-burst"><svg viewBox="0 0 300 190" aria-hidden="true"><path class="b1" d="${burstPath(150, 95, 13, 70, 140, 1, .62)}"/><path class="b2" d="${burstPath(150, 95, 11, 62, 104, .25, .62)}"/><path class="b3" d="${burstPath(150, 95, 11, 55, 92, .27, .62)}"/></svg>
-      <div class="fin-bam"><span>${sp('JOBS', [[.95, .8, -10, 4], [1.3, 1, -4, 0], [1.4, 1.12, 2, -3], [1.2, 1.28, 8, 2]])}</span><span>${sp('DONE!', [[1.1, .84, -8, 3], [1.4, 1.04, -3, 0], [1.3, 1.16, 3, -2], [1.15, 1.3, 6, 1], [.9, 1.5, 10, 5]])}</span></div></div>
-      <div class="rc-line">${line}</div><div class="fin-sub">Patrol #${d.num} · ${when}</div>${tags}</div>`;
+    return `<div class="rc-hero fin fin-sky">${halftoneSVG()}${webSVG('fin-web')}
+      <canvas class="fin-bamc" width="860" height="580" aria-label="Jobs done!"></canvas>
+      <div class="fin-cap"><div class="rc-line">${line}</div><div class="fin-sub">Patrol #${d.num} · ${when}</div></div>${tags}</div>`;
   }
   if (k === 'cliffs') return `<div class="rc-hero fin fin-summit"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
     <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Jobs done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
@@ -1656,10 +1654,19 @@ function finHero(d) {
     <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold">${check}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
 }
-// A comic burst outline: n spikes between radii rIn and rOut, squashed vertically by sy.
-function burstPath(cx, cy, n, rIn, rOut, rot, sy) {
-  let p = ''; for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + .16 * Math.sin(i * 7.3)); p += (i ? 'L' : 'M') + (cx + Math.cos(a) * r).toFixed(1) + ' ' + (cy + Math.sin(a) * r * sy).toFixed(1); }
-  return p + 'Z';
+// Comic halftone: dots shrink as they fade away from the bottom right corner.
+let HALFTONE = '';
+function halftoneSVG() {
+  if (HALFTONE) return HALFTONE; let c = '';
+  for (let y = 0, row = 0; y <= 300; y += 11, row++) for (let x = row % 2 ? 5.5 : 0; x <= 400; x += 11) { const t = Math.hypot(400 - x, 300 - y) / 420, r = 3.4 * (1 - t); if (r > .35) c += `<circle cx="${x}" cy="${y}" r="${r.toFixed(2)}"/>`; }
+  return (HALFTONE = `<svg class="fin-dots" viewBox="0 0 400 300" preserveAspectRatio="xMaxYMax slice" aria-hidden="true">${c}</svg>`);
+}
+// A spider web hanging from the top right corner: straight spokes, threads that sag towards the corner between them.
+function webSVG(cls) {
+  const S = 7, R = 150, sp = [...Array(S)].map((_, i) => .02 + i / (S - 1) * (Math.PI / 2 - .04));
+  let d = sp.map(a => `M150 0L${(150 - Math.cos(a) * R).toFixed(1)} ${(Math.sin(a) * R).toFixed(1)}`).join('');
+  for (let r = 26; r < R; r += 24) sp.forEach((a, i) => { const x = 150 - Math.cos(a) * r, y = Math.sin(a) * r; if (!i) { d += `M${x.toFixed(1)} ${y.toFixed(1)}`; return; } const m = (a + sp[i - 1]) / 2, q = r * .8; d += `Q${(150 - Math.cos(m) * q).toFixed(1)} ${(Math.sin(m) * q).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`; });
+  return `<svg class="${cls}" viewBox="0 0 150 150" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 function showRecap(id, fresh) {
   const d = recapData(id); if (!d.w) return;
@@ -1698,6 +1705,7 @@ function showRecap(id, fresh) {
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
   document.body.appendChild(el);
+  const bc = el.querySelector('.fin-bamc'); if (bc) drawBam(bc.getContext('2d'), 330, 290);
   requestAnimationFrame(() => el.classList.add('in'));
   const close = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); if (fresh) setTimeout(maybeInstallGuide, 400); };
   el.querySelector('#rc-done').onclick = close;
@@ -1706,6 +1714,46 @@ function showRecap(id, fresh) {
 }
 // Draw the recap as a 1080x1350 share card. Each theme has its own card (Job, 16 Oct):
 // Agent = mission debrief, Skyline = night patrol comic, Summit = summit log with an elevation profile, Boulder = route tag on the wall.
+// The Skyline BAM! burst Job picked (16 Oct): red halftone ring, jagged red burst, yellow rim, white core, extruded orange letters.
+// Drawn centred on BX, BY; the share card and the finish page both use it.
+function drawBam(g, BX, BY) {
+  const RED = '#E2231A', F = (wt, px) => `${wt} ${px}px -apple-system, "SF Pro Display", system-ui, sans-serif`, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
+    const burst = (n, rIn, rOut, sx, sy, rot, jit) => { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + jit * Math.sin(i * 7.3)); g.lineTo(BX + Math.cos(a) * r * sx, BY + Math.sin(a) * r * sy); } g.closePath(); };
+    g.save(); g.translate(BX, BY); g.rotate(-.13); g.scale(.84, .84); g.translate(-BX, -BY); // the whole burst leans, kept small in the top left
+    g.save(); burst(13, 230, 420, 1.25, .78, .1, .18); g.clip();
+    for (let y = BY - 360; y < BY + 360; y += 22) for (let x = BX - 560; x < BX + 560; x += 22) { const dx = (x - BX) / 1.25, dy = (y - BY) / .78, dd = Math.hypot(dx, dy), r = Math.max(0, 7.5 * (1 - Math.abs(dd - 330) / 140)); if (r > .6) { g.fillStyle = RED; g.beginPath(); g.arc(x + ((y / 22) % 2 ? 11 : 0), y, r, 0, 7); g.fill(); } }
+    g.restore();
+    burst(11, 210, 330, 1.25, .78, .25, .22); g.fillStyle = RED; g.fill(); g.lineWidth = 6; g.strokeStyle = '#7A0D0A'; g.stroke();
+    burst(11, 190, 262, 1.25, .78, .27, .15); g.fillStyle = BAM.rim; g.fill();
+    burst(11, 172, 240, 1.25, .78, .27, .15); g.fillStyle = BAM.core; g.fill();
+    // Letters drawn one by one, each with its own width, height and tilt, then the whole word is bent like a hand-lettered BAM!:
+    // Job picked the per-letter warp without the perspective bend (16 Oct), so the bend is off (from = to = 1).
+    const glyph = (q, ch, px, sx, sy) => {
+      q.save(); q.scale(sx, sy); q.font = F(900, px); q.textAlign = 'center'; q.lineJoin = 'round';
+      for (let k = 16; k > 0; k -= 2) { q.fillStyle = '#111'; q.fillText(ch, k / sx, k / sy); }
+      q.lineWidth = 15 / Math.min(sx, sy); q.strokeStyle = '#111'; q.strokeText(ch, 0, 0);
+      const gr2 = q.createLinearGradient(0, -px * .8, 0, 0); gr2.addColorStop(0, BAM.l[0]); gr2.addColorStop(.6, BAM.l[1]); gr2.addColorStop(1, BAM.l[2]); q.fillStyle = gr2; q.fillText(ch, 0, 0);
+      q.globalCompositeOperation = 'source-atop'; q.fillStyle = BAM.dots; const cw = q.measureText(ch).width;
+      for (let yy = -px * .78; yy < 6; yy += 13) for (let xx = -cw / 2 - 6; xx < cw / 2 + 6; xx += 13) { const r = 3.6 * Math.max(0, (yy + px * .78) / (px * .78)); if (r > .5) { q.beginPath(); q.arc(xx + (Math.round(yy / 13) % 2 ? 6.5 : 0), yy, r, 0, 7); q.fill(); } }
+      q.globalCompositeOperation = 'source-over'; q.restore(); };
+    const word = (t, cx, cy, px, spec, warp) => {
+      const o = document.createElement('canvas'), OW = 1000, OH = Math.round(px * 2.6); o.width = OW; o.height = OH; const q = o.getContext('2d');
+      q.font = F(900, px); const ws = [...t].map((ch, i) => q.measureText(ch).width * spec[i][0] * .97); const tot = ws.reduce((a, b) => a + b, 0);
+      let x = OW / 2 - tot / 2; const base = OH * .66;
+      [...t].forEach((ch, i) => { const [sx, sy, rot, dy] = spec[i]; q.save(); q.translate(x + ws[i] / 2, base + dy); q.rotate(rot); q.transform(1, 0, -.1, 1, 0, 0); glyph(q, ch, px, sx, sy); q.restore(); x += ws[i]; });
+      // bend: draw in thin columns, each stretched by its position (small on the left, huge on the right) and lifted on an arc
+      const x0 = OW / 2 - tot / 2 - 40, x1 = OW / 2 + tot / 2 + 60, span = x1 - x0;
+      for (let sx0 = x0; sx0 < x1; sx0 += 2) {
+        const u = (sx0 - x0) / span, k = warp.from + (warp.to - warp.from) * Math.pow(u, 1.15), lift = Math.sin(u * Math.PI) * warp.arc;
+        const dx = cx - span * warp.wide / 2 + (sx0 - x0) * warp.wide;
+        g.drawImage(o, sx0, 0, 2, OH, dx, cy - base * k - lift, 2 * warp.wide + .6, OH * k);
+      }
+    };
+    word('JOBS', BX - 40, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
+    word('DONE!', BX - 16, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
+    g.letterSpacing = '0px';
+  g.restore();
+}
 async function drawShare(d) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
   const SANS = '-apple-system, "SF Pro Display", system-ui, sans-serif', MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
@@ -1770,56 +1818,22 @@ async function drawShare(d) {
     let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(9,16,44,.35)'); gr.addColorStop(.5, 'rgba(9,16,44,.75)'); gr.addColorStop(1, 'rgba(9,16,44,.55)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     const RED = '#E2231A';
     // web in the top corner
-    g.save(); g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = 2.5; const R = 330;
-    for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2; g.beginPath(); g.moveTo(W, 0); g.lineTo(W - Math.cos(a) * R, Math.sin(a) * R); g.stroke(); }
-    for (let r = 70; r <= R; r += 64) { g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2, x = W - Math.cos(a) * r, y = Math.sin(a) * r; if (!i) g.moveTo(x, y); else { const pa = (i - .5) / 6 * Math.PI / 2, q = r * .86; g.quadraticCurveTo(W - Math.cos(pa) * q, Math.sin(pa) * q, x, y); } } g.stroke(); }
-    g.restore();
+    // graded halftone from the bottom right corner, like the finish page
+    g.fillStyle = 'rgba(91,140,255,.17)';
+    for (let y = 0, row = 0; y <= H; y += 30, row++) for (let x = row % 2 ? 15 : 0; x <= W; x += 30) { const r = 8.5 * (1 - Math.hypot(W - x, H - y) / 1450); if (r > 1) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } }
+    g.save(); g.translate(W - 380, 0); g.scale(380 / 150, 380 / 150); g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = 1.1; g.lineCap = 'round';
+    g.stroke(new Path2D(/ d="([^"]+)"/.exec(webSVG(''))[1])); g.restore();
     // comic burst headline, BAM! style (Job's reference, 16 Oct): halftone dots, red burst, yellow rim, white core, extruded orange letters
-    const BX = 330, BY = 310, BAM = Object.assign({ rim: '#FFD21F', core: '#FFFFFF', l: ['#D91A12', '#F26A1B', '#FFC61A'], dots: 'rgba(255,214,60,.75)' });
-    const burst = (n, rIn, rOut, sx, sy, rot, jit) => { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2, r = i % 2 ? rIn : rOut * (1 + jit * Math.sin(i * 7.3)); g.lineTo(BX + Math.cos(a) * r * sx, BY + Math.sin(a) * r * sy); } g.closePath(); };
-    g.save(); g.translate(BX, BY); g.rotate(-.13); g.scale(.84, .84); g.translate(-BX, -BY); // the whole burst leans, kept small in the top left
-    g.save(); burst(13, 230, 420, 1.25, .78, .1, .18); g.clip();
-    for (let y = BY - 360; y < BY + 360; y += 22) for (let x = BX - 560; x < BX + 560; x += 22) { const dx = (x - BX) / 1.25, dy = (y - BY) / .78, dd = Math.hypot(dx, dy), r = Math.max(0, 7.5 * (1 - Math.abs(dd - 330) / 140)); if (r > .6) { g.fillStyle = RED; g.beginPath(); g.arc(x + ((y / 22) % 2 ? 11 : 0), y, r, 0, 7); g.fill(); } }
-    g.restore();
-    burst(11, 210, 330, 1.25, .78, .25, .22); g.fillStyle = RED; g.fill(); g.lineWidth = 6; g.strokeStyle = '#7A0D0A'; g.stroke();
-    burst(11, 190, 262, 1.25, .78, .27, .15); g.fillStyle = BAM.rim; g.fill();
-    burst(11, 172, 240, 1.25, .78, .27, .15); g.fillStyle = BAM.core; g.fill();
-    // Letters drawn one by one, each with its own width, height and tilt, then the whole word is bent like a hand-lettered BAM!:
-    // Job picked the per-letter warp without the perspective bend (16 Oct), so the bend is off (from = to = 1).
-    const glyph = (q, ch, px, sx, sy) => {
-      q.save(); q.scale(sx, sy); q.font = F(900, px); q.textAlign = 'center'; q.lineJoin = 'round';
-      for (let k = 16; k > 0; k -= 2) { q.fillStyle = '#111'; q.fillText(ch, k / sx, k / sy); }
-      q.lineWidth = 15 / Math.min(sx, sy); q.strokeStyle = '#111'; q.strokeText(ch, 0, 0);
-      const gr2 = q.createLinearGradient(0, -px * .8, 0, 0); gr2.addColorStop(0, BAM.l[0]); gr2.addColorStop(.6, BAM.l[1]); gr2.addColorStop(1, BAM.l[2]); q.fillStyle = gr2; q.fillText(ch, 0, 0);
-      q.globalCompositeOperation = 'source-atop'; q.fillStyle = BAM.dots; const cw = q.measureText(ch).width;
-      for (let yy = -px * .78; yy < 6; yy += 13) for (let xx = -cw / 2 - 6; xx < cw / 2 + 6; xx += 13) { const r = 3.6 * Math.max(0, (yy + px * .78) / (px * .78)); if (r > .5) { q.beginPath(); q.arc(xx + (Math.round(yy / 13) % 2 ? 6.5 : 0), yy, r, 0, 7); q.fill(); } }
-      q.globalCompositeOperation = 'source-over'; q.restore(); };
-    const word = (t, cx, cy, px, spec, warp) => {
-      const o = document.createElement('canvas'), OW = 1000, OH = Math.round(px * 2.6); o.width = OW; o.height = OH; const q = o.getContext('2d');
-      q.font = F(900, px); const ws = [...t].map((ch, i) => q.measureText(ch).width * spec[i][0] * .97); const tot = ws.reduce((a, b) => a + b, 0);
-      let x = OW / 2 - tot / 2; const base = OH * .66;
-      [...t].forEach((ch, i) => { const [sx, sy, rot, dy] = spec[i]; q.save(); q.translate(x + ws[i] / 2, base + dy); q.rotate(rot); q.transform(1, 0, -.1, 1, 0, 0); glyph(q, ch, px, sx, sy); q.restore(); x += ws[i]; });
-      // bend: draw in thin columns, each stretched by its position (small on the left, huge on the right) and lifted on an arc
-      const x0 = OW / 2 - tot / 2 - 40, x1 = OW / 2 + tot / 2 + 60, span = x1 - x0;
-      for (let sx0 = x0; sx0 < x1; sx0 += 2) {
-        const u = (sx0 - x0) / span, k = warp.from + (warp.to - warp.from) * Math.pow(u, 1.15), lift = Math.sin(u * Math.PI) * warp.arc;
-        const dx = cx - span * warp.wide / 2 + (sx0 - x0) * warp.wide;
-        g.drawImage(o, sx0, 0, 2, OH, dx, cy - base * k - lift, 2 * warp.wide + .6, OH * k);
-      }
-    };
-    word('JOBS', BX - 40, BY - 6, 138, [[.98, .78, -.17, 16], [1.38, 1.0, -.06, 0], [1.5, 1.16, .03, -8], [1.28, 1.32, .13, 6]], { from: 1, to: 1, arc: 0, wide: 1 });
-    word('DONE!', BX - 16, BY + 156, 138, [[1.12, .82, -.13, 10], [1.48, 1.04, -.04, 0], [1.36, 1.2, .05, -6], [1.2, 1.36, .1, 4], [.92, 1.56, .17, 16]], { from: 1, to: 1, arc: 0, wide: 1 });
-    g.letterSpacing = '0px';
-    g.restore(); mark(72, 92, '#fff', .8);
+    drawBam(g, 330, 310); mark(72, 92, '#fff', .8);
     // caption box
-    g.letterSpacing = '0px'; g.font = F(700, 32); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
-    g.save(); g.translate(72, 540); g.rotate(.015); g.fillStyle = '#FFF8E7'; g.fillRect(0, 0, cw, 70); g.strokeStyle = '#0D1A45'; g.lineWidth = 5; g.strokeRect(0, 0, cw, 70);
-    g.fillStyle = '#0D1A45'; g.fillText(cap, 28, 47); g.restore();
+    g.letterSpacing = '0px'; g.font = F(800, 34); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
+    g.save(); g.translate(72, 540); g.rotate(-.02); g.fillStyle = '#111'; g.fillRect(10, 10, cw, 74); g.fillStyle = '#FFD21F'; g.fillRect(0, 0, cw, 74); g.strokeStyle = '#111'; g.lineWidth = 6; g.strokeRect(0, 0, cw, 74);
+    g.fillStyle = '#111'; g.font = F(800, 34); g.fillText(cap, 28, 49); g.restore();
     g.fillStyle = 'rgba(255,255,255,.7)'; g.font = F(700, 28); g.fillText(sp(`${split.toUpperCase()} · PATROL #${d.num} · ${date.toUpperCase()}`, 2), 72, 680);
     // stats as web cells
     const hex = (x, y, r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); };
     stats.forEach(([a, b], i) => { const x = 72 + 117 + i * 234, y = 830; hex(x, y, 112); g.fillStyle = i === 3 && d.prs.length ? RED : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
-      g.textAlign = 'center'; g.fillStyle = '#fff'; g.letterSpacing = '0px'; g.font = F(800, a.length > 6 ? 40 : 54); g.fillText(a, x, y + 6); g.font = F(700, 22); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 46); g.textAlign = 'left'; });
+      g.textAlign = 'center'; g.fillStyle = '#fff'; g.letterSpacing = '0px'; g.font = F(800, a.length > 5 ? 44 : 54); g.fillText(a, x, y + 6); g.font = F(700, 22); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 46); g.textAlign = 'left'; });
     let y = 1030;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 3)) {
       g.letterSpacing = '0px'; g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 50, W - 112, 72, 12); g.fill(); g.strokeStyle = r.pr ? RED : 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
