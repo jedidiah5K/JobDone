@@ -598,6 +598,8 @@ function render() {
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
   // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
   if (S && S.profile && S.profile.legacy == null) { const old = (S.created || Date.now()) < Date.UTC(2026, 9, 15, 6); S.profile.legacy = old ? 1 : 0; if (old) { if (S.profile.barW == null) S.profile.barW = 0; if (!S.profile.stepSrc) S.profile.stepSrc = 'QWatch Pro'; S.profile.owner = true; } persist('jd/meta'); }
+  // Job's own Home Screen icon (Skyline blazer, 16 Oct): only on the owner account; iOS reads it when Add to Home Screen is tapped.
+  if (S && S.profile && S.profile.owner) { const ic = document.querySelector('link[rel="apple-touch-icon"]'); if (ic && !/job-skyline/.test(ic.href)) ic.href = 'icons/job-skyline-180.png?v=1'; try { localStorage.setItem('jd-owner-icon', '1'); } catch (e) {} }
   // Job (15 Oct): sounds AND music together, like Jedris. 'Play when on silent' paused music, so it is retired for everyone.
   if (S && S.profile && (!S.profile.musicOk || !S.profile.music2)) { S.profile.soundSilent = false; S.profile.musicOk = true; S.profile.music2 = true; persist('jd/meta'); }
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
@@ -1781,7 +1783,7 @@ function drawBam(g, BX, BY) {
 }
 // A small invite at the foot of every share card, in the theme's voice (Job, 16 Oct), and in the text that goes with it.
 const APP_URL = 'jobdone-peach.vercel.app';
-const INVITE = { mono: 'Your mission awaits', spidey: 'Start your own patrol', cliffs: 'Start your own climb', climb: 'Send your own routes' };
+const INVITE = { mono: 'Your mission awaits', spidey: 'Suit up', cliffs: 'Start your own climb', climb: 'Send your own routes' };
 const inviteText = () => `Job’s Done! ${INVITE[theme()] || INVITE.cliffs} at https://${APP_URL}`;
 async function drawShare(d) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
