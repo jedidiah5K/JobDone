@@ -1056,7 +1056,7 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 @keyframes finPop { from { transform: rotate(-6deg) scale(.3); opacity: 0; } }
 /* Summit: the sky right now, ridges, a flag on top */
 :root[data-theme="cliffs"] .fin-summit { background: linear-gradient(180deg, var(--sky1, #5B9BCF), var(--sky2, #93C2E3) 60%, var(--sky3, #CFE5F1)); color: #12304A; padding-bottom: 92px; }
-:root[data-theme="cliffs"][data-tod="night"] .fin-summit, :root[data-theme="cliffs"][data-tod="dusk"] .fin-summit { color: #fff; }
+:root[data-theme="cliffs"] .fin-summit.tod-night, :root[data-theme="cliffs"] .fin-summit.tod-dusk { color: #fff; }
 .fin-ridges { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--band-art) center bottom / 100% auto no-repeat; z-index: 0; }
 .fin-flag { position: absolute; right: 18%; bottom: 46px; width: 44px; height: 52px; z-index: 1; fill: none; stroke: #12304A; stroke-width: 3; stroke-linecap: round; transform-origin: 8px 68px; animation: finFlag .6s .3s cubic-bezier(.2,1.5,.4,1) both; }
 .fin-flag .f { fill: #E0303C; stroke: none; animation: finWave 2.4s ease-in-out infinite; transform-origin: 8px 16px; }
@@ -1107,3 +1107,12 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 .fin-cap .fin-sub { font-size: 12px; line-height: 16px; font-weight: 600; opacity: .72; }
 .fin-sky .rc-tags { margin-top: 8px; }
 .fin-sky { padding-bottom: 14px !important; }
+/* Boulder: obvious chalk and used, rugged climbing tape (Job, 16 Oct) */
+.fin-chalk { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.fin-chalk .cd { fill: #fff; } .fin-chalk .cs { fill: #fff; } .fin-chalk .cw path { stroke: rgba(255,255,255,.8); stroke-width: 4.5; stroke-linecap: round; fill: none; }
+.fin-tag .tape { position: absolute; top: -11px; width: 84px; height: 25px; background: none; overflow: visible; filter: drop-shadow(0 1.5px 1.5px rgba(43,33,58,.2)); }
+.fin-tag .tape .tb { fill: rgba(241,235,222,.95); } .fin-tag .tape .tc { stroke: rgba(120,105,85,.3); stroke-width: .8; fill: none; } .fin-tag .tape .tg { fill: rgba(90,75,60,.2); } .fin-tag .tape .tp { fill: rgba(110,95,80,.16); }
+:root:not([data-theme]) .fin-boulder { background: linear-gradient(rgba(120,108,96,.16), rgba(120,108,96,.16)), var(--chalkwall) center / cover, #EFEBE5; }
+.fin-tag .tape .tg { fill: rgba(80,66,52,.55); } .fin-tag .tape .tp { fill: rgba(110,95,80,.2); }
+.fin-chalk.on-tag { border-radius: inherit; } .fin-chalk.on-tag .cd { fill: rgba(150,138,126,.28); } .fin-chalk.on-tag .cs { fill: rgba(120,108,96,.55); } .fin-chalk.on-tag .cw path { stroke: rgba(150,138,126,.5); }
+.fin-tag > *:not(.fin-chalk):not(.tape) { position: relative; z-index: 1; }

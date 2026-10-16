@@ -653,6 +653,9 @@ function skyNow(h) {
   const t = mix(a[4], b[4]);
   return { s1: col(a[1], b[1]), s2: col(a[2], b[2]), s3: col(a[3], b[3]), tint: `rgba(${t.slice(0, 3).map(Math.round).join(',')},${t[3].toFixed(2)})`, stars: a[5] + (b[5] - a[5]) * f };
 }
+// The sky at the hour a workout finished (Job, 16 Oct: Summit finish page and card follow when you trained, not now).
+const todOf = h => h >= 19.5 || h < 5.5 ? 'night' : h < 8 || h >= 17 ? 'dusk' : 'day';
+function skyOfW(w) { const t = new Date(w && (w.end || w.start) || Date.now()), h = t.getHours() + t.getMinutes() / 60; return Object.assign(skyNow(h), { tod: todOf(h) }); }
 function applySky() {
   const R = document.documentElement;
   if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
@@ -662,7 +665,7 @@ function applySky() {
   st.setProperty('--sunx', (10 + p * 80).toFixed(1) + '%'); st.setProperty('--suny', (58 - Math.sin(Math.PI * p) * 46).toFixed(1) + '%');
   const sun = document.querySelector('#bg .sky-sun'); if (sun) sun.classList.toggle('moon', !day);
   // Cards follow the sky (Job, 16 Oct): dusky glass at sunrise and sunset, sky-tinted light by day, dark at night.
-  R.dataset.tod = h >= 19.5 || h < 5.5 ? 'night' : h < 8 || h >= 17 ? 'dusk' : 'day';
+  R.dataset.tod = todOf(h);
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = k.s1;
   clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3);
 }
@@ -1648,11 +1651,32 @@ function finHero(d) {
       <canvas class="fin-bamc" width="860" height="580" aria-label="Jobs done!"></canvas>
       <div class="fin-cap"><div class="rc-line">${line}</div><div class="fin-sub">Patrol #${d.num} · ${when}</div></div>${tags}</div>`;
   }
-  if (k === 'cliffs') return `<div class="rc-hero fin fin-summit"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
-    <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Jobs done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
-  return `<div class="rc-hero fin fin-boulder"><div class="fin-tag"><i class="tape l"></i><i class="tape r"></i>
+  if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
+    <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Jobs done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
+  return `<div class="rc-hero fin fin-boulder">${chalkSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
     <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold">${check}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
+}
+// Boulder: a strip of used climbing tape: torn zigzag ends, creases, grime and chalky thumbprints.
+function tapeSVG(cls, seed) {
+  let n = seed * 9301 + 49297; const r = () => ((n = (n * 16807) % 2147483647) / 2147483647);
+  const end = (x, dir) => { let p = ''; for (let y = 0; y <= 24; y += 3) p += `L${(x + dir * (r() * 5 - 1)).toFixed(1)} ${Math.min(y, 24)}`; return p; };
+  let d = 'M4 0L76 0' + end(76, 1).slice(0) + 'L4 24' + end(4, -1).split('L').reverse().join('L').replace(/L$/, '') + 'Z';
+  const pts = []; for (let y = 0; y <= 24; y += 3) pts.push([76 + (r() * 5 - 1), y]); const lp = []; for (let y = 24; y >= 0; y -= 3) lp.push([4 - (r() * 5 - 1), y]);
+  d = 'M4 0' + pts.map(([x, y]) => `L${x.toFixed(1)} ${y}`).join('') + lp.map(([x, y]) => `L${x.toFixed(1)} ${y}`).join('') + 'Z';
+  let grime = ''; for (let i = 0; i < 40; i++) grime += `<circle cx="${(6 + r() * 68).toFixed(1)}" cy="${(2 + r() * 20).toFixed(1)}" r="${(.25 + r() * .7).toFixed(2)}" opacity="${(.3 + r() * .7).toFixed(2)}"/>`;
+  const crease = [0, 1, 2].map(() => { const x = 14 + r() * 52; return `M${x.toFixed(1)} 0L${(x + r() * 10 - 5).toFixed(1)} 24`; }).join('');
+  return `<svg class="${cls}" viewBox="0 0 80 24" aria-hidden="true"><path class="tb" d="${d}"/><path class="tc" d="${crease}"/><g class="tg">${grime}</g><ellipse class="tp" cx="${(30 + r() * 20).toFixed(1)}" cy="12" rx="9" ry="7"/></svg>`;
+}
+// Boulder: chalk on the wall: dusty clouds, speckle and finger swipes.
+let CHALK = '';
+function chalkSVG() {
+  if (CHALK) return CHALK; let n = 11; const r = () => ((n = (n * 16807) % 2147483647) / 2147483647); let sp = '';
+  [[40, 60, 70], [360, 210, 60], [300, 20, 40], [20, 230, 46]].forEach(([x, y, R]) => { for (let i = 0; i < 70; i++) { const t = r() * 7, dd = Math.pow(r(), .6) * R; sp += `<circle cx="${(x + Math.cos(t) * dd).toFixed(1)}" cy="${(y + Math.sin(t) * dd * .8).toFixed(1)}" r="${(.6 + r() * 1.8).toFixed(1)}" opacity="${(.5 + r() * .5).toFixed(2)}"/>`; } });
+  const sw = (x, y, a, l) => [0, 1, 2].map(f => { const ox = -Math.sin(a) * f * 7, oy = Math.cos(a) * f * 7, L = l * (.7 + r() * .3); return `<path d="M${(x + ox).toFixed(1)} ${(y + oy).toFixed(1)}l${(Math.cos(a) * L).toFixed(1)} ${(Math.sin(a) * L).toFixed(1)}"/>`; }).join('');
+  return (CHALK = `<svg class="fin-chalk" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><filter id="chb" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="chs"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter></defs>
+    <g filter="url(#chb)" class="cd"><ellipse cx="40" cy="60" rx="70" ry="48"/><ellipse cx="365" cy="215" rx="66" ry="44"/><ellipse cx="300" cy="18" rx="44" ry="26"/><ellipse cx="18" cy="232" rx="48" ry="32"/><ellipse cx="200" cy="250" rx="40" ry="16"/></g>
+    <g class="cs">${sp}</g><g class="cw" filter="url(#chs)">${sw(330, 70, 2.5, 60)}${sw(250, 196, -.35, 48)}</g></svg>`);
 }
 // Comic halftone: dots shrink as they fade away from the bottom right corner.
 let HALFTONE = '';
@@ -1844,8 +1868,8 @@ async function drawShare(d) {
     g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp('Patrol logged with Jobs Done', 0), 72, H - 48);
   } else if (k === 'cliffs') {
     // Summit: the sky right now, the ridges, and the session drawn as an elevation profile
-    const s1 = tok('--sky1', '#5B9BCF'), s2 = tok('--sky2', '#93C2E3'), s3 = tok('--sky3', '#CFE5F1');
-    const night = document.documentElement.dataset.tod === 'night';
+    const sk = skyOfW(d.w), s1 = sk.s1, s2 = sk.s2, s3 = sk.s3;
+    const night = sk.tod !== 'day';
     let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, s1); gr.addColorStop(.3, s2); gr.addColorStop(.55, s3); gr.addColorStop(1, s2); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     const rid = await img(urlOf(tok('--ridges', ''))); if (rid) { g.globalAlpha = .9; cover(rid, 0, 260, W, H - 260, 0); g.globalAlpha = 1; }
     const INK = night ? '#fff' : '#12304A', INK2 = night ? 'rgba(255,255,255,.75)' : 'rgba(18,48,74,.7)', CARD = night ? 'rgba(14,24,40,.78)' : 'rgba(255,255,255,.82)';
@@ -1880,7 +1904,7 @@ async function drawShare(d) {
     // Boulder: a route tag taped to the chalk wall
     g.fillStyle = '#EFEBE5'; g.fillRect(0, 0, W, H);
     cover(await img(bgOf('#bg', '::before')));
-    g.fillStyle = 'rgba(120,108,96,.10)'; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(120,108,96,.18)'; g.fillRect(0, 0, W, H);
     // chalk dust: soft smudges, speckle and a few finger swipes (Job: chalky, not too much)
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     let CH = '255,255,255'; const dust = (x, y, r, a) => { const gr3 = g.createRadialGradient(x, y, 0, x, y, r); gr3.addColorStop(0, `rgba(${CH},${a})`); gr3.addColorStop(1, `rgba(${CH},0)`); g.fillStyle = gr3; g.beginPath(); g.ellipse(x, y, r, r * .8, rnd() * 3, 0, 7); g.fill();
@@ -1888,7 +1912,7 @@ async function drawShare(d) {
     const swipe = (x, y, len, ang, a) => { for (let f = 0; f < 3; f++) { const ox = Math.cos(ang + Math.PI / 2) * f * 16, oy = Math.sin(ang + Math.PI / 2) * f * 16, l = len * (.7 + rnd() * .3);
       for (let i = 0; i < l; i += 2) { const fade = 1 - i / l; g.fillStyle = `rgba(${CH},${a * fade * (.4 + rnd() * .6)})`; g.fillRect(x + ox + Math.cos(ang) * i + (rnd() - .5) * 5, y + oy + Math.sin(ang) * i + (rnd() - .5) * 5, 2 + rnd() * 3, 2 + rnd() * 3); } } };
     const chalkMarks = (spots, swipes) => { spots.forEach(([x, y, r, a]) => dust(x, y, r, a)); swipes.forEach(([x, y, l, ang, a]) => swipe(x, y, l, ang, a)); };
-    chalkMarks([[40, 260, 90, .85], [1040, 520, 70, .8], [60, 1180, 110, .8], [990, 1290, 80, .75], [520, 30, 70, .7]], [[20, 760, 120, -.5, .9], [930, 120, 110, 2.6, .85]]);
+    chalkMarks([[40, 260, 130, 1], [1040, 520, 110, .95], [60, 1180, 150, 1], [990, 1290, 120, .95], [520, 30, 110, .9], [1050, 900, 90, .85], [20, 640, 80, .85]], [[20, 760, 170, -.5, 1], [930, 120, 160, 2.6, 1], [1000, 1080, 140, 3.5, .9], [240, 1320, 150, -.2, .9]]);
     const PUR = '#6C3FD6', MUS = '#F4B728', INK = '#2B213A', INK2 = 'rgba(43,33,58,.62)', HOLDS = ['#E2453C', '#2F7FD8', '#2E8B4E', '#F4B728', '#6C3FD6', '#F07A2B'];
     // rope down the right edge
     g.strokeStyle = PUR; g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(W - 46, -20); g.bezierCurveTo(W - 10, 400, W - 90, 800, W - 36, H + 20); g.stroke();
@@ -1896,7 +1920,14 @@ async function drawShare(d) {
     // the tag
     g.save(); g.translate(W / 2 - 20, 690); g.rotate(-.025);
     const TW = 900, TH = 1180; g.shadowColor = 'rgba(43,33,58,.28)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#FFFDFA'; RR(-TW / 2, -TH / 2, TW, TH, 22); g.fill(); g.shadowColor = 'transparent';
-    g.fillStyle = 'rgba(232,214,170,.75)'; [[-TW / 2 + 40, -TH / 2 - 22, -.5], [TW / 2 - 150, -TH / 2 - 22, .45]].forEach(([x, y, r]) => { g.save(); g.translate(x + 55, y + 22); g.rotate(r); g.fillRect(-70, -20, 140, 44); g.restore(); });
+    // used climbing tape: torn zigzag ends, creases, grime and a chalky thumbprint
+    [[-TW / 2 + 95, -TH / 2, -.5], [TW / 2 - 95, -TH / 2, .45]].forEach(([x, y, a], k) => { g.save(); g.translate(x, y); g.rotate(a); const TL = 190, TT = 54;
+      g.beginPath(); g.moveTo(-TL / 2, -TT / 2); for (let yy = -TT / 2; yy <= TT / 2; yy += 6) g.lineTo(TL / 2 + (rnd() * 12 - 3), yy); for (let yy = TT / 2; yy >= -TT / 2; yy -= 6) g.lineTo(-TL / 2 - (rnd() * 12 - 3), yy); g.closePath();
+      g.shadowColor = 'rgba(43,33,58,.18)'; g.shadowBlur = 6; g.shadowOffsetY = 3; g.fillStyle = 'rgba(241,235,222,.94)'; g.fill(); g.shadowColor = 'transparent';
+      g.save(); g.clip(); g.strokeStyle = 'rgba(120,105,85,.28)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const cx = -TL / 2 + 20 + rnd() * (TL - 40); g.beginPath(); g.moveTo(cx, -TT / 2); g.lineTo(cx + rnd() * 24 - 12, TT / 2); g.stroke(); }
+      for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(90,75,60,${.1 + rnd() * .25})`; g.beginPath(); g.arc(-TL / 2 + rnd() * TL, -TT / 2 + rnd() * TT, .6 + rnd() * 1.8, 0, 7); g.fill(); }
+      const tp = g.createRadialGradient(k ? -20 : 25, 0, 0, k ? -20 : 25, 0, 26); tp.addColorStop(0, 'rgba(110,95,80,.28)'); tp.addColorStop(1, 'rgba(110,95,80,0)'); g.fillStyle = tp; g.beginPath(); g.ellipse(k ? -20 : 25, 0, 26, 20, 0, 0, 7); g.fill();
+      g.restore(); g.restore(); });
     const L = -TW / 2 + 60; let y = -TH / 2 + 110;
     g.fillStyle = INK2; g.font = F(800, 26); g.fillText(sp('ROUTE CARD', 4), L, y);
     g.textAlign = 'right'; g.fillText(sp(date.toUpperCase(), 2), TW / 2 - 60, y); g.textAlign = 'left';
@@ -1915,7 +1946,7 @@ async function drawShare(d) {
       if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText('PR', TW / 2 - 105, y - 4); }
       g.textAlign = 'left'; y += 66; });
     // a little chalk on the card itself, from chalky hands
-    CH = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 56, .22], [TW / 2 - 36, -TH / 2 + 260, 44, .2]], [[TW / 2 - 210, TH / 2 - 44, 90, -.35, .35], [-TW / 2 + 40, -TH / 2 + 170, 70, .4, .3]]);
+    CH = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 70, .34], [TW / 2 - 36, -TH / 2 + 260, 56, .3], [TW / 2 - 80, TH / 2 - 120, 50, .26]], [[TW / 2 - 210, TH / 2 - 44, 110, -.35, .5], [-TW / 2 + 40, -TH / 2 + 170, 90, .4, .45]]);
     g.restore(); g.letterSpacing = '0px';
     mark(80, H - 34, INK, .7);
   }
