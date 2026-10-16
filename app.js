@@ -771,7 +771,7 @@ function viewToday() {
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      <button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>
+      ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
       ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
       : `<div class="empty">Create a split to get started.</div>`}
   </div>`}
@@ -825,7 +825,7 @@ function viewSplit({ id }) {
   const l = lastOfSplit(sp);
   return `<div class="stack">${backBtn('Splits')}
   <div class="pt0 top"><div class="grow"><div class="eyebrow" style="color:${sp.color}">Split</div><h1>${esc(sp.name)}</h1><div class="mt2 cap">${plural(sp.ex.length, 'exercise')} · ${l ? 'last done ' + fmtDate(l.date, { wd: true }) : 'not done yet'}</div></div></div>
-  <div class="row"><button class="btn primary grow" data-a="startSplit" data-id="${sp.id}" ${A ? 'disabled' : ''}>${A ? 'Workout in progress' : 'Start ' + esc(sp.name)}</button><button class="btn" data-a="editSplit" data-id="${sp.id}">Edit</button></div>
+  <div class="row">${A && A.splitId === sp.id ? `<button class="btn primary grow" data-a="resume">Resume ${esc(sp.name)}</button>` : `<button class="btn primary grow" data-a="startSplit" data-id="${sp.id}" ${A ? 'disabled' : ''}>${A ? 'Workout in progress' : 'Start ' + esc(sp.name)}</button>`}<button class="btn" data-a="editSplit" data-id="${sp.id}">Edit</button></div>
   <div class="card"><div class="list">${sp.ex.map(e => { const ls = lastSession(e.name); return `<button class="li" data-a="openEx" data-name="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${targetStr(e)}</div><div class="mt1 s num">Last time: ${ls ? ls.sets.map(setStr).join(', ') + ' · ' + relDay(ls.date) : '—'}</div>${e.note ? `<div class="it s">${esc(e.note)}</div>` : ''}</div>${I.right}</button>`; }).join('') || '<div class="empty">No exercises yet. Tap Edit to add some.</div>'}</div></div>
 <button class="btn block" data-a="spShare" data-id="${sp.id}">Share this split</button>
 <button class="btn block danger-fill" data-a="spDelete" data-id="${sp.id}">Delete split</button>
