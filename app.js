@@ -1143,7 +1143,6 @@ function viewMe() {
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
     ${repRangeRow()}
-    ${srow('Plateau alerts', swi(on('noPlateau'), 'pset', 'data-f="noPlateau"'), 'A heads-up when a lift stops improving')}
     ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
     ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
     ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Jobs Done to your Home Screen first, then turn this on') : ''}
@@ -1755,6 +1754,7 @@ function openSwap(ei) {
 
 // ---------- Plateau alerts: no new best e1RM for 3+ weeks across 3+ sessions ----------
 function plateaus() {
+  return [];   // Job, 16 Oct: plateaus are normal, no alerts or change-your-weight advice anywhere.
   if (S && S.profile && S.profile.noPlateau) return [];
   const out = [], hide = UI.plHide || {}, t = today();
   for (const [name, ss] of Object.entries(ix().hist)) {
@@ -2574,7 +2574,7 @@ function obTour() {
       mock('m-log', `<div class="m-h">Bench Press</div><div class="m-row m-hd"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div><div class="m-row done"><span>1</span><span class="mu">60×8</span><b>62.5</b><b>8</b><i class="m-ck">${I.check}</i></div><div class="m-row"><span>2</span><span class="mu">60×7</span><b>62.5</b><b class="mu">–</b><i class="m-ck off">${I.check}</i></div><div class="m-plates"><i style="background:#D9342B;height:46px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#F2B632;height:32px"></i><span></span><i style="background:#F2B632;height:32px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#D9342B;height:46px"></i></div>`)],
     ['Beat last time, every time', 'A target for each lift, a bar that races your last session, and a message after every set.',
       mock('m-beat', `<div class="m-toast"><b>Strong set</b><span>Nearly time to add weight.</span></div><div class="m-tgt">Target: same weight, one more rep than last time.</div><div class="m-race"><i class="g" style="width:82%"></i><i class="me" style="width:64%"></i></div><div class="m-cap">240 kg to match last time</div>`)],
-    ['Watch yourself get stronger', 'PRs, a weight vs strength chart and plateau alerts tell you what is working and what to change.',
+    ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.',
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
       mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Jobs done!</div>`)],
@@ -2618,8 +2618,7 @@ function obBody(k) {
     <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
     <div class="field"><span class="lbl">Rep range <span class="cap">(optional)</span></span><p class="m0 cap">Your desired rep range before you move up to a heavier weight. Not sure? Skip it and we’ll use 6 to 9.</p>${repPick(P.repLo, P.repHi, 'ob')}</div>
     <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
-    <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div>
-    <div class="xr"><span class="grow">Plateau alerts<span class="s">A heads-up when a lift hasn’t improved for a few weeks</span></span>${swi(!!P.plateau, '', 'data-pf="plateau"')}</div></div>`;
+    <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div></div>`;
   }
   if (k === 'move') {
     const f = OB.importFile;
