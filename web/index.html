@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-gTD6v8PY7WcjtDAtTyqUN58mpXv3NtP442WP5Hg0mNc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-vx5rzdnzhVhisDSkz4XPjwlyrGtZiwCtLFw1ZocBFTw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Jobs Done</title>
 <meta name="description" content="A strength and body tracker">
@@ -224,7 +224,7 @@ Calf Raise|Calves|machine;Seated Calf Raise|Calves|machine;Standing Calf Raise|C
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED&&USER?slink("Delete account","delAccount","danger"):""}
   </div></section>
-  <p class="tc cap">Jobs Done \xB7 soft launch, Oct 2026</p>
+  <p class="tc cap">Jobs Done early beta \xB7 Oct 2026</p>
 </div>`}const TGT_UP=()=>U()==="lb"?5/LB:2.5;function targetOf(t){return!t||t.w==null||t.r==null||t.t==="warm"||S.profile.noTargets?t?{w:t.w,r:t.r}:null:t.r>=9?{w:Math.round((t.w+TGT_UP())*1e3)/1e3,r:6,up:!0}:{w:t.w,r:t.r+1}}function newExEntry(t,e,s,a){const n=lastSession(t),i=n?n.sets:[],o=Math.max(e||0,i.length)||2,l=[];for(let d=0;d<o;d++){const p=i[d]||i[i.length-1],u=targetOf(p);l.push({w:u?u.w:null,r:u?u.r:null,t:p&&p.t==="warm"?"warm":"work",done:!1,...u&&(u.up||u.r!==p.r)?{tg:1}:{}})}return{name:t,rest:s||S.profile.defaultRest,tip:a||"",note:"",sets:l,key:uid()}}function startWorkout(t,e){if(A){openWk();return}const s=t?splitById(t):null;A={id:uid(),splitId:s?s.id:null,splitName:s?s.name:"Workout",start:Date.now(),touched:Date.now(),ex:s?s.ex.map(a=>newExEntry(a.name,a.sets,a.rest,a.note)):[],orig:s?s.ex.map(a=>a.name):[],view:"log"},e&&e!==today()&&(A.date=e),persist("jd/active"),openWk(),s||pickExercise(a=>{A.ex.push(newExEntry(a)),touchA()})}function openDay(t){const e=today();if(t&&t>e){toast("That day hasn\u2019t happened yet");return}const s=t?Object.values(S.workouts).filter(n=>n.date===t&&!n.skipped):[];if(s.length===1){go({v:"workout",id:s[0].id});return}t=t||addDays(e,-1);const a=openSheet(`<div class="stack"><div class="eyebrow">Log or edit a day</div>
     <input class="input" type="date" id="dy-date" value="${t}" max="${e}">
     <div id="dy-list"></div></div>`,{label:"Pick a day",mount:n=>{const i=()=>{const o=n.querySelector("#dy-date").value;if(!/^\d{4}-\d{2}-\d{2}$/.test(o))return;const l=Object.values(S.workouts).filter(d=>d.date===o&&!d.skipped);n.querySelector("#dy-list").innerHTML=`<div class="g3 stack">

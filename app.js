@@ -1123,7 +1123,7 @@ function viewMe() {
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED && USER ? slink('Delete account', 'delAccount', 'danger') : ''}
   </div></section>
-  <p class="tc cap">Jobs Done · soft launch, Oct 2026</p>
+  <p class="tc cap">Jobs Done early beta · Oct 2026</p>
 </div>`;
 }
 
