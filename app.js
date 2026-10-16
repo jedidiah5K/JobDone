@@ -46,7 +46,7 @@ const LIB_RAW = `Chest Fly|Chest|machine;Incline Press|Chest|machine;Bench Press
 Lat Pulldown|Back|cable;Wide-Grip Row|Back|cable;Close-Grip Row|Back|cable;Seated Cable Row|Back|cable;Barbell Row|Back|barbell;Pendlay Row|Back|barbell;Dumbbell Row|Back|dumbbell;Chest-Supported Row|Back|machine;T-Bar Row|Back|machine;Machine Row|Back|machine;Pull-Up|Back|bodyweight;Chin-Up|Back|bodyweight;Assisted Pull-Up|Back|machine;Straight-Arm Pulldown|Back|cable;Single-Arm Pulldown|Back|cable;Deadlift|Back|barbell;Rack Pull|Back|barbell;Back Extension|Back|bodyweight;Shrug|Back|dumbbell;Face Pull|Shoulders|cable;
 Shoulder Press|Shoulders|machine;Overhead Press|Shoulders|barbell;Dumbbell Shoulder Press|Shoulders|dumbbell;Arnold Press|Shoulders|dumbbell;Lateral Raise|Shoulders|cable;Dumbbell Lateral Raise|Shoulders|dumbbell;Machine Lateral Raise|Shoulders|machine;Front Raise|Shoulders|dumbbell;Rear Delt Fly|Shoulders|machine;Reverse Pec Deck|Shoulders|machine;Upright Row|Shoulders|cable;
 Preacher Curl|Biceps|machine;Hammer Curl|Biceps|dumbbell;Barbell Curl|Biceps|barbell;EZ-Bar Curl|Biceps|barbell;Dumbbell Curl|Biceps|dumbbell;Incline Dumbbell Curl|Biceps|dumbbell;Cable Curl|Biceps|cable;Bayesian Curl|Biceps|cable;Concentration Curl|Biceps|dumbbell;Spider Curl|Biceps|dumbbell;Forearm Curl|Forearms|cable;Reverse Curl|Forearms|barbell;Wrist Curl|Forearms|dumbbell;Farmer's Carry|Forearms|dumbbell;
-Tricep Vulken|Triceps|machine;Single-Arm Tricep|Triceps|cable;Tricep Bar|Triceps|cable;Tricep Pushdown|Triceps|cable;Rope Pushdown|Triceps|cable;Overhead Tricep Extension|Triceps|cable;Skull Crusher|Triceps|barbell;Close-Grip Bench Press|Triceps|barbell;Dumbbell Kickback|Triceps|dumbbell;Tricep Dip Machine|Triceps|machine;
+Single-Arm Tricep|Triceps|cable;Tricep Bar|Triceps|cable;Tricep Pushdown|Triceps|cable;Rope Pushdown|Triceps|cable;Overhead Tricep Extension|Triceps|cable;Skull Crusher|Triceps|barbell;Close-Grip Bench Press|Triceps|barbell;Dumbbell Kickback|Triceps|dumbbell;Tricep Dip Machine|Triceps|machine;
 Cable Crunch|Abs|cable;Oblique Crunch|Abs|cable;Hanging Leg Raise|Abs|bodyweight;Ab Wheel|Abs|bodyweight;Crunch Machine|Abs|machine;Plank|Abs|bodyweight;Russian Twist|Abs|bodyweight;Pallof Press|Abs|cable;Woodchopper|Abs|cable;
 Leg Press|Quads|machine;Leg Extension|Quads|machine;Back Squat|Quads|barbell;Front Squat|Quads|barbell;Hack Squat|Quads|machine;Smith Squat|Quads|smith;Goblet Squat|Quads|dumbbell;Bulgarian Split Squat|Quads|dumbbell;Walking Lunge|Quads|dumbbell;Pendulum Squat|Quads|machine;Step-Up|Quads|dumbbell;Sissy Squat|Quads|bodyweight;
 Stiff-Leg Deadlift|Hamstrings|barbell;Romanian Deadlift|Hamstrings|barbell;Dumbbell RDL|Hamstrings|dumbbell;Leg Curl|Hamstrings|machine;Seated Leg Curl|Hamstrings|machine;Lying Leg Curl|Hamstrings|machine;Nordic Curl|Hamstrings|bodyweight;Good Morning|Hamstrings|barbell;
@@ -60,7 +60,7 @@ const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:b
 Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:b;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:b;Rack Pull:b;Back Extension:wm;Shrug:dbsm;Face Pull:cn;
 Shoulder Press:ms;Overhead Press:bs;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
 Preacher Curl:mbd;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:b;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
-Tricep Vulken:mc;Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:bd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
+Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:bd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
 Cable Crunch:c;Oblique Crunch:cw;Hanging Leg Raise:w;Ab Wheel:w;Crunch Machine:m;Plank:w;Russian Twist:wdk;Pallof Press:cn;Woodchopper:cn;
 Leg Press:m;Leg Extension:m;Back Squat:b;Front Squat:b;Hack Squat:m;Smith Squat:s;Goblet Squat:dk;Bulgarian Split Squat:dbsw;Walking Lunge:dbw;Pendulum Squat:m;Step-Up:dbw;Sissy Squat:wm;
 Stiff-Leg Deadlift:bd;Romanian Deadlift:b;Dumbbell RDL:d;Leg Curl:m;Seated Leg Curl:m;Lying Leg Curl:m;Nordic Curl:w;Good Morning:bs;
@@ -247,10 +247,27 @@ async function loadCloud() {
   // keep whichever in-progress workout was touched last
   if (!A || (ca && (ca.touched || 0) > (A.touched || 0))) A = ca;
   else if (A && !ca && a.exists && (a.data().t || 0) > (A.touched || 0)) A = null;
-  S = ns; invalidate();
+  S = ns; if (renameLifts(S, A)) { invalidate(); persist(...allPaths()); }
+  invalidate();
   return true;
 }
 
+// Lifts that were renamed or merged (Job, 16 Oct: Tricep Vulken is the same lift as Single-Arm Tricep, the one-arm cable pushdown).
+// Runs on every load; the old name is kept on the entry as "was".
+const RENAMED = { 'Tricep Vulken': 'Single-Arm Tricep' };
+function renameLifts(st, act) {
+  if (!st) return false; let n = 0;
+  const fix = e => { if (!e || !e.name) return; const b = baseName(e.name), to = RENAMED[b]; if (!to) return; e.was = e.was || b; e.name = to + e.name.slice(b.length); n++; };
+  for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(fix);
+  for (const sp of st.splits || []) { const c = n; (sp.ex || []).forEach(fix); if (n > c) { const seen = new Set(); sp.ex = sp.ex.filter(e => !seen.has(e.name) && seen.add(e.name)); } }
+  if (act) (act.ex || []).forEach(fix);
+  for (const [from, to] of Object.entries(RENAMED)) {
+    if (st.customEx) st.customEx = st.customEx.filter(e => e.name !== from);
+    for (const k of ['setup']) if (st[k] && st[k][from] && !st[k][to]) { st[k][to] = st[k][from]; delete st[k][from]; n++; }
+    const rb = st.profile && st.profile.restBy; if (rb && rb[from] != null) { if (rb[to] == null) rb[to] = rb[from]; delete rb[from]; n++; }
+  }
+  return n > 0;
+}
 // ---------- derived index ----------
 const e1 = s => s.w * (1 + s.r / 30);
 const validSet = s => s && s.w != null && s.r != null && s.r > 0 && s.t !== 'warm';
@@ -2524,7 +2541,7 @@ function restoreFile(file, replacing) {
       const res = csvToWorkouts(txt); if (res.err) { toast(esc(res.err), 4500); return; }
       st = buildFromLog(logFromCsvList(res.list)); what = 'Imported your log';
     }
-    const go = () => { const old = S ? allPaths() : []; S = st; invalidate(); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
+    const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
     if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: 'Your current workouts, weights and splits are replaced by the ones in the file.', ok: 'Replace', danger: true, onOk: go }); else go();
   };
   rd.readAsText(file);
@@ -3165,7 +3182,7 @@ async function openData() {
   LS_KEY = 'jobdone.v1:' + USER.id;
   const cached = lsLoad();
   ready = false; S = null; A = null; invalidate();
-  if (cached && cached.S) { S = cached.S; A = cached.A || null; UI = cached.UI || UI; ready = true; $('#app').innerHTML = ''; render(); maybePrompt(); }
+  if (cached && cached.S) { S = cached.S; A = cached.A || null; renameLifts(S, A); UI = cached.UI || UI; ready = true; $('#app').innerHTML = ''; render(); maybePrompt(); }
   else $('#app').innerHTML = skeleton();
   await connect(supaDB());
 }
@@ -3213,7 +3230,7 @@ async function boot() {
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   const cached = lsLoad();
-  if (cached && cached.S) { S = cached.S; A = cached.A || null; UI = cached.UI || UI; ready = true; render(); maybePrompt(); }
+  if (cached && cached.S) { S = cached.S; A = cached.A || null; renameLifts(S, A); UI = cached.UI || UI; ready = true; render(); maybePrompt(); }
   else $('#app').innerHTML = skeleton();
   let db = null;
   try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
