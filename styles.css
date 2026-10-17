@@ -1116,3 +1116,6 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 .fin-tag .tape .tg { fill: rgba(80,66,52,.55); } .fin-tag .tape .tp { fill: rgba(110,95,80,.2); }
 .fin-chalk.on-tag { border-radius: inherit; } .fin-chalk.on-tag .cd { fill: rgba(150,138,126,.28); } .fin-chalk.on-tag .cs { fill: rgba(120,108,96,.55); } .fin-chalk.on-tag .cw path { stroke: rgba(150,138,126,.5); }
 .fin-tag > *:not(.fin-chalk):not(.tape) { position: relative; z-index: 1; }
+
+/* Create account: password strength hint */
+.pw-meter { font-size: 13px; margin-top: -6px; } .pw-meter[data-s='0'] { color: #E0303C; } .pw-meter[data-s='2'] { color: #3F8F5A; }

@@ -3332,6 +3332,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     ${make ? `<div class="field"><label for="si-name">Your first name</label><input class="input" id="si-name" autocomplete="given-name" maxlength="40" placeholder="Alex"></div>` : ''}
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
     <div class="field"><label for="si-pw">Password</label><div class="pw-wrap"><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 8 characters' : ''}"><button type="button" class="pw-eye link" id="si-eye" aria-label="Show password">Show</button></div></div>
+    ${make ? `<p class="m0 sec pw-meter" id="si-str" aria-live="polite"></p>` : ''}
     ${make ? `<div class="field"><label for="si-pw2">Confirm password</label><input class="input" id="si-pw2" type="password" autocomplete="new-password" placeholder="Type it again"></div>` : ''}
     ${make ? `<label class="g2 row cap si-age"><input type="checkbox" id="si-age" class="cbox"><span>I’m 13 or older and I agree to the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>.</span></label>
     <input id="si-web" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">` : ''}
@@ -3365,6 +3366,11 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     if (make && !data.session) { b.textContent = 'Create account'; b.disabled = false; m('Almost done: open the confirmation email, tap its link, then sign in here.', true); }
   };
   $('#si-go').onclick = go;
+  // Password strength hint on Create account: length and variety, plus a few very common passwords.
+  if (make) $('#si-pw').oninput = () => { const v = $('#si-pw').value, e = $('#si-str'); if (!v) { e.textContent = ''; return; }
+    const kinds = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(r => r.test(v)).length, common = /^(password|12345678|123456789|qwerty|iloveyou|11111111|abc12345|password1)$/i.test(v);
+    const sc = common || v.length < 8 ? 0 : v.length >= 14 || (v.length >= 10 && kinds >= 3) ? 2 : 1;
+    e.textContent = ['Too weak: use 8 or more characters, not a common password.', 'Okay. Longer or mixed characters make it stronger.', 'Strong password.'][sc]; e.dataset.s = sc; };
   $('#si-eye').onclick = () => { const show = $('#si-pw').type === 'password'; for (const id of ['#si-pw', '#si-pw2']) { const e = $(id); if (e) e.type = show ? 'text' : 'password'; } $('#si-eye').textContent = show ? 'Hide' : 'Show'; $('#si-eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
   for (const id of ['#si-email', '#si-pw', ...(make ? ['#si-pw2'] : [])]) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
   $('#si-switch').onclick = () => renderSignIn(make ? 'start' : 'create', $('#si-email').value.trim());
