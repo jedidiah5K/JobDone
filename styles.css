@@ -1119,3 +1119,5 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 
 /* Create account: password strength hint */
 .pw-meter { font-size: 13px; margin-top: -6px; } .pw-meter[data-s='0'] { color: #E0303C; } .pw-meter[data-s='2'] { color: #3F8F5A; }
+.mfa-qr { width: 180px; height: 180px; background: #fff; border-radius: 12px; padding: 8px; align-self: center; } .mfa-key { word-break: break-all; user-select: all; } .mfa-steps { padding-left: 20px; }
+#mfa-link { text-decoration: none; }

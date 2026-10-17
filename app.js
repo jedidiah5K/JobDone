@@ -113,6 +113,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
+const APP_VER = '2026.10.17';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -1188,6 +1189,7 @@ function viewMe() {
   ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
     ${srow('Signed in as', `<span class="xr-v">${esc(USER.email || 'your account')}</span>`)}
     ${slink('Change password', 'setPassword')}
+    ${slink(`Two-step sign-in${MFA_ON ? ' · On' : ''}`, 'mfa')}
     ${slink(DEMO ? 'Leave the demo' : 'Sign out', 'signOut', 'acc')}
   </div></section>` : ''}
   <section><div class="sgh">Your data</div><div class="sgrp">
@@ -3052,6 +3054,7 @@ const ACT = {
   steps: el => openSteps(el && el.dataset.k),
   syncKey: () => openSyncKey(),
   setPassword: () => openSetPassword(),
+  mfa: () => openMfa(),
   prog: el => { NAV.tab = 'progress'; NAV.stack = []; NAV.prog = el.dataset.k; render(); },
   range: el => { NAV.range = el.dataset.k; rerender(); },
   startSplit: el => startWorkout(el.dataset.id),
@@ -3339,7 +3342,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
     <div class="row between"><button class="link" id="si-switch">${make ? 'I have an account' : 'Create account'}</button>${make ? '' : '<button class="link" id="si-forgot">Forgot password?</button>'}</div>
     <div class="c-neg cap" id="si-msg" role="alert" style="min-height:18px">${esc(msg)}</div>
-    <div class="tc cap legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></div>
+    <div class="tc cap legal"><a href="about.html" target="_blank" rel="noopener">About</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></div>
   </div></main>`;
   const shownAt = Date.now();
   const m = (t, ok) => { const e = $('#si-msg'); e.textContent = t; e.style.color = ok ? 'var(--text2)' : 'var(--neg)'; };
@@ -3386,6 +3389,7 @@ function openSetPassword(recovery = false) {
   openSheet(`<div class="stack"><div class="eyebrow">${esc(title)}</div>
     <p class="m0 f15 sec">Use this with your email to sign in on any device.</p>
     ${recovery ? '' : `<div class="field"><label for="pw-cur">Current password</label><input class="input" id="pw-cur" type="password" autocomplete="current-password"></div>`}
+    ${!recovery && MFA_ON ? `<div class="field"><label for="pw-code">Code from your authenticator app</label><input class="input num" id="pw-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>` : ''}
     <div class="field"><label for="pw-new">New password</label><input class="input" id="pw-new" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
     <div class="field"><label for="pw-new2">New password again</label><input class="input" id="pw-new2" type="password" autocomplete="new-password"></div>
     <button class="btn primary block" id="pw-save">Save password</button><div class="c-neg cap" id="pw-msg"></div>
@@ -3400,6 +3404,7 @@ function openSetPassword(recovery = false) {
         const cur = el.querySelector('#pw-cur').value;
         const { error: e1 } = await SB.auth.signInWithPassword({ email: USER.email, password: cur });
         if (e1) { btn.disabled = false; return msg('Your current password isn’t right.'); }
+        if (await needMfa()) { const code = (el.querySelector('#pw-code') || {}).value || ''; const e2 = await mfaVerify(code.replace(/\D/g, '')); if (e2) { btn.disabled = false; return msg(e2); } }
       }
       const { error } = await SB.auth.updateUser({ password: pw });
       if (error) { btn.disabled = false; return msg(error.message); }
@@ -3408,6 +3413,79 @@ function openSetPassword(recovery = false) {
     };
   } });
 }
+// ---------- Two-step sign-in (optional; authenticator app codes through Supabase MFA) ----------
+// When it's on, the database only opens to sessions that passed the code (a restrictive RLS policy checks 'aal2').
+let MFA_ON = false;
+async function mfaFactor() { try { const { data } = await SB.auth.mfa.listFactors(); return (data && data.totp || []).find(x => x.status === 'verified') || null; } catch (e) { return null; } }
+async function needMfa() { try { const { data } = await SB.auth.mfa.getAuthenticatorAssuranceLevel(); return !!data && data.nextLevel === 'aal2' && data.currentLevel !== 'aal2'; } catch (e) { return false; } }
+async function mfaVerify(code, factorId) {
+  if (!factorId) { const f = await mfaFactor(); if (!f) return 'Two-step sign-in isn’t set up.'; factorId = f.id; }
+  const { error } = await SB.auth.mfa.challengeAndVerify({ factorId, code });
+  return error ? (/invalid|expired/i.test(error.message) ? 'That code isn’t right. Check the app and try again.' : 'Couldn’t check the code. Try again.') : null;
+}
+function renderMfa() {
+  ready = false; applyTheme('mono'); $('#wk').hidden = true;
+  $('#app').innerHTML = `<main id="screen" class="pb8"><div class="g3 pt6 stack" style="max-width:420px;margin:0 auto">
+    <div class="wordmark">Job’s <span>Done</span></div>
+    <div><h1>Enter your code</h1><p class="m0 mt2 sec">Open your authenticator app and type the 6-digit code for Job’s Done.</p></div>
+    <div class="field"><label for="mfa-code">Code</label><input class="input num" id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
+    <button class="btn primary block" id="mfa-go">Continue</button><p class="m0 c-neg cap" id="mfa-msg"></p>
+    <button class="btn ghost block" id="mfa-out">Sign out</button></div></main>`;
+  let busy = false;
+  const go = async () => {
+    const c = $('#mfa-code').value.replace(/\D/g, ''); if (c.length !== 6) { $('#mfa-msg').textContent = 'Enter the 6 digits.'; return; }
+    if (busy) return; busy = true; $('#mfa-go').disabled = true;
+    const err = await mfaVerify(c); busy = false;
+    if (err) { $('#mfa-go').disabled = false; $('#mfa-msg').textContent = err; return; }
+    MFA_ON = true; openedFor = null; $('#app').innerHTML = ''; openData();
+  };
+  $('#mfa-go').onclick = go; $('#mfa-code').oninput = e => { if (e.target.value.replace(/\D/g, '').length === 6) go(); };
+  $('#mfa-out').onclick = () => SB.auth.signOut();
+  setTimeout(() => { const e = $('#mfa-code'); if (e) e.focus(); }, 150);
+}
+async function openMfa() {
+  const on = await mfaFactor();
+  if (on) {
+    return openSheet(`<div class="stack"><div class="eyebrow">Two-step sign-in</div><p class="m0 f15 sec">On. Signing in on a new device asks for a code from your authenticator app as well as your password.</p>
+      <button class="btn block danger-fill" id="mfa-off">Turn off</button><p class="m0 c-neg cap" id="mfa-m"></p><button class="btn ghost block" data-a="closeSheet">Close</button></div>`, { label: 'Two-step sign-in', mount: (el, sh) => {
+      el.querySelector('#mfa-off').onclick = async ev => { ev.currentTarget.disabled = true; const { error } = await SB.auth.mfa.unenroll({ factorId: on.id });
+        if (error) { ev.currentTarget.disabled = false; el.querySelector('#mfa-m').textContent = 'Couldn’t turn it off. Try again.'; return; }
+        MFA_ON = false; closeSheet(sh); toast('Two-step sign-in is off.'); rerender(); };
+    } });
+  }
+  try { const { data } = await SB.auth.mfa.listFactors(); for (const x of (data && data.all || []).filter(x => x.status !== 'verified')) await SB.auth.mfa.unenroll({ factorId: x.id }); } catch (e) {}
+  const { data, error } = await SB.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Job’s Done' });
+  if (error || !data) { toast('Couldn’t start setup. Check your signal and try again.'); return; }
+  openSheet(`<div class="stack"><div class="eyebrow">Two-step sign-in</div>
+    <p class="m0 f15 sec">After your password, Job’s Done will also ask for a 6-digit code from an authenticator app, so a stolen password isn’t enough.</p>
+    <ol class="m0 f15 sec mfa-steps"><li>Add Job’s Done to an authenticator app: tap the button on this phone, or scan the code from another device.</li><li>Type the 6-digit code it shows.</li></ol>
+    <a class="btn block" id="mfa-link" href="${esc(data.totp.uri)}">Add to authenticator on this phone</a>
+    <img class="mfa-qr" alt="QR code for your authenticator app">
+    <p class="m0 cap sec">Or type this key: <span class="num mfa-key">${esc(data.totp.secret)}</span></p>
+    <div class="field"><label for="mfa-new">6-digit code</label><input class="input num" id="mfa-new" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
+    <button class="btn primary block" id="mfa-on">Turn on</button><p class="m0 c-neg cap" id="mfa-m"></p>
+    <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: 'Two-step sign-in', mount: (el, sh) => {
+    const q = String(data.totp.qr_code || ''), i = q.indexOf(','); // some versions send raw SVG after the comma; encode it so '#' and quotes survive
+    el.querySelector('.mfa-qr').src = i > 0 && q.slice(i + 1).trim().startsWith('<') ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(q.slice(i + 1)) : q;
+    el.querySelector('#mfa-on').onclick = async ev => {
+      const c = el.querySelector('#mfa-new').value.replace(/\D/g, ''); if (c.length !== 6) { el.querySelector('#mfa-m').textContent = 'Enter the 6 digits.'; return; }
+      ev.currentTarget.disabled = true; const err = await mfaVerify(c, data.id);
+      if (err) { ev.currentTarget.disabled = false; el.querySelector('#mfa-m').textContent = err; return; }
+      MFA_ON = true; closeSheet(sh); toast('Two-step sign-in is on.'); rerender();
+    };
+  } });
+}
+// ---------- Crash notes: errors on a signed-in phone are saved (message + where), so they can be found and fixed ----------
+const ERR_SEEN = new Set();
+function reportError(msg, src) {
+  try {
+    if (!HOSTED || !SB || !USER || mode !== 'cloud' || ERR_SEEN.size >= 5) return;
+    msg = String(msg || '').slice(0, 500); if (!msg || /^Script error\.?$/.test(msg) || ERR_SEEN.has(msg)) return; ERR_SEEN.add(msg);
+    SB.from('jobdone_errors').insert({ user_id: USER.id, msg, src: String(src || '').slice(0, 300), ver: APP_VER, ua: navigator.userAgent.slice(0, 200) }).then(() => {}, () => {});
+  } catch (e) {}
+}
+addEventListener('error', e => reportError(e.message, (e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)));
+addEventListener('unhandledrejection', e => { const r = e.reason; reportError(r && (r.message || String(r)), r && r.stack ? String(r.stack).split('\n')[1] : ''); });
 async function startHosted() {
   SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' } });
   SB.auth.onAuthStateChange((ev, session) => {
@@ -3434,7 +3512,9 @@ function reconnect() { if (reconnecting || mode !== 'local' || !SB || !USER || o
 addEventListener('online', () => setTimeout(reconnect, 1500));
 let openedFor = null;
 async function openData() {
-  if (openedFor === USER.id) return; openedFor = USER.id;
+  if (openedFor === USER.id) return;
+  if (navigator.onLine !== false && await needMfa()) { renderMfa(); return; }
+  openedFor = USER.id; mfaFactor().then(f => { if (!!f !== MFA_ON) { MFA_ON = !!f; if (ready) rerender(); } });
   LS_KEY = 'jobdone.v1:' + USER.id;
   const cached = lsLoad();
   ready = false; S = null; A = null; invalidate();
