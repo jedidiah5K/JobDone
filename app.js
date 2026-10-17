@@ -1965,10 +1965,12 @@ async function drawShare(d) {
   return c;
 }
 async function shareRecap(d) {
+  // Instagram and some other apps keep only the picture, so the invite link also goes on the clipboard
+  let copied = false; try { navigator.clipboard.writeText(inviteText()).then(() => { copied = true; }, () => {}); } catch (e) {}
   const c = await drawShare(d);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.w.date}.png`, { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s done!', text: inviteText() }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s done!', text: inviteText() }); if (copied) toast('Link copied. If only the picture went through, paste it in the chat.', 5000); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
@@ -2803,8 +2805,8 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Job’s Done does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
-const OB_NAMES = { move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
-const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan', 'move'];
+const OB_NAMES = { safe: 'Account safety', move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
+const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan', 'safe', 'move'];
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
@@ -2820,6 +2822,8 @@ function obTour() {
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
       mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job’s done!</div>`)],
+    ['No signal? Keep lifting', 'Gym basement or flight mode, it still logs. Your sets sync when you’re back online, and your account is backed up every day.',
+      mock('m-off', `<div class="m-pill"><i class="m-dot off"></i>Offline · 3 sets saved on this phone</div><div class="m-pill"><i class="m-dot"></i>Back online · All synced</div><div class="m-cap">Daily backup · kept for 14 days</div>`)],
   ];
   return `<div class="ob-tour" id="ob-tour">${slides.map(([t, d, m]) => `<section class="ob-slide">${m}<h2>${t}</h2><p class="sec">${d}</p></section>`).join('')}</div>
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
@@ -2862,6 +2866,10 @@ function obBody(k) {
     <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div></div>`;
   }
+  if (k === 'safe') return `<h1 class="ob-t">Keep your account safe</h1><p class="sec ob-s">Optional. Two-step sign-in asks for a 6-digit code from an authenticator app when you sign in on a new device, so your password alone isn’t enough.</p>
+    <div class="ob-code" aria-hidden="true"><span>4</span><span>8</span><span>2</span><i></i><span>9</span><span>1</span><span>7</span></div>
+    <div class="seg"><button data-mfa="1" class="${OB.mfa ? 'on' : ''}">Set it up after this</button><button data-mfa="0" class="${OB.mfa ? '' : 'on'}">Not now</button></div>
+    <p class="m0 cap">It takes about a minute with Apple Passwords or Google Authenticator. You can turn it on or off any time in Me → Account.</p>`;
   if (k === 'move') {
     const f = OB.importFile;
     return `<h1 class="ob-t">Coming from another app?</h1><p class="sec ob-s">If you logged workouts in Strong, Hevy or another app, bring them with you so your history, PRs and charts start where you left off.</p>
@@ -2905,6 +2913,7 @@ function renderWelcomePublic() {
     OB.prefs[f] = on; renderWelcomePublic();
   });
   qa('[data-mv]').forEach(b => b.onclick = () => { OB.move = b.dataset.mv === '1'; renderWelcomePublic(); });
+  qa('[data-mfa]').forEach(b => b.onclick = () => { OB.mfa = b.dataset.mfa === '1'; renderWelcomePublic(); });
   const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; renderWelcomePublic(); } };
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
   const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Set me up' : 'Next'; };
@@ -2932,7 +2941,8 @@ function obFinish() {
   const [, , lo, hi] = OB_EXP[OB.exp]; const lo2 = OB.goal === 'strength' ? lo - 1 : lo, hi2 = OB.goal === 'strength' ? hi - 2 : hi;
   for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
   if (UI) UI.lastPrompt = today();
-  const imp = OB.move && OB.importFile;
+  const imp = OB.move && OB.importFile, mfa = OB.mfa && HOSTED;
+  if (mfa) setTimeout(() => openMfa(), imp ? 4000 : 1200);
   applyTheme(OB.theme); OB = null; document.documentElement.classList.remove('ob-on');
   if (imp) { finishImport(''); setTimeout(() => importCSVFile(imp), 500); return; }
   finishImport(S.splits.length ? `You’re all set, ${p.name}. Your first workout is ready.` : 'Ready. Add a split to get started.');
@@ -3336,7 +3346,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
     <div class="field"><label for="si-pw">Password</label><div class="pw-wrap"><input class="input" id="si-pw" type="password" autocomplete="${make ? 'new-password' : 'current-password'}" placeholder="${make ? 'At least 8 characters' : ''}"><button type="button" class="pw-eye link" id="si-eye" aria-label="Show password">Show</button></div></div>
     ${make ? `<p class="m0 sec pw-meter" id="si-str" aria-live="polite"></p>` : ''}
-    ${make ? `<div class="field"><label for="si-pw2">Confirm password</label><input class="input" id="si-pw2" type="password" autocomplete="new-password" placeholder="Type it again"></div>` : ''}
+    ${make ? `<div class="field"><label for="si-pw2">Confirm password</label><input class="input" id="si-pw2" type="password" autocomplete="new-password" placeholder="Type it again"></div>
+    <p class="m0 cap">Want extra protection? You can turn on two-step sign-in once you’re in. It’s optional.</p>` : ''}
     ${make ? `<label class="g2 row cap si-age"><input type="checkbox" id="si-age" class="cbox"><span>I’m 13 or older and I agree to the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>.</span></label>
     <input id="si-web" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">` : ''}
     <button class="btn primary block" id="si-go">${make ? 'Create account' : 'Sign in'}</button>
