@@ -57,5 +57,18 @@
       ]
     }
   ],
-  "cleanUrls": false
+  "cleanUrls": false,
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "icon",
+          "value": "skyline"
+        }
+      ],
+      "destination": "/owner.html"
+    }
+  ]
 }

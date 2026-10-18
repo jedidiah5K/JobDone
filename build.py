@@ -43,6 +43,8 @@ csp = ("default-src 'self'; script-src 'self' %s; style-src 'self' 'unsafe-inlin
        "connect-src 'self' %s wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'") % (hashes, sb)
 html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
 open(os.path.join(web, 'index.html'), 'w').write(html)
+# Owner icon page: /?icon=skyline is rewritten here by vercel.json, so iPhone sees the Skyline icon in the page itself
+open(os.path.join(web, 'owner.html'), 'w').write(html.replace('href="icons/apple-touch-icon.png?v=7"', 'href="icons/job-skyline-180.png?v=2"', 1))
 z = os.path.join(dist, 'jobdone-web.zip')
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as f:
     for root, _, files in os.walk(web):
