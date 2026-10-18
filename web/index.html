@@ -17,7 +17,8 @@
 <meta name="theme-color" content="#6FB3E6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Keep opaque: black-translucent makes iOS 26 Home Screen apps one status-bar height short, leaving a blank strip under the tab bar (WebKit bug 301108) -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Job’s Done">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=7">
