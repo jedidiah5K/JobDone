@@ -1581,7 +1581,8 @@ function logSet(ei, si) {
     const pr = livePR(e)[si];
     const secs = restFor(e.name);
     const inSS = e.ss && A.ex[ei + 1];
-    if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
+    if (!left) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA();
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
