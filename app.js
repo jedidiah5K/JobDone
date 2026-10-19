@@ -42,7 +42,7 @@ const buzz = ms => {
 };
 
 // ---------- exercise library ----------
-const LIB_RAW = `Chest Fly|Chest|machine;Incline Press|Chest|machine;Bench Press|Chest|barbell;Incline Bench Press|Chest|barbell;Decline Bench Press|Chest|barbell;Dumbbell Bench Press|Chest|dumbbell;Incline Dumbbell Press|Chest|dumbbell;Chest Press|Chest|machine;Smith Bench Press|Chest|smith;Cable Crossover|Chest|cable;Low-to-High Cable Fly|Chest|cable;Dumbbell Fly|Chest|dumbbell;Pec Deck|Chest|machine;Push-Up|Chest|bodyweight;Dip|Chest|bodyweight;
+const LIB_RAW = `Chest Fly|Chest|machine;Incline Press|Chest|machine;Bench Press|Chest|barbell;Incline Bench Press|Chest|barbell;Decline Bench Press|Chest|barbell;Dumbbell Bench Press|Chest|dumbbell;Incline Dumbbell Press|Chest|dumbbell;Chest Press|Chest|machine;Smith Bench Press|Chest|smith;Incline Smith Press|Chest|smith;Cable Crossover|Chest|cable;Low-to-High Cable Fly|Chest|cable;Dumbbell Fly|Chest|dumbbell;Pec Deck|Chest|machine;Push-Up|Chest|bodyweight;Dip|Chest|bodyweight;
 Lat Pulldown|Back|cable;Wide-Grip Row|Back|cable;Close-Grip Row|Back|cable;Seated Cable Row|Back|cable;Barbell Row|Back|barbell;Pendlay Row|Back|barbell;Dumbbell Row|Back|dumbbell;Chest-Supported Row|Back|machine;T-Bar Row|Back|machine;Machine Row|Back|machine;Pull-Up|Back|bodyweight;Chin-Up|Back|bodyweight;Assisted Pull-Up|Back|machine;Straight-Arm Pulldown|Back|cable;Single-Arm Pulldown|Back|cable;Deadlift|Back|barbell;Rack Pull|Back|barbell;Back Extension|Back|bodyweight;Shrug|Back|dumbbell;Face Pull|Shoulders|cable;
 Shoulder Press|Shoulders|machine;Overhead Press|Shoulders|barbell;Dumbbell Shoulder Press|Shoulders|dumbbell;Arnold Press|Shoulders|dumbbell;Lateral Raise|Shoulders|cable;Dumbbell Lateral Raise|Shoulders|dumbbell;Machine Lateral Raise|Shoulders|machine;Front Raise|Shoulders|dumbbell;Rear Delt Fly|Shoulders|machine;Reverse Pec Deck|Shoulders|machine;Upright Row|Shoulders|cable;
 Preacher Curl|Biceps|machine;Hammer Curl|Biceps|dumbbell;Barbell Curl|Biceps|barbell;EZ-Bar Curl|Biceps|barbell;Dumbbell Curl|Biceps|dumbbell;Incline Dumbbell Curl|Biceps|dumbbell;Cable Curl|Biceps|cable;Bayesian Curl|Biceps|cable;Concentration Curl|Biceps|dumbbell;Spider Curl|Biceps|dumbbell;Forearm Curl|Forearms|cable;Reverse Curl|Forearms|barbell;Wrist Curl|Forearms|dumbbell;Farmer's Carry|Forearms|dumbbell;
@@ -56,7 +56,7 @@ const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { con
 // Equipment each built-in lift can really be done with (b barbell, d dumbbell, m machine, c cable, s smith, w bodyweight, n band, k kettlebell).
 // Built-in lifts keep their muscle group; only custom exercises can be re-grouped (Job, 16 Oct).
 const EQ_CODE = { b: 'barbell', d: 'dumbbell', m: 'machine', c: 'cable', s: 'smith', w: 'bodyweight', n: 'band', k: 'kettlebell' };
-const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:bs;Incline Bench Press:bs;Decline Bench Press:bs;Dumbbell Bench Press:d;Incline Dumbbell Press:d;Chest Press:m;Smith Bench Press:s;Cable Crossover:c;Low-to-High Cable Fly:c;Dumbbell Fly:d;Pec Deck:m;Push-Up:w;Dip:wm;
+const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:bs;Incline Bench Press:bs;Decline Bench Press:bs;Dumbbell Bench Press:d;Incline Dumbbell Press:d;Chest Press:m;Smith Bench Press:s;Incline Smith Press:s;Cable Crossover:c;Low-to-High Cable Fly:c;Dumbbell Fly:d;Pec Deck:m;Push-Up:w;Dip:wm;
 Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:b;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:b;Rack Pull:b;Back Extension:wm;Shrug:dbsm;Face Pull:cn;
 Shoulder Press:ms;Overhead Press:bs;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
 Preacher Curl:mbd;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:b;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
@@ -1333,8 +1333,13 @@ function exCardHTML(e, ei) {
   const cmp = dsets.length && last ? `<div class="cmp"><span class="sec">vs last time ${infoBtn('volume')}</span><span>heaviest ${delta(topSet(dsets) ? topSet(dsets).w : null, last.top ? last.top.w : null, v => dw(v), ' ' + U())}</span><span>volume ${delta(exVol(dsets), exVol(last.sets.slice(0, dsets.length)), v => dvol(v), ' ' + U())}</span><span class="sec">(first ${plural(dsets.length, 'set')})</span></div>` : '';
   const side = sideOf(e.name), pair = side === 'L' ? A.ex[ei + 1] : side === 'R' ? A.ex[ei - 1] : null;
   const uni = pair && baseName(pair.name) === baseName(e.name) && sideOf(pair.name) === (side === 'L' ? 'R' : 'L') ? side : '';
-  return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
-    ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div><button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+  // Fold a finished exercise down to one line (Job, 19 Oct); the chevron opens it again
+  const allDone = e.sets.length && e.sets.every(x => x.done), asking = A.rpeAsk && A.rpeAsk[0] === ei;
+  const fold = e.fold === true || (allDone && e.fold !== false && !asking);
+  const foldBtn = `<button class="icon-btn fold-btn ${fold ? 'shut' : ''}" data-a="foldEx" data-e="${ei}" aria-label="${fold ? 'Show sets' : 'Hide sets'}" aria-expanded="${!fold}">${I.down}</button>`;
+  return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
+    ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+    ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${cmp}` : `
     ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
@@ -1346,7 +1351,7 @@ function exCardHTML(e, ei) {
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button></td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="btn sm ghost" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="btn sm ghost sec" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
-    ${cmp}
+    ${cmp}`}
   </section>`;
 }
 function restLeft() { return REST ? Math.max(0, REST.paused ? REST.left : (REST.end - Date.now()) / 1000) : 0; }
@@ -1377,6 +1382,7 @@ function hourglass(p, paused) {
 // reliably after the first tap (and with the silent switch on). 'transient' asks iOS to lower music, not stop it.
 // Sound, the same way Jedris does it (Job: "there were sounds then"): one Web Audio context,
 // unlocked and resumed inside every tap, master gain, synthesized notes. Plays only when running.
+const SOUND_VOL = 1.2;
 const Sound = {
   ctx: null, master: null,
   unlock() {
@@ -1384,7 +1390,10 @@ const Sound = {
     // resumed from a tap, and no audio session or <audio> element at all. iPhone mixes Web Audio over music.
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
+      this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = SOUND_VOL;
+      // 20% louder (Job, 19 Oct), through a gentle limiter so peaks never get harsh
+      const lim = this.ctx.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = .003; lim.release.value = .15;
+      this.master.connect(lim).connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') this.ctx.resume();
   },
@@ -1417,7 +1426,7 @@ function tones(notes, type = 'sine', vol = .22) {
   if (!Sound.ctx) Sound.unlock();
   Sound.silentMode();
   if (!Sound.ctx) { sfxLast = { name: 'no Web Audio' }; return; }
-  const go = () => { Sound.master.gain.value = 1; for (const [f, at, len = .18] of notes) Sound.tone(f, len, type, vol * .6, at); };
+  const go = () => { Sound.master.gain.value = SOUND_VOL; for (const [f, at, len = .18] of notes) Sound.tone(f, len, type, vol * .6, at); };
   if (Sound.ctx.state === 'running') { go(); return; }
   return Sound.ctx.resume().then(() => { if (Sound.ctx.state === 'running') go(); else sfxLast = { name: 'audio ' + Sound.ctx.state }; }, e => { sfxLast = e; });
 }
@@ -1437,7 +1446,7 @@ function clank(big = 1, delay = 0) {
   if (S && S.profile && S.profile.sound === false) return;
   if (!Sound.ctx) Sound.unlock(); if (!Sound.ctx || Sound.ctx.state !== 'running') { if (Sound.ctx) Sound.ctx.resume(); return; }
   const c = Sound.ctx, lo = 1 - Math.min(1, Math.max(0, big)) * .3, out = c.createGain();
-  out.gain.value = 1; out.connect(Sound.master); Sound.master.gain.value = 1;
+  out.gain.value = 1; out.connect(Sound.master); Sound.master.gain.value = SOUND_VOL;
   // Tuned to Job's clip of plates clanking (15 Oct): a ringing iron clang with resonances near 760, 1345,
   // 2250 and 2745 Hz that rings out for about a third of a second, a soft low knock, and sometimes a small rebound.
   const hit = (t, v) => {
@@ -2791,16 +2800,17 @@ function restoreFile(file, replacing) {
 }
 // Starter splits for new people; they can rename or edit everything later.
 const TEMPLATES = {
-  ppl: { n: 'Push / Pull / Legs', d: '3 workouts you rotate; fits 3 to 6 days a week', s: [['Push', ['Bench Press', 'Incline Dumbbell Press', 'Shoulder Press', 'Lateral Raise', 'Tricep Pushdown']], ['Pull', ['Lat Pulldown', 'Seated Cable Row', 'Face Pull', 'Dumbbell Curl', 'Hammer Curl']], ['Legs', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
-  ul: { n: 'Upper / Lower', d: '2 workouts you alternate; fits 4 days a week', s: [['Upper', ['Bench Press', 'Barbell Row', 'Shoulder Press', 'Lat Pulldown', 'Dumbbell Curl', 'Tricep Pushdown']], ['Lower', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Calf Raise']]] },
-  fb: { n: 'Full body', d: '1 workout you repeat; fits 1 to 3 days a week', s: [['Full Body', ['Back Squat', 'Bench Press', 'Barbell Row', 'Shoulder Press', 'Romanian Deadlift']]] },
-  fbab: { n: 'Full body A / B', d: '2 full-body workouts you alternate; fits 2 to 4 days a week', s: [['Full Body A', ['Back Squat', 'Bench Press', 'Barbell Row', 'Lateral Raise', 'Plank']], ['Full Body B', ['Deadlift', 'Overhead Press', 'Pull-Up', 'Bulgarian Split Squat', 'Hammer Curl']]] },
-  ap: { n: 'Anterior / Posterior', d: 'Front of the body, then the back; fits 4 days a week', s: [['Anterior', ['Back Squat', 'Bench Press', 'Leg Extension', 'Shoulder Press', 'Lateral Raise', 'Cable Crunch']], ['Posterior', ['Romanian Deadlift', 'Pull-Up', 'Seated Cable Row', 'Lying Leg Curl', 'Hip Thrust', 'Face Pull']]] },
-  tl: { n: 'Torso / Limbs', d: 'Chest, back and shoulders, then legs and arms; fits 4 days a week', s: [['Torso', ['Bench Press', 'Pull-Up', 'Incline Dumbbell Press', 'Seated Cable Row', 'Shoulder Press', 'Cable Crunch']], ['Limbs', ['Back Squat', 'Romanian Deadlift', 'Leg Extension', 'Leg Curl', 'EZ-Bar Curl', 'Overhead Tricep Extension', 'Calf Raise']]] },
-  phul: { n: 'PHUL', d: 'Power upper and lower, then muscle upper and lower; 4 days a week', s: [['Upper Power', ['Bench Press', 'Barbell Row', 'Overhead Press', 'Pull-Up', 'Barbell Curl', 'Skull Crusher']], ['Lower Power', ['Back Squat', 'Deadlift', 'Leg Press', 'Leg Curl', 'Standing Calf Raise']], ['Upper Muscle', ['Incline Dumbbell Press', 'Chest-Supported Row', 'Dumbbell Shoulder Press', 'Lat Pulldown', 'Dumbbell Lateral Raise', 'Cable Curl', 'Rope Pushdown']], ['Lower Muscle', ['Front Squat', 'Romanian Deadlift', 'Bulgarian Split Squat', 'Seated Leg Curl', 'Leg Extension', 'Seated Calf Raise']]] },
+  // Every preset is built from Job's own foundation lifts (Job, 19 Oct)
+  ppl: { n: 'Push / Pull / Legs', d: '3 workouts you rotate; fits 3 to 6 days a week', s: [['Push', ['Pec Deck', 'Incline Smith Press', 'Shoulder Press', 'Lateral Raise', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Pull', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row', 'Preacher Curl']], ['Legs', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
+  ul: { n: 'Upper / Lower', d: '2 workouts you alternate; fits 4 days a week', s: [['Upper', ['Pec Deck', 'Incline Smith Press', 'Lat Pulldown', 'Wide-Grip Row', 'Shoulder Press', 'Lateral Raise', 'Preacher Curl', 'Tricep Pushdown']], ['Lower', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
+  fb: { n: 'Full body', d: '1 workout you repeat; fits 1 to 3 days a week', s: [['Full Body', ['Incline Smith Press', 'Lat Pulldown', 'Wide-Grip Row', 'Shoulder Press', 'Leg Press', 'Leg Curl']]] },
+  fbab: { n: 'Full body A / B', d: '2 full-body workouts you alternate; fits 2 to 4 days a week', s: [['Full Body A', ['Incline Smith Press', 'Lat Pulldown', 'Lateral Raise', 'Tricep Pushdown', 'Leg Press', 'Leg Curl']], ['Full Body B', ['Pec Deck', 'Wide-Grip Row', 'Shoulder Press', 'Preacher Curl', 'Stiff-Leg Deadlift', 'Leg Extension']]] },
+  ap: { n: 'Anterior / Posterior', d: 'Front of the body, then the back; fits 4 days a week', s: [['Anterior', ['Pec Deck', 'Incline Smith Press', 'Shoulder Press', 'Lateral Raise', 'Tricep Pushdown', 'Overhead Tricep Extension', 'Leg Press', 'Leg Extension', 'Adductor']], ['Posterior', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row', 'Preacher Curl', 'Stiff-Leg Deadlift', 'Leg Curl', 'Abductor', 'Calf Raise']]] },
+  tl: { n: 'Torso / Limbs', d: 'Chest, back and shoulders, then legs and arms; fits 4 days a week', s: [['Torso', ['Pec Deck', 'Incline Smith Press', 'Lat Pulldown', 'Wide-Grip Row', 'Shoulder Press', 'Lateral Raise']], ['Limbs', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Calf Raise', 'Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']]] },
+  phul: { n: 'PHUL', d: 'Power upper and lower, then muscle upper and lower; 4 days a week', s: [['Upper Power', ['Incline Smith Press', 'Wide-Grip Row', 'Shoulder Press', 'Lat Pulldown', 'Preacher Curl', 'Tricep Pushdown']], ['Lower Power', ['Leg Press', 'Stiff-Leg Deadlift', 'Leg Curl', 'Calf Raise']], ['Upper Muscle', ['Pec Deck', 'Lat Pulldown', 'Close-Grip Row', 'Lateral Raise', 'Preacher Curl', 'Overhead Tricep Extension']], ['Lower Muscle', ['Leg Extension', 'Leg Curl', 'Leg Press', 'Adductor', 'Abductor', 'Calf Raise']]] },
   pplul: { n: 'Push / Pull / Legs + Upper / Lower', d: '5 workouts in a row; fits 5 days a week', s: [] },
-  arnold: { n: 'Arnold split', d: 'Chest and back, shoulders and arms, legs; run twice for 6 days a week', s: [['Chest & Back', ['Bench Press', 'Pull-Up', 'Incline Dumbbell Press', 'Barbell Row', 'Dumbbell Fly', 'Lat Pulldown']], ['Shoulders & Arms', ['Overhead Press', 'Lateral Raise', 'Rear Delt Fly', 'Barbell Curl', 'Skull Crusher', 'Hammer Curl']], ['Legs & Abs', ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Standing Calf Raise', 'Hanging Leg Raise']]] },
-  bro: { n: 'Bro split', d: 'One muscle group a day; fits 5 days a week', s: [['Chest', ['Bench Press', 'Incline Dumbbell Press', 'Chest Press', 'Cable Crossover', 'Dip']], ['Back', ['Deadlift', 'Pull-Up', 'Barbell Row', 'Seated Cable Row', 'Straight-Arm Pulldown']], ['Shoulders', ['Overhead Press', 'Dumbbell Lateral Raise', 'Rear Delt Fly', 'Upright Row', 'Shrug']], ['Arms', ['Barbell Curl', 'Close-Grip Bench Press', 'Incline Dumbbell Curl', 'Overhead Tricep Extension', 'Hammer Curl', 'Rope Pushdown']], ['Leg Day', ['Back Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Extension', 'Leg Curl', 'Calf Raise']]] },
+  arnold: { n: 'Arnold split', d: 'Chest and back, shoulders and arms, legs; run twice for 6 days a week', s: [['Chest & Back', ['Pec Deck', 'Incline Smith Press', 'Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders & Arms', ['Shoulder Press', 'Lateral Raise', 'Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Legs', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
+  bro: { n: 'Bro split', d: 'One muscle group a day; fits 5 days a week', s: [['Chest', ['Pec Deck', 'Incline Smith Press', 'Chest Press']], ['Back', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders', ['Shoulder Press', 'Lateral Raise', 'Reverse Pec Deck']], ['Arms', ['Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Leg Day', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
   none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
 };
 TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
@@ -3123,6 +3133,7 @@ const ACT = {
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length > 1) e.sets.pop(); touchA(); },
   exMenu: el => exMenu(+el.dataset.e),
   swapEx: el => openSwap(+el.dataset.e),
+  foldEx: el => { const ei = +el.dataset.e, e = A.ex[ei], shut = !!document.querySelector('#ex-' + ei + '.folded'); e.fold = !shut; persist('jd/active'); renderWorkout(); },
   plHide: el => { UI.plHide = UI.plHide || {}; UI.plHide[el.dataset.name] = today(); lsSave(); rerender(); toast('Hidden for 2 weeks'); },
   month: el => showMonth(el.dataset.k),
   allBadges: () => openBadges(),

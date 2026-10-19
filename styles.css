@@ -1129,3 +1129,14 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 .ob-code { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 14px 0; }
 .ob-code span { width: 38px; height: 50px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ob-code i { width: 10px; }
+
+/* fold a finished exercise to one line (Job, 19 Oct) */
+.fold-btn { color: var(--muted); }
+.fold-btn svg { transition: transform .2s var(--ease); transform: rotate(180deg); }
+.fold-btn.shut svg { transform: none; }
+.fold-btn.shut { color: var(--accent); }
+.fold-sum { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: var(--s2); padding: 10px 12px; border-radius: 12px; background: var(--raised, rgba(127,127,127,.1)); text-align: left; font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.fold-sum .sec { font-weight: 500; font-size: 14px; }
+.fold-ck { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--pos, #34C759); color: #fff; }
+.fold-ck svg { width: 15px; height: 15px; }
+.card.folded .cmp { margin-top: var(--s2); }
