@@ -1640,7 +1640,17 @@ function saveWorkout() {
 }
 
 // ---------- Job’s Done recap (after saving, or from a past workout) ----------
-const HEAVY = [[20000, 'a city bus', 12000], [5000, 'an elephant', 5000], [1500, 'a car', 1500], [600, 'a polar bear', 600], [300, 'a grand piano', 300], [0, 'a fridge', 100]];
+// "That's like lifting…" in each theme's voice (Job, 19 Oct): [kg per thing, line]. The biggest thing you lifted at least 1.5 of wins.
+const HEAVY = {
+  mono: [[3000, n => `That’s ${n} getaway helicopters, airlifted by hand.`], [1500, n => `That’s like pushing ${n} Aston Martins out of a car park. Quietly.`], [500, n => `That’s ${n} bank vault doors. Nobody saw a thing.`], [12.4, n => `That’s ${n} gold bars. Shaken, not stirred.`]],
+  spidey: [[12000, n => `That’s like stopping ${n} runaway city buses.`], [1500, n => `That’s ${n} falling taxis, caught before they hit the street.`], [100, n => `That’s ${n} villains webbed up and left for the police.`], [1, n => `That’s ${n} large pizzas, delivered on time for once.`]],
+  cliffs: [[4500, n => `That’s like hauling ${n} snowcats up the trail.`], [600, n => `That’s ${n} grumpy grizzly bears carried to the summit.`], [70, n => `That’s ${n} mountain goats, every one of them complaining.`], [20, n => `That’s ${n} overpacked hiking bags.`]],
+  climb: [[2500, n => `That’s like peeling ${n} real boulders off the ground.`], [75, n => `That’s ${n} climbers hanging off your belay at once.`], [5, n => `That’s ${n} crash pads, stacked to the ceiling.`], [.2, n => `That’s ${n} chalk bags. Very chalky.`]],
+};
+function heavyLine(kg, k = theme()) {
+  const L = HEAVY[k] || HEAVY.mono, h = L.find(x => kg / x[0] >= 1.5) || L[L.length - 1], t = kg / h[0];
+  return h[1](t < 10 ? (Math.round(t * 10) / 10).toString() : Math.round(t).toLocaleString('en-GB'));
+}
 function recapData(id) {
   const w = S.workouts[id], I2 = ix(), ws = I2.ws.filter(x => !x.skipped);
   const num = ws.findIndex(x => x.id === id) + 1;
@@ -1649,9 +1659,8 @@ function recapData(id) {
   const prs = I2.prs.filter(p => p.wid === id);
   const mus = {}; for (const e of w.ex) { const m = exInfo(e.name).muscle, n = e.sets.filter(x => x.t !== 'warm').length * (sideOf(e.name) ? .5 : 1); mus[m] = (mus[m] || 0) + n; }
   const musL = Object.entries(mus).sort((a, b) => b[1] - a[1]);
-  const kg = vol, h = HEAVY.find(x => kg >= x[0]) || HEAVY[HEAVY.length - 1], times = Math.max(1, Math.round(kg / h[2] * 10) / 10);
   const dur = w.end && w.start ? w.end - w.start : 0;
-  return { w, num, prev, vol, sets, reps, prs, musL, dur, heavy: `${times % 1 ? times.toFixed(1) : times}× ${h[1]}`, dv: prev ? (vol - wVol(prev)) / Math.max(1, wVol(prev)) : null };
+  return { w, num, prev, vol, sets, reps, prs, musL, dur, heavy: heavyLine(vol), dv: prev ? (vol - wVol(prev)) / Math.max(1, wVol(prev)) : null };
 }
 const RC_LINE = {};
 // The top of the finish page, dressed for each theme (Job, 16 Oct: "more interesting", smaller title).
@@ -1665,7 +1674,7 @@ function finHero(d) {
   if (k === 'spidey') {
     return `<div class="rc-hero fin fin-sky">${halftoneSVG()}${webSVG('fin-web')}
       <canvas class="fin-bamc" width="860" height="580" aria-label="Job’s done!"></canvas>
-      <div class="fin-cap"><div class="rc-line">${line}</div><div class="fin-sub">Patrol #${d.num} · ${when}</div></div>${tags}</div>`;
+      <div class="fin-cap"><div class="rc-line">${line}</div><div class="fin-sub">Swing #${d.num} · ${when}</div></div>${tags}</div>`;
   }
   if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
     <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Job’s done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
@@ -1728,7 +1737,7 @@ function showRecap(id, fresh) {
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
       <div class="rc-big num">${dvol(d.vol)}<span class="unit">${U()}</span></div>
-      <div class="cap">That's like lifting ${esc(d.heavy)}.</div>
+      <div class="cap">${esc(d.heavy)}</div>
       ${d.prev ? `<div class="rc-cmp">
         <div class="rc-bar"><span>Today</span><i><b style="width:${Math.round(d.vol / top * 100)}%"></b></i><em class="num">${dvol(d.vol)}</em></div>
         <div class="rc-bar was"><span>Last ${esc(fmtDate(d.prev.date))}</span><i><b style="width:${Math.round(pv / top * 100)}%"></b></i><em class="num">${dvol(pv)}</em></div>
@@ -1873,7 +1882,7 @@ async function drawShare(d) {
     g.letterSpacing = '0px'; g.font = F(800, 34); const cap = fit(line, 44), cw = g.measureText(cap).width + 56;
     g.save(); g.translate(72, 540); g.rotate(-.02); g.fillStyle = '#111'; g.fillRect(10, 10, cw, 74); g.fillStyle = '#FFD21F'; g.fillRect(0, 0, cw, 74); g.strokeStyle = '#111'; g.lineWidth = 6; g.strokeRect(0, 0, cw, 74);
     g.fillStyle = '#111'; g.font = F(800, 34); g.fillText(cap, 28, 49); g.restore();
-    g.fillStyle = 'rgba(255,255,255,.7)'; g.font = F(700, 28); g.fillText(sp(`${split.toUpperCase()} · PATROL #${d.num} · ${date.toUpperCase()}`, 2), 72, 680);
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.font = F(700, 28); g.fillText(sp(`${split.toUpperCase()} · SWING #${d.num} · ${date.toUpperCase()}`, 2), 72, 680);
     // stats as web cells
     const hex = (x, y, r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); };
     stats.forEach(([a, b], i) => { const x = 72 + 117 + i * 234, y = 830; hex(x, y, 112); g.fillStyle = i === 3 && d.prs.length ? RED : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
