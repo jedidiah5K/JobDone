@@ -1809,7 +1809,8 @@ const APP_URL = 'jobdone-peach.vercel.app';
 const INVITE = { mono: 'Your mission awaits', spidey: 'Suit up', cliffs: 'Start your own climb', climb: 'Send your own routes' };
 const inviteText = () => `Job’s Done! ${INVITE[theme()] || INVITE.cliffs} at https://${APP_URL}`;
 async function drawShare(d, o = shareOpts(d)) {
-  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  // story = full-screen 9:16 for Instagram Stories (Job, 19 Oct): the scenery fills 1920 tall, the card's content keeps its 1350 layout, centred inside the story's safe area
+  const W = 1080, CH = 1350, H = o.story ? 1920 : CH, OY = (H - CH) / 2, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
   const SANS = '-apple-system, "SF Pro Display", system-ui, sans-serif', MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
   const F = (wt, px, fam = SANS) => `${wt} ${px}px ${fam}`;
   try { await document.fonts.ready; } catch (e) {}
@@ -1843,6 +1844,7 @@ async function drawShare(d, o = shareOpts(d)) {
     cover(await img(bgOf('#bg', '::before')));
     let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(8,8,10,.25)'); gr.addColorStop(.45, 'rgba(8,8,10,.72)'); gr.addColorStop(1, 'rgba(8,8,10,.92)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     const RED = '#E0303C', DIM = 'rgba(255,255,255,.55)';
+    g.save(); g.translate(0, OY);
     // scope reticle behind the headline
     g.save(); g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 3; const cx = 820, cy = 300;
     [210, 140].forEach(r => { g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); });
@@ -1862,14 +1864,14 @@ async function drawShare(d, o = shareOpts(d)) {
     row('OPERATION', fit(split, 22)); stats.forEach(s => row(s[1].toUpperCase().replace(' LIFTED', ' MOVED'), s[0], hotStat(s)));
     if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('TARGETS', 4), 72, y + 8); y += 64;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 5)) {
-      if (y > H - 120) break;
+      if (y > CH - 120) break;
       g.fillStyle = '#fff'; g.font = F(700, 36); g.fillText(sp(fit(r.name, 22), 0), 72, y);
       g.textAlign = 'right'; g.font = F(700, 34, MONO); g.fillStyle = r.pr ? RED : 'rgba(255,255,255,.8)'; g.fillText(sp(fit(r.txt, 16), 0), W - (r.pr ? 230 : 72), y);
       if (r.pr) { g.strokeStyle = RED; g.lineWidth = 3; RR(W - 214, y - 34, 142, 46, 6); g.stroke(); g.fillStyle = RED; g.font = F(800, 22, MONO); g.textAlign = 'center'; g.fillText(sp('NEW RECORD', 1), W - 143, y - 3); }
       g.textAlign = 'left'; y += 66;
     } }
-    g.letterSpacing = '0px'; mark(72, H - 56, 'rgba(255,255,255,.7)', .8);
-    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 24, MONO); g.fillText(sp(('Recruiting · ' + APP_URL).toUpperCase(), 2), W - 72, H - 62); g.textAlign = 'left';
+    g.letterSpacing = '0px'; mark(72, CH - 56, 'rgba(255,255,255,.7)', .8);
+    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 24, MONO); g.fillText(sp(('Recruiting · ' + APP_URL).toUpperCase(), 2), W - 72, CH - 62); g.textAlign = 'left'; g.restore();
   } else if (k === 'spidey') {
     // Skyline: night patrol over the city
     g.fillStyle = '#0D1A45'; g.fillRect(0, 0, W, H);
@@ -1882,6 +1884,7 @@ async function drawShare(d, o = shareOpts(d)) {
     for (let y = 0, row = 0; y <= H; y += 30, row++) for (let x = row % 2 ? 15 : 0; x <= W; x += 30) { const r = 8.5 * (1 - Math.hypot(W - x, H - y) / 1450); if (r > 1) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } }
     g.save(); g.translate(W - 380, 0); g.scale(380 / 150, 380 / 150); g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = 1.1; g.lineCap = 'round';
     g.stroke(new Path2D(/ d="([^"]+)"/.exec(webSVG(''))[1])); g.restore();
+    g.save(); g.translate(0, OY);
     // comic burst headline, BAM! style (Job's reference, 16 Oct): halftone dots, red burst, yellow rim, white core, extruded orange letters
     drawBam(g, 330, 310); mark(72, 92, '#fff', .8);
     // caption box
@@ -1901,7 +1904,7 @@ async function drawShare(d, o = shareOpts(d)) {
       if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 6); }
       g.textAlign = 'left'; y += 86;
     }
-    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp(`Job’s Done! ${INVITE.spidey} at ${APP_URL}`, 0), 72, H - 48);
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp(`Job’s Done! ${INVITE.spidey} at ${APP_URL}`, 0), 72, CH - 48); g.restore();
   } else if (k === 'cliffs') {
     // Summit: the sky right now, the ridges, and the session drawn as an elevation profile
     const sk = skyOfW(d.w), s1 = sk.s1, s2 = sk.s2, s3 = sk.s3;
@@ -1909,6 +1912,7 @@ async function drawShare(d, o = shareOpts(d)) {
     let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, s1); gr.addColorStop(.3, s2); gr.addColorStop(.55, s3); gr.addColorStop(1, s2); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     const rid = await img(urlOf(tok('--ridges', ''))); if (rid) { g.globalAlpha = .9; cover(rid, 0, 260, W, H - 260, 0); g.globalAlpha = 1; }
     const INK = night ? '#fff' : '#12304A', INK2 = night ? 'rgba(255,255,255,.75)' : 'rgba(18,48,74,.7)', CARD = night ? 'rgba(14,24,40,.78)' : 'rgba(255,255,255,.82)';
+    g.save(); g.translate(0, OY);
     mark(72, 110, INK, .9);
     g.textAlign = 'right'; g.fillStyle = INK2; g.font = F(700, 26); g.fillText(sp('SUMMIT LOG', 4), W - 72, 104); g.textAlign = 'left'; g.letterSpacing = '0px';
     g.fillStyle = INK; g.font = F(900, 132); g.fillText(sp('Summit', -3), 64, 280); g.fillText(sp('reached.', -3), 64, 400);
@@ -1936,7 +1940,7 @@ async function drawShare(d, o = shareOpts(d)) {
     lifts.slice(0, 3).forEach((r, i) => { g.fillStyle = CARD; RR(px, y - 44, pw, 64, 20); g.fill(); g.fillStyle = INK; g.font = F(800, 24); g.beginPath(); g.arc(px + 40, y - 12, 18, 0, 7); g.fill();
       g.fillStyle = night ? '#0E1828' : '#fff'; g.textAlign = 'center'; g.fillText(String(i + 1), px + 40, y - 3); g.textAlign = 'left'; g.fillStyle = INK; g.font = F(700, 30); g.fillText(fit(r.name, 26), px + 76, y);
       g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? 'PR  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 70; });
-    g.fillStyle = INK2; g.font = F(600, 24); g.textAlign = 'center'; g.fillText(`Job’s Done! ${INVITE.cliffs} at ${APP_URL}`, W / 2, H - 26); g.textAlign = 'left';
+    g.fillStyle = INK2; g.font = F(600, 24); g.textAlign = 'center'; g.fillText(`Job’s Done! ${INVITE.cliffs} at ${APP_URL}`, W / 2, CH - 26); g.textAlign = 'left'; g.restore();
   } else {
     // Boulder: a route tag taped to the chalk wall
     g.fillStyle = '#EFEBE5'; g.fillRect(0, 0, W, H);
@@ -1954,6 +1958,7 @@ async function drawShare(d, o = shareOpts(d)) {
     // rope down the right edge
     g.strokeStyle = PUR; g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(W - 46, -20); g.bezierCurveTo(W - 10, 400, W - 90, 800, W - 36, H + 20); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.setLineDash([10, 14]); g.stroke(); g.setLineDash([]);
+    g.save(); g.translate(0, OY);
     // the tag
     g.save(); g.translate(W / 2 - 20, 690); g.rotate(-.025);
     const TW = 900, TH = 1180; g.shadowColor = 'rgba(43,33,58,.28)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#FFFDFA'; RR(-TW / 2, -TH / 2, TW, TH, 22); g.fill(); g.shadowColor = 'transparent';
@@ -1986,15 +1991,15 @@ async function drawShare(d, o = shareOpts(d)) {
     // a little chalk on the card itself, from chalky hands
     CH = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 70, .34], [TW / 2 - 36, -TH / 2 + 260, 56, .3], [TW / 2 - 80, TH / 2 - 120, 50, .26]], [[TW / 2 - 210, TH / 2 - 44, 110, -.35, .5], [-TW / 2 + 40, -TH / 2 + 170, 90, .4, .45]]);
     g.restore(); g.letterSpacing = '0px';
-    mark(80, H - 34, INK, .7);
-    g.fillStyle = INK; g.font = F(700, 23); g.textAlign = 'right'; g.fillText(`${INVITE.climb} at ${APP_URL}`, W - 84, H - 40); g.textAlign = 'left';
+    mark(80, CH - 34, INK, .7);
+    g.fillStyle = INK; g.font = F(700, 23); g.textAlign = 'right'; g.fillText(`${INVITE.climb} at ${APP_URL}`, W - 84, CH - 40); g.textAlign = 'left'; g.restore();
   }
   g.letterSpacing = '0px';
   return c;
 }
 // The person picks what goes on their card (Job, 19 Oct). Hidden stats and lifts on/off are remembered; which lifts is per workout.
 const SHARE_MAX = { spidey: 3, cliffs: 3 };
-function shareOpts(d) { const p = S.profile.share || {}; return { hide: p.hide || [], lifts: p.lifts !== false, pick: d.pick || null }; }
+function shareOpts(d) { const p = S.profile.share || {}; return { hide: p.hide || [], lifts: p.lifts !== false, story: !!p.story, pick: d.pick || null }; }
 function shareLiftNames(d) {
   const prn = new Set(d.prs.map(p => baseName(p.ex)));
   return mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), () => '').map(r => ({ name: r.name, pr: prn.has(baseName(r.name)) })).sort((a, b) => b.pr - a.pr);
@@ -2005,20 +2010,22 @@ function openShareSheet(d) {
   const o = () => shareOpts(d);
   const STATS = [['time', d.dur ? 'Time' : 'Reps'], ['vol', U() + ' lifted'], ['sets', 'Sets'], ['prs', 'PRs']];
   const body = () => { const x = o(); return `<div class="stack"><div><div class="eyebrow">Share your card</div><div class="mt1 cap">Pick what goes on it. The picture shows what your friends will see.</div></div>
-    <img class="sh-prev" id="sh-prev" alt="Your share card">
+    <div class="seg sh-seg">${[['', 'Post'], ['1', 'Story']].map(([v, t]) => `<button class="${!!v === x.story ? 'on' : ''}" data-sf="${v}">${t}</button>`).join('')}</div>
+    <img class="sh-prev ${x.story ? 'story' : ''}" id="sh-prev" alt="Your share card">
     <div><div class="mb2 eyebrow">Stats</div><div class="chips sh-chips">${STATS.map(([k, t]) => `<button class="chip ${x.hide.includes(k) ? '' : 'on'}" data-sx="${k}">${esc(t)}</button>`).join('')}</div></div>
     <div class="row between"><span class="eyebrow">Lifts</span><button class="xsw ${x.lifts ? 'on' : ''}" role="switch" aria-checked="${x.lifts}" data-sl="1" aria-label="Show lifts"></button></div>
     ${x.lifts ? `<div class="cap">Up to ${max} fit on this card.</div><div class="list">${all.map(r => { const on = d.pick.includes(r.name); return `<label class="li sh-li"><div class="grow"><div class="t">${esc(r.name)} ${r.pr ? '<span class="pill pr">PR</span>' : ''}</div></div><input type="checkbox" class="cbox" data-lp="${esc(r.name)}" ${on ? 'checked' : ''} ${!on && d.pick.length >= max ? 'disabled' : ''}></label>`; }).join('')}</div>` : ''}
     <button class="btn primary block" id="sh-go">Share</button></div>`; };
   let tok = 0;
   const paint = async b => { const t = ++tok; const c = await drawShare(d, o()); if (t !== tok) return; const im = b.querySelector('#sh-prev'); if (im) im.src = c.toDataURL('image/jpeg', .8); };
-  const draw = b => { const keep = b.querySelector('#sh-prev'); b.innerHTML = body(); if (keep && keep.src) b.querySelector('#sh-prev').src = keep.src; paint(b); };
+  const draw = b => { const keep = b.querySelector('#sh-prev'), was = keep && keep.classList.contains('story'); b.innerHTML = body(); const im = b.querySelector('#sh-prev'); if (keep && keep.src && was === im.classList.contains('story')) im.src = keep.src; paint(b); };
   openSheet('', { label: 'Share card', mount: (b, sh) => {
     draw(b);
     const save = () => { persist('jd/meta'); };
     b.addEventListener('click', e => {
       const sx = e.target.closest('[data-sx]'), sl = e.target.closest('[data-sl]');
       if (sx) { const p = S.profile.share = S.profile.share || {}, h = new Set(p.hide || []); h.has(sx.dataset.sx) ? h.delete(sx.dataset.sx) : h.add(sx.dataset.sx); p.hide = [...h]; save(); draw(b); }
+      else if (e.target.closest('[data-sf]')) { const p = S.profile.share = S.profile.share || {}; p.story = !!e.target.closest('[data-sf]').dataset.sf; save(); draw(b); }
       else if (sl) { const p = S.profile.share = S.profile.share || {}; p.lifts = p.lifts === false; save(); draw(b); }
       else if (e.target.id === 'sh-go') { closeSheet(sh); shareRecap(d); }
     });
