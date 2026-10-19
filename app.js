@@ -326,9 +326,10 @@ const wSets = w => w.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').
 function nextSplit() {
   const order = S.rotation.map(splitById).filter(s => s && !s.archived);
   if (!order.length) return S.splits.find(s => !s.archived) || null;
-  const ws = ix().ws;
+  const ws = ix().ws, reset = S.profile.rotReset;
   for (let i = ws.length - 1; i >= 0; i--) {
     const w = ws[i]; if (w.skipped) continue;
+    if (reset && w.id === reset) return order[0]; // rotation was re-ordered after this workout (Job, 19 Oct): start from the top
     const k = order.findIndex(s => s.id === w.splitId || (!w.splitId && s.name === w.splitName));
     if (k >= 0) return order[(k + 1) % order.length];
   }
@@ -811,7 +812,8 @@ function splitMuscles(sp, n = 3) {
   return top.length ? `<div class="mus">${top.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : '';
 }
 function viewSplits() {
-  const act = S.splits.filter(s => !s.archived), arc = S.splits.filter(s => s.archived);
+  const rk = sp => { const i = S.rotation.indexOf(sp.id); return i < 0 ? 1e3 : i; };
+  const act = S.splits.filter(s => !s.archived).map((s, i) => [s, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]), arc = S.splits.filter(s => s.archived);
   const nx = nextSplit();
   const card = sp => {
     const l = lastOfSplit(sp);
@@ -820,7 +822,7 @@ function viewSplits() {
   };
   return `<div class="stack">
   <div class="top"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
-  <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div><div class="mt1 cap">Next up on Today is the split after the one you did last.</div></div><span class="cap">Edit</span></button>
+  <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div><div class="mt1 cap">Next up on Today is the split after the one you did last. Saving a new order starts again from the first.</div></div><span class="cap">Edit</span></button>
   ${act.map(card).join('')}
   ${arc.length ? `<details><summary class="link">Archived (${arc.length})</summary><div class="mt2 stack">${arc.map(card).join('')}</div></details>` : ''}
 </div>`;
@@ -2532,7 +2534,7 @@ function openStart() {
 }
 function openRotation() {
   let order = S.rotation.slice();
-  const html = () => `<div class="stack"><div class="eyebrow">Rotation</div><p class="m0 cap">Today suggests the split after the last one you did, in this order.</p>
+  const html = () => `<div class="stack"><div class="eyebrow">Rotation</div><p class="m0 cap">Today suggests the split after the last one you did, in this order. Saving starts it again from the first split.</p>
     <div class="list dsort" data-sort="rot">${order.map((id, i) => { const sp = splitById(id); return sp ? `<div class="li" data-dragitem><button class="drag-h" data-drag aria-label="Drag to move">${I.grip}</button><span class="tag" style="width:8px;height:28px;border-radius:4px;background:${sp.color};flex:none"></span><div class="grow t">${i + 1}. ${esc(sp.name)}</div><button class="icon-btn" data-ro="rm" data-i="${i}" aria-label="Remove">${I.x}</button></div>` : ''; }).join('') || '<div class="empty">Add splits below.</div>'}</div>
     <div class="chips wrap">${S.splits.filter(s => !s.archived).map(s => `<button class="chip" data-ro="add" data-id="${s.id}">+ ${esc(s.name)}</button>`).join('')}</div>
     <button class="btn primary block" data-ro="save">Save rotation</button></div>`;
@@ -2542,7 +2544,7 @@ function openRotation() {
       b.addEventListener('dsort', ev => { const [x] = order.splice(ev.detail.from, 1); order.splice(ev.detail.to, 0, x); b.innerHTML = html(); });
       b.onclick = ev => {
         const x = ev.target.closest('[data-ro]'); if (!x) return; const i = +x.dataset.i;
-        if (x.dataset.ro === 'save') { S.rotation = order; persist('jd/meta'); closeSheet(sh); rerender(); toast('Rotation saved'); return; }
+        if (x.dataset.ro === 'save') { { const last = ix().ws.filter(w => !w.skipped).pop(); S.profile.rotReset = last ? last.id : null; } S.rotation = order; persist('jd/meta'); closeSheet(sh); rerender(); toast('Rotation saved'); return; }
         if (x.dataset.ro === 'add') order.push(x.dataset.id);
         if (x.dataset.ro === 'rm') order.splice(i, 1);
         if (x.dataset.ro === 'up' && i > 0) [order[i - 1], order[i]] = [order[i], order[i - 1]];
