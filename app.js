@@ -1823,6 +1823,9 @@ async function drawShare(d, o = shareOpts(d)) {
   const RR = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
   const sp = (t, ls) => { g.letterSpacing = ls + 'px'; return t; };
   const line = d.line || RC_LINE[d.w.id] || doneLine(d.w);
+  // the theme's 'That's like…' comparison from the recap goes on every card (Job, 20 Oct)
+  const heavy = d.heavy || heavyLine(d.vol);
+  const wrap = (t, x, y, mw, lh, max = 2) => { const words = t.split(' '); let ln = '', n = 0; for (const w of words) { const tr = ln ? ln + ' ' + w : w; if (g.measureText(tr).width > mw && ln) { if (n === max - 1) break; g.fillText(ln, x, y + n * lh); n++; ln = w; } else ln = tr; } if (ln) { g.fillText(ln, x, y + n * lh); n++; } return n; };
   const prn = new Map(d.prs.map(p => [p.ex, p.set]));
   const lifts = mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), e => { const t = prn.get(e.name) || topSet(e.sets); return t ? setStr(t) : '—'; })
     .map(r => ({ ...r, txt: r.txt.replace(' each side', ''), pr: d.w.ex.some(e => baseName(e.name) === baseName(r.name) && prn.has(e.name)),
@@ -1860,15 +1863,16 @@ async function drawShare(d, o = shareOpts(d)) {
     // dossier rows
     let y = 680; const row = (a, b, hot) => { g.font = F(600, 28, MONO); g.fillStyle = DIM; g.fillText(sp(a, 3), 72, y); const aw = g.measureText(a).width;
       g.font = F(700, 38); g.letterSpacing = '0px'; const bw = g.measureText(b).width; g.fillStyle = 'rgba(255,255,255,.22)'; for (let x = 72 + aw + 24; x < W - 72 - bw - 20; x += 16) g.fillRect(x, y - 6, 6, 3);
-      g.fillStyle = hot ? RED : '#fff'; g.textAlign = 'right'; g.fillText(b, W - 72, y + 2); g.textAlign = 'left'; y += 60; };
+      g.fillStyle = hot ? RED : '#fff'; g.textAlign = 'right'; g.fillText(b, W - 72, y + 2); g.textAlign = 'left'; y += 54; };
     row('OPERATION', fit(split, 22)); stats.forEach(s => row(s[1].toUpperCase().replace(' LIFTED', ' MOVED'), s[0], hotStat(s)));
+    g.letterSpacing = '0px'; g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `italic 600 32px ${SANS}`; y += 4 + (wrap(heavy, 72, y, W - 144, 42) - 1) * 42 + 30;
     if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('TARGETS', 4), 72, y + 8); y += 64;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 5)) {
       if (y > CH - 120) break;
       g.fillStyle = '#fff'; g.font = F(700, 36); g.fillText(sp(fit(r.name, 22), 0), 72, y);
       g.textAlign = 'right'; g.font = F(700, 34, MONO); g.fillStyle = r.pr ? RED : 'rgba(255,255,255,.8)'; g.fillText(sp(fit(r.txt, 16), 0), W - (r.pr ? 230 : 72), y);
       if (r.pr) { g.strokeStyle = RED; g.lineWidth = 3; RR(W - 214, y - 34, 142, 46, 6); g.stroke(); g.fillStyle = RED; g.font = F(800, 22, MONO); g.textAlign = 'center'; g.fillText(sp('NEW RECORD', 1), W - 143, y - 3); }
-      g.textAlign = 'left'; y += 66;
+      g.textAlign = 'left'; y += 58;
     } }
     g.letterSpacing = '0px'; mark(72, CH - 56, 'rgba(255,255,255,.7)', .8);
     g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 24, MONO); g.fillText(sp(('Recruiting · ' + APP_URL).toUpperCase(), 2), W - 72, CH - 62); g.textAlign = 'left'; g.restore();
@@ -1897,12 +1901,13 @@ async function drawShare(d, o = shareOpts(d)) {
     const hy = lifts.length ? 830 : 900;
     stats.forEach(([a, b, key], i) => { const x = W / 2 + (i - (stats.length - 1) / 2) * 234, y = hy; hex(x, y, 112); g.fillStyle = key === 'prs' && d.prs.length ? RED : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
       g.textAlign = 'center'; g.fillStyle = '#fff'; g.letterSpacing = '0px'; g.font = F(800, a.length > 5 ? 44 : 54); g.fillText(a, x, y + 6); g.font = F(700, 22); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 46); g.textAlign = 'left'; });
-    let y = 1030;
+    g.letterSpacing = '0px'; g.fillStyle = '#FFD21F'; g.font = F(800, 28); g.textAlign = 'center'; const hn = wrap(heavy, W / 2, hy + 160, W - 140, 36); g.textAlign = 'left';
+    let y = hy + 160 + hn * 36 + 46;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 3)) {
       g.letterSpacing = '0px'; g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 50, W - 112, 72, 12); g.fill(); g.strokeStyle = r.pr ? RED : 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
       g.fillStyle = '#fff'; g.font = F(700, 34); g.fillText(fit(r.name, 24), 88, y); g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 18), W - (r.pr ? 180 : 88), y);
       if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 6); }
-      g.textAlign = 'left'; y += 86;
+      g.textAlign = 'left'; y += 78;
     }
     g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp(`Job’s Done! ${INVITE.spidey} at ${APP_URL}`, 0), 72, CH - 48); g.restore();
   } else if (k === 'cliffs') {
@@ -1916,11 +1921,11 @@ async function drawShare(d, o = shareOpts(d)) {
     mark(72, 110, INK, .9);
     g.textAlign = 'right'; g.fillStyle = INK2; g.font = F(700, 26); g.fillText(sp('SUMMIT LOG', 4), W - 72, 104); g.textAlign = 'left'; g.letterSpacing = '0px';
     g.fillStyle = INK; g.font = F(900, 132); g.fillText(sp('Summit', -3), 64, 280); g.fillText(sp('reached.', -3), 64, 400);
-    g.letterSpacing = '0px'; g.fillStyle = INK2; g.font = F(600, 34); g.fillText(fit(line, 44), 70, 462);
+    g.letterSpacing = '0px'; g.fillStyle = INK2; g.font = F(600, 34); g.fillText(fit(/^summit reached/i.test(line) ? 'That ridge is behind you.' : line, 44), 70, 462);
     // elevation profile card
     const px = 56, py = 520, pw = W - 112, ph = 380; g.fillStyle = CARD; RR(px, py, pw, ph, 32); g.fill();
     g.fillStyle = INK2; g.font = F(700, 24); g.fillText(sp(`${split.toUpperCase()} · ROUTE #${d.num} · ${date.toUpperCase()}`, 2), px + 36, py + 56); g.letterSpacing = '0px';
-    g.fillStyle = INK; g.font = F(800, 52); g.fillText(`${dvol(d.vol)} ${U()}`, px + 36, py + 124); const vw = g.measureText(`${dvol(d.vol)} ${U()}`).width; g.fillStyle = INK2; g.font = F(600, 30); g.fillText('climbed', px + 52 + vw, py + 124);
+    g.fillStyle = INK; g.font = F(800, 36); wrap(heavy, px + 36, py + 112, pw - 170, 44);
     const pts = []; let cum = 0; const tot = Math.max(1, allLifts.reduce((a, r) => a + r.vol, 0));
     allLifts.forEach(r => { cum += r.vol; pts.push(cum / tot); });
     const gx = px + 48, gw = pw - 110, gy = py + ph - 44, gh = ph - 230;
@@ -1983,7 +1988,7 @@ async function drawShare(d, o = shareOpts(d)) {
     const HC = { time: '#E7E0F7', vol: '#DDEBF7', sets: '#E3F1E6', prs: '#FFF1CF' };
     if (stats.length) y += 120; stats.forEach(([a, b, key], i) => { const x = L + 95 + (1.5 + i - (stats.length - 1) / 2) * 196; hold(x, y, 84, key === 'prs' && d.prs.length ? MUS : HC[key], i + 5);
       g.fillStyle = INK; g.textAlign = 'center'; g.letterSpacing = '0px'; g.font = F(900, a.length > 6 ? 34 : 46); g.fillText(a, x, y + 10); g.fillStyle = INK2; g.font = F(800, 20); g.fillText(sp(b.toUpperCase(), 1), x, y + 112); g.textAlign = 'left'; });
-    y += stats.length ? 210 : 100; if (lifts.length) { g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp('PROBLEMS SENT', 4), L, y); } y += 64;
+    y += stats.length ? 180 : 40; g.letterSpacing = '0px'; g.fillStyle = PUR; g.font = `italic 700 32px ${SANS}`; y += (wrap(heavy, L, y, TW - 120, 42) - 1) * 42 + 70; if (lifts.length) { g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp('PROBLEMS SENT', 4), L, y); } y += 64;
     lifts.sort((a, b) => b.pr - a.pr).slice(0, 5).forEach((r, i) => { hold(L + 18, y - 12, 20, HOLDS[i % HOLDS.length], i + 2); g.letterSpacing = '0px'; g.fillStyle = INK; g.font = F(700, 34); g.fillText(fit(r.name, 22), L + 56, y);
       g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 16), TW / 2 - (r.pr ? 170 : 60), y);
       if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText('PR', TW / 2 - 105, y - 4); }
