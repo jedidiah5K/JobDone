@@ -1810,7 +1810,7 @@ const INVITE = { mono: 'Your mission awaits', spidey: 'Suit up', cliffs: 'Start 
 const inviteText = () => `Job’s Done! ${INVITE[theme()] || INVITE.cliffs} at https://${APP_URL}`;
 async function drawShare(d, o = shareOpts(d)) {
   // story = full-screen 9:16 for Instagram Stories (Job, 19 Oct): the scenery fills 1920 tall, the card's content keeps its 1350 layout, centred inside the story's safe area
-  const W = 1080, CH = 1350, H = o.story ? 1920 : CH, OY = (H - CH) / 2, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  const W = 1080, CH = 1350, H = o.story ? 1920 : CH, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
   const SANS = '-apple-system, "SF Pro Display", system-ui, sans-serif', MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
   const F = (wt, px, fam = SANS) => `${wt} ${px}px ${fam}`;
   try { await document.fonts.ready; } catch (e) {}
@@ -1825,6 +1825,20 @@ async function drawShare(d, o = shareOpts(d)) {
   const line = d.line || RC_LINE[d.w.id] || doneLine(d.w);
   // the theme's 'That's like…' comparison from the recap goes on every card (Job, 20 Oct)
   const heavy = d.heavy || heavyLine(d.vol);
+  // with no lifts on the card (Job, 22 Oct): muscles worked and the week's streak fill the space, no weights or exercise names
+  const wkN = ix().ws.filter(x => !x.skipped && mondayOf(x.date) === mondayOf(d.w.date)).length, wkT = Math.max(wkN, S.profile.weeklyTarget || 4);
+  // fill: 'both' (muscles + week), 'mus', 'week', or 'shrink' (nothing added, the layout closes the gap)
+  const FILL = o.fill || 'both';
+  const fillIn = (x, y, w, h, st) => { if (FILL === 'shrink') return; const fam = st.mono ? MONO : SANS; g.textAlign = 'left';
+    const showM = FILL !== 'week', showW = FILL !== 'mus', big = FILL !== 'both';
+    g.fillStyle = st.dim; g.font = F(800, 24, fam); g.fillText(sp(showM ? st.title : 'THIS WEEK', 4), x, y); g.letterSpacing = '0px'; let yy = y + 30;
+    if (showM) { const mus = d.musL.slice(0, 4), mx = mus.length ? mus[0][1] : 1, cw = w / Math.max(3, mus.length), bh = big ? 22 : 14;
+      mus.forEach(([m, n], i) => { const cx = x + i * cw; g.fillStyle = st.ink; g.font = F(700, big ? 30 : 26, fam); g.fillText(fit(m, 11), cx, yy + (big ? 34 : 28));
+        g.fillStyle = st.track; RR(cx, yy + (big ? 54 : 44), cw - 28, bh, bh / 2); g.fill(); g.fillStyle = st.bar; RR(cx, yy + (big ? 54 : 44), Math.max(bh, (cw - 28) * n / mx), bh, bh / 2); g.fill(); });
+      yy += big ? 110 : 84; }
+    if (showW) { const r = big ? 22 : 13, gap = big ? 60 : 40; yy += big ? 30 : 16; for (let i = 0; i < wkT; i++) { g.beginPath(); g.arc(x + r + i * gap, yy - r * .7, r, 0, 7); g.fillStyle = i < wkN ? st.bar : st.track; g.fill(); }
+      g.fillStyle = st.ink; g.font = F(700, big ? 32 : 28, fam); if (big) g.fillText(`${wkN} of ${wkT} workouts this week · ${streakText()}`, x, yy + 54);
+      else g.fillText(`${wkN} of ${wkT} this week · ${streakText()}`, x + wkT * gap + 10, yy); } };
   const wrap = (t, x, y, mw, lh, max = 2) => { const words = t.split(' '); let ln = '', n = 0; for (const w of words) { const tr = ln ? ln + ' ' + w : w; if (g.measureText(tr).width > mw && ln) { if (n === max - 1) break; g.fillText(ln, x, y + n * lh); n++; ln = w; } else ln = tr; } if (ln) { g.fillText(ln, x, y + n * lh); n++; } return n; };
   const prn = new Map(d.prs.map(p => [p.ex, p.set]));
   const lifts = mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), e => { const t = prn.get(e.name) || topSet(e.sets); return t ? setStr(t) : '—'; })
@@ -1839,8 +1853,11 @@ async function drawShare(d, o = shareOpts(d)) {
   const date = fmtDate(d.w.date, { wd: true }), split = d.w.splitName || 'Workout';
   const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
   const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Job’s Done', 0), x0, y); };
+  let OY = (H - CH) / 2;
   const k = theme();
   if (k === 'climb') await handFont();
+  const GAP = !lifts.length && FILL === 'shrink' ? { mono: 230, spidey: 250, cliffs: 210, climb: 330 }[k] || 0 : 0;
+  if (o.story) OY += GAP / 2;
 
   if (k === 'mono') {
     // Agent: mission debrief on the obsidian wallpaper
@@ -1874,7 +1891,7 @@ async function drawShare(d, o = shareOpts(d)) {
       g.textAlign = 'right'; g.font = F(700, 34, MONO); g.fillStyle = r.pr ? RED : 'rgba(255,255,255,.8)'; g.fillText(sp(fit(r.txt, 16), 0), W - (r.pr ? 230 : 72), y);
       if (r.pr) { g.strokeStyle = RED; g.lineWidth = 3; RR(W - 214, y - 34, 142, 46, 6); g.stroke(); g.fillStyle = RED; g.font = F(800, 22, MONO); g.textAlign = 'center'; g.fillText(sp('NEW RECORD', 1), W - 143, y - 3); }
       g.textAlign = 'left'; y += 58;
-    } }
+    } } else if (FILL !== 'shrink') { y += 40; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); fillIn(72, y + 8, W - 144, CH - 110 - y, { title: 'AREAS ENGAGED', ink: '#fff', dim: RED, bar: RED, track: 'rgba(255,255,255,.14)', mono: true }); }
     g.letterSpacing = '0px'; mark(72, CH - 56, 'rgba(255,255,255,.7)', .8);
     g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 24, MONO); g.fillText(sp(('Recruiting · ' + APP_URL).toUpperCase(), 2), W - 72, CH - 62); g.textAlign = 'left'; g.restore();
   } else if (k === 'spidey') {
@@ -1904,6 +1921,8 @@ async function drawShare(d, o = shareOpts(d)) {
       g.textAlign = 'center'; g.fillStyle = '#fff'; g.letterSpacing = '0px'; g.font = F(800, a.length > 5 ? 44 : 54); g.fillText(a, x, y + 6); g.font = F(700, 22); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 46); g.textAlign = 'left'; });
     g.letterSpacing = '0px'; g.fillStyle = '#FFD21F'; g.font = F(800, 28); g.textAlign = 'center'; const hn = wrap(heavy, W / 2, hy + 160, W - 140, 36); g.textAlign = 'left';
     let y = hy + 160 + hn * 36 + 46;
+    if (!lifts.length && FILL !== 'shrink') { g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 56, W - 112, CH - 110 - (y - 56), 16); g.fill(); g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
+      fillIn(92, y - 6, W - 184, CH - 150 - y, { title: 'POWERS USED', ink: '#fff', dim: '#FFD21F', bar: RED, track: 'rgba(255,255,255,.16)' }); }
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 3)) {
       g.letterSpacing = '0px'; g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 50, W - 112, 72, 12); g.fill(); g.strokeStyle = r.pr ? RED : 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
       g.fillStyle = '#fff'; g.font = F(700, 34); g.fillText(fit(r.name, 24), 88, y); g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 18), W - (r.pr ? 180 : 88), y);
@@ -1943,6 +1962,7 @@ async function drawShare(d, o = shareOpts(d)) {
     stats.forEach(([a, b, key], i) => { const x = px + i * cw + 36; g.fillStyle = key === 'prs' && d.prs.length ? '#C98A00' : INK; g.font = F(800, a.length > 6 ? 38 : 50); g.fillText(a, x, 1004); g.fillStyle = INK2; g.font = F(600, 26); g.fillText(b, x, 1046); });
     // waypoints
     g.letterSpacing = '0px'; let y = stats.length ? 1118 : 978; g.font = F(700, 30);
+    if (!lifts.length && FILL !== 'shrink') { g.fillStyle = CARD; RR(px, y - 52, pw, CH - 60 - (y - 52), 28); g.fill(); fillIn(px + 36, y, pw - 72, CH - 100 - y, { title: 'TERRAIN COVERED', ink: INK, dim: INK2, bar: night ? '#9CC4E8' : '#1F7A99', track: night ? 'rgba(255,255,255,.15)' : 'rgba(18,48,74,.12)' }); }
     lifts.slice(0, 3).forEach((r, i) => { g.fillStyle = CARD; RR(px, y - 44, pw, 64, 20); g.fill(); g.fillStyle = INK; g.font = F(800, 24); g.beginPath(); g.arc(px + 40, y - 12, 18, 0, 7); g.fill();
       g.fillStyle = night ? '#0E1828' : '#fff'; g.textAlign = 'center'; g.fillText(String(i + 1), px + 40, y - 3); g.textAlign = 'left'; g.fillStyle = INK; g.font = F(700, 30); g.fillText(fit(r.name, 26), px + 76, y);
       g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? 'PR  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 70; });
@@ -1987,8 +2007,8 @@ async function drawShare(d, o = shareOpts(d)) {
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.setLineDash([10, 14]); g.stroke(); g.setLineDash([]);
     g.save(); g.translate(0, OY);
     // the tag
-    g.save(); g.translate(W / 2 - 20, 690); g.rotate(-.025);
-    const TW = 900, TH = 1180; g.shadowColor = 'rgba(43,33,58,.28)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#FFFDFA'; RR(-TW / 2, -TH / 2, TW, TH, 22); g.fill(); g.shadowColor = 'transparent';
+    g.save(); g.translate(W / 2 - 20, 690 - GAP / 2); g.rotate(-.025);
+    const TW = 900, TH = 1180 - GAP; g.shadowColor = 'rgba(43,33,58,.28)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#FFFDFA'; RR(-TW / 2, -TH / 2, TW, TH, 22); g.fill(); g.shadowColor = 'transparent';
     // used climbing tape: torn zigzag ends, creases, grime and a chalky thumbprint
     // uneven, asymmetrical tape (Job, 22 Oct): two strips the same size (Job, 22 Oct) set at different angles and heights; the left one carries the name
     [[-TW / 2 + 140, -TH / 2 - 4, -.27, 290, 74], [TW / 2 - 110, -TH / 2 + 16, .55, 290, 74]].forEach(([x, y, a, TL, TT], k) => { g.save(); g.translate(x, y); g.rotate(a);
@@ -2013,7 +2033,7 @@ async function drawShare(d, o = shareOpts(d)) {
     const HC = { time: '#E7E0F7', vol: '#DDEBF7', sets: '#E3F1E6', prs: '#FFF1CF' };
     if (stats.length) y += 120; stats.forEach(([a, b, key], i) => { const x = L + 95 + (1.5 + i - (stats.length - 1) / 2) * 196; hold(x, y, 84, key === 'prs' && d.prs.length ? MUS : HC[key], i + 5);
       g.fillStyle = INK; g.textAlign = 'center'; g.letterSpacing = '0px'; g.font = F(900, a.length > 6 ? 34 : 46); g.fillText(a, x, y + 10); g.fillStyle = INK2; g.font = F(800, 20); g.fillText(sp(b.toUpperCase(), 1), x, y + 112); g.textAlign = 'left'; });
-    y += stats.length ? 180 : 40; g.letterSpacing = '0px'; g.fillStyle = PUR; g.font = `italic 700 32px ${SANS}`; y += (wrap(heavy, L, y, TW - 120, 42) - 1) * 42 + 70; if (lifts.length) { g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp('PROBLEMS SENT', 4), L, y); } y += 64;
+    y += stats.length ? 180 : 40; g.letterSpacing = '0px'; g.fillStyle = PUR; g.font = `italic 700 32px ${SANS}`; y += (wrap(heavy, L, y, TW - 120, 42) - 1) * 42 + 70; if (lifts.length) { g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp('PROBLEMS SENT', 4), L, y); } else fillIn(L, y, TW - 120, TH / 2 - 40 - y, { title: 'MUSCLES ON THE WALL', ink: INK, dim: INK2, bar: PUR, track: 'rgba(108,63,214,.14)' }); y += 64;
     lifts.sort((a, b) => b.pr - a.pr).slice(0, 5).forEach((r, i) => { hold(L + 18, y - 12, 20, HOLDS[i % HOLDS.length], i + 2); g.letterSpacing = '0px'; g.fillStyle = INK; g.font = F(700, 34); g.fillText(fit(r.name, 22), L + 56, y);
       g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 16), TW / 2 - (r.pr ? 170 : 60), y);
       if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText('PR', TW / 2 - 105, y - 4); }
