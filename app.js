@@ -1954,18 +1954,21 @@ async function drawShare(d, o = shareOpts(d)) {
     g.fillStyle = 'rgba(120,108,96,.18)'; g.fillRect(0, 0, W, H);
     // more holds bolted to the wall (Job, 22 Oct), drawn in the wallpaper's own style so they all match: soft rounded resin blobs,
     // a darker base peeking out below, a light top, a bolt, all at one strength and under the same chalky wash
-    { let hs = 11; const hr = () => (hs = (hs * 16807) % 2147483647) / 2147483647, WH = ['#E58DB6', '#8E9BD6', '#3D8EE0', '#F0A066', '#E2453C', '#7B4FD8', '#35B6AA', '#E66AAE'];
-      const blob = (x, y, r, n, sd, rot, sq) => { const P = []; for (let i = 0; i < n; i++) { const an = rot + i / n * Math.PI * 2, rr = r * (.78 + .22 * Math.abs(Math.sin(sd + i * 2.1))); P.push([x + Math.cos(an) * rr, y + Math.sin(an) * rr * sq]); }
-        g.beginPath(); const m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; let s0 = m(P[n - 1], P[0]); g.moveTo(s0[0], s0[1]); for (let i = 0; i < n; i++) { const e = m(P[i], P[(i + 1) % n]); g.quadraticCurveTo(P[i][0], P[i][1], e[0], e[1]); } g.closePath(); };
-            // Job's three spots (22 Oct, marked on a Story screenshot): top left, top right and right beside the tape; sizes like the wallpaper's own.
+    {
+      // each hold its own shape (Job, 22 Oct): a jug with a scooped lip, a long pinch, a big lumpy sloper; points are unit coords, smoothed
+      const SHAPES = { jug: [[-1, -.2], [-.6, -.75], [0, -.85], [.7, -.65], [1, -.1], [.6, .25], [0, .02], [-.5, .3]], pinch: [[-1.35, -.05], [-.6, -.42], [.4, -.38], [1.25, -.12], [1.15, .26], [.2, .4], [-.8, .34]],
+        sloper: [[-1, .1], [-.8, -.6], [-.1, -.95], [.7, -.72], [1, 0], [.72, .6], [-.2, .78], [-.86, .56]] };
+      const blob = (x, y, r, sh, rot) => { const c = Math.cos(rot), sn = Math.sin(rot), P = SHAPES[sh].map(([u, v]) => [x + (u * c - v * sn) * r, y + (u * sn + v * c) * r]), n = P.length;
+        g.beginPath(); const m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; const s0 = m(P[n - 1], P[0]); g.moveTo(s0[0], s0[1]); for (let i = 0; i < n; i++) { const e = m(P[i], P[(i + 1) % n]); g.quadraticCurveTo(P[i][0], P[i][1], e[0], e[1]); } g.closePath(); };
+      // Job's three spots (22 Oct, marked on a Story screenshot): top left, top right, and the blue one tucked half behind the card on the right.
       // Drawn after the wash in the wallpaper holds' on-screen colours (sampled from Job's screenshot) so strength and tone match exactly.
-      for (const [x, ys, r, col] of [[50, 115, 44, '#D499AF'], [998, 140, 38, '#DBA179'], [1004, 395, 50, '#8B99C0']]) {
-        const y = ys * H / 1920, n = 5 + Math.floor(hr() * 3), sd = hr() * 9, rot = hr() * 7, sq = .8 + hr() * .15;
+      for (const [x, ys, r, col, sh, rot, bx, by] of [[52, 115, 46, '#D499AF', 'jug', -.25, 0, -.4], [996, 140, 34, '#DBA179', 'pinch', .5, 0, 0], [968, 440, 52, '#8B99C0', 'sloper', .3, .05, -.1]]) {
+        const y = ys * H / 1920;
         g.save();
-        blob(x, y + r * .16, r, n, sd, rot, sq); g.fillStyle = 'rgba(70,60,55,.22)'; g.fill();
-        blob(x, y, r, n, sd, rot, sq); g.fillStyle = col; g.fill();
-        const sh = g.createLinearGradient(x, y - r, x, y + r); sh.addColorStop(0, 'rgba(255,255,255,.22)'); sh.addColorStop(.55, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)'); g.fillStyle = sh; g.fill();
-        g.fillStyle = 'rgba(40,32,30,.6)'; g.beginPath(); g.arc(x, y, Math.max(3.5, r * .12), 0, 7); g.fill(); g.restore(); } }
+        blob(x, y + r * .16, r, sh, rot); g.fillStyle = 'rgba(70,60,55,.22)'; g.fill();
+        blob(x, y, r, sh, rot); g.fillStyle = col; g.fill();
+        const gr4 = g.createLinearGradient(x, y - r, x, y + r); gr4.addColorStop(0, 'rgba(255,255,255,.22)'); gr4.addColorStop(.55, 'rgba(255,255,255,0)'); gr4.addColorStop(1, 'rgba(0,0,0,.12)'); g.fillStyle = gr4; g.fill();
+        g.fillStyle = 'rgba(40,32,30,.6)'; g.beginPath(); g.arc(x + bx * r, y + by * r, Math.max(3.5, r * .12), 0, 7); g.fill(); g.restore(); } }
     // chalk dust: soft smudges, speckle and a few finger swipes (Job: chalky, not too much)
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     // chalk (Job, 22 Oct: less like round blots): each mark is a few soft, uneven drag strokes plus grain, so it reads as a smear from chalky fingers
