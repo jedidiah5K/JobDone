@@ -1953,10 +1953,14 @@ async function drawShare(d, o = shareOpts(d)) {
     g.fillStyle = 'rgba(120,108,96,.18)'; g.fillRect(0, 0, W, H);
     // chalk dust: soft smudges, speckle and a few finger swipes (Job: chalky, not too much)
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    let CH = '255,255,255'; const dust = (x, y, r, a) => { const gr3 = g.createRadialGradient(x, y, 0, x, y, r); gr3.addColorStop(0, `rgba(${CH},${a})`); gr3.addColorStop(1, `rgba(${CH},0)`); g.fillStyle = gr3; g.beginPath(); g.ellipse(x, y, r, r * .8, rnd() * 3, 0, 7); g.fill();
-      for (let i = 0; i < r * 1.6; i++) { const t = rnd() * 7, d = Math.pow(rnd(), .7) * r; g.fillStyle = `rgba(${CH},${Math.min(1, a + .3) * rnd()})`; g.fillRect(x + Math.cos(t) * d, y + Math.sin(t) * d * .8, 1.5 + rnd() * 2.5, 1.5 + rnd() * 2.5); } };
+    // chalk (Job, 22 Oct: less like round blots): each mark is a few soft, uneven drag strokes plus grain, so it reads as a smear from chalky fingers
+    let CK = '255,255,255'; const dust = (x, y, r, a) => { const ang = rnd() * Math.PI;
+      for (let k = 0; k < 4 + rnd() * 3; k++) { const ox = (rnd() - .5) * r * .7, oy = (rnd() - .5) * r * .5, len = r * (.6 + rnd() * .9), a2 = ang + (rnd() - .5) * .5, w0 = r * (.12 + rnd() * .14);
+        for (let i = 0; i < len; i += 3) { const f = i / len, w = w0 * (1 - f * .6) * (.7 + rnd() * .6), px = x + ox + Math.cos(a2) * (i - len / 2) + Math.sin(f * 6) * 4, py = y + oy + Math.sin(a2) * (i - len / 2);
+          const gr3 = g.createRadialGradient(px, py, 0, px, py, w); gr3.addColorStop(0, `rgba(${CK},${a * .1 * (1 - f * .5)})`); gr3.addColorStop(1, `rgba(${CK},0)`); g.fillStyle = gr3; g.fillRect(px - w, py - w, w * 2, w * 2); } }
+      for (let i = 0; i < r * 1.4; i++) { const t = (rnd() - .5) * 1.2 + (rnd() < .5 ? ang : ang + Math.PI), dd = Math.pow(rnd(), .8) * r; g.fillStyle = `rgba(${CK},${Math.min(1, a + .2) * rnd() * .8})`; g.fillRect(x + Math.cos(t) * dd, y + Math.sin(t) * dd * .7, 1 + rnd() * 2.5, 1 + rnd() * 2); } };
     const swipe = (x, y, len, ang, a) => { for (let f = 0; f < 3; f++) { const ox = Math.cos(ang + Math.PI / 2) * f * 16, oy = Math.sin(ang + Math.PI / 2) * f * 16, l = len * (.7 + rnd() * .3);
-      for (let i = 0; i < l; i += 2) { const fade = 1 - i / l; g.fillStyle = `rgba(${CH},${a * fade * (.4 + rnd() * .6)})`; g.fillRect(x + ox + Math.cos(ang) * i + (rnd() - .5) * 5, y + oy + Math.sin(ang) * i + (rnd() - .5) * 5, 2 + rnd() * 3, 2 + rnd() * 3); } } };
+      for (let i = 0; i < l; i += 2) { const fade = 1 - i / l; g.fillStyle = `rgba(${CK},${a * fade * (.4 + rnd() * .6)})`; g.fillRect(x + ox + Math.cos(ang) * i + (rnd() - .5) * 5, y + oy + Math.sin(ang) * i + (rnd() - .5) * 5, 2 + rnd() * 3, 2 + rnd() * 3); } } };
     const chalkMarks = (spots, swipes) => { spots.forEach(([x, y, r, a]) => dust(x, y, r, a)); swipes.forEach(([x, y, l, ang, a]) => swipe(x, y, l, ang, a)); };
     chalkMarks([[40, 260, 130, 1], [1040, 520, 110, .95], [60, 1180, 150, 1], [990, 1290, 120, .95], [520, 30, 110, .9], [1050, 900, 90, .85], [20, 640, 80, .85]], [[20, 760, 170, -.5, 1], [930, 120, 160, 2.6, 1], [1000, 1080, 140, 3.5, .9], [240, 1320, 150, -.2, .9]]);
     const PUR = '#6C3FD6', MUS = '#F4B728', INK = '#2B213A', INK2 = 'rgba(43,33,58,.62)', HOLDS = ['#E2453C', '#2F7FD8', '#2E8B4E', '#F4B728', '#6C3FD6', '#F07A2B'];
@@ -1974,6 +1978,8 @@ async function drawShare(d, o = shareOpts(d)) {
       g.save(); g.clip(); g.strokeStyle = 'rgba(120,105,85,.28)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const cx = -TL / 2 + 20 + rnd() * (TL - 40); g.beginPath(); g.moveTo(cx, -TT / 2); g.lineTo(cx + rnd() * 24 - 12, TT / 2); g.stroke(); }
       for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(90,75,60,${.1 + rnd() * .25})`; g.beginPath(); g.arc(-TL / 2 + rnd() * TL, -TT / 2 + rnd() * TT, .6 + rnd() * 1.8, 0, 7); g.fill(); }
       const tp = g.createRadialGradient(k ? -20 : 25, 0, 0, k ? -20 : 25, 0, 26); tp.addColorStop(0, 'rgba(110,95,80,.28)'); tp.addColorStop(1, 'rgba(110,95,80,0)'); g.fillStyle = tp; g.beginPath(); g.ellipse(k ? -20 : 25, 0, 26, 20, 0, 0, 7); g.fill();
+      // the app's name in marker on the left strip of tape, like climbers label their routes (Job, 22 Oct)
+      if (!k) { g.fillStyle = 'rgba(43,33,58,.85)'; g.font = `700 30px "Marker Felt", "Chalkboard SE", "Comic Sans MS", cursive`; g.textAlign = 'center'; g.letterSpacing = '0px'; g.fillText('Job’s Done', 0, 10); g.textAlign = 'left'; }
       g.restore(); g.restore(); });
     const L = -TW / 2 + 60; let y = -TH / 2 + 110;
     g.fillStyle = INK2; g.font = F(800, 26); g.fillText(sp('ROUTE CARD', 4), L, y);
@@ -1994,7 +2000,7 @@ async function drawShare(d, o = shareOpts(d)) {
       if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText('PR', TW / 2 - 105, y - 4); }
       g.textAlign = 'left'; y += 66; });
     // a little chalk on the card itself, from chalky hands
-    CH = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 70, .34], [TW / 2 - 36, -TH / 2 + 260, 56, .3], [TW / 2 - 80, TH / 2 - 120, 50, .26]], [[TW / 2 - 210, TH / 2 - 44, 110, -.35, .5], [-TW / 2 + 40, -TH / 2 + 170, 90, .4, .45]]);
+    CK = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 70, .34], [TW / 2 - 36, -TH / 2 + 260, 56, .3], [TW / 2 - 80, TH / 2 - 120, 50, .26]], [[TW / 2 - 210, TH / 2 - 44, 110, -.35, .5], [-TW / 2 + 40, -TH / 2 + 170, 90, .4, .45]]);
     g.restore(); g.letterSpacing = '0px';
     mark(80, CH - 34, INK, .7);
     g.fillStyle = INK; g.font = F(700, 23); g.textAlign = 'right'; g.fillText(`${INVITE.climb} at ${APP_URL}`, W - 84, CH - 40); g.textAlign = 'left'; g.restore();
