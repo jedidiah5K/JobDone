@@ -1840,6 +1840,7 @@ async function drawShare(d, o = shareOpts(d)) {
   const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
   const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Job’s Done', 0), x0, y); };
   const k = theme();
+  if (k === 'climb') await handFont();
 
   if (k === 'mono') {
     // Agent: mission debrief on the obsidian wallpaper
@@ -1972,14 +1973,15 @@ async function drawShare(d, o = shareOpts(d)) {
     g.save(); g.translate(W / 2 - 20, 690); g.rotate(-.025);
     const TW = 900, TH = 1180; g.shadowColor = 'rgba(43,33,58,.28)'; g.shadowBlur = 40; g.shadowOffsetY = 14; g.fillStyle = '#FFFDFA'; RR(-TW / 2, -TH / 2, TW, TH, 22); g.fill(); g.shadowColor = 'transparent';
     // used climbing tape: torn zigzag ends, creases, grime and a chalky thumbprint
-    [[-TW / 2 + 95, -TH / 2, -.5], [TW / 2 - 95, -TH / 2, .45]].forEach(([x, y, a], k) => { g.save(); g.translate(x, y); g.rotate(a); const TL = 190, TT = 54;
+    // uneven, asymmetrical tape (Job, 22 Oct): a long wide strip on the left carries the name, a short stubby one on the right sits steeper and lower
+    [[-TW / 2 + 150, -TH / 2 - 4, -.27, 330, 80], [TW / 2 - 62, -TH / 2 + 22, .7, 140, 46]].forEach(([x, y, a, TL, TT], k) => { g.save(); g.translate(x, y); g.rotate(a);
       g.beginPath(); g.moveTo(-TL / 2, -TT / 2); for (let yy = -TT / 2; yy <= TT / 2; yy += 6) g.lineTo(TL / 2 + (rnd() * 12 - 3), yy); for (let yy = TT / 2; yy >= -TT / 2; yy -= 6) g.lineTo(-TL / 2 - (rnd() * 12 - 3), yy); g.closePath();
       g.shadowColor = 'rgba(43,33,58,.18)'; g.shadowBlur = 6; g.shadowOffsetY = 3; g.fillStyle = 'rgba(241,235,222,.94)'; g.fill(); g.shadowColor = 'transparent';
       g.save(); g.clip(); g.strokeStyle = 'rgba(120,105,85,.28)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const cx = -TL / 2 + 20 + rnd() * (TL - 40); g.beginPath(); g.moveTo(cx, -TT / 2); g.lineTo(cx + rnd() * 24 - 12, TT / 2); g.stroke(); }
       for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(90,75,60,${.1 + rnd() * .25})`; g.beginPath(); g.arc(-TL / 2 + rnd() * TL, -TT / 2 + rnd() * TT, .6 + rnd() * 1.8, 0, 7); g.fill(); }
       const tp = g.createRadialGradient(k ? -20 : 25, 0, 0, k ? -20 : 25, 0, 26); tp.addColorStop(0, 'rgba(110,95,80,.28)'); tp.addColorStop(1, 'rgba(110,95,80,0)'); g.fillStyle = tp; g.beginPath(); g.ellipse(k ? -20 : 25, 0, 26, 20, 0, 0, 7); g.fill();
       // the app's name in marker on the left strip of tape, like climbers label their routes (Job, 22 Oct)
-      if (!k) { g.fillStyle = 'rgba(43,33,58,.85)'; g.font = `700 30px "Marker Felt", "Chalkboard SE", "Comic Sans MS", cursive`; g.textAlign = 'center'; g.letterSpacing = '0px'; g.fillText('Job’s Done', 0, 10); g.textAlign = 'left'; }
+      if (!k) { g.fillStyle = 'rgba(28,22,40,.9)'; g.font = `46px "JD Marker", "Marker Felt", "Chalkboard SE", cursive`; g.textAlign = 'center'; g.letterSpacing = '0px'; g.rotate(-.03); g.fillText('Job’s Done', 4, 16); g.textAlign = 'left'; }
       g.restore(); g.restore(); });
     const L = -TW / 2 + 60; let y = -TH / 2 + 110;
     g.fillStyle = INK2; g.font = F(800, 26); g.fillText(sp('ROUTE CARD', 4), L, y);
@@ -2044,6 +2046,9 @@ function openShareSheet(d) {
       d.pick = lp.checked ? [...d.pick, n] : d.pick.filter(x => x !== n); draw(b); });
   } });
 }
+// Permanent Marker (Apache 2.0) for the handwriting on the Boulder card's tape; Marker Felt stands in if it can't load
+let HAND_FONT;
+function handFont() { return HAND_FONT || (HAND_FONT = (async () => { try { const f = new FontFace('JD Marker', 'url(fonts/permanent-marker.woff2)'); await f.load(); document.fonts.add(f); } catch (e) {} })()); }
 async function shareRecap(d) {
   // Instagram and some other apps keep only the picture, so the invite link also goes on the clipboard
   let copied = false; try { navigator.clipboard.writeText(inviteText()).then(() => { copied = true; }, () => {}); } catch (e) {}
