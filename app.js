@@ -1646,7 +1646,7 @@ const HEAVY = {
   mono: [[3000, n => `That’s ${n} getaway helicopters, airlifted by hand.`], [1500, n => `That’s like pushing ${n} Aston Martins out of a car park. Quietly.`], [500, n => `That’s ${n} bank vault doors. Nobody saw a thing.`], [12.4, n => `That’s ${n} gold bars. Shaken, not stirred.`]],
   spidey: [[12000, n => `That’s like stopping ${n} runaway city buses.`], [1500, n => `That’s ${n} falling taxis, caught before they hit the street.`], [100, n => `That’s ${n} villains webbed up and left for the police.`], [1, n => `That’s ${n} large pizzas, delivered on time for once.`]],
   cliffs: [[4500, n => `That’s like hauling ${n} snowcats up the trail.`], [600, n => `That’s ${n} grumpy grizzly bears carried to the summit.`], [70, n => `That’s ${n} mountain goats, every one of them complaining.`], [20, n => `That’s ${n} overpacked hiking bags.`]],
-  climb: [[200, n => `That’s like hauling ${n} big-wall camps up El Cap. Portaledge, haul bags, the lot.`], [75, n => `That’s ${n} climbers hanging off your belay at once.`], [5, n => `That’s ${n} crash pads, stacked to the ceiling.`], [.2, n => `That’s ${n} chalk bags. Very chalky.`]],
+  climb: [[200, n => `That’s ${n} haul bags dragged up El Cap.`], [75, n => `That’s ${n} climbers hanging off your belay at once.`], [5, n => `That’s ${n} crash pads, stacked to the ceiling.`], [.2, n => `That’s ${n} chalk bags. Very chalky.`]],
 };
 function heavyLine(kg, k = theme()) {
   const L = HEAVY[k] || HEAVY.mono, h = L.find(x => kg / x[0] >= 1.5) || L[L.length - 1], t = kg / h[0];
