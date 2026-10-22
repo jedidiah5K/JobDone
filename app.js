@@ -1956,9 +1956,9 @@ async function drawShare(d, o = shareOpts(d)) {
     { let hs = 11; const hr = () => (hs = (hs * 16807) % 2147483647) / 2147483647, WH = ['#E58DB6', '#8E9BD6', '#3D8EE0', '#F0A066', '#E2453C', '#7B4FD8', '#35B6AA', '#E66AAE'];
       const blob = (x, y, r, n, sd, rot, sq) => { const P = []; for (let i = 0; i < n; i++) { const an = rot + i / n * Math.PI * 2, rr = r * (.78 + .22 * Math.abs(Math.sin(sd + i * 2.1))); P.push([x + Math.cos(an) * rr, y + Math.sin(an) * rr * sq]); }
         g.beginPath(); const m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; let s0 = m(P[n - 1], P[0]); g.moveTo(s0[0], s0[1]); for (let i = 0; i < n; i++) { const e = m(P[i], P[(i + 1) % n]); g.quadraticCurveTo(P[i][0], P[i][1], e[0], e[1]); } g.closePath(); };
-      // Job (22 Oct): only ~15% more than the wallpaper's own, so just two extra, in gaps the card doesn't cover
-      for (const [x, y] of [[170, 96], [870, H - 150]]) {
-        const r = 30 + hr() * 8, n = 5 + Math.floor(hr() * 3), sd = hr() * 9, rot = hr() * 7, sq = .8 + hr() * .15, col = WH[Math.floor(hr() * WH.length)];
+      // Job (22 Oct): the original wall plus three holds of different sizes along the top, above the card
+      for (const [x, y, r0] of [[150, OY * .35 + 70, 16], [560, OY * .5 + 40, 46], [930, OY * .3 + 50, 25]]) {
+        const r = r0, n = 5 + Math.floor(hr() * 3), sd = hr() * 9, rot = hr() * 7, sq = .8 + hr() * .15, col = WH[Math.floor(hr() * WH.length)];
         g.save(); g.globalAlpha = .88;
         blob(x, y + r * .16, r, n, sd, rot, sq); g.fillStyle = 'rgba(70,60,55,.22)'; g.fill();
         blob(x, y, r, n, sd, rot, sq); g.fillStyle = col; g.fill();
