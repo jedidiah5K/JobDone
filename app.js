@@ -1951,6 +1951,18 @@ async function drawShare(d, o = shareOpts(d)) {
     // Boulder: a route tag taped to the chalk wall
     g.fillStyle = '#EFEBE5'; g.fillRect(0, 0, W, H);
     cover(await img(bgOf('#bg', '::before')));
+    // more holds bolted to the wall (Job, 22 Oct), drawn in the wallpaper's own style so they all match: soft rounded resin blobs,
+    // a darker base peeking out below, a light top, a bolt, all at one strength and under the same chalky wash
+    { let hs = 11; const hr = () => (hs = (hs * 16807) % 2147483647) / 2147483647, WH = ['#E58DB6', '#8E9BD6', '#3D8EE0', '#F0A066', '#E2453C', '#7B4FD8', '#35B6AA', '#E66AAE'];
+      const blob = (x, y, r, n, sd, rot, sq) => { const P = []; for (let i = 0; i < n; i++) { const an = rot + i / n * Math.PI * 2, rr = r * (.78 + .22 * Math.abs(Math.sin(sd + i * 2.1))); P.push([x + Math.cos(an) * rr, y + Math.sin(an) * rr * sq]); }
+        g.beginPath(); const m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; let s0 = m(P[n - 1], P[0]); g.moveTo(s0[0], s0[1]); for (let i = 0; i < n; i++) { const e = m(P[i], P[(i + 1) % n]); g.quadraticCurveTo(P[i][0], P[i][1], e[0], e[1]); } g.closePath(); };
+      for (let gy = 0; gy < H; gy += 230) for (let gx = 0; gx < W - 60; gx += 250) { if (hr() < .2) continue;
+        const x = gx + 40 + hr() * 170, y = gy + 40 + hr() * 150, r = 22 + hr() * 26, n = 5 + Math.floor(hr() * 3), sd = hr() * 9, rot = hr() * 7, sq = .8 + hr() * .15, col = WH[Math.floor(hr() * WH.length)];
+        g.save(); g.globalAlpha = .88;
+        blob(x, y + r * .16, r, n, sd, rot, sq); g.fillStyle = 'rgba(70,60,55,.22)'; g.fill();
+        blob(x, y, r, n, sd, rot, sq); g.fillStyle = col; g.fill();
+        const sh = g.createLinearGradient(x, y - r, x, y + r); sh.addColorStop(0, 'rgba(255,255,255,.22)'); sh.addColorStop(.55, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)'); g.fillStyle = sh; g.fill();
+        g.fillStyle = 'rgba(40,32,30,.6)'; g.beginPath(); g.arc(x, y, Math.max(3.5, r * .12), 0, 7); g.fill(); g.restore(); } }
     g.fillStyle = 'rgba(120,108,96,.18)'; g.fillRect(0, 0, W, H);
     // chalk dust: soft smudges, speckle and a few finger swipes (Job: chalky, not too much)
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -1965,14 +1977,6 @@ async function drawShare(d, o = shareOpts(d)) {
     const chalkMarks = (spots, swipes) => { spots.forEach(([x, y, r, a]) => dust(x, y, r, a)); swipes.forEach(([x, y, l, ang, a]) => swipe(x, y, l, ang, a)); };
     chalkMarks([[40, 260, 130, 1], [1040, 520, 110, .95], [60, 1180, 150, 1], [990, 1290, 120, .95], [520, 30, 110, .9], [1050, 900, 90, .85], [20, 640, 80, .85]], [[20, 760, 170, -.5, 1], [930, 120, 160, 2.6, 1], [1000, 1080, 140, 3.5, .9], [240, 1320, 150, -.2, .9]]);
     const PUR = '#6C3FD6', MUS = '#F4B728', INK = '#2B213A', INK2 = 'rgba(43,33,58,.62)', HOLDS = ['#E2453C', '#2F7FD8', '#2E8B4E', '#F4B728', '#6C3FD6', '#F07A2B'];
-    // more holds bolted to the wall (Job, 22 Oct): a loose grid with jitter so they read as a set route, not a pattern
-    { const WH = ['#E2453C', '#2F7FD8', '#2E8B4E', '#F4B728', '#6C3FD6', '#F07A2B', '#E36FA4', '#3BB3B0'];
-      for (let gy = 0; gy < H; gy += 230) for (let gx = 0; gx < W - 60; gx += 250) { if (rnd() < .2) continue;
-        const x = gx + 40 + rnd() * 170, y = gy + 40 + rnd() * 150, r = 18 + rnd() * 30, n = 7 + Math.floor(rnd() * 4), sd = rnd() * 9, rot = rnd() * 7;
-        g.beginPath(); for (let i = 0; i < n; i++) { const an = rot + i / n * Math.PI * 2, rr = r * (.7 + .3 * Math.abs(Math.sin(sd + i * 2.1))); g.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr * (.75 + rnd() * .15)); } g.closePath();
-        g.save(); g.shadowColor = 'rgba(43,33,58,.25)'; g.shadowBlur = 8; g.shadowOffsetY = 4; g.fillStyle = WH[Math.floor(rnd() * WH.length)]; g.globalAlpha = .9; g.fill(); g.restore();
-        const sh = g.createLinearGradient(x - r, y - r, x + r, y + r); sh.addColorStop(0, 'rgba(255,255,255,.28)'); sh.addColorStop(.6, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.15)'); g.fillStyle = sh; g.fill();
-        g.fillStyle = 'rgba(40,32,30,.45)'; g.beginPath(); g.arc(x + r * .08, y, Math.max(3, r * .13), 0, 7); g.fill(); } }
     // rope down the right edge
     g.strokeStyle = PUR; g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(W - 46, -20); g.bezierCurveTo(W - 10, 400, W - 90, 800, W - 36, H + 20); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.setLineDash([10, 14]); g.stroke(); g.setLineDash([]);
