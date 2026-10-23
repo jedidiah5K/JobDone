@@ -409,7 +409,7 @@ function niceTicks(lo, hi, n = 3) {
 function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(ymd(new Date(t))), area = true, w }) {
   const W = w || chartW(), id = 'c' + (++chartSeq);
   const all = series.flatMap(s => s.pts);
-  if (all.length === 0) return '<div class="empty">No data yet.</div>';
+  if (all.length === 0) return '<div class="empty">Nothing logged in this range yet.</div>';
   let x0 = Math.min(...all.map(p => p.x)), x1 = Math.max(...all.map(p => p.x));
   let y0 = Math.min(...all.map(p => p.y)), y1 = Math.max(...all.map(p => p.y));
   if (x1 === x0) { x0 -= DAY; x1 += DAY; }
@@ -440,7 +440,7 @@ function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(y
 }
 function barChart({ bars, h = 150, yfmt = v => n0(v), line, color = 'var(--text2)', hiColor = 'var(--text)', w }) {
   const W = w || chartW(), id = 'c' + (++chartSeq);
-  if (!bars.length) return '<div class="empty">No data yet.</div>';
+  if (!bars.length) return '<div class="empty">Nothing logged in this range yet.</div>';
   const max = Math.max(1, ...bars.map(b => b.v), ...(line || []).filter(v => v != null)) * 1.1;
   const pl = 2, pr = 34, pt = 10, pb = 22, bw = (W - pl - pr) / bars.length;
   const Y = v => pt + (1 - v / max) * (h - pt - pb);
@@ -812,7 +812,7 @@ function viewToday() {
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
       ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
       ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
-      : `<div class="empty">Create a split to get started.</div>`}
+      : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}
   </div>`}
   ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
   ${past ? '' : goalsCard() + reportCard() + plateauCard()}
