@@ -1605,7 +1605,7 @@ function tick() {
 }
 function logSet(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
-  s.done = !s.done; s.at = s.done ? Date.now() : null;
+  s.done = !s.done; s.at = s.done ? Date.now() : null; if (s.done) delete A.endAt;
   if (s.done) {
     buzz(10);
     const pr = livePR(e)[si];
@@ -1644,7 +1644,7 @@ function summaryHTML() {
   return `<div class="wk-body" style="padding-top:calc(16px + env(safe-area-inset-top, 0px))">
     <button class="back" data-a="sumBack">${I.left}Back to workout</button>
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
-    <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur(Date.now() - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
+    <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card"><div class="mb1 eyebrow">Compared with last time</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div><div class="tr f13 num"><div>top ${r.last ? delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v)) : '<span class="sec">first time</span>'}</div><div>vol ${r.last ? delta(r.vol, r.last.vol, v => dvol(v)) : ''}</div></div></div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
     <div class="field"><span class="lbl">Energy</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${A.energy === n ? 'on' : ''}" data-a="energy" data-k="${n}">${n}</button>`).join('')}</div></div>
@@ -1655,7 +1655,7 @@ function summaryHTML() {
 function saveWorkout() {
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
-  const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
+  const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: A.endAt || Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
   S.workouts[w.id] = w;
   const sp = A.splitId && splitById(A.splitId);
   let metaChanged = false;
@@ -3339,6 +3339,7 @@ document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !DB || !S || dirty.size || inflight.size || SHEETS.length) return;
   try { if (await loadCloud()) { lsSave(); rerender(); } } catch (e) {}
 });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ready) setTimeout(maybeStale, 400); });
 setInterval(tick, 500);
 document.addEventListener('touchstart', () => {}, { passive: true }); // lets :active styles show on iPhone
 // Swipe a set row right to log it; swipe in from the left edge to go back.
@@ -3457,7 +3458,29 @@ function maybeInstallGuide() {
   setTimeout(() => openInstallGuide(true), 600);
   return true;
 }
+// A workout left open (forgot to tap Finish) is the top complaint about Strong and Hevy: their timers run for hours.
+// After 2 hours with no set logged, ask once; "Finish at last set" saves the real duration.
+const STALE_MS = 2 * 3600e3;
+function lastSetAt() { return A ? Math.max(A.start, ...A.ex.flatMap(e => e.sets.map(s => (s.done && s.at) || 0))) : 0; }
+function maybeStale() {
+  if (!A || A.endAt || SHEETS.length) return false;
+  const last = lastSetAt(), idle = Date.now() - Math.max(last, A.staleOk || 0);
+  if (idle < STALE_MS) return false;
+  const any = A.ex.some(e => e.sets.some(s => s.done));
+  const day = ymd(new Date(A.start)) === today() ? '' : fmtDate(ymd(new Date(A.start)), { wd: true }) + ', ';
+  const sh = openSheet(`<div class="stack"><h2>Still training?</h2>
+    <p class="m0 sec">${esc(A.splitName)} has been open since ${day}${hm(A.start)}.${any ? ` Your last set was at ${hm(last)}.` : ' No sets logged yet.'}</p>
+    ${any ? `<button class="btn block primary" id="st-fin">Finish at ${hm(last)}</button>` : ''}
+    <button class="btn block ${any ? '' : 'primary'}" id="st-keep">Keep going</button>
+    <button class="btn block ghost c-neg" id="st-del">Discard workout</button></div>`, { label: 'Still training?' });
+  sh.el.querySelector('#st-keep').onclick = () => { A.staleOk = Date.now(); closeSheet(sh); touchA(); openWk(); };
+  sh.el.querySelector('#st-del').onclick = () => { closeSheet(sh); ACT.wkDiscard(); };
+  const f = sh.el.querySelector('#st-fin');
+  if (f) f.onclick = () => { closeSheet(sh); A.endAt = last; if (!A.date && ymd(new Date(A.start)) !== today()) A.date = ymd(new Date(A.start)); A.view = 'summary'; A.open = true; touchA(); };
+  return true;
+}
 function maybePrompt() {
+  if (maybeStale()) return;
   if (maybeImportSplit()) return;
   if (maybeInstallGuide()) return;
   if (!S || !S.imported && !S.splits.length) return;
