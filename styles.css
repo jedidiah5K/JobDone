@@ -1169,3 +1169,11 @@ body:has(#recap) #sheets { z-index: 75; }
 /* Undo toast (23 Oct): message on the left, Undo on the right, like iOS Mail */
 .toast.has-undo { display: flex; align-items: center; gap: var(--s4); padding-right: var(--s2); }
 .toast-undo { font: inherit; font-weight: 700; color: inherit; background: none; border: 0; padding: 6px 10px; margin: -6px 0; text-transform: uppercase; letter-spacing: .04em; font-size: 14px; opacity: .85; min-height: 36px; }
+
+/* Lift goals (23 Oct) */
+.goal { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; }
+.goal .t { font-weight: 600; }
+.goal-bar { display: block; height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+.goal-bar b { display: block; height: 100%; border-radius: 4px; background: var(--text); }
+.goal-bar.hit b { background: var(--pos); }
+.goal.li { align-items: stretch; }

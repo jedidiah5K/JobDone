@@ -815,7 +815,7 @@ function viewToday() {
       : `<div class="empty">Create a split to get started.</div>`}
   </div>`}
   ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
-  ${past ? '' : reportCard() + plateauCard()}
+  ${past ? '' : goalsCard() + reportCard() + plateauCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -1100,6 +1100,37 @@ function openHowto(name) {
   if (!h) return toast(HOWTO ? 'No how-to pictures for this one yet.' : 'Loading pictures, try again in a second.');
   openSheet(`<div class="stack"><h2>${esc(baseName(name))}</h2>${howtoHTML(name, true)}<button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'How to do ' + baseName(name) });
 }
+// Lift goals (23 Oct): the top request on the Hevy subreddit. A goal is a weight for at least N reps, e.g. 100 kg × 5.
+// Progress is the heaviest set you've logged with at least those reps. Facts only: no advice on how to get there.
+const goalsOf = () => S.profile.goals || {};
+function goalBest(name, r) { let best = null; for (const x of ix().hist[name] || []) for (const st of x.sets) if (validSet(st) && st.r >= r && (!best || st.w > best.w)) best = { w: st.w, r: st.r, date: x.date }; return best; }
+function goalState(name) {
+  const g = goalsOf()[name]; if (!g) return null;
+  const best = goalBest(name, g.r), hit = best && best.w >= g.w - 0.01 ? (() => { for (const x of ix().hist[name] || []) if (x.sets.some(st => validSet(st) && st.r >= g.r && st.w >= g.w - 0.01)) return x.date; })() : null;
+  return { ...g, name, best, hit, p: Math.min(1, best ? best.w / g.w : 0) };
+}
+function goalRow(G, link) {
+  const tgt = `${dw(G.w)} ${U()} × ${G.r}`;
+  const sub = G.hit ? `Reached ${esc(fmtDate(G.hit))}` : G.best ? `Best ${esc(dw(G.best.w))} ${U()} × ${G.best.r} · ${esc(dw(G.w - G.best.w))} ${U()} to go` : `No set of ${G.r}+ reps yet`;
+  return `<${link ? `button class="goal li" data-a="openEx" data-name="${esc(G.name)}"` : 'div class="goal"'}><div class="row between"><span class="t">${link ? esc(G.name) : 'Goal'}</span><span class="num fw6">${tgt}</span></div>
+    <i class="goal-bar ${G.hit ? 'hit' : ''}"><b style="width:${Math.round(G.p * 100)}%"></b></i><div class="cap">${sub}</div></${link ? 'button' : 'div'}>`;
+}
+function goalsCard() {
+  const gs = Object.keys(goalsOf()).map(goalState).filter(Boolean); if (!gs.length) return '';
+  gs.sort((a, b) => (!!a.hit - !!b.hit) || b.p - a.p);
+  return `<div class="card"><div class="card-h"><span class="eyebrow">Goals</span><span class="cap">${gs.filter(g => g.hit).length} of ${gs.length} reached</span></div><div class="list">${gs.slice(0, 4).map(g => goalRow(g, true)).join('')}</div></div>`;
+}
+function openGoal(name) {
+  const g = goalsOf()[name] || {}, best = goalBest(name, 1);
+  const sh = openSheet(`<div class="stack"><h2>Goal for ${esc(name)}</h2>
+    <p class="m0 sec">${best ? `Heaviest so far: ${esc(dw(best.w))} ${U()} × ${best.r}.` : 'No sets logged yet.'}</p>
+    <div class="grid2"><div class="field"><label for="gl-w">Weight (${U()})</label><input class="input num" id="gl-w" inputmode="decimal" value="${g.w ? dw(g.w) : ''}" placeholder="${best ? dw(Math.ceil(best.w * 1.1 / 2.5) * 2.5) : ''}"></div>
+    <div class="field"><label for="gl-r">Reps</label><select class="input" id="gl-r">${[1, 2, 3, 5, 8, 10, 12, 15].map(n => `<option ${n === (g.r || 5) ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+    <button class="btn block primary" id="gl-ok">Save goal</button>${g.w ? '<button class="btn block ghost c-neg" id="gl-del">Remove goal</button>' : '<button class="btn block ghost" data-a="closeSheet">Cancel</button>'}</div>`, { label: 'Goal' });
+  sh.el.querySelector('#gl-ok').onclick = () => { const w = parseFloat(String(sh.el.querySelector('#gl-w').value).replace(',', '.')); if (!(w > 0)) { sh.el.querySelector('#gl-w').focus(); return; }
+    S.profile.goals = { ...goalsOf(), [name]: { w: Math.round(toKg(w) * 100) / 100, r: +sh.el.querySelector('#gl-r').value, set: today() } }; persist('jd/meta'); closeSheet(sh); rerender(); toast('Goal saved'); };
+  const d = sh.el.querySelector('#gl-del'); if (d) d.onclick = () => { const o = { ...goalsOf() }; delete o[name]; S.profile.goals = o; persist('jd/meta'); closeSheet(sh); rerender(); toast('Goal removed', 0, () => { S.profile.goals = { ...goalsOf(), [name]: g }; persist('jd/meta'); rerender(); }); };
+}
 function viewExercise(v) {
   const b = baseName(v.name), h = ix().hist;
   const sides = ['L', 'R'].filter(s => h[`${b} (${s})`]);
@@ -1125,6 +1156,7 @@ function viewExercise(v) {
   ${setupHTML(b)}${howtoHTML(main)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
   ${bw && B.e1 && ['barbell', 'dumbbell', 'smith'].includes(exInfo(main).equip) ? `<div class="mt3 cap">Strength-to-weight: e1RM is <b class="c-text num">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
+  ${(G => G ? `<div class="card">${goalRow(G)}<button class="mt2 link cap" data-a="goal" data-k="${esc(main)}">Edit goal</button></div>` : `<button class="card tight row between" data-a="goal" data-k="${esc(main)}"><span>Set a goal</span><span class="cap">e.g. ${esc(dw(Math.ceil(((B.maxW || 20) * 1.1) / 2.5) * 2.5))} ${U()} × 5</span></button>`)(goalState(main))}
   <div class="card"><div class="mb3 seg">${[['e1', 'e1RM'], ['top', 'Top set'], ['vol', 'Volume']].map(([k, l]) => `<button class="${v.metric === k ? 'on' : ''}" data-a="exMetric" data-k="${k}">${l}</button>`).join('')}</div>
     ${lineChart({ series, h: 180, yfmt: x => v.metric === 'vol' ? n0(x) : trim(Math.round(x * 10) / 10) })}
     ${sel.length > 1 ? `<div class="mt2 legend">${sel.map((n, i) => `<span><i style="background:${colors[i]}"></i>${sideOf(n) === 'L' ? 'Left' : 'Right'}</span>`).join('')}</div>` : ''}
@@ -1789,6 +1821,7 @@ function showRecap(id, fresh) {
     ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
     <div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${h.map(({ e, t, dl }) => `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><div class="rc-right"><b class="num">${t ? setStr(t) : '—'}</b>${dl}</div></div>`).join('')}</div></div>
     <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n1(n)}</em></div>`).join('')}</div>
+    ${(() => { const gr = d.w.ex.map(e => goalState(e.name)).filter(G => G && G.hit === d.w.date); return gr.length ? `<div class="card"><div class="mb2 eyebrow">Goal reached</div>${gr.map(G => `<div class="row between"><span>${esc(G.name)}</span><span class="num fw6">${dw(G.w)} ${U()} × ${G.r}</span></div>`).join('')}</div>` : ''; })()}
     ${(() => { const nb = badgeList().filter(b => b.at === d.w.date); return nb.length ? `<div class="card"><div class="mb3 eyebrow">${nb.length > 1 ? 'Badges' : 'Badge'} earned</div><div class="badges">${nb.map(badgeHTML).join('')}</div></div>` : ''; })()}
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
@@ -3244,6 +3277,7 @@ const ACT = {
   rotation: () => openRotation(),
   plates: () => openPlates(0, null),
   // Hevy/Strong users ask for "repeat this workout": same lifts and set count, numbers filled from the latest time
+  goal: el => openGoal(el.dataset.k),
   restWeek: el => { const k = el.dataset.k, r = S.profile.restWeeks || []; S.profile.restWeeks = r.includes(k) ? r.filter(x => x !== k) : [...r, k]; persist('jd/meta'); rerender(); },
   repeatWk: () => { const w = S.workouts[NAV.stack[NAV.stack.length - 1].id]; if (!w) return;
     if (A) return toast('Finish or discard the workout in progress first.');
