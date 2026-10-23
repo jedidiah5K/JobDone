@@ -500,6 +500,25 @@ function toast(html, ms = 2600) {
   document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), ms);
 }
 const SHEETS = [];
+// Screen readers: every on/off switch is named after the text in its row (22 Oct a11y pass), wherever it is drawn
+function nameSwitches(root) { root.querySelectorAll && root.querySelectorAll('[role="switch"]:not([aria-label])').forEach(b => { const r = b.closest('.xr, .row, label, li'); const g = r && r.querySelector('.grow'); const t = g ? (g.firstChild && g.firstChild.nodeType === 3 ? g.firstChild.textContent : g.textContent) : ''; if (t.trim()) b.setAttribute('aria-label', t.trim()); }); }
+try { new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) nameSwitches(n.parentNode || n); }))).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
+// One-tap Update (Job, 23 Oct): when a newer version has installed in the background, a small bar offers to load it.
+// The open workout is saved locally, so reloading never loses sets. Checks again whenever the app comes back to the front.
+let SW_REG = null;
+function swRegister() {
+  if (SW_REG) return; const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(r => { SW_REG = r; document.addEventListener('visibilitychange', () => { if (!document.hidden) r.update().catch(() => {}); }); setInterval(() => r.update().catch(() => {}), 30 * 60 * 1000); }).catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) showUpdateBar(); });
+}
+function showUpdateBar() {
+  if (document.getElementById('upd')) return;
+  const el = document.createElement('div'); el.id = 'upd'; el.setAttribute('role', 'status');
+  el.innerHTML = `<span>A new version of Job’s Done is ready.</span><button class="upd-go">Update</button><button class="upd-x" aria-label="Later">${I.x}</button>`;
+  document.body.appendChild(el);
+  el.querySelector('.upd-go').onclick = () => { try { lsSave(); } catch (e) {} location.reload(); };
+  el.querySelector('.upd-x').onclick = () => el.remove();
+}
 function openSheet(html, opts = {}) {
   const root = $('#sheets');
   const wrap = document.createElement('div'); wrap.className = 'sheet-wrap';
@@ -624,7 +643,18 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
-  screenChanged(); wireSwipe();
+  screenChanged(); wireSwipe(); coach();
+}
+// First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
+function coach() {
+  const old = document.getElementById('coach'); if (old) old.remove();
+  const p = S && S.profile; if (!p || p.hint1 || !p.onboarded || A || DEMO || NAV.tab !== 'today' || NAV.stack.length || ix().ws.length || SHEETS.length) return;
+  const st = document.querySelector('.tab-start'); if (!st) return;
+  const el = document.createElement('div'); el.id = 'coach'; el.setAttribute('role', 'status');
+  el.innerHTML = `<div class="grow"><b>Start here</b><span>Tap Start to open your first workout. Log each set as you go.</span></div><button class="coach-x" aria-label="Got it">${I.x || '×'}</button>`;
+  document.body.appendChild(el);
+  const r = st.getBoundingClientRect(); el.style.setProperty('--ax', Math.round(r.left + r.width / 2) + 'px'); el.style.bottom = Math.round(innerHeight - r.top + 10) + 'px';
+  el.querySelector('.coach-x').onclick = () => { p.hint1 = true; persist('jd/meta'); el.remove(); };
 }
 // Screen entrance: panels rise in, charts draw, headline numbers count up.
 // Looks Job can pick under Me. The choice is saved with the profile (so it follows the account)
@@ -3176,7 +3206,7 @@ const ACT = {
   glossary: el => openGlossary(el.dataset.k),
   tab: el => { if (el.dataset.k === 'today' && NAV.tab === 'today' && !NAV.stack.length) VIEWDAY = null; NAV.tab = el.dataset.k; NAV.stack = []; render(); },
   back: () => back(),
-  start: () => openStart(),
+  start: () => { if (S && S.profile && !S.profile.hint1 && S.profile.onboarded) { S.profile.hint1 = true; persist('jd/meta'); const c = document.getElementById('coach'); if (c) c.remove(); } openStart(); },
   resume: () => openWk(),
   weigh: el => openWeighIn(el.dataset.k || today()),
   viewDay: el => setViewDay(el.dataset.k || null),
@@ -3692,13 +3722,13 @@ async function boot() {
   applyTheme();
   livingBackground();
   if (HOSTED) {
-    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol === 'https:') swRegister();
     $('#app').innerHTML = `<div class="splash"><div class="wordmark">Job’s <span>Done</span></div></div>`;
     try { await startHosted(); } catch (e) { renderSignIn('start', '', 'Couldn’t reach the sign-in service. Check your connection and reload.'); }
     return;
   }
   if (CFG && !HOSTED && location.protocol !== 'file:') {
-    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol === 'https:') swRegister();
   }
   const cached = lsLoad();
   if (cached && cached.S) { S = cached.S; A = cached.A || null; renameLifts(S, A); UI = cached.UI || UI; ready = true; render(); maybePrompt(); }

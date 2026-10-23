@@ -24,7 +24,7 @@
   --raised: rgba(118, 112, 128, .1);     /* fills: inputs, keys, tracks */
   --border: rgba(60, 50, 70, .11);       /* hairline separators */
   --edge: rgba(60, 50, 70, .2);
-  --text: #16151A; --text2: rgba(52, 48, 62, .66); --muted: rgba(52, 48, 62, .4);
+  --text: #16151A; --text2: rgba(52, 48, 62, .76); --muted: rgba(52, 48, 62, .74);
   --accent: #5B3CC4; --accent-dark: #43299A; --accent-ink: #FFFFFF;
   --yellow: #E0A526; --green: #23955A; --red: #D8432F; --blue: #3E7BD9; --cyan: #3E7BD9; --violet: #5B3CC4;
   --pos: #23955A; --neg: #D8432F; --neu: rgba(52, 48, 62, .66);
@@ -421,7 +421,7 @@ tr.pop .check { animation: pop .3s var(--ease); }
   color-scheme: dark;
   --bg: #0B0F1C; --surface: #161B2B; --surface-solid: #161B2B; --raised: rgba(150,160,200,.14);
   --border: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16);
-  --text: #F2F3F7; --text2: rgba(235,236,245,.62); --muted: rgba(235,236,245,.36);
+  --text: #F2F3F7; --text2: rgba(235,236,245,.72); --muted: rgba(235,236,245,.58);
   --accent: #5BB0D2; --accent-ink: #06222D; --shadow: 0 0 0 .5px rgba(255,255,255,.06);
 }
 :root[data-theme="cliffs"] #bg .sky-stars { display: block; }
@@ -431,7 +431,7 @@ tr.pop .check { animation: pop .3s var(--ease); }
   color-scheme: dark;
   --bg: #08080A; --surface: #141418; --surface-solid: #141418; --raised: rgba(160,160,175,.15);
   --border: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16);
-  --text: #F4F4F6; --text2: rgba(235,235,242,.62); --muted: rgba(235,235,242,.36);
+  --text: #F4F4F6; --text2: rgba(235,235,242,.72); --muted: rgba(235,235,242,.58);
   --accent: #F2F2F4; --accent-dark: #A6A6B0; --accent-ink: #0A0A0C;
   --yellow: #D9D9DE; --green: #9DA3B8; --red: #E0303C; --pos: #CDD0DB; --neg: #E0303C; --pr: #E0303C;
   --shadow: 0 0 0 .5px rgba(255,255,255,.07);
@@ -448,7 +448,7 @@ tr.pop .check { animation: pop .3s var(--ease); }
   color-scheme: dark;
   --bg: #0A1230; --surface: #131D45; --surface-solid: #131D45; --raised: rgba(150,170,230,.14);
   --border: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16);
-  --text: #FFFFFF; --text2: rgba(220,228,255,.64); --muted: rgba(220,228,255,.36);
+  --text: #FFFFFF; --text2: rgba(220,228,255,.74); --muted: rgba(220,228,255,.6);
   --accent: #E2231A; --accent-dark: #A3150F; --accent-ink: #FFFFFF;
   --yellow: #F2C14E; --green: #4CC38A; --red: #FF6B63; --blue: #6F97FF; --pos: #4CC38A; --neg: #FF6B63;
   --shadow: 0 0 0 .5px rgba(255,255,255,.07);
@@ -827,7 +827,7 @@ html.ob-on .ob-prog { background: var(--raised); }
   color-scheme: light;
   --bg: #EEF1F6; --surface: #FFFFFF; --surface-solid: #FFFFFF; --raised: #EEF1F7;
   --border: rgba(20,30,70,.08); --edge: rgba(20,30,70,.16);
-  --text: #121A3A; --text2: rgba(18,26,58,.64); --muted: rgba(18,26,58,.42);
+  --text: #121A3A; --text2: rgba(18,26,58,.74); --muted: rgba(18,26,58,.64);
   --accent: #D61F17; --accent-dark: #A3150F; --accent-ink: #FFFFFF;
   --green: #22995E; --red: #D9342C; --blue: #3E67D8; --pos: #22995E; --neg: #D9342C;
   --shadow: 0 1px 2px rgba(20,30,70,.06), 0 6px 18px -10px rgba(20,30,70,.25);
@@ -988,7 +988,7 @@ html:not(.ob-on) .ob-foot .btn.primary { background: var(--accent); color: var(-
   color-scheme: dark;
   --surface: color-mix(in srgb, var(--sky1, #5B6E9F) 34%, #171527); --surface-solid: color-mix(in srgb, var(--sky1, #5B6E9F) 34%, #171527);
   --raised: rgba(255,240,230,.12); --border: rgba(255,255,255,.1); --edge: rgba(255,255,255,.18);
-  --text: #F7F2EE; --text2: rgba(247,240,235,.68); --muted: rgba(247,240,235,.4);
+  --text: #F7F2EE; --text2: rgba(247,240,235,.76); --muted: rgba(247,240,235,.6);
   --accent: #6CC0DE; --accent-ink: #06222D; --shadow: 0 6px 24px rgba(10,8,30,.28), 0 0 0 .5px rgba(255,255,255,.06);
   --danger: #FF7B6E;
 }
@@ -1140,9 +1140,28 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 .fold-ck { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--pos, #34C759); color: #fff; }
 .fold-ck svg { width: 15px; height: 15px; }
 .card.folded .cmp { margin-top: var(--s2); }
+/* contrast (22 Oct a11y pass): --muted and --text2 raised so labels reach 4.5:1 in every theme */
 /* share card picker */
 .sh-prev { display: block; width: 62%; max-width: 260px; aspect-ratio: 1080 / 1350; margin: 0 auto; border-radius: 12px; background: var(--raised); object-fit: cover; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
 .sh-chips { flex-wrap: wrap; }
 .sh-li { cursor: pointer; }
 body:has(#recap) #sheets { z-index: 75; }
 .sh-prev.story { aspect-ratio: 1080 / 1920; width: 50%; max-width: 210px; }
+/* Skyline: red on navy is too dim for small text, so text that uses the accent gets a lighter red (22 Oct a11y pass) */
+:root[data-theme="spidey"] :is(.btn.ghost, .link, .icon-btn, .daychip, .datepick, .tab.on, .tab-start:not(.live), .xr.act, .xr.acc, .tgt-line, .li.on, .fold-btn.shut, .ss-line, .uni-lbl, .m-tgt, .fold-s, #wk .back) { color: #FF5A50; }
+:root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .pill.pr { color: #7A5410; }
+:root[data-theme="mono"] .link, :root[data-theme="mono"] .link.c-neg { color: #F0505B !important; }
+/* first-run hint above the Start tab */
+#coach { position: fixed; left: 16px; right: 16px; z-index: 55; display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 12px 16px; border-radius: 14px; background: var(--accent); color: var(--accent-ink, #fff); box-shadow: 0 10px 30px rgba(0,0,0,.28); animation: coachIn .35s var(--ease) both; }
+#coach b { display: block; font-size: 15px; line-height: 20px; font-weight: 700; }
+#coach span { display: block; font-size: 14px; line-height: 19px; opacity: .92; }
+#coach::after { content: ""; position: absolute; bottom: -7px; left: calc(var(--ax, 50%) - 16px - 8px); width: 16px; height: 16px; background: inherit; transform: rotate(45deg); border-radius: 3px; }
+.coach-x { flex: none; width: 32px; height: 32px; margin: -4px -4px 0 0; border-radius: 8px; border: 0; background: rgba(255,255,255,.18); color: inherit; display: grid; place-items: center; }
+.coach-x svg { width: 16px; height: 16px; }
+@keyframes coachIn { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { #coach { animation: none; } }
+/* one-tap Update bar */
+#upd { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 90; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--surface, #fff); color: var(--text); box-shadow: 0 8px 28px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08); font-size: 14px; line-height: 19px; font-weight: 500; animation: coachIn .3s var(--ease) both; }
+#upd span { flex: 1; min-width: 0; }
+.upd-go { flex: none; min-height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink, #fff); font-weight: 700; font-size: 14px; }
+.upd-x { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; }
