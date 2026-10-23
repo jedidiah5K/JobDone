@@ -494,9 +494,11 @@ function endScrub(el) { const ln = el.querySelector('.scrub'); if (ln) ln.setAtt
 let toastT = null;
 let SCR_KEY = '';
 function screenChanged() { const top = NAV.stack[NAV.stack.length - 1], k = (top ? top.v : NAV.tab) + '|' + (A && A.open ? (A.view || 'log') : ''); if (k !== SCR_KEY) { SCR_KEY = k; document.querySelectorAll('.toast').forEach(t => t.remove()); } }
-function toast(html, ms = 2600) {
+// undo: optional function; adds an Undo button and keeps the toast up longer (deleting is forgiving, like Mail and Photos)
+function toast(html, ms = 2600, undo) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
-  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = html;
+  const t = document.createElement('div'); t.className = 'toast' + (undo ? ' has-undo' : ''); t.setAttribute('role', 'status'); t.innerHTML = html;
+  if (undo) { ms = Math.max(ms, 6000); const b = document.createElement('button'); b.className = 'toast-undo'; b.textContent = 'Undo'; b.onclick = () => { t.remove(); undo(); }; t.appendChild(b); }
   document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), ms);
 }
 const SHEETS = [];
@@ -1129,7 +1131,7 @@ function viewWorkout(v) {
   const w = S.workouts[v.id]; if (!w) return backBtn();
   const pr = new Map(ix().prs.filter(p => p.wid === w.id).map(p => [p.ex, p]));
   const ed = !!v.edit;
-  return `<div class="stack"><div class="row between">${backBtn()}<div class="g2 row">${!ed && !w.skipped ? '<button class="btn sm" data-a="recap">Recap</button>' : ''}<button class="btn sm" data-a="wkEdit">${ed ? 'Done' : 'Edit'}</button></div></div>
+  return `<div class="stack"><div class="row between">${backBtn()}<div class="g2 row">${!ed && !w.skipped ? '<button class="btn sm" data-a="repeatWk">Do again</button><button class="btn sm" data-a="recap">Recap</button>' : ''}<button class="btn sm" data-a="wkEdit">${ed ? 'Done' : 'Edit'}</button></div></div>
   <div class="pt0 top"><div><div class="eyebrow">${esc(fmtDate(w.date, { wd: true, y: true }))}${w.src === 'import' ? ' · imported' : ''}</div><h1>${esc(w.splitName || 'Workout')}</h1></div></div>
   ${ed ? `<div class="grid2"><div class="field"><label for="wk-date">Date</label><input class="input" type="date" id="wk-date" data-in="wkDate" value="${w.date}"></div><div class="field"><label for="wk-split">Split</label><select class="input" id="wk-split" data-in="wkSplit">${S.splits.map(s => `<option value="${s.id}" ${wSplit(w) === s ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div></div>` : ''}
   ${w.skipped ? `<div class="card"><div class="empty">This session was skipped.</div></div>` : `<div class="card"><div class="kpis"><div class="kpi"><b>${dvol(wVol(w))}</b><span>${U()} volume</span></div><div class="kpi"><b>${wSets(w)}</b><span>sets</span></div><div class="kpi"><b>${w.end && w.start ? fmtDur(w.end - w.start) : '—'}</b><span>duration</span></div></div>${w.energy ? `<div class="mt3 cap">Energy ${w.energy}/5</div>` : ''}${w.note ? `<div class="mt3 note">${esc(w.note)}</div>` : ''}</div>`}
@@ -2774,7 +2776,7 @@ function exMenu(ei) {
       b.onclick = ev => {
         const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m; closeSheet(sh);
         if (m === 'order') openReorder();
-        if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { A.ex.splice(ei, 1); touchA(); } });
+        if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { if (!A) return; const [gone] = A.ex.splice(ei, 1); touchA(); toast(esc(e.name) + ' removed', 0, () => { if (!A) return; A.ex.splice(Math.min(ei, A.ex.length), 0, gone); touchA(); }); } });
         if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
         if (m === 'rest') openExRest(e.name);
@@ -3231,6 +3233,12 @@ const ACT = {
   exMetric: el => { NAV.stack[NAV.stack.length - 1].metric = el.dataset.k; rerender(); },
   rotation: () => openRotation(),
   plates: () => openPlates(0, null),
+  // Hevy/Strong users ask for "repeat this workout": same lifts and set count, numbers filled from the latest time
+  repeatWk: () => { const w = S.workouts[NAV.stack[NAV.stack.length - 1].id]; if (!w) return;
+    if (A) return toast('Finish or discard the workout in progress first.');
+    const sp = w.splitId && splitById(w.splitId);
+    A = { id: uid(), splitId: sp ? sp.id : null, splitName: w.splitName || 'Workout', start: Date.now(), touched: Date.now(), ex: w.ex.map(e => { const se = sp && sp.ex.find(x => x.name === e.name) || {}; return newExEntry(e.name, e.sets.length, se.rest, se.note); }), orig: w.ex.map(e => e.name), view: 'log' };
+    persist('jd/active'); NAV.stack = []; NAV.tab = 'today'; render(); openWk(); },
   recap: el => showRecap(el.dataset.id || NAV.stack[NAV.stack.length - 1].id),
   exCat: el => openExForm(el.dataset.k),
   myEx: () => openMyExercises(),
@@ -3243,11 +3251,11 @@ const ACT = {
   spDup: el => { const sp = splitById(el.dataset.id); const id = 'sp-' + uid(); S.splits.push({ ...clone(sp), id, name: sp.name + ' copy', archived: false }); persist('jd/meta'); NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); toast('Split duplicated'); },
   spShare: el => shareSplit(splitById(el.dataset.id)),
   spDelete: el => { const sp = splitById(el.dataset.id); if (!sp) return; if (A && A.splitId === sp.id) return toast('Finish or discard the workout using this split first.');
-    confirmSheet({ title: 'Delete ' + sp.name + '?', body: 'The split is removed for good. Workouts you already logged with it stay in your history.', ok: 'Delete split', danger: true, onOk: () => { S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(esc(sp.name) + ' deleted'); } }); },
+    confirmSheet({ title: 'Delete ' + sp.name + '?', body: 'The split is removed. Workouts you already logged with it stay in your history.', ok: 'Delete split', danger: true, onOk: () => { const was = S.splits.slice(), rot = S.rotation.slice(); S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(esc(sp.name) + ' deleted', 0, () => { S.splits = was; S.rotation = rot; persist('jd/meta'); render(); toast(esc(sp.name) + ' restored'); }); } }); },
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
-  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; confirmSheet({ title: 'Delete this workout?', body: `${esc(w.splitName)} on ${esc(fmtDate(w.date, { wd: true }))}. This can’t be undone.`, ok: 'Delete', danger: true, onOk: () => { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted'); } }); },
+  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; confirmSheet({ title: 'Delete this workout?', body: `${esc(w.splitName)} on ${esc(fmtDate(w.date, { wd: true }))}. `, ok: 'Delete', danger: true, onOk: () => { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } }); },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
@@ -3271,7 +3279,7 @@ const ACT = {
   rpe: el => { const st = A.ex[+el.dataset.e].sets[+el.dataset.s], k = +el.dataset.k; st.rpe = st.rpe === k ? null : k; A.rpeAsk = null; touchA(); },
   setType: el => { const s = A.ex[+el.dataset.e].sets[+el.dataset.s]; const o = ['work', 'warm', 'drop', 'fail']; s.t = o[(o.indexOf(s.t) + 1) % o.length]; touchA(); },
   addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },
-  rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length > 1) e.sets.pop(); touchA(); },
+  rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length < 2) return; const gone = e.sets.pop(); touchA(); if (gone.done) toast('Logged set removed', 0, () => { if (A && A.ex.includes(e)) { e.sets.push(gone); touchA(); } }); },
   exMenu: el => exMenu(+el.dataset.e),
   swapEx: el => openSwap(+el.dataset.e),
   foldEx: el => { const ei = +el.dataset.e, e = A.ex[ei], shut = !!document.querySelector('#ex-' + ei + '.folded'); e.fold = !shut; persist('jd/active'); renderWorkout(); },

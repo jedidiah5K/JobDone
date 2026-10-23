@@ -1165,3 +1165,7 @@ body:has(#recap) #sheets { z-index: 75; }
 #upd span { flex: 1; min-width: 0; }
 .upd-go { flex: none; min-height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink, #fff); font-weight: 700; font-size: 14px; }
 .upd-x { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; }
+
+/* Undo toast (23 Oct): message on the left, Undo on the right, like iOS Mail */
+.toast.has-undo { display: flex; align-items: center; gap: var(--s4); padding-right: var(--s2); }
+.toast-undo { font: inherit; font-weight: 700; color: inherit; background: none; border: 0; padding: 6px 10px; margin: -6px 0; text-transform: uppercase; letter-spacing: .04em; font-size: 14px; opacity: .85; min-height: 36px; }
