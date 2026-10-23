@@ -795,7 +795,7 @@ function viewToday() {
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
   <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
     <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">${past ? 'week of ' + esc(fmtDate(ws)) : esc(streakText())}</span></div>
-    <div class="week">${strip}</div></div>
+    <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done)}</div>
   <button class="tl full card" data-a="weigh" data-k="${t}">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
@@ -819,6 +819,14 @@ function viewToday() {
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
+// Rest week (23 Oct): sick or away, the weekly streak holds. Apple added Pause Rings and Duolingo has streak freezes for the same reason.
+// Offered from Friday, only once a streak exists and this week has no workout yet; a rest week neither adds to nor breaks the streak.
+function restWeekLine(ws, done) {
+  const on = (S.profile.restWeeks || []).includes(ws);
+  if (on) return `<div class="row between mt2 cap rest-line"><span>Rest week. Your streak is safe.</span><button class="link" data-a="restWeek" data-k="${ws}">Undo</button></div>`;
+  if (done || daysBetween(ws, today()) < 4 || !ix().ws.some(w => !w.skipped && mondayOf(w.date) === addDays(ws, -7))) return '';
+  return `<div class="row between mt2 cap rest-line"><span>Sick or away this week?</span><button class="link" data-a="restWeek" data-k="${ws}">Take a rest week</button></div>`;
+}
 function ratePerMonth() {
   const l = weightList(); if (l.length < 2) return null;
   const a = l[0], b = l[l.length - 1]; const d = daysBetween(a.d, b.d); if (d < 14) return null;
@@ -827,9 +835,10 @@ function ratePerMonth() {
 function streakText() {
   const ws = ix().ws.filter(w => !w.skipped); if (!ws.length) return 'No workouts yet';
   const weeks = new Set(ws.map(w => mondayOf(w.date)));
+  const rest = new Set(S.profile.restWeeks || []);
   let k = 0, m = mondayOf(today());
   if (!weeks.has(m)) m = addDays(m, -7);
-  while (weeks.has(m)) { k++; m = addDays(m, -7); }
+  while (weeks.has(m) || rest.has(m)) { if (weeks.has(m)) k++; m = addDays(m, -7); }
   return k ? `${k}-week streak` : 'Train this week to start a streak';
 }
 function prRow(p) {
@@ -2261,7 +2270,8 @@ function badgeList() {
   prog.Workouts = ws.length; prog.Heavy = heavy; prog.Volume = vol / 1000;
   // weekly streaks
   const weeks = [...new Set(ws.map(w => mondayOf(w.date)))].sort(); let run = 0, best = 0;
-  weeks.forEach((m, i) => { run = i && daysBetween(weeks[i - 1], m) === 7 ? run + 1 : 1; best = Math.max(best, run); const last = ws.filter(w => mondayOf(w.date) === m).pop(); BADGES.filter(b => b.g === 'Streaks' && run >= b.n).forEach(b => hit(b.k, last.date)); });
+  const rw = new Set(S.profile.restWeeks || []), joined = (a, b) => { for (let x = addDays(a, 7); x < b; x = addDays(x, 7)) if (!rw.has(x)) return false; return true; };
+  weeks.forEach((m, i) => { run = i && joined(weeks[i - 1], m) ? run + 1 : 1; best = Math.max(best, run); const last = ws.filter(w => mondayOf(w.date) === m).pop(); BADGES.filter(b => b.g === 'Streaks' && run >= b.n).forEach(b => hit(b.k, last.date)); });
   prog.Streaks = best;
   // PRs (sessions with a record)
   const prs = ix().prs; prs.forEach((p, i) => BADGES.filter(b => b.g === 'Records' && i + 1 >= b.n).forEach(b => hit(b.k, p.date))); prog.Records = prs.length;
@@ -3234,6 +3244,7 @@ const ACT = {
   rotation: () => openRotation(),
   plates: () => openPlates(0, null),
   // Hevy/Strong users ask for "repeat this workout": same lifts and set count, numbers filled from the latest time
+  restWeek: el => { const k = el.dataset.k, r = S.profile.restWeeks || []; S.profile.restWeeks = r.includes(k) ? r.filter(x => x !== k) : [...r, k]; persist('jd/meta'); rerender(); },
   repeatWk: () => { const w = S.workouts[NAV.stack[NAV.stack.length - 1].id]; if (!w) return;
     if (A) return toast('Finish or discard the workout in progress first.');
     const sp = w.splitId && splitById(w.splitId);
