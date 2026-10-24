@@ -1177,3 +1177,16 @@ body:has(#recap) #sheets { z-index: 75; }
 .goal-bar b { display: block; height: 100%; border-radius: 4px; background: var(--text); }
 .goal-bar.hit b { background: var(--pos); }
 .goal.li { align-items: stretch; }
+
+/* Denser logging + fewer boxes (24 Oct, Job OK'd): Strong and Hevy fit 4-5 sets of a lift on screen */
+.sets td { padding: 1px 2px; }
+.cell { height: 36px; }
+:root:not([data-theme]) .cell { height: 40px; }
+.setup.empty { margin-top: var(--s1); padding-top: 2px; padding-bottom: 2px; }
+.tgt-line { margin-top: 2px; }
+.sets { margin-top: var(--s1); }
+.cmp { gap: 4px 10px; margin-top: var(--s1); }
+/* Today: weight and steps share one card, split by a hairline (iOS grouped list) */
+.card.grp { padding: 0; overflow: hidden; }
+.card.grp > .grp-a { padding: var(--s4); display: block; }
+.card.grp > .grp-b { padding: var(--s3) var(--s4); width: 100%; border-top: 1px solid var(--border); }
