@@ -533,6 +533,11 @@ button.xr:active, label.xr[for]:active { opacity: .6; }
 .xr-in { width: 120px; flex: none; text-align: right; background: transparent; border: 0; padding: 0; font-size: 17px; line-height: 22px; color: var(--text2); min-height: 30px; }
 .xr-in:focus { outline: none; color: var(--text); }
 .xr-in::placeholder { color: var(--muted); }
+.xr-in[type=time] { width: auto; min-width: 96px; -webkit-appearance: none; appearance: none; }
+.remind-days { flex-wrap: wrap; row-gap: 8px; }
+.rdays { display: flex; gap: 6px; }
+.rday { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--raised); color: var(--text2); font-size: 13px; font-weight: 600; }
+.rday.on { background: var(--accent); color: var(--accent-ink); }
 .xr-u { color: var(--text2); font-size: 17px; margin-left: -6px; }
 .xr-v { color: var(--text2); max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .xr-p { margin: 0; padding: var(--s3) 0; font-size: 15px; line-height: 20px; color: var(--text2); }
