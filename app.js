@@ -137,7 +137,7 @@ async function pushOn() {
     const r = await restFn({ action: 'sub', sub: sub.toJSON() }); return !!(r && r.ok);
   } catch (e) { toast('Could not turn on notifications on this phone.'); return false; }
 }
-async function pushOff() { try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
+async function pushOff() { if (S && S.profile && (S.profile.restPush || (S.profile.remind && S.profile.remind.on))) return; try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
 let restPushSent = 0;
 function syncRestPush() {
   if (!HOSTED || !S || !S.profile || !S.profile.restPush) return;
@@ -146,6 +146,19 @@ function syncRestPush() {
   const was = restPushSent; restPushSent = due;
   if (due) { const ex = A.ex && A.ex.find(e => e.sets && e.sets.some(x => !x.done)); restFn({ action: 'at', due, title: 'Rest done', body: ex ? 'Next set: ' + ex.name : 'Time for your next set.' }); }
   else if (was && Date.now() < was - 1500) restFn({ action: 'cancel' });
+}
+// Daily workout reminder (24 Oct): pick a time and days; a once-a-minute server job pings only if nothing is logged that day.
+// It reads profile.remind {on, at 'HH:MM', days [0-6, Sunday 0], tz} from jd/meta and skips rest weeks and workouts in progress.
+const REMIND_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], REMIND_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const myTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } };
+const remindOn = () => !!(S && S.profile && S.profile.remind && S.profile.remind.on);
+const hm12 = t => { const [h, m] = t.split(':').map(Number); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' AM' : ' PM'); };
+function remindRows(p) {
+  const r = p.remind || {}, on = !!r.on && pushReady(), days = r.days || [0, 1, 2, 3, 4, 5, 6];
+  const row = srow('Daily workout reminder', swi(on, 'remind'), pushReady() ? (on ? 'Only on days you haven’t trained by then. Never on a rest week' : 'A ping at your time if you haven’t trained that day') : 'Add Job’s Done to your Home Screen first, then turn this on');
+  if (!on) return row;
+  return row + `<label class="xr"><span class="grow">Remind me at</span><input class="xr-in" type="time" id="set-remind" data-in="remindAt" value="${esc(r.at || '18:00')}"></label>
+    <div class="xr remind-days"><span class="grow">Days</span><div class="rdays">${REMIND_DAYS.map((d, i) => `<button class="rday ${days.includes(i) ? 'on' : ''}" data-a="remindDay" data-k="${i}" aria-pressed="${days.includes(i)}" aria-label="${REMIND_NAMES[i]}">${d}</button>`).join('')}</div></div>`;
 }
 let S = null;        // persisted app state
 let A = null;        // active workout in progress
@@ -618,6 +631,7 @@ function render() {
   if (S && S.profile && S.profile.theme === 'miles') { S.profile.theme = 'cliffs'; persist('jd/meta'); }
   if (S && S.profile && !S.profile.cliffs1) { S.profile.theme = S.profile.theme || 'mono'; S.profile.cliffs1 = true; persist('jd/meta'); }
   if ((document.documentElement.dataset.theme || 'climb') !== theme()) applyTheme();
+  if (remindOn() && myTz() && S.profile.remind.tz !== myTz()) { S.profile.remind.tz = myTz(); persist('jd/meta'); }
   // Oct 2026: rest timer default went from 2 to 5 minutes (Job's ask); move the old default over once.
   // Accounts from before the friends launch (Oct 15 2026) keep their owner's setup: QWatch steps, plates-only loading.
   if (S && S.profile && S.profile.legacy == null) { const old = (S.created || Date.now()) < Date.UTC(2026, 9, 15, 6); S.profile.legacy = old ? 1 : 0; if (old) { if (S.profile.barW == null) S.profile.barW = 0; if (!S.profile.stepSrc) S.profile.stepSrc = 'QWatch Pro'; S.profile.owner = true; } persist('jd/meta'); }
@@ -1234,6 +1248,7 @@ function viewMe() {
     ${slink('My exercises and muscle groups', 'myEx')}
   </div></section>
   <section><div class="sgh">Reminders</div><div class="sgrp">
+    ${HOSTED ? remindRows(p) : ''}
     ${srow('Morning weigh-in pop-up', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
   </div></section>
   <section><div class="sgh">Sounds</div><div class="sgrp">
@@ -3352,6 +3367,15 @@ const ACT = {
     if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
+  remind: async () => {
+    const r = S.profile.remind || {};
+    if (r.on) { S.profile.remind = { ...r, on: false }; persist('jd/meta'); rerender(); pushOff(); return; }
+    if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
+    if (!(await pushOn())) { rerender(); return; }
+    S.profile.remind = { on: true, at: r.at || '18:00', days: r.days || [0, 1, 2, 3, 4, 5, 6], tz: myTz() };
+    persist('jd/meta'); rerender(); toast(`Reminder set for ${hm12(S.profile.remind.at)}. It only comes on days you haven’t trained.`);
+  },
+  remindDay: el => { const r = S.profile.remind, k = +el.dataset.k, d = r.days || [0, 1, 2, 3, 4, 5, 6]; r.days = d.includes(k) ? d.filter(x => x !== k) : [...d, k].sort(); r.tz = myTz(); persist('jd/meta'); rerender(); },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };
@@ -3366,6 +3390,7 @@ const IN = {
   profT: el => { const v = el.value.trim().slice(0, 30); if (v) { S.profile.name = v; persist('jd/meta'); } },
   profW: el => { const v = parseFloat(el.value); S.profile.goalW = !isNaN(v) && v > 0 ? Math.round(toKg(v) * 100) / 100 : null; persist('jd/meta'); },
   repR: el => { const r = (S.profile.repRange || [null, null]).slice(); r[+el.dataset.rr] = +el.value || null; const o = { lo: r[0], hi: r[1] }; fixRR(o, 'lo', 'hi'); S.profile.repRange = o.lo && o.hi ? [o.lo, o.hi] : o.lo || o.hi ? [o.lo, o.hi] : null; persist('jd/meta'); rerender(); },
+  remindAt: el => { if (!/^\d\d:\d\d$/.test(el.value) || !S.profile.remind) return; S.profile.remind.at = el.value; S.profile.remind.tz = myTz(); persist('jd/meta'); toast('Reminder moved to ' + hm12(el.value) + '.'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
   wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; invalidate(); persist(old, monthPath(w.date)); rerender(); },
   wkSplit: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const sp = splitById(el.value); w.splitId = sp.id; w.splitName = sp.name; invalidate(); persist(monthPath(w.date)); rerender(); },

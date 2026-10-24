@@ -1,7 +1,8 @@
 // Rest-done notifications for the Home Screen app (Web Push).
 // The app sends its push subscription and, when a rest timer starts, the time it ends.
 // A pg_cron job (jobdone-rest-push, every 5 seconds) calls this function with x-cron-key when an alert is due,
-// and the function sends the push. VAPID keys and the cron key live in public.jobdone_private (service role only).
+// and the function sends the push. A second job (jobdone-remind, every minute) posts daily workout reminders that are due.
+// VAPID keys and the cron key live in public.jobdone_private (service role only).
 // Deployed as the Supabase edge function "rest-push" with verify_jwt = false: it checks the user's token itself.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import webpush from 'npm:web-push@3.6.7';
@@ -9,6 +10,14 @@ import webpush from 'npm:web-push@3.6.7';
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (status: number, o: unknown) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+// Reminder lines per theme, in each theme's voice (Agent, Summit, Boulder, Skyline). Short, and never about weights or reps.
+const REMIND: Record<string, [string, string][]> = {
+  mono: [['Your mission is waiting', 'No training logged today. The briefing is ready when you are.'], ['Report to the gym', 'Nothing on file today, Agent.']],
+  cliffs: [['The trail is open', 'No climb logged today. The summit isn’t going anywhere.'], ['Base camp is quiet', 'No session logged today. Lace up.']],
+  climb: [['The wall is open', 'No session logged today. Chalk up?'], ['Your project is waiting', 'Nothing logged today. Time to send it.']],
+  spidey: [['The city needs you', 'No swing logged today. Suit up.'], ['Your city is calling', 'Nothing logged today. Time to swing by.']],
+};
 
 let cfg: Record<string, string> | null = null;
 async function conf() {
@@ -43,6 +52,17 @@ Deno.serve(async req => {
   const ck = req.headers.get('x-cron-key');
   if (ck) {
     if (ck !== c.cron_key) return json(401, { error: 'bad key' });
+    // Daily workout reminders: jobdone_remind_tick() posts the accounts that are due, with their theme.
+    let cb: any = {};
+    try { cb = await req.json(); } catch { /* rest tick sends a small body */ }
+    if (Array.isArray(cb.remind)) {
+      let n = 0;
+      for (const r of cb.remind.slice(0, 500)) {
+        const m = REMIND[r.theme] || REMIND.mono, i = Math.floor(Math.random() * m.length);
+        n += await sendTo(String(r.u), { title: m[i][0], body: m[i][1], tag: 'remind' });
+      }
+      return json(200, { sent: n });
+    }
     const { data: due } = await db.from('jobdone_rest_alerts').update({ sent: true }).eq('sent', false).lte('due_at', new Date(Date.now() + 2000).toISOString()).select('user_id, title, body, due_at');
     let n = 0;
     for (const a of due || []) {
