@@ -1378,6 +1378,7 @@ function renderWorkout() {
   el.hidden = false;
   if (A.view === 'summary') { el.innerHTML = summaryHTML(); return; }
   const body = el.querySelector('.wk-body'); const keep = body ? body.scrollTop : 0;
+  const hadPop = !!el.querySelector('.restpop'); // −30s, +30s, Pause redraw the timer; only slide it up the first time
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
@@ -1393,6 +1394,7 @@ function renderWorkout() {
   ${REST ? restHTML() : ''}`;
   el.innerHTML = resolveVars(el.innerHTML);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
+  const rp = hadPop && el.querySelector('.restpop'); if (rp) rp.style.animation = 'none';
 }
 function exCardHTML(e, ei) {
   const last = lastSession(e.name);
