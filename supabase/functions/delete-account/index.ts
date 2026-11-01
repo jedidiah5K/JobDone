@@ -14,6 +14,10 @@ const handle = async (req: Request) => {
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) return json(401, { error: 'Sign in again, then try.' });
   const id = data.user.id;
+  // Two-step sign-in on? A password-only session can't delete the account (same rule as the data's RLS).
+  const asUser = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false } });
+  const { data: aalOk } = await asUser.rpc('jobdone_aal_ok');
+  if (aalOk !== true) return json(403, { error: 'Enter your two-step code first, then try again.' });
   await admin.from('jobdone_docs').delete().eq('user_id', id);
   await admin.from('jobdone_sync_keys').delete().eq('user_id', id);
   await admin.from('jobdone_feedback').delete().eq('user_id', id);

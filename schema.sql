@@ -109,3 +109,24 @@ select cron.schedule('jobdone-weekly-backup', '30 18 * * *', 'insert into public
 select cron.schedule('jobdone-backup-trim', '45 18 * * *', $$delete from public.jobdone_backups where taken_at < now() - interval '14 days'$$);
 select cron.schedule('jobdone-error-trim', '23 3 * * *', $$delete from public.jobdone_errors where at < now() - interval '30 days'$$);
 select cron.schedule('jobdone-cron-log-trim', '17 3 * * *', $$delete from cron.job_run_details where end_time < now() - interval '1 day'$$);
+
+-- Security audit (1 Nov 2026): stop one account filling the free database, and stop faked feedback senders.
+-- Only the paths the app writes: jd/<name>, months/YYYY-MM, photos/YYYY-MM-DD[-n].
+alter table public.jobdone_docs add constraint jobdone_docs_path_ok
+  check (path ~ '^(jd/[a-z0-9_-]{1,40}|months/[0-9]{4}-[0-9]{2}|photos/[0-9]{4}-[0-9]{2}-[0-9]{2}(-[0-9]{1,3})?)$');
+-- Each account's documents together stay under 20 MB (a heavy user today is ~25 KB).
+create or replace function public.jobdone_docs_quota() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if (select coalesce(sum(pg_column_size(d.body)), 0) from public.jobdone_docs d where d.user_id = new.user_id and d.path <> new.path)
+     + pg_column_size(new.body) > 20000000 then
+    raise exception 'Storage limit reached' using errcode = '54000';
+  end if;
+  return new;
+end $$;
+revoke execute on function public.jobdone_docs_quota() from public, anon, authenticated;
+drop trigger if exists jobdone_docs_quota on public.jobdone_docs;
+create trigger jobdone_docs_quota before insert or update of body on public.jobdone_docs for each row execute function public.jobdone_docs_quota();
+-- Feedback carries the sender's real sign-in email (or none).
+drop policy if exists "Send own feedback" on public.jobdone_feedback;
+create policy "Send own feedback" on public.jobdone_feedback for insert to authenticated
+  with check ((select auth.uid()) = user_id and (email is null or email = (select auth.jwt() ->> 'email')));

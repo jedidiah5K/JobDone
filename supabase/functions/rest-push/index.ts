@@ -24,7 +24,7 @@ async function sendTo(userId: string, payload: unknown) {
   let ok = 0;
   for (const s of subs || []) {
     try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 120, urgency: 'high' });
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 120, urgency: 'high', timeout: 5000 });
       ok++;
     } catch (e: any) {
       if (e?.statusCode === 404 || e?.statusCode === 410) await db.from('jobdone_push_subs').delete().eq('endpoint', s.endpoint);
@@ -64,9 +64,14 @@ const handle = async (req: Request) => {
   if (b.action === 'key') return json(200, { key: c.vapid_public });
   if (b.action === 'sub') {
     const s = b.sub || {};
-    if (typeof s.endpoint !== 'string' || !/^https:\/\//.test(s.endpoint) || !s.keys?.p256dh || !s.keys?.auth) return json(400, { error: 'Bad subscription' });
-    const { error } = await db.from('jobdone_push_subs').upsert({ endpoint: s.endpoint, user_id: uid, p256dh: s.keys.p256dh, auth: s.keys.auth });
-    return error ? json(500, { error: 'Could not save' }) : json(200, { ok: true });
+    const short = (v: unknown, n: number) => typeof v === 'string' && v.length > 0 && v.length <= n;
+    if (!short(s.endpoint, 1000) || !/^https:\/\//.test(s.endpoint) || !short(s.keys?.p256dh, 200) || !short(s.keys?.auth, 200)) return json(400, { error: 'Bad subscription' });
+    const { error } = await db.from('jobdone_push_subs').upsert({ endpoint: s.endpoint, user_id: uid, p256dh: s.keys.p256dh, auth: s.keys.auth, created_at: new Date().toISOString() });
+    if (error) return json(500, { error: 'Could not save' });
+    // Keep each person's 5 newest devices, so one account can't pile up endpoints.
+    const { data: old } = await db.from('jobdone_push_subs').select('endpoint').eq('user_id', uid).order('created_at', { ascending: false }).range(5, 100);
+    if (old?.length) await db.from('jobdone_push_subs').delete().in('endpoint', old.map((r: any) => r.endpoint));
+    return json(200, { ok: true });
   }
   if (b.action === 'unsub') { await db.from('jobdone_push_subs').delete().eq('user_id', uid).eq('endpoint', String(b.endpoint || '')); return json(200, { ok: true }); }
   if (b.action === 'at') {

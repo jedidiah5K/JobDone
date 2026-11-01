@@ -2189,7 +2189,7 @@ function openSwap(ei) {
     const go = name => {
       const keep = b.querySelector('#sw-keep') && b.querySelector('#sw-keep').checked; closeSheet(sh);
       if (keep) { const x = sp.ex.find(y => y.name === e.name); if (x) { x.name = name; persist('jd/meta'); } }
-      A.ex[ei] = newExEntry(name, e.sets.length, e.rest); touchA(); toast(`Swapped to ${name}${keep ? ' in ' + sp.name + ' too' : ' for today'}`);
+      A.ex[ei] = newExEntry(name, e.sets.length, e.rest); touchA(); toast(`Swapped to ${esc(name)}${keep ? ' in ' + esc(sp.name) + ' too' : ' for today'}`);
     };
     b.querySelectorAll('[data-sw]').forEach(x => x.onclick = () => go(x.dataset.sw));
     b.querySelector('#sw-all').onclick = () => { closeSheet(sh); pickExercise(go, { title: 'Swap ' + e.name }); };
