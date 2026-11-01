@@ -11,7 +11,7 @@ async function sha256hex(s: string) {
   return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-Deno.serve(async req => {
+const handle = async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
   if (Number(req.headers.get('content-length') || 0) > 4000) return json(413, { error: 'Too much data' });
@@ -35,4 +35,12 @@ Deno.serve(async req => {
   // An existing email gets the same reply; signing in afterwards simply fails with "wrong email or password".
   if (error && !/already|registered|exists/i.test(error.message)) return json(500, { error: 'Could not create the account. Try again.' });
   return json(200, { ok: true });
+};
+
+// Browsers may only call these functions from the site itself (or local dev); the Shortcut and cron don't send Origin.
+const ORIGINS = ['https://jobdone-peach.vercel.app', 'http://localhost:8000'];
+Deno.serve(async req => {
+  const res = await handle(req), o = req.headers.get('origin') || '';
+  res.headers.set('Access-Control-Allow-Origin', ORIGINS.includes(o) ? o : ORIGINS[0]); res.headers.set('Vary', 'Origin');
+  return res;
 });

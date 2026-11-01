@@ -7,7 +7,7 @@ const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { au
 const cors = { 'Access-Control-Allow-Origin': 'https://jobdone-peach.vercel.app', 'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (status: number, o: unknown) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-Deno.serve(async req => {
+const handle = async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -20,4 +20,12 @@ Deno.serve(async req => {
   const { error: derr } = await admin.auth.admin.deleteUser(id);
   if (derr) return json(500, { error: 'Could not delete the account. Try again.' });
   return json(200, { ok: true });
+};
+
+// Browsers may only call these functions from the site itself (or local dev); the Shortcut and cron don't send Origin.
+const ORIGINS = ['https://jobdone-peach.vercel.app', 'http://localhost:8000'];
+Deno.serve(async req => {
+  const res = await handle(req), o = req.headers.get('origin') || '';
+  res.headers.set('Access-Control-Allow-Origin', ORIGINS.includes(o) ? o : ORIGINS[0]); res.headers.set('Vary', 'Origin');
+  return res;
 });

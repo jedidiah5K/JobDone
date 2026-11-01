@@ -53,6 +53,7 @@ alter table public.jobdone_docs add constraint jobdone_docs_body_size check (pg_
 -- Rest-done notifications (Oct 2026). Applied as migration "rest_push_alerts".
 -- jobdone_private holds the VAPID key pair and the cron key; insert your own values (never commit them).
 create extension if not exists pg_cron;
+create extension if not exists pg_net; -- jobdone_rest_tick calls net.http_post
 create table if not exists public.jobdone_push_subs (endpoint text primary key, user_id uuid not null references auth.users on delete cascade, p256dh text not null, auth text not null, created_at timestamptz default now());
 create table if not exists public.jobdone_rest_alerts (user_id uuid primary key references auth.users on delete cascade, due_at timestamptz not null, title text not null default 'Rest done', body text not null default 'Time for your next set.', sent boolean not null default false);
 create index if not exists jobdone_rest_alerts_due on public.jobdone_rest_alerts (due_at) where not sent;

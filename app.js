@@ -1378,7 +1378,8 @@ function renderWorkout() {
   el.hidden = false;
   if (A.view === 'summary') { el.innerHTML = summaryHTML(); return; }
   const body = el.querySelector('.wk-body'); const keep = body ? body.scrollTop : 0;
-  const hadPop = !!el.querySelector('.restpop'); // −30s, +30s, Pause redraw the timer; only slide it up the first time
+  const hadPop = !!el.querySelector('.restpop') && el._rest === REST; // −30s, +30s, Pause redraw the timer; only a new rest slides up
+  el._rest = REST;
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>

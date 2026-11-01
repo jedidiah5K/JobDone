@@ -13,7 +13,7 @@ async function sha256hex(s: string) {
 }
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
-Deno.serve(async req => {
+const handle = async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return reply(405, 'Use POST');
   if (Number(req.headers.get('content-length') || 0) > 20000) return reply(413, 'Too much data');
@@ -48,4 +48,12 @@ Deno.serve(async req => {
   if (werr) return reply(500, 'Could not save steps');
   const last = keys[keys.length - 1];
   return reply(200, `Saved ${keys.length} day${keys.length > 1 ? 's' : ''} · ${last} ${days[last].toLocaleString('en-US')} steps`);
+};
+
+// Browsers may only call these functions from the site itself (or local dev); the Shortcut and cron don't send Origin.
+const ORIGINS = ['https://jobdone-peach.vercel.app', 'http://localhost:8000'];
+Deno.serve(async req => {
+  const res = await handle(req), o = req.headers.get('origin') || '';
+  res.headers.set('Access-Control-Allow-Origin', ORIGINS.includes(o) ? o : ORIGINS[0]); res.headers.set('Vary', 'Origin');
+  return res;
 });

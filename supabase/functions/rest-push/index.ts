@@ -34,7 +34,7 @@ async function sendTo(userId: string, payload: unknown) {
   return ok;
 }
 
-Deno.serve(async req => {
+const handle = async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
   const c = await conf();
@@ -79,4 +79,12 @@ Deno.serve(async req => {
   if (b.action === 'cancel') { await db.from('jobdone_rest_alerts').delete().eq('user_id', uid); return json(200, { ok: true }); }
   if (b.action === 'test') return json(200, { sent: await sendTo(uid, { title: 'JobDone', body: 'Rest alerts are on. You will get one when rest ends.', tag: 'rest' }) });
   return json(400, { error: 'Unknown action' });
+};
+
+// Browsers may only call these functions from the site itself (or local dev); the Shortcut and cron don't send Origin.
+const ORIGINS = ['https://jobdone-peach.vercel.app', 'http://localhost:8000'];
+Deno.serve(async req => {
+  const res = await handle(req), o = req.headers.get('origin') || '';
+  res.headers.set('Access-Control-Allow-Origin', ORIGINS.includes(o) ? o : ORIGINS[0]); res.headers.set('Vary', 'Origin');
+  return res;
 });
