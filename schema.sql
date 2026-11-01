@@ -43,10 +43,10 @@ create policy "Owner reads feedback" on public.jobdone_feedback for select to au
 create table if not exists public.jobdone_signup_log (
   id bigint generated always as identity primary key,
   ip_hash text not null,
-  created_at timestamptz not null default now()
+  at timestamptz not null default now()
 );
 alter table public.jobdone_signup_log enable row level security; -- no policies: only the signup function (service role) touches it
-create index if not exists jobdone_signup_log_ip on public.jobdone_signup_log (ip_hash, created_at);
+create index if not exists jobdone_signup_log_ip on public.jobdone_signup_log (ip_hash, at);
 
 alter table public.jobdone_docs add constraint jobdone_docs_body_size check (pg_column_size(body) < 1500000);
 
@@ -70,3 +70,41 @@ begin
 end $$;
 revoke execute on function public.jobdone_rest_tick() from public, anon, authenticated;
 select cron.schedule('jobdone-rest-push', '5 seconds', 'select public.jobdone_rest_tick()');
+
+-- Two-step sign-in (Oct 2026): once a user has a verified authenticator, their data needs an aal2 session.
+-- RESTRICTIVE, so it is ANDed with "Own data only" / "Own key only" (a permissive copy would open every row).
+create or replace function public.jobdone_aal_ok() returns boolean language sql stable security definer set search_path to '' as $$
+  select coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+      or not exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status = 'verified')
+$$;
+create policy "Two-step code when turned on" on public.jobdone_docs as restrictive for all to authenticated
+  using ((select public.jobdone_aal_ok())) with check ((select public.jobdone_aal_ok()));
+create policy "Two-step code when turned on" on public.jobdone_sync_keys as restrictive for all to authenticated
+  using ((select public.jobdone_aal_ok())) with check ((select public.jobdone_aal_ok()));
+
+-- Error notes from the app, kept 30 days (privacy page: "Error notes").
+create table if not exists public.jobdone_errors (
+  id bigint generated always as identity primary key,
+  user_id uuid default auth.uid() references auth.users on delete cascade,
+  at timestamptz not null default now(),
+  msg text not null check (length(msg) <= 500),
+  src text check (length(src) <= 300),
+  ver text check (length(ver) <= 40),
+  ua text check (length(ua) <= 200)
+);
+alter table public.jobdone_errors enable row level security;
+create policy "insert own errors" on public.jobdone_errors for insert to authenticated with check (user_id = auth.uid());
+
+-- Daily safety copy of every doc, kept 14 days (service role only, no policies).
+create table if not exists public.jobdone_backups (
+  taken_at timestamptz not null default now(),
+  user_id uuid not null references auth.users on delete cascade,
+  path text not null,
+  body jsonb,
+  primary key (taken_at, user_id, path)
+);
+alter table public.jobdone_backups enable row level security;
+select cron.schedule('jobdone-weekly-backup', '30 18 * * *', 'insert into public.jobdone_backups (user_id, path, body) select user_id, path, body from public.jobdone_docs');
+select cron.schedule('jobdone-backup-trim', '45 18 * * *', $$delete from public.jobdone_backups where taken_at < now() - interval '14 days'$$);
+select cron.schedule('jobdone-error-trim', '23 3 * * *', $$delete from public.jobdone_errors where at < now() - interval '30 days'$$);
+select cron.schedule('jobdone-cron-log-trim', '17 3 * * *', $$delete from cron.job_run_details where end_time < now() - interval '1 day'$$);

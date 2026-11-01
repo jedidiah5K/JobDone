@@ -3608,7 +3608,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     const { data, error } = await SB.auth.signInWithPassword({ email: em, password: pw });
     if (error) {
       b.disabled = false; b.textContent = make ? 'Create account' : 'Sign in';
-      return m(make && /invalid login/i.test(error.message) ? 'That email may already have an account. Sign in instead, or reset your password.' : /invalid login/i.test(error.message) ? 'Wrong email or password.' : /not confirmed/i.test(error.message) ? 'Confirm your email first: open the link Supabase emailed you, then sign in here.' : /rate/i.test(error.message) ? 'Too many tries. Wait a minute, then try again.' : error.message);
+      return m(make && /invalid login/i.test(error.message) ? 'Couldn’t create the account. If you already have one, sign in instead.' : /invalid login/i.test(error.message) ? 'Wrong email or password.' : /not confirmed/i.test(error.message) ? 'Confirm your email first: open the link Supabase emailed you, then sign in here.' : /rate/i.test(error.message) ? 'Too many tries. Wait a minute, then try again.' : error.message);
     }
     if (make && !data.session) { b.textContent = 'Create account'; b.disabled = false; m('Almost done: open the confirmation email, tap its link, then sign in here.', true); }
   };
