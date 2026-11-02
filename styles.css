@@ -1190,3 +1190,9 @@ body:has(#recap) #sheets { z-index: 75; }
 .card.grp { padding: 0; overflow: hidden; }
 .card.grp > .grp-a { padding: var(--s4); display: block; }
 .card.grp > .grp-b { padding: var(--s3) var(--s4); width: 100%; border-top: 1px solid var(--border); }
+
+/* Plate loader (2 Nov, Job: 'a lot to see'): bar, custom plates and target fold away */
+.pl-more > summary { list-style: none; cursor: pointer; font-size: 15px; }
+.pl-more > summary::-webkit-details-marker { display: none; }
+.pl-more > summary::after { content: " ▾"; }
+.pl-more[open] > summary::after { content: " ▴"; }

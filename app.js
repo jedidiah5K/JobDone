@@ -2423,17 +2423,18 @@ function openPlates(target, onUse, o = {}) {
   const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
     <div class="cap" id="pl-msg"></div>
     <div class="bar-wrap" id="pl-bar"></div>
+    <div class="plate-tray" id="pl-tray">${tray()}</div>
+    <details class="pl-more"><summary class="link">Bar, custom plates, load a total</summary><div class="g3 stack mt3">
     <div class="field"><span class="lbl">Bar</span><div class="seg" id="pl-barw">${bars.map(b => `<button data-b="${b}" class="${b === bar ? 'on' : ''}">${b ? b + ' ' + U() : 'Plates only'}</button>`).join('')}</div></div>
-    <div><span class="lbl">Drag a plate onto the bar, or tap it. Tap a plate on the bar to take it off.</span><div class="plate-tray" id="pl-tray">${tray()}</div></div>
     <div class="g2 row"><input class="flex1 input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})"><button class="btn" id="pl-cadd">Add plate</button></div>
-    <div class="g2 row"><input class="flex1 input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}"><button class="btn" id="pl-auto">Load it</button></div>
+    <div class="g2 row"><input class="flex1 input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}"><button class="btn" id="pl-auto">Load it</button></div></div></details>
     ${onUse ? `<div class="g2 row">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Dial / keypad</button>` : ''}<button class="flex1 btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
   </div>`, { label: 'Plate loader', mount: b => {
     const draw = () => {
       b.querySelector('#pl-bar').innerHTML = svg(); fresh = -1;
       b.querySelector('#pl-tot').firstChild.textContent = trim(total());
       const u = b.querySelector('#pl-use-v'); if (u) u.textContent = trim(total());
-      b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · closest to your ${trim(target)} ${U()} with these plates` : ''}` : (bar ? `Empty ${bar} ${U()} bar` : 'Add plates to start');
+      b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · closest to your ${trim(target)} ${U()} with these plates` : ''}${bar ? '' : ' · plates only'}` : (bar ? `Empty ${bar} ${U()} bar · tap or drag plates on` : 'Tap or drag plates on');
     };
     const add = p => { side.push(p); side.sort((a, c) => c - a); fresh = side.lastIndexOf(p); left = 0; buzz(8); clank(p / 25); draw(); };
     draw();
