@@ -2635,11 +2635,13 @@ function openSteps(day) {
 }
 
 // ---------- exercise picker ----------
-// A lift you last logged one side at a time comes back as Left and Right (Job, 2 Nov: re-adding Single-Arm Tricep lost its L/R)
+// One-arm/one-leg lifts, and any lift you last logged one side at a time, are added as Left and Right (Job, 2 Nov: re-adding Single-Arm Tricep lost its L/R)
+const ONE_SIDE = /\b(single|one)[- ]?(arm|leg)\b|unilateral|bulgarian|split squat|concentration curl/i;
 function lastSided(name) {
   const h = ix().hist, end = n => { const x = h[n] || []; return x.length ? x[x.length - 1].date : ''; };
   if (A && (A.orig || []).includes(name + ' (L)')) return true;
-  const l = end(name + ' (L)'); return !!l && l >= end(name);
+  const l = end(name + ' (L)'), p = end(name); if (l || p) return !!l && l >= p;
+  return ONE_SIDE.test(name); // never logged: one-arm and one-leg lifts start as Left and Right
 }
 function pickExercise(onPick, opts = {}) {
   let q = '', mf = null;
@@ -2812,6 +2814,21 @@ function dragSort(ev) {
   h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
 }
 document.addEventListener('pointerdown', dragSort);
+// ⋯ → Split into left and right, or back (Job, 2 Nov). A second card of the same lift becomes the right side.
+function toggleSides(ei) {
+  const e = A.ex[ei], b = baseName(e.name), cp = x => ({ ...x, sets: x.sets.map(t => ({ ...t })), key: uid() });
+  if (sideOf(e.name)) {
+    const i = A.ex.findIndex(x => x.name === b + ' (L)'), j = A.ex.findIndex(x => x.name === b + ' (R)'), keep = A.ex[i >= 0 ? i : ei];
+    A.ex = A.ex.filter((x, k) => k === (i >= 0 ? i : ei) || (k !== i && k !== j));
+    keep.name = b; touchA(); toast(esc(b) + ': both sides together'); return;
+  }
+  const dup = A.ex.findIndex((x, k) => k !== ei && x.name === b);
+  const L = { ...e, name: b + ' (L)' }, R = dup >= 0 ? { ...A.ex[dup], name: b + ' (R)' } : { ...cp(e), name: b + ' (R)' };
+  if (dup >= 0) A.ex.splice(dup, 1);
+  A.ex.splice(A.ex.indexOf(e), 1, L, R);
+  if (!(A.orig || []).includes(b + ' (L)')) A.orig = [...(A.orig || []), b + ' (L)'];
+  touchA(); toast(esc(b) + ': left and right');
+}
 function exMenu(ei) {
   const e = A.ex[ei];
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(e.name)}</div>
@@ -2821,6 +2838,7 @@ function exMenu(ei) {
     <button class="btn block" data-m="warm">${e.sets.some(x => x.t === 'warm') ? 'Remove warm-up sets' : 'Add warm-up sets'}</button>
     ${ei < A.ex.length - 1 ? `<button class="btn block" data-m="ss">${e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))}</button>` : ''}
     <button class="btn block" data-m="rest">Rest for this exercise: ${fmtRest(restFor(e.name))}${(S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'}</button>
+    <button class="btn block" data-m="sides">${sideOf(e.name) ? 'Log both sides together' : 'Split into left and right'}</button>
     <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>${howtoFor(e.name) ? '<button class="btn block" data-m="howto">How to do it</button>' : ''}
     <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
@@ -2830,6 +2848,7 @@ function exMenu(ei) {
         const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m; closeSheet(sh);
         if (m === 'order') openReorder();
         if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { if (!A) return; const [gone] = A.ex.splice(ei, 1); touchA(); toast(esc(e.name) + ' removed', 0, () => { if (!A) return; A.ex.splice(Math.min(ei, A.ex.length), 0, gone); touchA(); }); } });
+        if (m === 'sides') toggleSides(ei);
         if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
         if (m === 'rest') openExRest(e.name);
