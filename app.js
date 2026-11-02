@@ -2635,6 +2635,12 @@ function openSteps(day) {
 }
 
 // ---------- exercise picker ----------
+// A lift you last logged one side at a time comes back as Left and Right (Job, 2 Nov: re-adding Single-Arm Tricep lost its L/R)
+function lastSided(name) {
+  const h = ix().hist, end = n => { const x = h[n] || []; return x.length ? x[x.length - 1].date : ''; };
+  if (A && (A.orig || []).includes(name + ' (L)')) return true;
+  const l = end(name + ' (L)'); return !!l && l >= end(name);
+}
 function pickExercise(onPick, opts = {}) {
   let q = '', mf = null;
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
@@ -2655,7 +2661,7 @@ function pickExercise(onPick, opts = {}) {
         + MUSCLES.map(m => { const g = all2.filter(e => e.muscle === m).sort((a, b) => a.name.localeCompare(b.name)); return g.length ? `<div class="grp">${esc(m)} <span>${g.length}</span></div>` + g.map(row).join('') : ''; }).join('');
     }
     return (q.trim() && !exact ? `<button class="li" data-pick-new="1"><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Custom exercise${mf ? ' · ' + esc(mf) : ''}</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>` : '') +
-      l.slice(0, 80).map(e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}${recent.includes(e.name) ? ' · used before' : ''}</div></div></button>`).join('');
+      l.slice(0, 80).map(e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}${recent.includes(e.name) ? ' · used before' : ''}${!opts.title && lastSided(e.name) ? ' · left and right' : ''}</div></div></button>`).join('');
   };
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(opts.title || 'Add exercise')}</div><input class="input" id="pk-q" placeholder="Search exercises" autocomplete="off">
     <div class="chips" id="pk-m">${MUSCLES.map(m => `<button class="chip" data-m="${m}">${m}</button>`).join('')}</div>
@@ -2672,7 +2678,7 @@ function pickExercise(onPick, opts = {}) {
         if (p) name = p.dataset.pick;
         if (nw) { const sides = b.querySelector('#pk-side').checked; openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: n => { closeSheet(sh); if (sides) { onPick(n + ' (L)'); onPick(n + ' (R)'); } else onPick(n); } }); return; }
         if (!name) return;
-        const sides = b.querySelector('#pk-side').checked;
+        const sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
         closeSheet(sh);
         if (sides) { onPick(name + ' (L)'); onPick(name + ' (R)'); } else onPick(name);
       };
