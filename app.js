@@ -255,7 +255,8 @@ async function loadCloud() {
 
 // Lifts that were renamed or merged (Job, 16 Oct: Tricep Vulken is the same lift as Single-Arm Tricep, the one-arm cable pushdown).
 // Runs on every load; the old name is kept on the entry as "was".
-const RENAMED = { 'Tricep Vulken': 'Single-Arm Tricep' };
+// 2 Nov: Job folded Single-Arm Tricep into Tricep Pushdown (one arm = Tricep Pushdown split into Left and Right), history and all.
+const RENAMED = { 'Tricep Vulken': 'Tricep Pushdown', 'Single-Arm Tricep': 'Tricep Pushdown' };
 function renameLifts(st, act) {
   if (!st) return false; let n = 0;
   const fix = e => { if (!e || !e.name) return; const b = baseName(e.name), to = RENAMED[b]; if (!to) return; e.was = e.was || b; e.name = to + e.name.slice(b.length); n++; };
@@ -2644,10 +2645,12 @@ function lastSided(name) {
   const l = end(name + ' (L)'), p = end(name); if (l || p) return !!l && l >= p;
   return ONE_SIDE.test(name); // never logged: one-arm and one-leg lifts start as Left and Right
 }
+// Left out of the add list (Job, 2 Nov): a one-side lift is the normal lift split into Left and Right (⋯ menu). Logged history keeps its names.
+const PICK_HIDE = new Set(['Single-Arm Pulldown', 'Single-Arm Tricep', 'Tricep Bar']);
 function pickExercise(onPick, opts = {}) {
   let q = '', mf = null;
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
-  const all = () => { const names = new Set([...LIB.map(e => e.name), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
+  const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
   const score = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
   const list = () => {
     let l = all().filter(e => !mf || e.muscle === mf).map(e => ({ e, s: score(e.name, q) })).filter(x => x.s > 0);
