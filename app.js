@@ -706,7 +706,7 @@ function gymBuild({ focus, have, last, swap = {}, extras = [], extra = () => [] 
 }
 // gym-builder:end
 
-const GYM_SCAN_READY = false; // ponytail: flip when the Gemini key and the on-phone face blur are both in (see docs/gym-beta-plan.md)
+const GYM_SCAN_READY = true; // Gemini key + on-phone face blur are in (Job, 4 Nov)
 const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
 let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
