@@ -261,7 +261,7 @@ insert into public.jobdone_equipment_types (key, name, nicknames, lifts, sort) v
   ('squat_rack', 'Squat Rack', '{power rack,squat cage,rack}', '{Back Squat,Front Squat,Rack Pull,Overhead Press}', 24),
   ('incline_press_machine', 'Incline Press Machine', '{incline chest press,incline machine,upper chest machine}', '{Incline Press}', 30),
   ('chest_press_machine', 'Chest Press Machine', '{chest press,seated chest press}', '{Chest Press}', 31),
-  ('pec_dec', 'Pec Dec', '{pec deck,butterfly,chest fly machine,fly machine,chest pec dec fly machine,rear delt machine}', '{Chest Fly,Pec Deck,Reverse Pec Deck,Rear Delt Fly}', 32),
+  ('pec_dec', 'Pec Dec', '{pec deck,butterfly,chest fly machine,fly machine,chest pec dec fly machine,rear delt machine}', '{Chest Fly,Rear Delt Fly}', 32),
   ('cable_stack', 'Cable Machine', '{cable,cables,cable station,cable crossover,functional trainer,pulley}', '{Cable Crossover,Low-to-High Cable Fly,Tricep Pushdown,Rope Pushdown,Overhead Tricep Extension,Cable Curl,Bayesian Curl,Lateral Raise,Face Pull,Upright Row,Cable Crunch,Oblique Crunch,Pallof Press,Woodchopper,Cable Kickback,Straight-Arm Pulldown,Forearm Curl}', 33),
   ('lat_pulldown', 'Lat Pulldown', '{pulldown,lat machine,lat pull}', '{Lat Pulldown,Straight-Arm Pulldown}', 40),
   ('seated_row', 'Seated Cable Row', '{cable row,low row,seated row}', '{Seated Cable Row,Wide-Grip Row,Close-Grip Row}', 41),
@@ -289,3 +289,5 @@ on conflict (key) do update set name = excluded.name, nicknames = excluded.nickn
 
 -- The two helpers are only called inside the functions above, never directly.
 revoke execute on function public.jobdone_gym_me(), public.jobdone_gym_member(uuid) from authenticated;
+
+-- 4 Nov: the app owner's "it's here" counts as two (jobdone_gym_admins + jobdone_gym_here), applied as migration my_gym_admin_votes_pec_dec.

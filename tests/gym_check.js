@@ -29,12 +29,13 @@ let r = gymBuild({ focus: 'upper', have, last: never });
 assert.deepStrictEqual(r.list.map(i => i.lift), ['Chest Fly', 'Lateral Raise', 'Tricep Pushdown']);
 assert(r.missing.includes('Incline press') && r.missing.includes('Shoulder press') && r.missing.includes('Preacher curl'));
 
-// Least recently done goes first; swap moves to the next way.
+// Main lift first whenever the gym has it (Job: pec dec before cable crossover), whatever was done lately; swap moves on.
 const dates = { 'Leg Press': '2026-11-01', 'Hack Squat': '2026-10-20' };
 r = gymBuild({ focus: 'lower', have, last: n => dates[n] || '' });
-assert.strictEqual(r.list.find(i => i.k === 'squat').lift, 'Hack Squat', 'hack squat was done longer ago');
+assert.strictEqual(r.list.find(i => i.k === 'squat').lift, 'Leg Press', 'main lift wins');
 r = gymBuild({ focus: 'lower', have, last: n => dates[n] || '', swap: { squat: 1 } });
-assert.strictEqual(r.list.find(i => i.k === 'squat').lift, 'Leg Press');
+assert.strictEqual(r.list.find(i => i.k === 'squat').lift, 'Hack Squat');
+assert.strictEqual(gymBuild({ focus: 'upper', have, last: never }).list[0].lift, 'Chest Fly', 'pec dec, not cable crossover');
 assert.strictEqual(r.list.find(i => i.k === 'calf').lift, 'Leg Press Calf Raise');
 
 // Extras: up to 2 per muscle, never a lift already in the session.

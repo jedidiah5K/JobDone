@@ -690,13 +690,13 @@ function gymLifts(rows, types) {
   return out;
 }
 // focus: 'upper' | 'lower' | 'all'. last(name) → date string of the last time you did it ('' = never).
-// Each movement takes the way you've done least recently, so sessions change; swap[k] moves to the next way.
+// Each movement takes Job's main lift when the gym has it (list order); swap[k] moves to the next way. Extras rotate by least recent.
 // extra(muscle) → lift names for that muscle. Returns { list: [{k, n, lift, opts}], missing: [movement names] }.
 function gymBuild({ focus, have, last, swap = {}, extras = [], extra = () => [] }) {
   const list = [], missing = [], used = new Set();
   for (const m of GYM_MOVES) {
     if (focus !== 'all' && m.part !== focus) continue;
-    const opts = m.lifts.filter(l => have.has(l)).map((l, i) => ({ l, i, d: last(l) || '' })).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : a.i - b.i).map(x => x.l);
+    const opts = m.lifts.filter(l => have.has(l)); // Job (4 Nov): default is the main lift, e.g. pec dec before cable crossover
     if (!opts.length) { missing.push(m.n); continue; }
     const lift = opts[(swap[m.k] || 0) % opts.length]; used.add(lift); list.push({ k: m.k, n: m.n, lift, opts });
   }
@@ -894,6 +894,8 @@ function gymBuildSheet() {
   const needs = new Set((GYM.types || []).flatMap(t => t.lifts)); // pull-ups, dips etc. need a machine even though they're bodyweight
   const extra = mu => LIB.map(e => e.name).filter(n => exInfo(n).muscle === mu && (have.has(n) || (exInfo(n).equip === 'bodyweight' && !needs.has(n))) && !PICK_HIDE.has(n));
   const st = { focus: S.profile.gymFocus === 'upper' ? 'lower' : 'upper', extras: [], swap: {} };
+  const rowsU = ((GYM.eq || {})[c.gym_id] || []).filter(gymUsable).map(r => r.type_key);
+  const on = l => { const t = (GYM.types || []).find(x => rowsU.includes(x.key) && x.lifts.includes(l)); return t ? t.name : ''; };
   const sh = openSheet('', { label: 'Build today’s workout', mount: b => {
     b.onclick = ev => {
       const f = ev.target.closest('[data-f]'), x = ev.target.closest('[data-x]'), s = ev.target.closest('[data-sw]');
@@ -908,7 +910,7 @@ function gymBuildSheet() {
     const r = gymBuild({ ...st, have, last, extra });
     setSheet(sh, `<div class="stack"><div><div class="eyebrow">Today at ${esc(gymTitle(c))}</div><h2>${st.focus === 'upper' ? 'Upper body' : st.focus === 'lower' ? 'Lower body' : 'Everything'}</h2><div class="cap">Your main lifts, on this gym’s machines.</div></div>
       <div class="seg">${[['upper', 'Upper'], ['lower', 'Lower'], ['all', 'Everything']].map(([k, n]) => `<button data-f="${k}" class="${st.focus === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-      <div class="card"><div class="list">${r.list.map(i => `<div class="li"><div class="grow"><div class="t">${esc(i.lift)}</div><div class="s">${esc([i.extra ? 'Extra · ' + i.n : i.n.toLowerCase() === i.lift.toLowerCase() ? '' : i.n, last(i.lift) ? '' : 'new for you'].filter(Boolean).join(' · '))}</div></div>${i.opts.length > 1 ? `<button class="icon-btn" data-sw="${i.k}" aria-label="Do ${esc(i.n)} another way">${I.swap}</button>` : ''}</div>`).join('') || '<div class="empty">None of these lifts fit the machines added so far.</div>'}</div>
+      <div class="card"><div class="list">${r.list.map(i => `<div class="li"><div class="grow"><div class="t">${esc(i.lift)}</div><div class="s">${esc([i.extra ? 'Extra · ' + i.n : '', on(i.lift) && on(i.lift).toLowerCase() !== i.lift.toLowerCase() ? on(i.lift) : '', last(i.lift) ? '' : 'new for you'].filter(Boolean).join(' · '))}</div></div>${i.opts.length > 1 ? `<button class="icon-btn" data-sw="${i.k}" aria-label="Do ${esc(i.n)} another way">${I.swap}</button>` : ''}</div>`).join('') || '<div class="empty">None of these lifts fit the machines added so far.</div>'}</div>
         ${r.missing.length ? `<div class="cap mt2">Not at this gym yet: ${esc(r.missing.join(', '))}. Add the machine and it shows up here.</div>` : ''}</div>
       <div><div class="eyebrow mb1">Want extra?</div><div class="chips gym-chips">${GYM_EXTRAS.map(m => `<button class="chip ${st.extras.includes(m) ? 'on' : ''}" data-x="${m}">${m}</button>`).join('')}</div></div>
       <button class="btn block primary" id="gb-go" ${r.list.length ? '' : 'disabled'}>Start workout · ${plural(r.list.length, 'lift')}</button></div>`);
