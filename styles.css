@@ -1220,3 +1220,10 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 #tour.below::after { bottom: auto; top: -7px; }
 .tour-hl { outline: 2.5px solid var(--accent); outline-offset: 3px; border-radius: 12px; }
 @media (prefers-reduced-motion: reduce) { #tour { animation: none; } }
+/* My Gym (beta) */
+.gym-beta { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; vertical-align: 1px; }
+.gym-wait { outline: 1.5px dashed color-mix(in srgb, var(--text) 35%, transparent); outline-offset: -2px; border-radius: 12px; }
+.gym-chips { flex-wrap: wrap; overflow: visible; }
+.gym-sk { display: block; border-radius: var(--r2); background: var(--raised); animation: gymPulse 1.2s ease-in-out infinite alternate; }
+@keyframes gymPulse { to { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .gym-sk { animation: none; } }

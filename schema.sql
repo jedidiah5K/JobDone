@@ -130,3 +130,5 @@ create trigger jobdone_docs_quota before insert or update of body on public.jobd
 drop policy if exists "Send own feedback" on public.jobdone_feedback;
 create policy "Send own feedback" on public.jobdone_feedback for insert to authenticated
   with check ((select auth.uid()) = user_id and (email is null or email = (select auth.jwt() ->> 'email')));
+
+-- My Gym (beta) tables and functions: see supabase/gym.sql

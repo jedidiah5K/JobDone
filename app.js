@@ -646,7 +646,7 @@ function render() {
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
   try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
   try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
@@ -660,6 +660,312 @@ function render() {
   renderWorkout();
   screenChanged(); wireSwipe(); coach(); tourAuto();
 }
+// ---------- My Gym (beta), Job 4 Nov 2026 ----------
+// Pick your gym branch, add its machines (AI scan or the list), and get a workout built from what's there.
+// Shared data lives in Supabase behind security-definer functions (supabase/gym.sql). The main lifts are Job's.
+// gym-builder:start (pure, checked by tests/gym_check.js)
+const GYM_MOVES = [
+  { k: 'incline', n: 'Incline press', part: 'upper', lifts: ['Incline Press', 'Incline Dumbbell Press', 'Incline Bench Press'] },
+  { k: 'fly', n: 'Pec dec fly', part: 'upper', lifts: ['Chest Fly', 'Cable Crossover', 'Dumbbell Fly'] },
+  { k: 'press', n: 'Shoulder press', part: 'upper', lifts: ['Shoulder Press', 'Dumbbell Shoulder Press', 'Overhead Press'] },
+  { k: 'lateral', n: 'Lateral raise', part: 'upper', lifts: ['Lateral Raise', 'Machine Lateral Raise', 'Dumbbell Lateral Raise'] },
+  { k: 'curl', n: 'Preacher curl', part: 'upper', lifts: ['Preacher Curl', 'EZ-Bar Curl', 'Dumbbell Curl'] },
+  { k: 'pushdown', n: 'Tricep pushdown', part: 'upper', lifts: ['Tricep Pushdown', 'Rope Pushdown', 'Tricep Dip Machine'] },
+  { k: 'legext', n: 'Leg extension', part: 'lower', lifts: ['Leg Extension'] },
+  { k: 'legcurl', n: 'Leg curl', part: 'lower', lifts: ['Leg Curl'] },
+  { k: 'squat', n: 'Squat', part: 'lower', lifts: ['Leg Press', 'Hack Squat', 'Pendulum Squat', 'Smith Squat'] },
+  { k: 'hinge', n: 'Hip hinge', part: 'lower', lifts: ['Stiff-Leg Deadlift', 'Romanian Deadlift', 'Dumbbell RDL', 'Back Extension'] },
+  { k: 'calf', n: 'Calf raise', part: 'lower', lifts: ['Calf Raise', 'Seated Calf Raise', 'Leg Press Calf Raise'] },
+];
+const GYM_EXTRAS = ['Back', 'Chest', 'Shoulders', 'Biceps', 'Triceps', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Forearms'];
+// A machine counts for you once 2 people say it's here (or you did), and it isn't voted out.
+const gymUsable = r => r.my_vote !== -1 && r.nots <= r.here && (r.here >= 2 || r.my_vote === 1);
+// Every lift the usable machines make possible.
+function gymLifts(rows, types) {
+  const by = {}; for (const t of types) by[t.key] = t; const out = new Set();
+  for (const r of rows) if (gymUsable(r) && by[r.type_key]) for (const l of by[r.type_key].lifts) out.add(l);
+  return out;
+}
+// focus: 'upper' | 'lower' | 'all'. last(name) → date string of the last time you did it ('' = never).
+// Each movement takes the way you've done least recently, so sessions change; swap[k] moves to the next way.
+// extra(muscle) → lift names for that muscle. Returns { list: [{k, n, lift, opts}], missing: [movement names] }.
+function gymBuild({ focus, have, last, swap = {}, extras = [], extra = () => [] }) {
+  const list = [], missing = [], used = new Set();
+  for (const m of GYM_MOVES) {
+    if (focus !== 'all' && m.part !== focus) continue;
+    const opts = m.lifts.filter(l => have.has(l)).map((l, i) => ({ l, i, d: last(l) || '' })).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : a.i - b.i).map(x => x.l);
+    if (!opts.length) { missing.push(m.n); continue; }
+    const lift = opts[(swap[m.k] || 0) % opts.length]; used.add(lift); list.push({ k: m.k, n: m.n, lift, opts });
+  }
+  for (const mu of extras) {
+    const opts = extra(mu).filter(l => !used.has(l)).map((l, i) => ({ l, i, d: last(l) || '' })).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : a.i - b.i).map(x => x.l);
+    const k = 'x-' + mu, s = swap[k] || 0;
+    for (let j = 0; j < Math.min(2, opts.length); j++) { const lift = opts[(s + j) % opts.length]; if (used.has(lift)) continue; used.add(lift); list.push({ k: j ? k + '2' : k, n: mu, lift, opts, extra: true }); }
+  }
+  return { list, missing };
+}
+// gym-builder:end
+
+const GYM_SCAN_READY = false; // ponytail: flip when the Gemini key and the on-phone face blur are both in (see docs/gym-beta-plan.md)
+const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
+let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
+const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
+const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymBeta != null ? S.profile.gymBeta : S.profile.owner));
+const gymType = k => (GYM.types || []).find(t => t.key === k);
+const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id === S.profile.gymAt) || m[0] || null; };
+const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
+const gymErr = e => toast(esc((e && e.message) || 'That didn’t work. Check your signal and try again.'));
+async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {}); if (error) throw new Error(error.message); return data; }
+let gymBusy = null;
+function gymRefresh(force) {
+  if (!gymOn()) return Promise.resolve();
+  if (gymBusy && !force) return gymBusy;
+  gymBusy = (async () => {
+    const [types, mine] = await Promise.all([
+      GYM.types && GYM.types.length && !force ? GYM.types : SB.from('jobdone_equipment_types').select('key,name,nicknames,lifts,sort').order('sort').then(r => { if (r.error) throw r.error; return r.data; }),
+      gymRpc('jobdone_gym_mine')]);
+    GYM.types = types; GYM.mine = mine;
+    const c = gymCur(); if (c) GYM.eq = { ...(GYM.eq || {}), [c.gym_id]: await gymRpc('jobdone_gym_equipment_list', { g: c.gym_id }) };
+    GYM.at = Date.now(); gymSave();
+  })().catch(() => {}).finally(() => { gymBusy = null; if (ready) rerender(); });
+  return gymBusy;
+}
+async function gymLoadEq(g) { GYM.eq = { ...(GYM.eq || {}), [g]: await gymRpc('jobdone_gym_equipment_list', { g }) }; gymSave(); }
+const gymBeta = '<span class="pill gym-beta">Beta</span>';
+
+// Today card: one main button.
+function gymCardHTML() {
+  if (!gymOn()) return '';
+  if (!GYM.mine) { gymRefresh(); return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><div class="gym-sk mt2" style="height:22px;width:60%"></div><div class="gym-sk mt2" style="height:44px"></div></div>`; }
+  if (Date.now() - (GYM.at || 0) > 5 * 60e3) gymRefresh();
+  const c = gymCur();
+  if (!c) return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><h3 class="mt1">Workouts built from your gym’s machines</h3><p class="cap">Pick your gym, add what it has, and get a session that fits.</p><button class="btn block mt2" data-a="gymFind">Find your gym</button></div>`;
+  const rows = (GYM.eq || {})[c.gym_id] || [], n = rows.filter(gymUsable).length;
+  return `<div class="card"><div class="card-h"><span class="eyebrow">My Gym ${gymBeta}</span><button class="cap link" data-a="gymOpen">${n ? plural(n, 'machine') : 'Add machines'}</button></div>
+    <h3 class="mt1">${esc(gymTitle(c))}</h3>
+    <button class="btn block mt2" data-a="${n ? 'gymBuild' : 'gymOpen'}">${n ? 'Build today’s workout' : 'Add your gym’s machines'}</button></div>`;
+}
+
+// Gym page (a screen of its own).
+function viewGym() {
+  const c = gymCur();
+  if (!c) return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">My Gym ${gymBeta}</div><h1>Find your gym</h1></div></div><button class="btn block primary" data-a="gymFind">Find your gym</button></div>`;
+  const rows = ((GYM.eq || {})[c.gym_id] || []).slice().sort((a, b) => ((gymType(a.type_key) || {}).sort || 999) - ((gymType(b.type_key) || {}).sort || 999));
+  const live = rows.filter(r => r.nots <= r.here), usable = live.filter(gymUsable).length;
+  const row = r => {
+    const t = gymType(r.type_key) || { name: r.type_key, lifts: [] }, mineWait = r.my_vote === 1 && r.here < 2, confirm = r.my_vote == null && r.here < 2;
+    const sub = mineWait ? 'Only you so far · waiting for 1 more person' : confirm ? 'Someone added it · is it here?' : plural(t.lifts.length, 'lift');
+    const right = confirm ? `<button class="btn sm" data-a="gymVote" data-e="${r.id}" data-v="1">It’s here</button>` : `<span class="cap">${r.here >= 2 ? plural(r.here, 'person', 'people') : ''}</span>`;
+    return `<div class="li ${mineWait ? 'gym-wait' : ''}" data-a="gymMachine" data-e="${r.id}"><div class="grow"><div class="t">${esc(t.name)}</div><div class="s">${sub}</div></div>${right}</div>`;
+  };
+  const others = (GYM.mine || []).filter(m => m.gym_id !== c.gym_id);
+  return `<div class="stack">${backBtn()}
+    <div class="top pt0"><div><div class="eyebrow">My Gym ${gymBeta}</div><h1>${esc(c.brand)}</h1>${c.independent ? `<div class="cap">${esc(c.branch)}</div>` : `<button class="cap daychip" data-a="gymSwitch">Training at: ${esc(c.branch)} ▾</button>`}</div></div>
+    <button class="btn block primary" data-a="gymBuild" ${usable ? '' : 'disabled'}>Build today’s workout</button>
+    ${GYM_SCAN_READY ? '<button class="btn block" data-a="gymScan">Scan a corner</button>' : ''}
+    ${rows.length ? '' : gymStarterHTML(c)}
+    <div class="card"><div class="card-h"><span class="eyebrow">Equipment · ${usable}</span><button class="cap link" data-a="gymPick">+ Add</button></div>
+      ${live.length ? `<div class="list">${live.map(row).join('')}</div>` : '<div class="empty">Nothing added yet.</div>'}</div>
+    <div class="card"><div class="card-h"><span class="eyebrow">Your gyms</span><button class="cap link" data-a="gymFind">+ Add another</button></div><div class="list">
+      ${[c, ...others].map(m => `<button class="li" data-a="gymUse" data-g="${m.gym_id}"><div class="grow"><div class="t">${esc(gymTitle(m))}</div><div class="s">${m.is_home ? 'Home' : 'Last used ' + esc(fmtDate(ymd(new Date(m.last_used))))}${m.gym_id === c.gym_id ? ' · training here' : ''}</div></div></button>`).join('')}</div></div>
+    <button class="self-c c-neg link" data-a="gymLeave">Leave this gym</button></div>`;
+}
+// A brand-new branch starts from what most of the chain's other branches have (or a general list).
+function gymStarterHTML(c) {
+  const st = GYM.starter && GYM.starter[c.gym_id];
+  if (!st) { gymRpc('jobdone_gym_starter', { g: c.gym_id }).then(k => { GYM.starter = { ...(GYM.starter || {}), [c.gym_id]: k && k.length ? k : GYM_GENERIC }; rerender(); }).catch(() => { GYM.starter = { ...(GYM.starter || {}), [c.gym_id]: GYM_GENERIC }; rerender(); }); return ''; }
+  const fromBrand = st !== GYM_GENERIC;
+  return `<div class="card"><div class="eyebrow mb1">${fromBrand ? 'Usually at ' + esc(c.brand) : 'Most gyms have these'}</div><div class="cap mb1">Tick what you can see. It takes a minute and helps everyone here.</div>
+    <div class="list" id="gym-st">${st.map(k => `<label class="li"><div class="grow"><div class="t">${esc((gymType(k) || { name: k }).name)}</div></div><input type="checkbox" class="cbox" value="${esc(k)}"></label>`).join('')}</div>
+    <button class="btn block primary mt2" data-a="gymStarterSave">Save the ticked machines</button></div>`;
+}
+
+// Find your gym: chains show once with their branches under them.
+function gymFind() {
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">My Gym ${gymBeta}</div><h2>Find your gym</h2></div>
+    <input class="input" id="gf-q" placeholder="Gym or chain, e.g. Anytime Fitness" maxlength="60" autocomplete="off">
+    <div id="gf-r" class="cap">Type at least 2 letters.</div></div>`, { label: 'Find your gym', mount: b => {
+    const q = b.querySelector('#gf-q'), out = b.querySelector('#gf-r'); let t = 0, n = 0;
+    const draw = (rows, txt) => {
+      if (!rows.length) { out.innerHTML = `<div class="card"><div class="cap mb1">No gym called “${esc(txt)}” yet.</div><button class="btn block" data-new="">Add “${esc(txt)}” as a new gym</button><button class="link mt2" data-a="feedback">Is it a chain with many branches? Tell us</button></div>`; return; }
+      const brands = []; for (const r of rows) { let x = brands.find(y => y.id === r.brand_id); if (!x) brands.push(x = { id: r.brand_id, name: r.brand, ind: r.independent, br: [] }); if (r.gym_id) x.br.push(r); }
+      out.innerHTML = brands.map(x => `<div class="card"><div class="eyebrow mb1">${esc(x.name)}${x.br.length > 1 ? ' · ' + x.br.length + ' branches' : ''}</div><div class="list">
+        ${x.br.map(r => `<button class="li" data-join="${r.gym_id}"><div class="grow"><div class="t">${esc(x.ind ? r.branch : r.branch)}</div><div class="s">${plural(r.machines, 'machine')} · ${plural(r.people, 'person', 'people')}${r.mine ? ' · you’re in' : ''}</div></div>${I.right}</button>`).join('')}
+        ${x.ind ? '' : `<button class="li" data-nb="${x.id}" data-bn="${esc(x.name)}"><div class="grow"><div class="t">My branch isn’t here</div><div class="s">Add it by its area</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>`}</div></div>`).join('')
+        + `<button class="link" data-new="">Not one of these? Add a new gym</button>`;
+    };
+    q.oninput = () => { clearTimeout(t); const v = q.value.trim(); if (v.length < 2) { out.textContent = 'Type at least 2 letters.'; return; }
+      t = setTimeout(async () => { const my = ++n; out.innerHTML = '<div class="gym-sk" style="height:120px"></div>'; try { const rows = await gymRpc('jobdone_gym_search', { q: v }); if (my === n) draw(rows || [], v); } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your signal.'; } }, 250); };
+    const joined = async g => { S.profile.gymAt = g; persist('jd/meta'); closeSheet(sh); await gymRefresh(true); NAV.stack = [{ v: 'gym' }]; render(); };
+    out.onclick = async ev => {
+      const j = ev.target.closest('[data-join]'), nb = ev.target.closest('[data-nb]'), nw = ev.target.closest('[data-new]');
+      if (j) { j.disabled = true; try { await gymRpc('jobdone_gym_join', { g: j.dataset.join }); toast('You’re in'); await joined(j.dataset.join); } catch (e) { j.disabled = false; gymErr(e); } }
+      if (nb || nw) gymNewBranch(nb ? { id: nb.dataset.nb, name: nb.dataset.bn } : { id: null, name: q.value.trim() }, joined);
+    };
+    setTimeout(() => q.focus(), 300);
+  } });
+}
+function gymNewBranch(brand, done) {
+  const ind = !brand.id;
+  const sh = openSheet(`<div class="stack"><h2>${ind ? 'Add a new gym' : 'Add a ' + esc(brand.name) + ' branch'}</h2>
+    ${ind ? `<label class="cap">Gym name<input class="input mt1" id="nb-n" maxlength="60" value="${esc(brand.name)}"></label>` : ''}
+    <label class="cap">${ind ? 'Area' : 'Branch area'}<input class="input mt1" id="nb-b" maxlength="60" placeholder="e.g. Tampines Central"></label>
+    <button class="btn block primary" id="nb-go">Add it</button></div>`, { label: 'Add a gym', mount: b => {
+    const go = b.querySelector('#nb-go');
+    go.onclick = async () => {
+      const br = b.querySelector('#nb-b').value.trim(), nm = ind ? b.querySelector('#nb-n').value.trim() : null;
+      if (br.length < 2 || (ind && nm.length < 2)) { toast('Give it a name and an area.'); return; }
+      go.disabled = true;
+      try { const g = await gymRpc('jobdone_gym_add_branch', { p_brand: brand.id, p_branch: br, p_name: nm }); closeSheet(sh); toast('Added. Now add its machines.'); await done(g); }
+      catch (e) { go.disabled = false; gymErr(e); }
+    };
+  } });
+}
+function gymSwitch() {
+  const c = gymCur(), sh = openSheet(`<div class="stack"><h2>Where are you training?</h2><div class="list">${(GYM.mine || []).map(m => `<button class="li ${m.gym_id === c.gym_id ? 'on' : ''}" data-g="${m.gym_id}"><div class="grow"><div class="t">${esc(gymTitle(m))}</div><div class="s">${m.is_home ? 'Home' : ''}</div></div></button>`).join('')}</div>
+    <button class="btn block" data-a="gymFind">Add another gym</button>${(GYM.mine || []).length > 1 && !c.is_home ? '<button class="link" id="gs-home">Make this my home gym</button>' : ''}</div>`, { label: 'Where are you training?', mount: b => {
+    b.onclick = async ev => {
+      const x = ev.target.closest('[data-g]'); if (x) { closeSheet(sh); gymUse(x.dataset.g); }
+      if (ev.target.id === 'gs-home') { closeSheet(sh); try { await gymRpc('jobdone_gym_use', { g: c.gym_id, home: true }); await gymRefresh(true); toast('Home gym set'); } catch (e) { gymErr(e); } }
+    };
+  } });
+}
+async function gymUse(g) {
+  S.profile.gymAt = g; persist('jd/meta'); rerender();
+  try { if (!(GYM.eq || {})[g]) await gymLoadEq(g); rerender(); gymRpc('jobdone_gym_use', { g }).catch(() => {}); } catch (e) { gymErr(e); }
+}
+
+// Add machines from the fixed list. Search matches names and nicknames, so names stay the same for everyone.
+function gymPick(preset) {
+  const c = gymCur(); if (!c) return;
+  const have = new Set(((GYM.eq || {})[c.gym_id] || []).filter(r => r.my_vote === 1).map(r => r.type_key)), pick = new Set(preset || []);
+  const types = GYM.types || [];
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">${esc(gymTitle(c))}</div><h2>Add machines</h2></div>
+    <input class="input" id="gp-q" placeholder="Search, e.g. pec dec, cable, leg press" maxlength="60" autocomplete="off">
+    <div class="list" id="gp-l"></div>
+    <button class="btn block primary" id="gp-go" disabled>Add</button>
+    <button class="link" data-a="feedback">Can’t find a machine? Send us its name</button></div>`, { label: 'Add machines', mount: b => {
+    const l = b.querySelector('#gp-l'), q = b.querySelector('#gp-q'), go = b.querySelector('#gp-go');
+    const sc = (t, v) => { if (!v) return 1; v = v.toLowerCase(); const hit = s => s.toLowerCase().includes(v); return hit(t.name) ? 3 : t.nicknames.some(hit) ? 2 : t.lifts.some(hit) ? 1 : 0; };
+    const draw = () => {
+      const v = q.value.trim(), list = types.map(t => ({ t, s: sc(t, v) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s || a.t.sort - b.t.sort);
+      l.innerHTML = list.map(({ t }) => `<label class="li"><div class="grow"><div class="t">${esc(t.name)}</div><div class="s">${have.has(t.key) ? 'Already added' : esc(t.lifts.slice(0, 3).join(', '))}</div></div><input type="checkbox" class="cbox" value="${t.key}" ${pick.has(t.key) || have.has(t.key) ? 'checked' : ''} ${have.has(t.key) ? 'disabled' : ''}></label>`).join('') || `<div class="empty">No machine called “${esc(v)}”. Send us its name below and we’ll add it.</div>`;
+      go.disabled = !pick.size; go.textContent = pick.size ? 'Add ' + plural(pick.size, 'machine') : 'Add';
+    };
+    q.oninput = draw;
+    l.onchange = ev => { const x = ev.target; if (!x.value) return; x.checked ? pick.add(x.value) : pick.delete(x.value); go.disabled = !pick.size; go.textContent = pick.size ? 'Add ' + plural(pick.size, 'machine') : 'Add'; };
+    go.onclick = () => { closeSheet(sh); gymAdd([...pick], 'list'); };
+    draw();
+  } });
+}
+async function gymAdd(keys, via) {
+  const c = gymCur(); if (!c || !keys.length) return;
+  try { const n = await gymRpc('jobdone_gym_add', { g: c.gym_id, keys, via }); await gymLoadEq(c.gym_id); rerender(); toast(plural(n, 'machine') + ' added. Others here see them once 1 more person confirms.'); }
+  catch (e) { gymErr(e); }
+}
+function gymMachine(id) {
+  const c = gymCur(), r = ((GYM.eq || {})[c.gym_id] || []).find(x => x.id === id); if (!r) return;
+  const t = gymType(r.type_key) || { name: r.type_key, lifts: [] };
+  const sh = openSheet(`<div class="stack"><h2>${esc(t.name)}</h2><p class="cap m0">${r.here ? plural(r.here, 'person', 'people') + ' say it’s here' : 'Nobody has confirmed it yet'}${r.nots ? ' · ' + r.nots + ' say it isn’t' : ''}</p>
+    <div class="cap">Lifts it gives you: ${esc(t.lifts.join(', '))}</div>
+    ${r.my_vote === 1 ? '' : '<button class="btn block primary" data-v="1">It’s here</button>'}
+    ${r.my_vote === -1 ? '' : '<button class="btn block" data-v="-1">Not at this gym</button>'}
+    ${r.my_vote ? '<button class="link" data-v="0">Take my answer back</button>' : ''}</div>`, { label: t.name, mount: b => {
+    b.onclick = ev => { const x = ev.target.closest('[data-v]'); if (!x) return; closeSheet(sh); gymVote(id, +x.dataset.v); };
+  } });
+}
+async function gymVote(e, v) {
+  const c = gymCur(); if (!c) return;
+  const r = ((GYM.eq || {})[c.gym_id] || []).find(x => x.id === e);
+  if (r) { const was = r.my_vote; r.here += (v === 1) - (was === 1); r.nots += (v === -1) - (was === -1); r.my_vote = v || null; rerender(); } // optimistic
+  try { await gymRpc('jobdone_gym_vote', { e, v }); await gymLoadEq(c.gym_id); rerender(); } catch (err) { gymErr(err); gymLoadEq(c.gym_id).then(rerender).catch(() => {}); }
+}
+
+// Build today: Job's main lifts (upper or lower half), optional extras by muscle, a swap per lift.
+function gymBuildSheet() {
+  const c = gymCur(); if (!c) return;
+  if (A) { toast('Finish or discard the workout you have open first.'); openWk(); return; }
+  const have = gymLifts((GYM.eq || {})[c.gym_id] || [], GYM.types || []);
+  const last = n => { const s = lastSession(n); return s ? s.date : ''; };
+  const needs = new Set((GYM.types || []).flatMap(t => t.lifts)); // pull-ups, dips etc. need a machine even though they're bodyweight
+  const extra = mu => LIB.map(e => e.name).filter(n => exInfo(n).muscle === mu && (have.has(n) || (exInfo(n).equip === 'bodyweight' && !needs.has(n))) && !PICK_HIDE.has(n));
+  const st = { focus: S.profile.gymFocus === 'upper' ? 'lower' : 'upper', extras: [], swap: {} };
+  const sh = openSheet('', { label: 'Build today’s workout', mount: b => {
+    b.onclick = ev => {
+      const f = ev.target.closest('[data-f]'), x = ev.target.closest('[data-x]'), s = ev.target.closest('[data-sw]');
+      if (f) { st.focus = f.dataset.f; st.swap = {}; }
+      if (x) { const m = x.dataset.x; st.extras = st.extras.includes(m) ? st.extras.filter(y => y !== m) : [...st.extras, m]; }
+      if (s) st.swap[s.dataset.sw] = (st.swap[s.dataset.sw] || 0) + 1;
+      if (ev.target.closest('#gb-go')) { const r = gymBuild({ ...st, have, last, extra }); closeSheet(sh); gymStart(c, st.focus, r.list.map(i => i.lift)); return; }
+      if (f || x || s) draw();
+    };
+  } });
+  const draw = () => {
+    const r = gymBuild({ ...st, have, last, extra });
+    setSheet(sh, `<div class="stack"><div><div class="eyebrow">Today at ${esc(gymTitle(c))} ${gymBeta}</div><h2>${st.focus === 'upper' ? 'Upper body' : st.focus === 'lower' ? 'Lower body' : 'Everything'}</h2><div class="cap">Your main lifts, using this gym’s machines. Tap ⇆ to do one another way.</div></div>
+      <div class="seg">${[['upper', 'Upper'], ['lower', 'Lower'], ['all', 'Everything']].map(([k, n]) => `<button data-f="${k}" class="${st.focus === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="card"><div class="list">${r.list.map(i => `<div class="li"><div class="grow"><div class="t">${esc(i.lift)}</div><div class="s">${esc(i.extra ? 'Extra · ' + i.n : i.n)}${last(i.lift) ? '' : ' · new for you'}</div></div>${i.opts.length > 1 ? `<button class="icon-btn" data-sw="${i.k}" aria-label="Do ${esc(i.n)} another way">⇆</button>` : ''}</div>`).join('') || '<div class="empty">None of these lifts fit the machines added so far.</div>'}</div>
+        ${r.missing.length ? `<div class="cap mt2">Not at this gym yet: ${esc(r.missing.join(', '))}. Add the machine and it shows up here.</div>` : ''}</div>
+      <div><div class="eyebrow mb1">Want extra?</div><div class="chips gym-chips">${GYM_EXTRAS.map(m => `<button class="chip ${st.extras.includes(m) ? 'on' : ''}" data-x="${m}">${m}</button>`).join('')}</div></div>
+      <button class="btn block primary" id="gb-go" ${r.list.length ? '' : 'disabled'}>Start workout · ${plural(r.list.length, 'lift')}</button></div>`);
+  };
+  draw();
+}
+function gymStart(c, focus, lifts) {
+  if (!lifts.length || A) return;
+  S.profile.gymFocus = focus; persist('jd/meta');
+  const name = 'My Gym · ' + (focus === 'upper' ? 'Upper' : focus === 'lower' ? 'Lower' : 'Full body');
+  A = { id: uid(), splitId: null, splitName: name, start: Date.now(), touched: Date.now(), ex: lifts.map(n => newExEntry(n, 3)), orig: lifts.slice(), view: 'log', gym: c.gym_id };
+  persist('jd/active'); openWk();
+  gymRpc('jobdone_gym_use', { g: c.gym_id }).catch(() => {});
+}
+
+// AI scan of a gym corner. Off until GYM_SCAN_READY (needs the Gemini key and the face blur files).
+function gymScan() {
+  const c = gymCur(); if (!c || !GYM_SCAN_READY) return gymPick();
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Scan a corner ${gymBeta}</div><h2>Photo of one corner</h2><div class="cap">Get as many machines in as you can. Faces are blurred on your phone first and the photo isn’t kept.</div></div>
+    <label class="btn block primary" for="gs-in">Take a photo</label><input type="file" id="gs-in" accept="image/*" capture="environment" hidden>
+    <div id="gs-out"></div></div>`, { label: 'Scan a corner', mount: b => {
+    b.querySelector('#gs-in').onchange = async ev => {
+      const f = ev.target.files && ev.target.files[0]; if (!f) return; const out = b.querySelector('#gs-out');
+      out.innerHTML = '<div class="gym-sk" style="height:180px"></div><div class="cap tc mt1">Looking for machines…</div>';
+      try {
+        const img = await gymPhoto(f);
+        const { data: { session } } = await SB.auth.getSession();
+        const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/gym-scan', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session && session.access_token), apikey: CFG.supabaseAnonKey }, body: JSON.stringify({ g: c.gym_id, img }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error === 'limit' ? 'That’s today’s scans used up. Pick machines from the list instead.' : j.error === 'not_set_up' ? 'Scanning isn’t switched on yet. Pick from the list.' : j.error || 'The scan failed.');
+        const keys = j.keys || [];
+        if (!keys.length) { out.innerHTML = '<div class="empty">No machines spotted. Try another angle, or pick from the list.</div><button class="btn block" data-a="gymPick">Pick from the list</button>'; return; }
+        out.innerHTML = `<div class="card"><div class="eyebrow mb1">Found ${plural(keys.length, 'machine')}</div><div class="cap mb1">Untick anything that’s wrong.</div><div class="list">${keys.map(k => `<label class="li"><div class="grow"><div class="t">${esc((gymType(k) || { name: k }).name)}</div></div><input type="checkbox" class="cbox" value="${k}" checked></label>`).join('')}</div>
+          <button class="link mt2" data-a="gymPick">Missed one? Pick it from the list</button></div><button class="btn block primary" id="gs-add">Add ticked machines</button><div class="cap tc">${j.left} scans left today</div>`;
+        out.querySelector('#gs-add').onclick = () => { const ks = [...out.querySelectorAll('.cbox:checked')].map(x => x.value); closeSheet(sh); gymAdd(ks, 'scan'); };
+      } catch (e) { out.innerHTML = `<div class="empty">${esc(e.message || 'The scan failed.')}</div><button class="btn block" data-a="gymPick">Pick from the list</button>`; }
+    };
+  } });
+}
+// Shrink to 1024 px and blur faces before anything leaves the phone. No blur available → no upload.
+async function gymPhoto(file) {
+  const bmp = await createImageBitmap(file), k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  const g = cv.getContext('2d'); g.drawImage(bmp, 0, 0, cv.width, cv.height);
+  const faces = await gymFaces(cv); if (faces == null) throw new Error('Face blur isn’t ready on this phone, so the photo wasn’t sent.');
+  for (const f of faces) { // pixelate each face with some margin
+    const p = Math.max(f.width, f.height) * .25, x = Math.max(0, f.originX - p), y = Math.max(0, f.originY - p), w = Math.min(cv.width - x, f.width + 2 * p), h = Math.min(cv.height - y, f.height + 2 * p);
+    const t = document.createElement('canvas'); t.width = 8; t.height = Math.max(1, Math.round(8 * h / w)); t.getContext('2d').drawImage(cv, x, y, w, h, 0, 0, t.width, t.height);
+    g.imageSmoothingEnabled = false; g.drawImage(t, 0, 0, t.width, t.height, x, y, w, h); g.imageSmoothingEnabled = true;
+  }
+  return cv.toDataURL('image/jpeg', .8).split(',')[1];
+}
+let gymFD = null;
+async function gymFaces(cv) {
+  try {
+    if (!gymFD) { const mp = await import('./vendor/mediapipe/vision_bundle.mjs'); const fs = await mp.FilesetResolver.forVisionTasks('vendor/mediapipe/wasm');
+      gymFD = await mp.FaceDetector.createFromOptions(fs, { baseOptions: { modelAssetPath: 'vendor/mediapipe/blaze_face_short_range.tflite' }, runningMode: 'IMAGE', minDetectionConfidence: .35 }); }
+    return gymFD.detect(cv).detections.map(d => d.boundingBox);
+  } catch (e) { return null; }
+}
+
 // ---------- Tour of the whole app (Job, 4 Nov) ----------
 // New accounts get it once after setup; Me → Help → Take the tour replays it. The workout part runs on a practice
 // workout (nothing saved, no rest alerts) unless a workout is already open or they pick Start for real.
@@ -911,6 +1217,7 @@ function viewToday() {
       ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
       : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}
   </div>`}
+  ${past ? '' : gymCardHTML()}
   ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
   ${past ? '' : goalsCard() + reportCard() + plateauCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
@@ -1372,6 +1679,9 @@ function viewMe() {
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'danger')}
   </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+  ${HOSTED && USER ? `<section><div class="sgh">Beta</div><div class="sgrp">
+    ${srow('My Gym', swi(gymOn(), 'gymToggle'), 'Workouts built from your gym’s machines. Gym lists are shared with others at that gym')}
+  </div></section>` : ''}
   <section><div class="sgh">Help</div><div class="sgrp">
     ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through every tab and a practice workout')}
   </div></section>
@@ -3505,6 +3815,19 @@ const ACT = {
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
   tourGo: () => tourGo(),
+  // My Gym (beta)
+  gymToggle: () => { S.profile.gymBeta = !gymOn(); persist('jd/meta'); if (S.profile.gymBeta) gymRefresh(true); rerender(); },
+  gymFind: () => { while (SHEETS.length) closeSheet(); gymFind(); },
+  gymOpen: () => { NAV.stack = [{ v: 'gym' }]; render(); gymRefresh(true); },
+  gymBuild: () => gymBuildSheet(),
+  gymSwitch: () => gymSwitch(),
+  gymUse: el => gymUse(el.dataset.g),
+  gymPick: () => { while (SHEETS.length) closeSheet(); gymPick(); },
+  gymScan: () => gymScan(),
+  gymMachine: el => gymMachine(el.dataset.e),
+  gymVote: el => gymVote(el.dataset.e, +el.dataset.v),
+  gymStarterSave: () => { const ks = [...document.querySelectorAll('#gym-st .cbox:checked')].map(x => x.value); if (!ks.length) return toast('Tick the machines you can see first.'); gymAdd(ks, 'starter'); },
+  gymLeave: () => { const c = gymCur(); if (c) confirmSheet({ title: 'Leave ' + gymTitle(c) + '?', body: 'Machines you added stay for everyone else.', ok: 'Leave', key: false, onOk: async () => { try { await gymRpc('jobdone_gym_leave', { g: c.gym_id }); if (S.profile.gymAt === c.gym_id) { delete S.profile.gymAt; persist('jd/meta'); } await gymRefresh(true); if (!(GYM.mine || []).length) { NAV.stack = []; render(); } } catch (e) { gymErr(e); } } }); },
   askAgain: () => { delete S.profile.skipAsk; persist('jd/meta'); rerender(); toast('Pop-ups will ask again'); },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },

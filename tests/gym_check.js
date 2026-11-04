@@ -1,0 +1,48 @@
+// Self-check for the My Gym workout builder. Run: node tests/gym_check.js
+const fs = require('fs'), assert = require('assert');
+const src = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+const code = src.slice(src.indexOf('// gym-builder:start'), src.indexOf('// gym-builder:end'));
+const { gymBuild, gymLifts, gymUsable } = new Function(code + '; return { gymBuild, gymLifts, gymUsable };')();
+
+const types = [
+  { key: 'pec_dec', lifts: ['Chest Fly', 'Reverse Pec Deck'] },
+  { key: 'cable_stack', lifts: ['Cable Crossover', 'Tricep Pushdown', 'Lateral Raise'] },
+  { key: 'leg_press', lifts: ['Leg Press', 'Leg Press Calf Raise'] },
+  { key: 'hack_squat', lifts: ['Hack Squat'] },
+  { key: 'incline_press_machine', lifts: ['Incline Press'] },
+];
+const row = (type_key, here, nots, my_vote) => ({ type_key, here, nots, my_vote });
+
+// Who counts: 2 people, or you; voted out never counts.
+assert(gymUsable(row('x', 2, 0, null)));
+assert(gymUsable(row('x', 1, 0, 1)));
+assert(!gymUsable(row('x', 1, 0, null)), 'one other person is not enough');
+assert(!gymUsable(row('x', 2, 3, null)), 'more "not here" than "here" hides it');
+assert(!gymUsable(row('x', 5, 0, -1)), 'you said it is not here');
+
+const rows = [row('pec_dec', 2, 0, null), row('cable_stack', 1, 0, 1), row('leg_press', 3, 0, 1), row('hack_squat', 2, 0, null), row('incline_press_machine', 1, 0, null)];
+const have = gymLifts(rows, types);
+assert(have.has('Chest Fly') && have.has('Tricep Pushdown') && !have.has('Incline Press'), 'waiting machine (1 other person) is left out');
+
+const never = () => '';
+let r = gymBuild({ focus: 'upper', have, last: never });
+assert.deepStrictEqual(r.list.map(i => i.lift), ['Chest Fly', 'Lateral Raise', 'Tricep Pushdown']);
+assert(r.missing.includes('Incline press') && r.missing.includes('Shoulder press') && r.missing.includes('Preacher curl'));
+
+// Least recently done goes first; swap moves to the next way.
+const dates = { 'Leg Press': '2026-11-01', 'Hack Squat': '2026-10-20' };
+r = gymBuild({ focus: 'lower', have, last: n => dates[n] || '' });
+assert.strictEqual(r.list.find(i => i.k === 'squat').lift, 'Hack Squat', 'hack squat was done longer ago');
+r = gymBuild({ focus: 'lower', have, last: n => dates[n] || '', swap: { squat: 1 } });
+assert.strictEqual(r.list.find(i => i.k === 'squat').lift, 'Leg Press');
+assert.strictEqual(r.list.find(i => i.k === 'calf').lift, 'Leg Press Calf Raise');
+
+// Extras: up to 2 per muscle, never a lift already in the session.
+r = gymBuild({ focus: 'upper', have, last: never, extras: ['Chest'], extra: () => ['Chest Fly', 'Cable Crossover', 'Push-Up'] });
+const ex = r.list.filter(i => i.extra).map(i => i.lift);
+assert.deepStrictEqual(ex, ['Cable Crossover', 'Push-Up']);
+assert.strictEqual(new Set(r.list.map(i => i.lift)).size, r.list.length, 'no lift twice');
+
+// Everything = upper + lower.
+assert.strictEqual(gymBuild({ focus: 'all', have, last: never }).list.length, 5); // 3 upper + squat + calf
+console.log('gym builder: all checks passed');
