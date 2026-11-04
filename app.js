@@ -604,10 +604,18 @@ function openNewSplit() {
   sh.el.querySelectorAll('[data-np]').forEach(b => b.onclick = () => add(TEMPLATES[b.dataset.np].s));
   sh.el.querySelectorAll('[data-ns]').forEach(b => b.onclick = () => add([one[+b.dataset.ns]]));
 }
-function confirmSheet({ title, body = '', ok = 'Confirm', danger = false, onOk }) {
+// "Don't ask again" (Job, 4 Nov): ticking it remembers Yes for that pop-up (and No too when noToo is set).
+// key: false keeps asking every time (permanent deletes). Me → Workouts → Pop-ups brings them all back.
+function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger = false, onOk, key = ok, noToo = false }) {
+  const sk = key && S && S.profile.skipAsk || {};
+  if (key && sk[key] === 'y') return onOk();
+  if (key && sk[key] === 'n') return;
   const sh = openSheet(`<div class="stack"><h2>${esc(title)}</h2>${body ? `<p class="m0 sec">${body}</p>` : ''}
-    <button class="btn block ${danger ? 'danger-fill' : 'primary'}" id="cf-ok">${esc(ok)}</button><button class="btn block ghost" data-a="closeSheet">Cancel</button></div>`, { label: title });
-  sh.el.querySelector('#cf-ok').onclick = () => { closeSheet(sh); onOk(); };
+    <button class="btn block ${danger ? 'danger-fill' : 'primary'}" id="cf-ok">${esc(ok)}</button><button class="btn block ghost" id="cf-no">${esc(no)}</button>
+    ${key ? `<label class="row cf-skip"><input type="checkbox" class="cbox" id="cf-skip"><span class="sec">Don’t ask again</span></label>` : ''}</div>`, { label: title });
+  const keep = v => { if (key && sh.el.querySelector('#cf-skip').checked) { S.profile.skipAsk = { ...S.profile.skipAsk, [key]: v }; persist('jd/meta'); } };
+  sh.el.querySelector('#cf-ok').onclick = () => { keep('y'); closeSheet(sh); onOk(); };
+  sh.el.querySelector('#cf-no').onclick = () => { if (noToo) keep('n'); closeSheet(sh); };
 }
 
 // ---------- render shell ----------
@@ -1231,6 +1239,7 @@ function viewMe() {
     ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Job’s Done to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
     ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
+    ${Object.keys(p.skipAsk || {}).length ? srow('Pop-ups you turned off', '<button class="btn sm" data-a="askAgain">Ask again</button>', plural(Object.keys(p.skipAsk).length, 'pop-up') + ' set to don’t ask again') : ''}
     ${slink('Plate loader', 'plates')}
     ${slink('My exercises and muscle groups', 'myEx')}
   </div></section>
@@ -1675,6 +1684,12 @@ function logSet(ei, si) {
       }
     }
     if (pr.length) { buzz([20, 40, 60]); confetti(); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
+    // Job (4 Nov): PR on the first working set → offer that weight for the sets still to do.
+    const work1 = e.sets.filter(x => x.t !== 'warm');
+    if (pr.length && work1[0] === s && s.w > 0) {
+      const rest = work1.filter(x => !x.done && x.w < s.w);
+      if (rest.length) setTimeout(() => confirmSheet({ title: `Use ${dw(s.w)} ${U()} for your next sets?`, body: `${plural(rest.length, 'set')} of ${esc(e.name)} ${rest.length === 1 ? 'is' : 'are'} set lighter.`, ok: 'Yes, change them', no: 'Keep as is', key: 'prNext', noToo: true, onOk: () => { if (!A) return; rest.forEach(x => { if (!x.done) x.w = s.w; }); touchA(); } }), 900);
+    }
   } else touchA();
 }
 function summaryData() {
@@ -2376,7 +2391,7 @@ async function openPhotos() {
       const ks = Object.keys(PHOTOS).sort(), first = ks[0], last = ks[ks.length - 1];
       b.querySelector('#ph-body').innerHTML = !ks.length ? 'No photos yet.' : `${ks.length > 1 ? `<div class="ph-cmp"><figure><img src="${PHOTOS[first].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[first].d, { y: true }))}${PHOTOS[first].w ? ' · ' + bw(PHOTOS[first].w) + ' ' + U() : ''}</figcaption></figure><figure><img src="${PHOTOS[last].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[last].d, { y: true }))}${PHOTOS[last].w ? ' · ' + bw(PHOTOS[last].w) + ' ' + U() : ''}</figcaption></figure></div>` : ''}
         <div class="ph-grid">${ks.slice().reverse().map(k => `<button class="ph" data-ph="${k}"><img src="${PHOTOS[k].img}" alt="Photo from ${esc(fmtDate(PHOTOS[k].d))}"><span>${esc(fmtDate(PHOTOS[k].d))}</span></button>`).join('')}</div>`;
-      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your signal and try again.'); } } }); });
+      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, key: false, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your signal and try again.'); } } }); });
     };
     try { await loadPhotos(); draw(); } catch (e) { b.querySelector('#ph-body').textContent = 'Couldn’t load photos. Check your signal.'; }
     b.querySelector('#ph-in').onchange = async ev => {
@@ -3013,7 +3028,7 @@ function restoreFile(file, replacing) {
       st = buildFromLog(logFromCsvList(res.list)); what = 'Imported your log';
     }
     const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
-    if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: 'Your current workouts, weights and splits are replaced by the ones in the file.', ok: 'Replace', danger: true, onOk: go }); else go();
+    if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: 'Your current workouts, weights and splits are replaced by the ones in the file.', ok: 'Replace', danger: true, key: false, onOk: go }); else go();
   };
   rd.readAsText(file);
 }
@@ -3337,7 +3352,7 @@ const ACT = {
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
-  reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, onOk: eraseAll }),
+  reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, key: false, onOk: eraseAll }),
   signOut: () => DEMO ? (location.hash = '', location.reload()) : confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => { await flushNow(); try { localStorage.removeItem(LS_KEY); } catch (e) {} await SB.auth.signOut(); } }),
   doImport: () => doImport(true),
   skipImport: () => doImport(false),
@@ -3384,6 +3399,7 @@ const ACT = {
     if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
+  askAgain: () => { delete S.profile.skipAsk; persist('jd/meta'); rerender(); toast('Pop-ups will ask again'); },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
 };

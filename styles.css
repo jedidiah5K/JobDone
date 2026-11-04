@@ -1196,3 +1196,4 @@ body:has(#recap) #sheets { z-index: 75; }
 .pl-more > summary::-webkit-details-marker { display: none; }
 .pl-more > summary::after { content: " ▾"; }
 .pl-more[open] > summary::after { content: " ▴"; }
+.cf-skip { justify-content: center; gap: 10px; padding-top: 4px; }
