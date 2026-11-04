@@ -746,7 +746,7 @@ function gymCardHTML() {
   if (!c) return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><h3 class="mt1">Workouts built from your gym’s machines</h3><p class="cap">Pick your gym, add what it has, and get a session that fits.</p><button class="btn block mt2" data-a="gymFind">Find your gym</button></div>`;
   const rows = (GYM.eq || {})[c.gym_id] || [], n = rows.filter(gymUsable).length;
   return `<div class="card"><div class="card-h"><span class="eyebrow">My Gym ${gymBeta}</span><button class="cap link" data-a="gymOpen">${n ? plural(n, 'machine') : 'Add machines'}</button></div>
-    <h3 class="mt1">${esc(gymTitle(c))}</h3>
+    <h3 class="mt1 gym-1l" title="${esc(gymTitle(c))}">${esc(c.brand)}</h3>${c.independent ? '' : `<div class="cap gym-1l">${esc(c.branch)}</div>`}
     <button class="btn block mt2" data-a="${n ? 'gymBuild' : 'gymOpen'}">${n ? 'Build today’s workout' : 'Add your gym’s machines'}</button></div>`;
 }
 
@@ -764,7 +764,7 @@ function viewGym() {
   };
   const others = (GYM.mine || []).filter(m => m.gym_id !== c.gym_id);
   return `<div class="stack">${backBtn()}
-    <div class="top pt0"><div><div class="eyebrow">My Gym ${gymBeta}</div><h1>${esc(c.brand)}</h1>${c.independent ? `<div class="cap">${esc(c.branch)}</div>` : `<button class="cap daychip" data-a="gymSwitch">Training at: ${esc(c.branch)} ▾</button>`}</div></div>
+    <div class="top pt0"><div class="gym-top"><div class="eyebrow">My Gym ${gymBeta}</div><h1 class="gym-h1" title="${esc(c.brand)}">${esc(c.brand)}</h1>${c.independent ? `<div class="cap gym-1l">${esc(c.branch)}</div>` : `<button class="cap daychip gym-1l" data-a="gymSwitch" title="${esc(c.branch)}">Training at: ${esc(c.branch)} ▾</button>`}</div></div>
     <button class="btn block primary" data-a="gymBuild" ${usable ? '' : 'disabled'}>Build today’s workout</button>
     ${GYM_SCAN_READY ? '<button class="btn block" data-a="gymScan">Scan a corner</button>' : ''}
     ${rows.length ? '' : gymStarterHTML(c)}
@@ -977,12 +977,12 @@ let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
-  { tab: 'today', el: () => tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
+  { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
   { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
   { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
-  { tab: 'me', el: () => [...document.querySelectorAll('#screen section')].find(e => (e.querySelector('.sgh') || {}).textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
+  { tab: 'me', el: () => [...document.querySelectorAll('#screen section .sgh')].find(e => e.textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
   { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
   { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight', d: 'Tap kg to load plates onto the bar, or switch to the keypad.' },
