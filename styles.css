@@ -1227,3 +1227,9 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .gym-sk { display: block; border-radius: var(--r2); background: var(--raised); animation: gymPulse 1.2s ease-in-out infinite alternate; }
 @keyframes gymPulse { to { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .gym-sk { animation: none; } }
+/* Feel (Job's not-AI-made guide, 4 Nov): buttons shrink a little when pressed; small buttons get a 44 px tap area */
+.btn, .chip, .icon-btn, .check, .cell { transition: opacity .15s, transform .15s; }
+.btn:active, .chip:active, .check:active { transform: scale(.97); }
+.btn.sm::after, .chip::after { content: ""; position: absolute; inset: -5px 0; }
+.chip { position: relative; }
+@media (prefers-reduced-motion: reduce) { .btn:active, .chip:active, .check:active { transform: none; } }

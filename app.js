@@ -532,6 +532,7 @@ function openSheet(html, opts = {}) {
   const sh = { el: wrap, opts }; SHEETS.push(sh);
   dragToDismiss(sh);
   if (opts.mount) opts.mount(wrap.querySelector('.sheet-body'), sh);
+  labelIcons(wrap);
   return sh;
 }
 // Pull a sheet down to close it, like iOS sheets.
@@ -658,8 +659,10 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
-  screenChanged(); wireSwipe(); coach(); tourAuto();
+  screenChanged(); wireSwipe(); coach(); tourAuto(); labelIcons(document);
 }
+function labelIcons(root) { root.querySelectorAll('button[aria-label]:not([title])').forEach(b => { if (!b.textContent.trim()) b.title = b.getAttribute('aria-label'); }); }
+document.addEventListener('focusin', e => { const f = e.target; if (f.matches && f.matches('input, textarea, select') && f.closest('.sheet')) setTimeout(() => f.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300); });
 // ---------- My Gym (beta), Job 4 Nov 2026 ----------
 // Pick your gym branch, add its machines (AI scan or the list), and get a workout built from what's there.
 // Shared data lives in Supabase behind security-definer functions (supabase/gym.sql). The main lifts are Job's.
@@ -714,7 +717,8 @@ const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymB
 const gymType = k => (GYM.types || []).find(t => t.key === k);
 const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id === S.profile.gymAt) || m[0] || null; };
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
-const gymErr = e => toast(esc((e && e.message) || 'That didn’t work. Check your signal and try again.'));
+const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your signal and try again.' : m; };
+const gymErr = e => toast(esc(gymMsg(e)));
 async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {}); if (error) throw new Error(error.message); return data; }
 let gymBusy = null;
 function gymRefresh(force) {
@@ -782,7 +786,7 @@ function gymStarterHTML(c) {
 
 // Find your gym: chains show once with their branches under them.
 function gymFind() {
-  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">My Gym ${gymBeta}</div><h2>Find your gym</h2></div>
+  const sh = openSheet(`<div class="stack"><div><h2>Find your gym</h2></div>
     <input class="input" id="gf-q" placeholder="Gym or chain, e.g. Anytime Fitness" maxlength="60" autocomplete="off">
     <div id="gf-r" class="cap">Type at least 2 letters.</div></div>`, { label: 'Find your gym', mount: b => {
     const q = b.querySelector('#gf-q'), out = b.querySelector('#gf-r'); let t = 0, n = 0;
@@ -902,9 +906,9 @@ function gymBuildSheet() {
   } });
   const draw = () => {
     const r = gymBuild({ ...st, have, last, extra });
-    setSheet(sh, `<div class="stack"><div><div class="eyebrow">Today at ${esc(gymTitle(c))} ${gymBeta}</div><h2>${st.focus === 'upper' ? 'Upper body' : st.focus === 'lower' ? 'Lower body' : 'Everything'}</h2><div class="cap">Your main lifts, using this gym’s machines. Tap ⇆ to do one another way.</div></div>
+    setSheet(sh, `<div class="stack"><div><div class="eyebrow">Today at ${esc(gymTitle(c))}</div><h2>${st.focus === 'upper' ? 'Upper body' : st.focus === 'lower' ? 'Lower body' : 'Everything'}</h2><div class="cap">Your main lifts, on this gym’s machines.</div></div>
       <div class="seg">${[['upper', 'Upper'], ['lower', 'Lower'], ['all', 'Everything']].map(([k, n]) => `<button data-f="${k}" class="${st.focus === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-      <div class="card"><div class="list">${r.list.map(i => `<div class="li"><div class="grow"><div class="t">${esc(i.lift)}</div><div class="s">${esc(i.extra ? 'Extra · ' + i.n : i.n)}${last(i.lift) ? '' : ' · new for you'}</div></div>${i.opts.length > 1 ? `<button class="icon-btn" data-sw="${i.k}" aria-label="Do ${esc(i.n)} another way">⇆</button>` : ''}</div>`).join('') || '<div class="empty">None of these lifts fit the machines added so far.</div>'}</div>
+      <div class="card"><div class="list">${r.list.map(i => `<div class="li"><div class="grow"><div class="t">${esc(i.lift)}</div><div class="s">${esc([i.extra ? 'Extra · ' + i.n : i.n.toLowerCase() === i.lift.toLowerCase() ? '' : i.n, last(i.lift) ? '' : 'new for you'].filter(Boolean).join(' · '))}</div></div>${i.opts.length > 1 ? `<button class="icon-btn" data-sw="${i.k}" aria-label="Do ${esc(i.n)} another way">${I.swap}</button>` : ''}</div>`).join('') || '<div class="empty">None of these lifts fit the machines added so far.</div>'}</div>
         ${r.missing.length ? `<div class="cap mt2">Not at this gym yet: ${esc(r.missing.join(', '))}. Add the machine and it shows up here.</div>` : ''}</div>
       <div><div class="eyebrow mb1">Want extra?</div><div class="chips gym-chips">${GYM_EXTRAS.map(m => `<button class="chip ${st.extras.includes(m) ? 'on' : ''}" data-x="${m}">${m}</button>`).join('')}</div></div>
       <button class="btn block primary" id="gb-go" ${r.list.length ? '' : 'disabled'}>Start workout · ${plural(r.list.length, 'lift')}</button></div>`);
@@ -923,7 +927,7 @@ function gymStart(c, focus, lifts) {
 // AI scan of a gym corner. Off until GYM_SCAN_READY (needs the Gemini key and the face blur files).
 function gymScan() {
   const c = gymCur(); if (!c || !GYM_SCAN_READY) return gymPick();
-  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Scan a corner ${gymBeta}</div><h2>Photo of one corner</h2><div class="cap">Get as many machines in as you can. Faces are blurred on your phone first and the photo isn’t kept.</div></div>
+  const sh = openSheet(`<div class="stack"><div><h2>Scan a corner</h2><div class="cap">Get as many machines in as you can. Faces are blurred on your phone first and the photo isn’t kept.</div></div>
     <label class="btn block primary" for="gs-in">Take a photo</label><input type="file" id="gs-in" accept="image/*" capture="environment" hidden>
     <div id="gs-out"></div></div>`, { label: 'Scan a corner', mount: b => {
     b.querySelector('#gs-in').onchange = async ev => {
@@ -940,7 +944,7 @@ function gymScan() {
         out.innerHTML = `<div class="card"><div class="eyebrow mb1">Found ${plural(keys.length, 'machine')}</div><div class="cap mb1">Untick anything that’s wrong.</div><div class="list">${keys.map(k => `<label class="li"><div class="grow"><div class="t">${esc((gymType(k) || { name: k }).name)}</div></div><input type="checkbox" class="cbox" value="${k}" checked></label>`).join('')}</div>
           <button class="link mt2" data-a="gymPick">Missed one? Pick it from the list</button></div><button class="btn block primary" id="gs-add">Add ticked machines</button><div class="cap tc">${j.left} scans left today</div>`;
         out.querySelector('#gs-add').onclick = () => { const ks = [...out.querySelectorAll('.cbox:checked')].map(x => x.value); closeSheet(sh); gymAdd(ks, 'scan'); };
-      } catch (e) { out.innerHTML = `<div class="empty">${esc(e.message || 'The scan failed.')}</div><button class="btn block" data-a="gymPick">Pick from the list</button>`; }
+      } catch (e) { out.innerHTML = `<div class="empty">${esc(gymMsg(e))}</div><button class="btn block" data-a="gymPick">Pick from the list</button>`; }
     };
   } });
 }
@@ -3834,8 +3838,10 @@ const ACT = {
 };
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-a]'); if (!el || el.disabled) return;
+  const now = Date.now(); if (el === tapEl && now - tapAt < 350 && el.dataset.a !== 'rest') { ev.preventDefault(); return; } tapEl = el; tapAt = now; // no double runs on a double tap
   const f = ACT[el.dataset.a]; if (f) { ev.preventDefault(); f(el, ev); }
 });
+let tapEl = null, tapAt = 0;
 const IN = {
   viewDay: el => { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) setViewDay(el.value); },
   spName: (el, live) => { const sp = splitById(el.dataset.id); const v = el.value.trim(); if (!v) return; sp.name = v; Object.values(S.workouts).forEach(w => { if (w.splitId === sp.id) w.splitName = v; }); persist('jd/meta', ...(live ? [] : allPaths().filter(p => p.startsWith('months/')))); },
