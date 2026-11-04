@@ -960,8 +960,8 @@ async function gymPhoto(file) {
 let gymFD = null;
 async function gymFaces(cv) {
   try {
-    if (!gymFD) { const mp = await import('./vendor/mediapipe/vision_bundle.mjs'); const fs = await mp.FilesetResolver.forVisionTasks('vendor/mediapipe/wasm');
-      gymFD = await mp.FaceDetector.createFromOptions(fs, { baseOptions: { modelAssetPath: 'vendor/mediapipe/blaze_face_short_range.tflite' }, runningMode: 'IMAGE', minDetectionConfidence: .35 }); }
+    if (!gymFD) { const mp = await import('./vendor/mediapipe/vision_bundle.mjs'); const base = new URL('vendor/mediapipe/', location.href).href, fs = await mp.FilesetResolver.forVisionTasks(base + 'wasm');
+      gymFD = await mp.FaceDetector.createFromOptions(fs, { baseOptions: { modelAssetPath: base + 'blaze_face_short_range.tflite' }, runningMode: 'IMAGE', minDetectionConfidence: .35 }); }
     return gymFD.detect(cv).detections.map(d => d.boundingBox);
   } catch (e) { return null; }
 }

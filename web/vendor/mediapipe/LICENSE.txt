@@ -1,0 +1,3 @@
+MediaPipe Tasks Vision 1.2.2 (@mediapipe/tasks-vision) and the BlazeFace short-range model, by Google.
+Licensed under the Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+Used only to blur faces on the phone before a My Gym scan photo is sent.

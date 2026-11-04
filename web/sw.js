@@ -1,5 +1,6 @@
 // Offline support: the app shell is cached; pages load from the network first so updates arrive.
-const CACHE = 'jobdone-v79';
+const CACHE = 'jobdone-v80';
+const MP = 'jobdone-mediapipe-1'; // face-blur files (~15 MB), kept across updates
 // Pages come from the network so updates arrive, but a slow gym signal falls back to the saved copy after 2.5 s.
 function pageFirst(e) {
   const net = fetch(e.request).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); } return r; });
@@ -12,10 +13,11 @@ function pageFirst(e) {
 }
 const SHELL = ['./', 'index.html', 'config.js', 'vendor/supabase.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/apple-touch-icon.png', 'ex/index.json', 'ex/body.json', 'fonts/permanent-marker.woff2'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== MP).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin) return; // never cache account or database calls
+  if (u.pathname.includes('/vendor/mediapipe/')) return e.respondWith(caches.open(MP).then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; }))));
   const isPage = e.request.mode === 'navigate' || u.pathname.endsWith('.html') || u.pathname.endsWith('config.js');
   e.respondWith(isPage
     ? pageFirst(e)
