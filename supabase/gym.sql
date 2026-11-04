@@ -286,3 +286,6 @@ insert into public.jobdone_equipment_types (key, name, nicknames, lifts, sort) v
   ('seated_calf', 'Seated Calf Raise', '{seated calf machine}', '{Seated Calf Raise}', 79),
   ('ab_crunch_machine', 'Ab Crunch Machine', '{crunch machine,ab machine}', '{Crunch Machine}', 90)
 on conflict (key) do update set name = excluded.name, nicknames = excluded.nicknames, lifts = excluded.lifts, sort = excluded.sort;
+
+-- The two helpers are only called inside the functions above, never directly.
+revoke execute on function public.jobdone_gym_me(), public.jobdone_gym_member(uuid) from authenticated;
