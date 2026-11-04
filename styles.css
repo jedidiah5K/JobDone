@@ -1206,3 +1206,17 @@ tr.sw-open .set-del { opacity: 1; pointer-events: auto; transform: translate(0, 
 #wk tr[id^="row-"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 :root:not([data-theme]) tr.upnext .check { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+/* App tour (Job, 4 Nov) */
+#tour { position: fixed; left: 16px; right: 16px; z-index: 96; padding: 14px 14px 10px 16px; border-radius: 14px; background: var(--accent); color: var(--accent-ink, #fff); box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: coachIn .25s var(--ease) both; max-width: 528px; margin: 0 auto; }
+#tour b { display: block; font-size: 16px; line-height: 21px; font-weight: 700; }
+#tour span { display: block; margin-top: 2px; font-size: 14px; line-height: 19px; opacity: .92; }
+#tour .tour-n { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; margin-bottom: 2px; }
+#tour .tour-btns { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+#tour .tour-btns .link { color: inherit; opacity: .8; font-size: 14px; padding: 6px 0; background: none; border: 0; }
+#tour .tour-btns .btn { color: inherit; border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.14); }
+#tour .tour-btns .btn.primary { background: var(--accent-ink, #fff); color: var(--accent); }
+#tour .tour-btns .btn.ghost { background: transparent; }
+#tour::after { content: ""; position: absolute; bottom: -7px; left: calc(var(--ax, 50%) - 16px - 8px); width: 16px; height: 16px; background: inherit; transform: rotate(45deg); border-radius: 3px; }
+#tour.below::after { bottom: auto; top: -7px; }
+.tour-hl { outline: 2.5px solid var(--accent); outline-offset: 3px; border-radius: 12px; }
+@media (prefers-reduced-motion: reduce) { #tour { animation: none; } }

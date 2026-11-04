@@ -140,7 +140,7 @@ async function pushOn() {
 async function pushOff() { try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
 let restPushSent = 0;
 function syncRestPush() {
-  if (!HOSTED || !S || !S.profile || !S.profile.restPush) return;
+  if (!HOSTED || !S || !S.profile || !S.profile.restPush || (A && A.practice)) return;
   const due = A && REST && !REST.paused ? Math.round(REST.end / 1000) * 1000 : 0;
   if (due === restPushSent) return;
   const was = restPushSent; restPushSent = due;
@@ -172,7 +172,7 @@ const invalidate = () => { IX = null; };
 
 // ---------- storage ----------
 function lsLoad() { try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-function lsSave() { if (DEMO) return; try { localStorage.setItem(LS_KEY, JSON.stringify({ S, A, UI })); } catch (e) {} }
+function lsSave() { if (DEMO) return; try { localStorage.setItem(LS_KEY, JSON.stringify({ S, A: A && A.practice ? null : A, UI })); } catch (e) {} }
 const dirty = new Set(), inflight = new Set();
 let flushT = null, retryT = null;
 // Paths saved on this phone but not yet in the account. Kept in localStorage so they survive closing the app.
@@ -183,6 +183,7 @@ function pend() {
 function pendSave() { try { localStorage.setItem(LS_KEY + ':pending', JSON.stringify([...pend()])); } catch (e) {} }
 function persist(...paths) {
   if (DEMO) return;
+  if (A && A.practice) { paths = paths.filter(p => p !== 'jd/active'); if (!paths.length) return; }
   paths.forEach(p => pend().add(p)); pendSave();
   lsSave();
   if (!DB || !S) return;
@@ -205,7 +206,7 @@ function docBody(p) {
   if (p === 'jd/meta') return { v: S.v, profile: S.profile, splits: S.splits, rotation: S.rotation, customEx: S.customEx, setup: S.setup || {}, meas: S.meas || {}, imported: S.imported, created: S.created, updated: Date.now() };
   if (p === 'jd/weights') return { e: S.weights };
   if (p === 'jd/steps') return { e: S.steps };
-  if (p === 'jd/active') return { a: A || null, t: Date.now() };
+  if (p === 'jd/active') return { a: A && !A.practice ? A : null, t: Date.now() };
   if (p.startsWith('months/')) {
     const m = p.slice(7), w = {};
     for (const x of Object.values(S.workouts)) if (x.date.slice(0, 7) === m) w[x.id] = x;
@@ -657,12 +658,95 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
-  screenChanged(); wireSwipe(); coach();
+  screenChanged(); wireSwipe(); coach(); tourAuto();
+}
+// ---------- Tour of the whole app (Job, 4 Nov) ----------
+// New accounts get it once after setup; Me → Help → Take the tour replays it. The workout part runs on a practice
+// workout (nothing saved, no rest alerts) unless a workout is already open or they pick Start for real.
+let TOUR = null;
+const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
+const TOUR_STEPS = [
+  { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
+  { tab: 'today', el: () => tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
+  { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
+  { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
+  { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
+  { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
+  { tab: 'me', el: () => [...document.querySelectorAll('#screen section')].find(e => (e.querySelector('.sgh') || {}).textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
+  { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
+  { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
+  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight', d: 'Tap kg to load plates onto the bar, or switch to the keypad.' },
+  { wk: true, el: () => tq('#row-0-0 [data-f="r"]'), t: 'Reps', d: 'Tap reps to set them. Next on the keypad moves you to the next box.' },
+  { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Tap Next and this one gets ticked for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
+  { wk: true, el: () => tq('#wk .restpop'), t: 'Rest timer', d: 'It starts by itself. −30s, +30s and Pause change it, and a sound plays when it’s time to go.' },
+  { wk: true, el: () => tq('#row-0-1') || tq('#row-0-0'), t: 'Shortcuts', d: 'Swipe a set left to delete it. Hold a set to copy its kg and reps to the sets below.' },
+  { wk: true, el: () => tq('#ex-0 [data-a="exMenu"]'), t: 'More for each lift', d: 'Swap it, reorder, add warm-ups, change its rest or split it into left and right.' },
+  { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: () => A && A.practice ? 'On a real workout, Finish saves it and shows what you beat. This was practice, so nothing is saved.' : 'Finish saves it, shows what you beat and makes a recap card to share.', last: true },
+];
+function tourGo() {
+  while (SHEETS.length) closeSheet();
+  const p = S && S.profile; if (p) { p.tour1 = true; p.hint1 = true; persist('jd/meta'); }
+  TOUR = { i: 0 }; document.getElementById('coach')?.remove(); tourShow();
+}
+function tourEnd() {
+  const pr = A && A.practice; TOUR = null; tourClear();
+  if (pr) { A = null; REST = null; persist('jd/active'); }
+  if (A) A.open = true; else { NAV.tab = 'today'; NAV.stack = []; }
+  render();
+}
+function tourClear() { document.getElementById('tour')?.remove(); document.querySelectorAll('.tour-hl').forEach(e => e.classList.remove('tour-hl')); }
+function tourPractice(real) {
+  const nx = nextSplit();
+  if (nx) startWorkout(nx.id, null, !real); else { startWorkout(null, null, !real); while (SHEETS.length) closeSheet(); A.ex.push(newExEntry('Chest Fly')); }
+  touchA(); TOUR.i++; tourShow();
+}
+function tourShow() {
+  tourClear(); if (!TOUR) return;
+  const st = TOUR_STEPS[TOUR.i]; if (!st) return tourEnd();
+  if (st.tab) { if (A) A.open = false; NAV.tab = st.tab; NAV.stack = []; render(); }
+  if (st.wk && A && !A.open) { A.open = true; renderWorkout(); }
+  const el = st.el();
+  if (!el) { TOUR.i += TOUR.back ? -1 : 1; if (TOUR.i < 0) TOUR.i = 0; return tourShow(); }
+  TOUR.back = false;
+  el.scrollIntoView({ block: 'center' });
+  el.classList.add('tour-hl');
+  const b = document.createElement('div'); b.id = 'tour'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', 'Tour');
+  const n = TOUR_STEPS.length, d = typeof st.d === 'function' ? st.d() : st.d;
+  const btns = st.pick && !A ? `<button class="btn sm" data-tr="real">Start for real</button><button class="btn sm primary" data-tr="practice">Practice run</button>`
+    : `${TOUR.i ? '<button class="btn sm ghost" data-tr="back">Back</button>' : ''}<button class="btn sm primary" data-tr="next">${st.last ? 'Done' : 'Next'}</button>`;
+  b.innerHTML = `<div class="tour-n">${TOUR.i + 1} of ${n}</div><b>${esc(st.t)}</b><span>${esc(d)}</span><div class="tour-btns"><button class="link" data-tr="skip">Skip tour</button><i class="grow"></i>${btns}</div>`;
+  document.body.appendChild(b);
+  b.onclick = ev => {
+    const k = ev.target.closest('[data-tr]'); if (!k) return; const a = k.dataset.tr;
+    if (a === 'skip') return tourEnd();
+    if (a === 'practice' || a === 'real') return tourPractice(a === 'real');
+    if (a === 'back') { TOUR.i--; TOUR.back = true; return tourShow(); }
+    if (st.last) return tourEnd();
+    if (st.go) st.go();
+    TOUR.i++; setTimeout(() => { while (SHEETS.length) closeSheet(); tourShow(); }, st.go ? 800 : 0);
+  };
+  tourPlace(); setTimeout(tourPlace, 350); setTimeout(tourPlace, 900); // panels that slide in move after the first measure
+}
+function tourPlace() {
+  const b = document.getElementById('tour'); if (!b || !TOUR) return;
+  let el = document.querySelector('.tour-hl');
+  if (!el) { const st = TOUR_STEPS[TOUR.i]; el = st && st.el(); if (!el) return; el.classList.add('tour-hl'); } // the workout redraws its panel
+  const r = el.getBoundingClientRect(), h = b.offsetHeight, up = r.top + r.height / 2 > innerHeight / 2;
+  b.classList.toggle('below', !up);
+  b.style.top = (up ? Math.max(8, r.top - h - 12) : Math.min(innerHeight - h - 8, r.bottom + 12)) + 'px';
+  b.style.setProperty('--ax', Math.round(Math.min(innerWidth - 40, Math.max(40, r.left + r.width / 2))) + 'px');
+}
+addEventListener('scroll', () => { if (TOUR) requestAnimationFrame(tourPlace); }, true);
+addEventListener('resize', () => { if (TOUR) tourPlace(); });
+function tourAuto() {
+  const p = S && S.profile;
+  if (!p || p.tour1 || !p.onboarded || TOUR || A || DEMO || ix().ws.length || SHEETS.length || NAV.stack.length) return;
+  setTimeout(() => { if (!TOUR && !A && !SHEETS.length && S.profile && !S.profile.tour1) tourGo(); }, 900);
 }
 // First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
 function coach() {
   const old = document.getElementById('coach'); if (old) old.remove();
-  const p = S && S.profile; if (!p || p.hint1 || !p.onboarded || A || DEMO || NAV.tab !== 'today' || NAV.stack.length || ix().ws.length || SHEETS.length) return;
+  const p = S && S.profile; if (!p || p.hint1 || p.tour1 || TOUR || !p.onboarded || A || DEMO || NAV.tab !== 'today' || NAV.stack.length || ix().ws.length || SHEETS.length) return;
   const st = document.querySelector('.tab-start'); if (!st) return;
   const el = document.createElement('div'); el.id = 'coach'; el.setAttribute('role', 'status');
   el.innerHTML = `<div class="grow"><b>Start here</b><span>Tap Start to open your first workout. Log each set as you go.</span></div><button class="coach-x" aria-label="Got it">${I.x || '×'}</button>`;
@@ -1288,6 +1372,9 @@ function viewMe() {
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'danger')}
   </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+  <section><div class="sgh">Help</div><div class="sgrp">
+    ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through every tab and a practice workout')}
+  </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
     ${p.owner && HOSTED && USER ? slink('Feedback inbox', 'fbInbox') : ''}
@@ -1322,10 +1409,10 @@ function newExEntry(name, nSets, rest, tip) {
   }
   return { name, rest: rest || S.profile.defaultRest, tip: tip || '', note: '', sets, key: uid() };
 }
-function startWorkout(splitId, date) {
+function startWorkout(splitId, date, practice) {
   if (A) { openWk(); return; }
   const sp = splitId ? splitById(splitId) : null;
-  A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log' };
+  A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
   persist('jd/active'); openWk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
@@ -1698,7 +1785,7 @@ function logSet(ei, si) {
     if (pr.length) { buzz([20, 40, 60]); confetti(); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
     // Job (4 Nov): PR on the first working set → offer that weight for the sets still to do.
     const work1 = e.sets.filter(x => x.t !== 'warm');
-    if (pr.length && work1[0] === s && s.w > 0) {
+    if (pr.length && work1[0] === s && s.w > 0 && !TOUR) {
       const rest = work1.filter(x => !x.done && x.w < s.w);
       if (rest.length) setTimeout(() => confirmSheet({ title: `Use ${dw(s.w)} ${U()} for your next sets?`, body: `${plural(rest.length, 'set')} of ${esc(e.name)} ${rest.length === 1 ? 'is' : 'are'} set lighter.`, ok: 'Yes, change them', no: 'Keep as is', key: 'prNext', noToo: true, onOk: () => { if (!A) return; rest.forEach(x => { if (!x.done) x.w = s.w; }); touchA(); } }), 900);
     }
@@ -1728,6 +1815,7 @@ function summaryHTML() {
   </div>`;
 }
 function saveWorkout() {
+  if (A && A.practice) { toast('That was a practice run, so nothing was saved.'); TOUR = { i: 0 }; return tourEnd(); }
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
   const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: A.endAt || Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
@@ -3416,6 +3504,7 @@ const ACT = {
     if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
+  tourGo: () => tourGo(),
   askAgain: () => { delete S.profile.skipAsk; persist('jd/meta'); rerender(); toast('Pop-ups will ask again'); },
   pset: el => { const f = el.dataset.f; S.profile[f] = !S.profile[f]; persist('jd/meta'); rerender(); },
   soundToggle: () => { S.profile.sound = S.profile.sound === false; persist('jd/meta'); rerender(); if (S.profile.sound) SOUNDS.nice(); },
