@@ -150,7 +150,8 @@ function syncRestPush() {
 let S = null;        // persisted app state
 let A = null;        // active workout in progress
 let UI = { lastPrompt: null };
-let NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
+// Reopen on the screen you left (Job, 4 Nov). A bad saved screen falls back to Today in render().
+let NAV = (() => { try { const n = JSON.parse(localStorage.getItem('jd-nav')); if (n && typeof n.tab === 'string' && Array.isArray(n.stack)) return { prog: 'body', range: '6M', ...n }; } catch (e) {} return { tab: 'today', stack: [], prog: 'body', range: '6M' }; })();
 let IX = null;
 let DB = null, DL = null;
 let mode = 'pending'; // cloud | local
@@ -640,11 +641,13 @@ function render() {
   if (!$('#screen') || !$('#tabs')) {
     app.innerHTML = `<main id="screen" tabindex="-1"></main><nav id="tabs" aria-label="Tabs"></nav>`;
   }
+  NAV.stack = NAV.stack.filter(t => t && (t.v === 'workout' ? S.workouts[t.id] : t.v === 'split' || t.v === 'splitEdit' ? splitById(t.id) : true));
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  if (top) html = ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights })[top.v](top);
-  else html = ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
+  try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
+  try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
   if (!NAV.keepScroll) enter(scr);
   if (NAV.keepScroll) scr.scrollTop = keep; else scr.scrollTop = 0;
@@ -1390,6 +1393,7 @@ function renderWorkout() {
   const body = el.querySelector('.wk-body'); const keep = body ? body.scrollTop : 0;
   const hadPop = !!el.querySelector('.restpop') && el._rest === REST; // −30s, +30s, Pause redraw the timer; only a new rest slides up
   el._rest = REST;
+  UPNEXT = upNext();
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
@@ -1406,6 +1410,14 @@ function renderWorkout() {
   el.innerHTML = resolveVars(el.innerHTML);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
   const rp = hadPop && el.querySelector('.restpop'); if (rp) rp.style.animation = 'none';
+}
+// The set to do next gets a ring on its tick (Job, 4 Nov): the next one in the lift you just ticked, else the next lift with sets left.
+let UPNEXT = null;
+function upNext() {
+  let li = -1, at = 0; A.ex.forEach((e, i) => e.sets.forEach(s => { if (s.done && s.at > at) { at = s.at; li = i; } }));
+  if (li < 0) return null;
+  for (const e of A.ex.slice(li).concat(A.ex.slice(0, li))) { const s = e.sets.find(x => !x.done); if (s) return s; }
+  return null;
 }
 function exCardHTML(e, ei) {
   const last = lastSession(e.name);
@@ -1430,12 +1442,12 @@ function exCardHTML(e, ei) {
     ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
-    ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}" id="row-${ei}-${si}">
+    ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
       <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight">${s.w == null ? '–' : dw(s.w)}</button></td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
-      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button></td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
+      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1">Delete</button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="btn sm ghost" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="btn sm ghost sec" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
     ${cmp}`}
@@ -2414,7 +2426,7 @@ const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 1
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, alt: () => openKeypad(ei, si, 'w') });
+    { title: `${e.name} · set ${si + 1}`, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 function openPlates(target, onUse, o = {}) {
   const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
@@ -2661,14 +2673,17 @@ function lastSided(name) {
   return ONE_SIDE.test(name); // never logged: one-arm and one-leg lifts start as Left and Right
 }
 // Left out of the add list (Job, 2 Nov): a one-side lift is the normal lift split into Left and Right (⋯ menu). Logged history keeps its names.
+const NICK = { 'Chest Fly': ['pec dec', 'pec deck', 'butterfly', 'machine fly'], 'Pec Deck': ['pec dec', 'butterfly'], 'Incline Press': ['incline machine', 'smith incline'], 'Lat Pulldown': ['pulldown', 'lats'], 'Wide-Grip Row': ['seated row', 'cable row'], 'Close-Grip Row': ['seated row', 'v-bar row', 'cable row'], 'Shoulder Press': ['ohp', 'military press'], 'Overhead Press': ['ohp', 'military press'], 'Lateral Raise': ['side raise', 'laterals', 'side delts'], 'Rear Delt Fly': ['reverse fly', 'rear delts'], 'Tricep Pushdown': ['pushdown', 'cable pushdown'], 'Overhead Tricep Extension': ['overhead tricep', 'french press'], 'Skull Crusher': ['lying tricep extension'], 'Leg Curl': ['hamstring curl', 'ham curl'], 'Leg Extension': ['quad extension'], 'Stiff-Leg Deadlift': ['sldl', 'stiff leg'], 'Romanian Deadlift': ['rdl'], 'Dumbbell RDL': ['rdl', 'db rdl'], 'Adductor': ['inner thigh', 'hip adduction'], 'Abductor': ['outer thigh', 'hip abduction'], 'Calf Raise': ['calves'], 'Bench Press': ['bench', 'flat bench'], 'Dumbbell Bench Press': ['db bench'], 'Pull-Up': ['pullup', 'pull up'], 'Chin-Up': ['chinup', 'chin up'], 'Back Squat': ['squat'], 'Hip Thrust': ['glute thrust'], "Farmer's Carry": ['farmers walk'] };
 const PICK_HIDE = new Set(['Single-Arm Pulldown', 'Single-Arm Tricep', 'Tricep Bar']);
 function pickExercise(onPick, opts = {}) {
   let q = '', mf = null;
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
-  const score = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
+  const score0 = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
+  // Nicknames and muscle names find lifts too (Job, 4 Nov): "pec dec" finds Chest Fly, "chest" lists chest lifts.
+  const score = e => Math.max(score0(e.name, q), ...(NICK[e.name] || []).map(a => score0(a, q) - 5), q.trim().length > 2 && e.muscle.toLowerCase().startsWith(q.trim().toLowerCase()) ? 5 : 0);
   const list = () => {
-    let l = all().filter(e => !mf || e.muscle === mf).map(e => ({ e, s: score(e.name, q) })).filter(x => x.s > 0);
+    let l = all().filter(e => !mf || e.muscle === mf).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
     l.sort((a, b) => b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
     return l.map(x => x.e);
   };
@@ -2866,7 +2881,7 @@ function exMenu(ei) {
       b.onclick = ev => {
         const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m; closeSheet(sh);
         if (m === 'order') openReorder();
-        if (m === 'rm') confirmSheet({ title: `Remove ${e.name}?`, body: 'Sets you logged for it in this workout are removed too.', ok: 'Remove', danger: true, onOk: () => { if (!A) return; const [gone] = A.ex.splice(ei, 1); touchA(); toast(esc(e.name) + ' removed', 0, () => { if (!A) return; A.ex.splice(Math.min(ei, A.ex.length), 0, gone); touchA(); }); } });
+        if (m === 'rm') { if (!A) return; const [gone] = A.ex.splice(ei, 1); touchA(); toast(esc(e.name) + ' removed', 0, () => { if (!A) return; A.ex.splice(Math.min(ei, A.ex.length), 0, gone); touchA(); }); }
         if (m === 'sides') toggleSides(ei);
         if (m === 'swap') openSwap(ei);
         if (m === 'setup') openSetup(baseName(e.name));
@@ -3344,11 +3359,11 @@ const ACT = {
   spDup: el => { const sp = splitById(el.dataset.id); const id = 'sp-' + uid(); S.splits.push({ ...clone(sp), id, name: sp.name + ' copy', archived: false }); persist('jd/meta'); NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); toast('Split duplicated'); },
   spShare: el => shareSplit(splitById(el.dataset.id)),
   spDelete: el => { const sp = splitById(el.dataset.id); if (!sp) return; if (A && A.splitId === sp.id) return toast('Finish or discard the workout using this split first.');
-    confirmSheet({ title: 'Delete ' + sp.name + '?', body: 'The split is removed. Workouts you already logged with it stay in your history.', ok: 'Delete split', danger: true, onOk: () => { const was = S.splits.slice(), rot = S.rotation.slice(); S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(esc(sp.name) + ' deleted', 0, () => { S.splits = was; S.rotation = rot; persist('jd/meta'); render(); toast(esc(sp.name) + ' restored'); }); } }); },
+    { const was = S.splits.slice(), rot = S.rotation.slice(); S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(esc(sp.name) + ' deleted', 0, () => { S.splits = was; S.rotation = rot; persist('jd/meta'); render(); toast(esc(sp.name) + ' restored'); }); } },
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
-  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; confirmSheet({ title: 'Delete this workout?', body: `${esc(w.splitName)} on ${esc(fmtDate(w.date, { wd: true }))}. `, ok: 'Delete', danger: true, onOk: () => { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } }); },
+  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
@@ -3367,11 +3382,12 @@ const ACT = {
   sumBack: () => { A.view = 'log'; touchA(); },
   saveWk: () => saveWorkout(),
   energy: el => { A.energy = +el.dataset.k; touchA(); },
-  key: el => el.dataset.f === 'w' && usesPlates(A.ex[+el.dataset.e].name) ? openSetPlates(+el.dataset.e, +el.dataset.s) : openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
+  key: el => el.dataset.f === 'w' && usesPlates(A.ex[+el.dataset.e].name) && !UI.kgPad ? openSetPlates(+el.dataset.e, +el.dataset.s) : openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
   done: el => logSet(+el.dataset.e, +el.dataset.s),
   rpe: el => { const st = A.ex[+el.dataset.e].sets[+el.dataset.s], k = +el.dataset.k; st.rpe = st.rpe === k ? null : k; A.rpeAsk = null; touchA(); },
   setType: el => { const s = A.ex[+el.dataset.e].sets[+el.dataset.s]; const o = ['work', 'warm', 'drop', 'fail']; s.t = o[(o.indexOf(s.t) + 1) % o.length]; touchA(); },
-  addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },
+  addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets.filter(x => x.done).pop() || e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },
+  delSet: el => { const e = A.ex[+el.dataset.e], si = +el.dataset.s; if (!e || e.sets.length < 2) return; const [gone] = e.sets.splice(si, 1); touchA(); toast('Set deleted', 0, () => { if (A && A.ex.includes(e)) { e.sets.splice(Math.min(si, e.sets.length), 0, gone); touchA(); } }); },
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length < 2) return; const gone = e.sets.pop(); touchA(); if (gone.done) toast('Logged set removed', 0, () => { if (A && A.ex.includes(e)) { e.sets.push(gone); touchA(); } }); },
   exMenu: el => exMenu(+el.dataset.e),
   swapEx: el => openSwap(+el.dataset.e),
@@ -3387,7 +3403,8 @@ const ACT = {
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
   wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }), 50); }),
-  wkDiscard: () => confirmSheet({ title: 'Discard this workout?', body: 'Nothing from it will be saved.', ok: 'Discard', danger: true, onOk: () => { A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); } }),
+  // Undo instead of "Are you sure?" (Job, 4 Nov)
+  wkDiscard: () => { const was = A; A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
   rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
@@ -3444,25 +3461,44 @@ document.addEventListener('visibilitychange', async () => {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ready) setTimeout(maybeStale, 400); });
 setInterval(tick, 500);
 document.addEventListener('touchstart', () => {}, { passive: true }); // lets :active styles show on iPhone
-// Swipe a set row right to log it; swipe in from the left edge to go back.
-let sw = null;
+// Swipe a set row right to log it, left to delete it; swipe in from the left edge to go back.
+let sw = null, lpT = 0, lpAt = 0;
+document.addEventListener('click', e => { if (Date.now() - lpAt < 800 && e.target.closest('#wk')) { e.preventDefault(); e.stopPropagation(); lpAt = 0; } }, true);
+document.addEventListener('contextmenu', e => { if (e.target.closest('#wk tr[id^="row-"]')) e.preventDefault(); });
+function copyDown(ei, si) {
+  if (!A || !A.ex[ei]) return; const e = A.ex[ei], s = e.sets[si]; if (!s || (s.w == null && s.r == null)) return;
+  const warm = s.t === 'warm', to = e.sets.slice(si + 1).filter(x => !x.done && (x.t === 'warm') === warm);
+  if (!to.length) { toast('No sets below to fill'); return; }
+  const was = to.map(x => [x.w, x.r, x.ed]); buzz(15);
+  to.forEach(x => { x.w = s.w; x.r = s.r; x.ed = true; }); touchA();
+  toast(`${esc(setStr(s))} copied to ${plural(to.length, 'set')} below`, 4000, () => { to.forEach((x, i) => { [x.w, x.r, x.ed] = was[i]; }); touchA(); });
+}
 document.addEventListener('touchstart', e => {
   const t = e.touches[0], row = e.target.closest('#wk tr[id^="row-"]');
-  if (row && !e.target.closest('.cell')) sw = { kind: 'set', el: row, x: t.clientX, y: t.clientY, dx: 0 };
+  document.querySelectorAll('#wk tr.sw-open').forEach(r => { if (r !== row || !e.target.closest('.set-del')) { r.classList.remove('sw-open'); r.style.transform = ''; } });
+  clearTimeout(lpT);
+  // Hold a set to copy its kg and reps into the sets below (Job, 4 Nov)
+  if (row && !row.classList.contains('sw-open')) lpT = setTimeout(() => { lpAt = Date.now(); sw = null; const [, ei, si] = row.id.split('-').map(Number); copyDown(ei, si); }, 550);
+  if (row && row.classList.contains('sw-open')) sw = null;
+  else if (row && !e.target.closest('.cell')) sw = { kind: 'set', el: row, x: t.clientX, y: t.clientY, dx: 0 };
   else if (t.clientX < 24 && NAV.stack.length && !SHEETS.length && !(A && A.open) && e.target.closest('#screen')) sw = { kind: 'back', x: t.clientX, y: t.clientY, dx: 0 };
   else sw = null;
 }, { passive: true });
 document.addEventListener('touchmove', e => {
+  if (lpT) { const t0 = e.touches[0]; if (!sw || Math.abs(t0.clientX - sw.x) > 8 || Math.abs(t0.clientY - sw.y) > 8) { clearTimeout(lpT); lpT = 0; } }
   if (!sw) return; const t = e.touches[0]; sw.dx = t.clientX - sw.x; const dy = Math.abs(t.clientY - sw.y);
   if (dy > 30 && Math.abs(sw.dx) < dy) { if (sw.el) sw.el.style.transform = ''; sw = null; return; }
-  if (sw.kind === 'set' && sw.dx > 0) { sw.el.style.transition = 'none'; sw.el.style.transform = `translateX(${Math.min(90, sw.dx)}px)`; }
+  if (sw.kind === 'set') { sw.el.style.transition = 'none'; sw.el.style.transform = `translateX(${sw.dx > 0 ? Math.min(90, sw.dx) : sw.el.querySelector('.set-del') ? Math.max(-40, sw.dx / 2) : 0}px)`; }
   if (sw.kind === 'back' && sw.dx > 0) { const sc = $('#screen'); sc.style.transition = 'none'; sc.style.transform = `translateX(${Math.min(120, sw.dx * 0.6)}px)`; }
 }, { passive: true });
 document.addEventListener('touchend', () => {
+  clearTimeout(lpT); lpT = 0;
   if (!sw) return; const s0 = sw; sw = null;
   if (s0.kind === 'set') {
     s0.el.style.transition = 'transform .2s ease'; s0.el.style.transform = '';
-    if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); logSet(ei, si); }
+    // Swipe left shows Delete (Job, 4 Nov); swipe right logs the set
+    if (s0.dx < -50 && s0.el.querySelector('.set-del')) { s0.el.classList.add('sw-open'); }
+    else if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); logSet(ei, si); }
   } else {
     const sc = $('#screen'); sc.style.transition = 'transform .2s ease'; sc.style.transform = '';
     if (s0.dx > 90) back();

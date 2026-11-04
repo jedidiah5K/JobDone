@@ -1197,3 +1197,12 @@ body:has(#recap) #sheets { z-index: 75; }
 .pl-more > summary::after { content: " ▾"; }
 .pl-more[open] > summary::after { content: " ▴"; }
 .cf-skip { justify-content: center; gap: 10px; padding-top: 4px; }
+/* Bigger tick to hit mid-set (Job, 4 Nov) */
+.check { width: 44px; height: 38px; }
+/* Swipe a set left to reveal Delete */
+.sets td:last-child { position: relative; }
+.set-del { position: absolute; right: 2px; top: 50%; transform: translate(16px, -50%); width: 84px; height: 38px; border: 0; border-radius: 10px; background: var(--red, #d9363e); color: #fff; font: inherit; font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .15s, transform .2s; z-index: 1; }
+tr.sw-open .set-del { opacity: 1; pointer-events: auto; transform: translate(0, -50%); }
+#wk tr[id^="row-"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
+:root:not([data-theme]) tr.upnext .check { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
