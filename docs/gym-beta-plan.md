@@ -148,6 +148,7 @@ jobdone_equipment_votes
 
 **Moderation (so one bad upload can't ruin a gym's list):**
 - People pick from **our** fixed equipment list, never free text, so there's no spam names and no duplicates (unique per gym).
+- **Uniform names (Job, 4 Nov):** every machine has exactly one name in that list, e.g. "Pec Dec". Typing "chest pec dec fly machine", "butterfly" or "pec deck" finds the same "Pec Dec" entry through nicknames, and it's saved under that one name. Nobody can type a name of their own. If a machine really isn't on the list, "Can't find it" sends the name to the feedback inbox, and it gets added to the list for everyone with one proper name.
 - A new machine is "waiting" and only shows for the person who added it until **one other member** confirms it. It counts as real once it has at least 2 "here" votes and more "here" than "not here".
 - Each "not at this gym" is a −1. A machine with more −1 than +1 hides itself.
 - Photos aren't stored in v1, so there's nothing to moderate on images.
