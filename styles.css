@@ -1314,3 +1314,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 
 /* Wallpaper fades into the solid status bar at the top, so there's no hard edge (5 Nov) */
 #bg .topfade { position: absolute; left: 0; right: 0; top: 0; height: 72px; z-index: 5; pointer-events: none; background: linear-gradient(to bottom, var(--barc, transparent) 0%, color-mix(in srgb, var(--barc, transparent) 55%, transparent) 45%, transparent 100%); }
+
+/* Front / Back / Off for each card line (5 Nov) */
+.id-seg { flex-shrink: 0; }
+.id-seg button { padding: 0 10px; min-width: 52px; font-size: 14px; }

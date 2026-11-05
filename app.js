@@ -1119,6 +1119,9 @@ const ID_LEVELS = { mono: ['Recruit', 'Field agent', 'Double-oh'], spidey: ['Low
 const ID_PLAIN = ['Beginner', 'Intermediate', 'Advanced'];
 const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2', '2 years'], ['3', '3 years'], ['4', '4 years'], ['5', '5+ years']];
 const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
+// Where each line goes when you haven't chosen (Job, 5 Nov: people pick front, back or off). c.pl carries your choice to friends.
+const ID_SIDE = { lv: 'f', yr: 'f', wk: 'f', since: 'f', prs: 'b', sp: 'f', gym: 'b', bw: 'b', ht: 'b' };
+const idSide = (c, k) => (c.pl && (c.pl[k] === 'f' || c.pl[k] === 'b') ? c.pl[k] : ID_SIDE[k]);
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
 // Random codes show as JD-XXXXXX; a custom one (only Job's, JEDIDIAH) shows on its own (Job, 5 Nov).
@@ -1178,24 +1181,28 @@ function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
   s += `<rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16" fill="none" stroke="${L.ink}" stroke-opacity=".25" stroke-width="3"/>`;
   const X = 272;
   s += T(X, PY + 40, cut(c.n || 'Lifter', 16), 46, 800);
-  if (c.lv != null) { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(330, 36 + lvl.length * 15);
+  if (c.lv != null && idSide(c, 'lv') === 'f') { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(330, 36 + lvl.length * 15);
     s += `<rect x="${X}" y="${PY + 62}" width="${pw}" height="40" rx="20" fill="${L.acc}"/>` + T(X + pw / 2, PY + 89, lvl.toUpperCase(), 19, 800, '#fff', 'text-anchor="middle" letter-spacing="1.5"') + T(X + pw + 14, PY + 89, ID_PLAIN[lv], 19, 600, L.dim); }
   const wk = Math.max(0, Math.floor(+c.wk) || 0);
-  [c.yr ? [c.yr, 'training'] : null, c.wk != null ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since ? [c.since, 'member since'] : null].filter(Boolean)
+  [c.yr && idSide(c, 'yr') === 'f' ? [c.yr, 'training'] : null, c.wk != null && idSide(c, 'wk') === 'f' ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since && idSide(c, 'since') === 'f' ? [c.since, 'member since'] : null].filter(Boolean)
     .forEach(([v, k], i) => { const x = X + i * 176; s += T(x, PY + PS - 24, cut(v, 10), 30, 800) + T(x, PY + PS, k, 17, 500, L.dim); });
   // strip under the photo: two of top lift, split, home gym
-  const top = Array.isArray(c.prs) && Array.isArray(c.prs[0]) ? c.prs[0] : null;
-  const cells = [top ? ['TOP LIFT', cut(top[0], 16) + ' · ' + kg(top[1]) + ' ' + unit + ' × ' + (Math.floor(+top[2]) || 1)] : null, c.sp ? ['SPLIT', String(c.sp).split(' · ')[0]] : null, c.gym ? ['HOME GYM', c.gym] : null].filter(Boolean).slice(0, 2);
+  const top = Array.isArray(c.prs) && Array.isArray(c.prs[0]) && idSide(c, 'prs') === 'f' ? c.prs[0] : null;
+  const body = [c.bw > 0 && idSide(c, 'bw') === 'f' ? kg(c.bw) + ' ' + unit : '', c.ht > 0 && idSide(c, 'ht') === 'f' ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
+  const cells = [top ? ['TOP LIFT', cut(top[0], 14) + ' · ' + kg(top[1]) + ' ' + unit + ' × ' + (Math.floor(+top[2]) || 1), 1] : null, c.sp && idSide(c, 'sp') === 'f' ? ['SPLIT', String(c.sp).split(' · ')[0]] : null,
+    c.gym && idSide(c, 'gym') === 'f' ? ['HOME GYM', c.gym] : null, body ? ['BODY', body] : null].filter(Boolean).slice(0, 3);
   if (cells.length) { s += `<line x1="40" y1="${PY + PS + 26}" x2="816" y2="${PY + PS + 26}" stroke="${L.ink}" stroke-opacity=".12" stroke-width="2"/>`;
-    cells.forEach(([k, v], i) => { const x = 40 + i * 396; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, PY + PS + 92, cut(v, 28), 23, 700, i === 0 && top ? L.acc : L.ink); }); }
+    const cw = 776 / cells.length, n = cells.length === 3 ? 18 : 28;
+    cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, PY + PS + 92, cut(v, n), cells.length === 3 ? 20 : 23, 700, hot ? L.acc : L.ink); }); }
   s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // Back: top lifts (✓ = logged in Job's Done, no mark = typed in), then split, home gym, body.
 function idBack(c, code, unit = 'kg') {
   c = c || {}; const { L, cut, kg, T, open, band } = idParts(c, unit);
-  let s = open + band(Array.isArray(c.prs) ? 'TOP LIFTS' : 'ABOUT'), y = 136;
-  if (Array.isArray(c.prs)) {
+  const backLifts = Array.isArray(c.prs) && idSide(c, 'prs') === 'b';
+  let s = open + band(backLifts ? 'TOP LIFTS' : 'ABOUT'), y = 136;
+  if (backLifts) {
     const prs = c.prs.slice(0, 3).filter(x => Array.isArray(x));
     if (!prs.length) { s += T(40, y, 'No lifts picked yet', 26, 500, L.dim); y += 52; }
     prs.forEach(([l, w, r, ok]) => { s += T(40, y, cut(l, 22), 28, 600) + (ok ? T(40 + Math.min(22, String(l).length) * 15 + 14, y, '✓', 22, 800, L.acc) : '') + T(816, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 28, 800, L.acc, 'text-anchor="end"');
@@ -1203,13 +1210,22 @@ function idBack(c, code, unit = 'kg') {
     if (prs.some(x => x[3])) { s += T(40, y - 6, '✓ logged in Job’s Done', 16, 600, L.dim); y += 20; }
     y += 22;
   }
-  const body = [c.bw > 0 ? kg(c.bw) + ' ' + unit : '', c.ht > 0 ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
-  [['SPLIT', c.sp], ['HOME GYM', c.gym], ['BODY', body]].filter(r => r[1]).forEach(([k, v]) => { s += T(40, y, k, 17, 800, L.dim, 'letter-spacing="3"') + T(200, y, cut(v, 38), 24, 600); y += 40; });
+  const B = k => idSide(c, k) === 'b', wk = Math.max(0, Math.floor(+c.wk) || 0), t = ID_LOOK[c.t] ? c.t : 'mono';
+  const body = [c.bw > 0 && B('bw') ? kg(c.bw) + ' ' + unit : '', c.ht > 0 && B('ht') ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
+  const rows = [['LEVEL', c.lv != null && B('lv') ? ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] + ' · ' + ID_PLAIN[Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] : ''],
+    ['TRAINING', B('yr') ? c.yr : ''], ['WORKOUTS', c.wk != null && B('wk') ? String(wk) : ''], ['MEMBER SINCE', B('since') ? c.since : ''],
+    ['SPLIT', B('sp') ? c.sp : ''], ['HOME GYM', B('gym') ? c.gym : ''], ['BODY', body]].filter(r => r[1]);
+  const gap = rows.length > 6 ? 36 : 40;
+  rows.forEach(([k, v]) => { if (y > 436) return; s += T(40, y, k, 17, 800, L.dim, 'letter-spacing="3"') + T(230, y, cut(v, 36), 24, 600); y += gap; });
+  if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
   s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, 'Add me: Me → Friends', 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // idcard:end
-const idOn = k => { const f = (S.profile.id || {}).f || {}, d = ID_FIELDS.find(x => x[0] === k); return k in f ? !!f[k] : !!(d && d[2]); };
+// 'f', 'b' or '' (off). Older saves only had on/off; those keep their default side.
+const idWhere = k => { const o = S.profile.id || {}, w = o.w || {}, f = o.f || {}, d = ID_FIELDS.find(x => x[0] === k);
+  if (k in w) return w[k]; if (k in f) return f[k] ? ID_SIDE[k] : ''; return d && d[2] ? ID_SIDE[k] : ''; };
+const idOn = k => !!idWhere(k);
 function idCard(forFriends) {
   const p = S.profile, o = p.id || {}, ws = ix().ws.filter(w => !w.skipped), best = ix().best, hist = ix().hist;
   const logged = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n));
@@ -1231,6 +1247,7 @@ function idCard(forFriends) {
   if (idOn('gym') && g) c.gym = (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60);
   if (idOn('bw') && (lw || o.bw > 0)) c.bw = Math.round((lw ? lw.w : +o.bw) * 10) / 10;
   if (idOn('ht') && p.heightCm) c.ht = p.heightCm;
+  c.pl = {}; for (const [k] of ID_FIELDS) if (idOn(k)) c.pl[k] = idWhere(k);
   return c;
 }
 // The card is saved for friends only after you open it once (profile.id.on). Sent again when something on it changes.
@@ -1288,9 +1305,9 @@ function viewIdCard() {
     ${idOn('bw') && !lw ? `<label class="xr"><span class="grow">Body weight for the card<span class="s">Or log a weigh-in and it’s used instead</span></span><input class="xr-in" id="id-bw" inputmode="decimal" value="${o.bw ? dw(o.bw) : ''}" placeholder="${U()}"></label>` : ''}
     ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
   </div></section>
-  <section><div class="sgh">Show on your card</div><div class="sgrp">
+  <section><div class="sgh">Front, back or off</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
-    ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, swi(idOn(k), 'idTog', `data-k="${k}"`))).join('')}
+    ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`)).join('')}
   </div><p class="cap mt2">Only friends you’ve added by code see your card. It follows your theme.</p></section>
   <section><div class="sgh">Friend code</div><div class="sgrp">
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
@@ -4349,6 +4366,7 @@ const ACT = {
   idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
+  idWhere: el => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.w = { ...(o.w || {}), [el.dataset.k]: el.dataset.v }; persist('jd/meta'); rerender(); idSync(); },
   idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o.f = { ...(o.f || {}), [k]: !idOn(k) }; persist('jd/meta'); rerender(); },
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
