@@ -607,9 +607,17 @@ input[type=date].input::-webkit-date-and-time-value { text-align: left; margin: 
 .badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3) var(--s2); }
 .badge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; min-width: 0; }
 .bd-ic { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--muted) calc(var(--p) * 360deg), var(--raised) 0); padding: 4px; }
-.bd-ic span { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text2); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.badge.on .bd-ic { background: linear-gradient(145deg, #FFD86B, #E0A526 60%, #B8801A); box-shadow: 0 2px 8px rgba(224, 165, 38, .35); }
-.badge.on .bd-ic span { background: linear-gradient(145deg, #F7C948, #E0A526); color: #3A2A06; box-shadow: inset 0 0 0 2px rgba(255, 236, 170, .7); }
+.bd-ic { position: relative; }
+.bd-ic span { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text2); }
+.bd-ic svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bd-ic em { position: absolute; right: -4px; bottom: -2px; min-width: 22px; padding: 1px 5px; border-radius: 99px; font-style: normal; font-size: 10px; line-height: 14px; font-weight: 800;
+  font-variant-numeric: tabular-nums; background: var(--raised); color: var(--text2); box-shadow: 0 0 0 2px var(--surface-solid, var(--surface)); }
+/* earned: bronze, silver, gold by tier (5 Nov) */
+.badge.on .bd-ic { --hi: #FFE08A; --lo: #E0A526; --ink: #3A2A06; background: linear-gradient(145deg, var(--hi), var(--lo)); box-shadow: 0 2px 8px color-mix(in srgb, var(--lo) 40%, transparent); }
+.badge.on.t0 .bd-ic { --hi: #E8A877; --lo: #B8682F; --ink: #4A2410; }
+.badge.on.t1 .bd-ic { --hi: #E9EEF4; --lo: #A9B4C2; --ink: #26303C; }
+.badge.on .bd-ic span { background: linear-gradient(145deg, var(--hi), var(--lo)); color: var(--ink); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5); }
+.badge.on .bd-ic em { background: var(--ink); color: var(--hi); }
 .bd-t { font-size: 12px; line-height: 15px; font-weight: 600; }
 .bd-s { font-size: 11px; line-height: 14px; color: var(--text2); }
 .badge:not(.on) .bd-t { color: var(--text2); }

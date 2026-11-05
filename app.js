@@ -1172,6 +1172,31 @@ function idParts(c, unit) {
   const band = label => `<rect width="856" height="76" fill="${L.band}"/>` + T(40, 49, label, 22, 800, L.ink, 'letter-spacing="5"') + T(816, 49, 'JOB’S DONE', 22, 800, L.acc, 'text-anchor="end" letter-spacing="3"');
   return { t, L, cut, kg, T, open, band };
 }
+// Badges (Job, 5 Nov: real icons, not a gold circle with text). One line drawing per kind; the colour is the tier.
+const BADGE_NS = { w: [1, 10, 25, 50, 100, 150, 200, 300], s: [4, 8, 12, 26, 52], h: [60, 80, 100, 120, 150], v: [10, 100, 500, 1000], p: [10, 50, 100, 250], b: [5, 10, 15], st: [7] };
+const BADGE_IC = {
+  w: '<path d="M6.5 6.5l11 11M21 21l-1-1M3 3l1 1M18 22l4-4M2 6l4-4M3 10l7-7M14 21l7-7"/>', // dumbbell
+  s: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>', // flame
+  h: '<path d="M9 7.5a3 3 0 0 1 6 0"/><path d="M8.4 7.5h7.2l1.9 3.3A6.2 6.2 0 1 1 6.5 10.8z"/>', // kettlebell
+  v: '<rect x="3" y="15" width="18" height="5" rx="1.5"/><rect x="5" y="10" width="14" height="5" rx="1.5"/><rect x="7" y="5" width="10" height="5" rx="1.5"/>', // stacked plates
+  p: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8M18 2H6v7a6 6 0 0 0 12 0z"/>', // trophy
+  b: '<path d="M12 3v13M6.5 10.5 12 16l5.5-5.5M5 21h14"/>', // kg down
+  st: '<path d="M7 16.5c-1.6 0-2.6-1.6-2.6-4.2S5.6 5 7.6 5s2.6 2.2 2.6 5.2-1.6 6.3-3.2 6.3zM5.6 19.5h3M17 12.5c1.6 0 2.6-1.6 2.6-4.2S18.4 1 16.4 1s-2.6 2.2-2.6 5.2 1.6 6.3 3.2 6.3zM15.4 15.5h3"/>', // footprints
+};
+// key like 'w50' → { g: 'w', n: 50, tier: 0 bronze / 1 silver / 2 gold }, or null for anything else
+function badgeOf(k) {
+  const m = /^(st|[wshvpb])(\d+)$/.exec(String(k)); if (!m || !BADGE_NS[m[1]]) return null;
+  const ns = BADGE_NS[m[1]], i = ns.indexOf(+m[2]); if (i < 0) return null;
+  return { g: m[1], n: +m[2], tier: ns.length < 3 ? 2 : i < ns.length / 3 ? 0 : i < ns.length * 2 / 3 ? 1 : 2 };
+}
+const BADGE_TIER = [['#E8A877', '#B8682F', '#4A2410'], ['#E9EEF4', '#A9B4C2', '#26303C'], ['#FFE08A', '#E0A526', '#3A2A06']];
+// A small round badge as SVG at (x, y) with radius r, for the ID card.
+function badgeSVG(k, x, y, r) {
+  const b = badgeOf(k); if (!b) return ''; const [hi, lo, ink] = BADGE_TIER[b.tier], id = 'bg' + k + Math.round(x);
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hi}"/><stop offset="1" stop-color="${lo}"/></linearGradient></defs>`
+    + `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#${id})"/><circle cx="${x}" cy="${y}" r="${r - 3}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.5"/>`
+    + `<g transform="translate(${x - r * .55} ${y - r * .55}) scale(${(r * 1.1 / 24).toFixed(3)})" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${BADGE_IC[b.g]}</g>`;
+}
 // Long values wrap onto a second line instead of being cut (Job, 5 Nov: a long motto didn't show).
 function idWrap(t, n) {
   t = String(t == null ? '' : t); if (t.length <= n) return [t];
@@ -1192,7 +1217,7 @@ function idCells(c, side, unit) {
     c.st != null && S1('st') ? ['STREAK', n(c.st) + (n(c.st) === 1 ? ' week' : ' weeks'), n(c.st) >= 4] : null, c.fav && S1('fav') ? ['FAVOURITE LIFT', c.fav] : null,
     c.life != null && S1('life') ? ['LIFTED', idBig(c.life, unit)] : null, c.prc != null && S1('prc') ? ['PRS', String(n(c.prc))] : null,
     c.mon != null && S1('mon') ? ['THIS MONTH', n(c.mon) + (n(c.mon) === 1 ? ' workout' : ' workouts')] : null,
-    Array.isArray(c.bdg) && c.bdg.length && S1('bdg') ? ['BADGES', c.bdg.slice(0, 3).map(String).join(' · ')] : null, c.motto && S1('motto') ? ['MOTTO', '“' + c.motto + '”'] : null].filter(Boolean);
+    Array.isArray(c.bdg) && c.bdg.some(badgeOf) && S1('bdg') ? ['BADGES', { badges: c.bdg.filter(badgeOf).slice(0, 3) }] : null, c.motto && S1('motto') ? ['MOTTO', '“' + c.motto + '”'] : null].filter(Boolean);
 }
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // code false = no friend code on it
@@ -1216,7 +1241,7 @@ function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // 
   const cells = idCells(c, 'f', unit).slice(0, 3);
   if (cells.length) { s += `<line x1="40" y1="${PY + PS + 26}" x2="816" y2="${PY + PS + 26}" stroke="${L.ink}" stroke-opacity=".12" stroke-width="2"/>`;
     const cw = 776 / cells.length, n = cells.length === 3 ? 22 : 32, fs = cells.length === 3 ? 20 : 23;
-    cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + idWrap(v, n).map((ln, j) => T(x, PY + PS + 92 + j * (fs + 4), ln, fs, 700, hot ? L.acc : L.ink)).join(''); }); }
+    cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + (v && v.badges ? v.badges.map((b, m) => badgeSVG(b, x + 20 + m * 50, PY + PS + 92, 19)).join('') : idWrap(v, n).map((ln, j) => T(x, PY + PS + 92 + j * (fs + 4), ln, fs, 700, hot ? L.acc : L.ink)).join('')); }); }
   s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + (code === false ? T(40, 508, 'JOB’S DONE', 30, 800, L.acc, 'letter-spacing="4"') : T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"')) + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
@@ -1239,9 +1264,9 @@ function idBack(c, code, unit = 'kg') {
   // rows grow when a value needs two lines; anything that would run into the code strip is left off
   let ry = y;
   for (let i = 0; i < rows.length; i += 2) {
-    const pair = rows.slice(i, i + 2).map(r => [r, idWrap(r[1], 32)]), h = pair.some(([, w]) => w.length > 1) ? 84 : 62;
+    const pair = rows.slice(i, i + 2).map(r => [r, r[1] && r[1].badges ? r[1] : idWrap(r[1], 32)]), h = pair.some(([, w]) => w.length > 1) ? 84 : 62;
     if (ry + h - 34 > 440) break;
-    pair.forEach(([[k, , hot], w], j) => { const x = 40 + j * 400; s += T(x, ry, k, 15, 800, L.dim, 'letter-spacing="3"') + w.map((ln, m) => T(x, ry + 28 + m * 24, ln, 22, 700, hot ? L.acc : L.ink)).join(''); });
+    pair.forEach(([[k, , hot], w], j) => { const x = 40 + j * 400; s += T(x, ry, k, 15, 800, L.dim, 'letter-spacing="3"') + (w.badges ? w.badges.map((b, m) => badgeSVG(b, x + 20 + m * 50, ry + 24, 19)).join('') : w.map((ln, m) => T(x, ry + 28 + m * 24, ln, 22, 700, hot ? L.acc : L.ink)).join('')); });
     ry += h;
   }
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
@@ -1276,11 +1301,11 @@ function idCard(forFriends) {
   if (idOn('bw') && (lw || o.bw > 0)) c.bw = Math.round((lw ? lw.w : +o.bw) * 10) / 10;
   if (idOn('ht') && p.heightCm) c.ht = p.heightCm;
   if (idOn('st')) c.st = parseInt(streakText(), 10) || 0;
-  if (idOn('fav')) { const f = logged.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length)[0]; if (f) c.fav = f.slice(0, 40); }
+  if (idOn('fav')) { const f = o.fav || logged.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length)[0]; if (f) c.fav = String(f).slice(0, 40); } // your pick, else the lift you log most
   if (idOn('life')) c.life = Math.round(ws.reduce((a, w) => a + wVol(w), 0));
   if (idOn('prc')) c.prc = ix().prs.length;
   if (idOn('mon')) c.mon = ws.filter(w => ymOf(w.date) === ymOf(today())).length;
-  if (idOn('bdg')) c.bdg = badgeList().filter(b => b.at).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 3).map(b => String(b.t).slice(0, 20));
+  if (idOn('bdg')) c.bdg = badgeList().filter(b => b.at).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 3).map(b => b.k);
   if (idOn('motto') && o.motto) c.motto = String(o.motto).slice(0, 40);
   c.pl = {}; for (const [k] of ID_FIELDS) if (idOn(k)) c.pl[k] = idWhere(k);
   return c;
@@ -1342,7 +1367,7 @@ function viewIdCard() {
   <section><div class="sgh">Your training</div><div class="sgrp">
     ${seg('prs')}
     ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Pick your top lifts<span class="s">${c.prs && c.prs.length ? esc(c.prs.map(x => x[0] + (x[3] ? ' ✓' : '')).join(', ')) : 'Pick from your lifts or type one in'}</span></span>${I.right}</button>` : ''}
-    ${seg('sp')}${seg('gym')}${seg('fav')}${seg('prc')}${seg('life')}${seg('st')}${seg('mon')}${seg('bdg')}
+    ${seg('sp')}${seg('gym')}${seg('fav')}${idOn('fav') ? `<button class="xr" data-a="idFav"><span class="grow">Pick your favourite lift<span class="s">${o.fav ? esc(o.fav) : 'The one you log most: ' + esc(c.fav || 'none yet')}</span></span>${I.right}</button>` : ''}${seg('prc')}${seg('life')}${seg('st')}${seg('mon')}${seg('bdg')}
   </div></section>
   <section><div class="sgh">About your body</div><div class="sgrp">
     ${seg('bw')}
@@ -3302,12 +3327,12 @@ function reportCard() {
 
 // ---------- Badges ----------
 const BADGES = [
-  ...[1, 10, 25, 50, 100, 150, 200, 300].map(n => ({ k: 'w' + n, ic: String(n), t: n === 1 ? 'First workout' : n + ' workouts', g: 'Workouts', n })),
-  ...[4, 8, 12, 26, 52].map(n => ({ k: 's' + n, ic: n + 'w', t: n + '-week streak', g: 'Streaks', n })),
-  ...[60, 80, 100, 120, 150].map(n => ({ k: 'h' + n, ic: n, t: 'First ' + n + ' kg set', g: 'Heavy', n })),
-  ...[10, 100, 500, 1000].map(n => ({ k: 'v' + n, ic: n + 't', t: n + ' tonnes lifted', g: 'Volume', n })),
-  ...[10, 50, 100, 250].map(n => ({ k: 'p' + n, ic: n, t: n + ' PRs', g: 'Records', n })),
-  ...[5, 10, 15].map(n => ({ k: 'b' + n, ic: '−' + n, t: n + ' kg down', g: 'Cut', n })),
+  ...BADGE_NS.w.map(n => ({ k: 'w' + n, ic: String(n), t: n === 1 ? 'First workout' : n + ' workouts', g: 'Workouts', n })),
+  ...BADGE_NS.s.map(n => ({ k: 's' + n, ic: n + 'w', t: n + '-week streak', g: 'Streaks', n })),
+  ...BADGE_NS.h.map(n => ({ k: 'h' + n, ic: n, t: 'First ' + n + ' kg set', g: 'Heavy', n })),
+  ...BADGE_NS.v.map(n => ({ k: 'v' + n, ic: n + 't', t: n + ' tonnes lifted', g: 'Volume', n })),
+  ...BADGE_NS.p.map(n => ({ k: 'p' + n, ic: n, t: n + ' PRs', g: 'Records', n })),
+  ...BADGE_NS.b.map(n => ({ k: 'b' + n, ic: '−' + n, t: n + ' kg down', g: 'Cut', n })),
   { k: 'st7', ic: '7d', t: 'Step goal 7 days running', g: 'Steps', n: 7 },
 ];
 function badgeList() {
@@ -3334,7 +3359,7 @@ function badgeList() {
   for (const d of Object.keys(S.steps || {}).sort()) { sr = S.steps[d] >= goal ? (prev && daysBetween(prev, d) === 1 ? sr + 1 : 1) : 0; prev = d; sbest = Math.max(sbest, sr); if (sr >= 7) hit('st7', d); } prog.Steps = sbest;
   return BADGES.map(b => ({ ...b, at: at[b.k] || null, p: Math.min(1, (prog[b.g] || 0) / b.n) }));
 }
-const badgeHTML = b => `<div class="badge ${b.at ? 'on' : ''}" title="${esc(b.t)}"><div class="bd-ic" style="--p:${b.at ? 1 : b.p.toFixed(3)}"><span>${esc(String(b.ic))}</span></div><div class="bd-t">${esc(b.t)}</div><div class="bd-s">${b.at ? esc(fmtDate(b.at)) : Math.round(b.p * 100) + '%'}</div></div>`;
+const badgeHTML = b => { const o = badgeOf(b.k) || { g: 'w', tier: 2 }; return `<div class="badge ${b.at ? 'on t' + o.tier : ''}" title="${esc(b.t)}"><div class="bd-ic" style="--p:${b.at ? 1 : b.p.toFixed(3)}"><span><svg viewBox="0 0 24 24" aria-hidden="true">${BADGE_IC[o.g]}</svg></span><em>${esc(String(b.ic))}</em></div><div class="bd-t">${esc(b.t)}</div><div class="bd-s">${b.at ? esc(fmtDate(b.at)) : Math.round(b.p * 100) + '%'}</div></div>`; };
 function badgesCard() {
   const l = badgeList(), got = l.filter(b => b.at).sort((a, b) => a.at < b.at ? 1 : -1), next = l.filter(b => !b.at).sort((a, b) => b.p - a.p).slice(0, 3);
   return `<div class="card"><div class="card-h"><span class="eyebrow">Badges</span><span class="cap">${got.length} of ${l.length}</span></div>
@@ -4464,6 +4489,7 @@ const ACT = {
   idPhotoRm: () => idPhotoSave(null),
   atGymOn: () => atGymSet(true).then(rerender),
   atGymOff: async () => { await atGymSet(false); if (A) { A.atGym = false; touchA(); } rerender(); toast('Stopped sharing'); },
+  idFav: () => pickExercise(name => { S.profile.id = { ...(S.profile.id || {}), fav: baseName(name).slice(0, 40) }; persist('jd/meta'); rerender(); idSync(); }, { title: 'Favourite lift' }),
   idShareCode: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.shareNoCode = !o.shareNoCode; persist('jd/meta'); rerender(); },
   idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
