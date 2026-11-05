@@ -1289,6 +1289,20 @@ function viewIdCard() {
 }
 // Opening the card or Friends gives you a code (your card is then saved for friends to see).
 function idTurnOn() { const o = S.profile.id || {}; if (o.on) return; S.profile.id = { ...o, on: true }; persist('jd/meta'); idSync(true); }
+// At the gym (Job, 5 Nov): when a workout starts, ask once whether to tell friends ("Don't ask again" remembers the answer).
+// Friends see it until you finish, or for 3 hours at most. No general online status.
+const atGymWhere = () => { const g = gymOn() ? gymCur() : null; return g ? g.brand + (g.independent ? '' : ' · ' + g.branch) : 'the gym'; };
+const atGymCan = () => HOSTED && SB && USER && !DEMO && S && (S.profile.id || {}).on;
+async function atGymSet(on) {
+  if (!atGymCan()) return;
+  try { await gymRpc('jobdone_at_gym', { p_gym: on ? atGymWhere() : null }); if (A && on) { A.atGym = true; touchA(); } if (on) toast('Friends can see you’re at ' + esc(atGymWhere())); }
+  catch (e) { if (on) toast('Couldn’t tell your friends. Check your connection.'); }
+}
+function atGymAsk() {
+  if (!atGymCan() || !A || A.practice || A.atGym) return;
+  setTimeout(() => { if (!A) return; confirmSheet({ title: 'Tell friends you’re at the gym?', body: esc(atGymWhere()) + '. It clears when you finish.', ok: 'Tell them', no: 'Not now', key: 'atGym', noToo: true, onOk: () => atGymSet(true) }); }, 700);
+}
+const atGymAgo = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; };
 let FRIENDS = null;
 async function friendsLoad() { try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
 function viewFriends() {
@@ -1297,8 +1311,10 @@ function viewFriends() {
   return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div></div>
   <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" data-a="friendAdd">Add</button></div>
     <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
+  ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
+    : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
   ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="list">${list.map(f => { const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono';
-    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${c.hidden ? 'Card hidden' : ''}${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
+    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${f.at_gym ? `<span class="live-txt"><i class="live-dot"></i>At ${esc(f.at_gym)} · ${atGymAgo(f.at_since)}</span><br>` : ''}${c.hidden ? 'Card hidden' : ''}${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
     : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
 }
 // Share picture: both sides of the card on one Post-size image (1080 × 1350).
@@ -2047,7 +2063,7 @@ function startWorkout(splitId, date, practice) {
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
-  persist('jd/active'); openWk();
+  persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
 }
 // Tap a day: open what was logged that day, or log a workout for it.
@@ -2459,6 +2475,7 @@ function saveWorkout() {
     sp.ex = A.ex.map(e => sp.ex.find(x => x.name === e.name) || { name: e.name, sets: e.sets.length, repMin: 6, repMax: 10, rest: e.rest, note: '' });
     metaChanged = true;
   }
+  if (A.atGym) atGymSet(false);
   A = null; REST = null; invalidate();
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   persist(monthPath(w.date), 'jd/active', ...(metaChanged ? ['jd/meta'] : []));
@@ -4238,7 +4255,7 @@ const ACT = {
   setup: el => openSetup(el.dataset.name),
   wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }), 50); }),
   // Undo instead of "Are you sure?" (Job, 4 Nov)
-  wkDiscard: () => { const was = A; A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
+  wkDiscard: () => { const was = A; if (A && A.atGym) atGymSet(false); A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
   rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
   restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
@@ -4270,6 +4287,8 @@ const ACT = {
   idShare: () => idShare(),
   idOpen: () => { idTurnOn(); idView(idCard(), ID_CODE, ID_PHOTO, { share: true }); },
   idPhotoRm: () => idPhotoSave(null),
+  atGymOn: () => atGymSet(true).then(rerender),
+  atGymOff: async () => { await atGymSet(false); if (A) { A.atGym = false; touchA(); } rerender(); toast('Stopped sharing'); },
   idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },

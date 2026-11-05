@@ -1292,3 +1292,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .card.hide { display: none; }
 .me-acts { flex-shrink: 0; }
 .me-acts .btn { white-space: nowrap; }
+
+/* At the gym (5 Nov) */
+.live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2FBF71; box-shadow: 0 0 0 3px rgba(47,191,113,.22); margin-right: 6px; vertical-align: 1px; flex-shrink: 0; }
+.live-txt { color: #2FBF71; font-weight: 600; }
