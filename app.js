@@ -1266,7 +1266,7 @@ function idBack(c, code, unit = 'kg') {
   for (let i = 0; i < rows.length; i += 2) {
     const pair = rows.slice(i, i + 2).map(r => [r, r[1] && r[1].badges ? r[1] : idWrap(r[1], 32)]), h = pair.some(([, w]) => w.length > 1) ? 88 : 64;
     if (ry + h - 34 > 440) break;
-    pair.forEach(([[k, , hot], w], j) => { const x = 40 + j * 400; s += T(x, ry, k, 15, 800, L.dim, 'letter-spacing="3"') + (w.badges ? w.badges.map((b, m) => badgeSVG(b, x + 22 + m * 56, ry + 26, 22)).join('') : w.map((ln, m) => T(x, ry + 30 + m * 26, ln, 24, 700, hot ? L.acc : L.ink)).join('')); });
+    pair.forEach(([[k, , hot], w], j) => { const x = 40 + j * 400; s += T(x, ry, k, 15, 800, L.dim, 'letter-spacing="3"') + (w.badges ? w.badges.map((b, m) => badgeSVG(b, x + 20 + m * 52, ry + 32, 19)).join('') : w.map((ln, m) => T(x, ry + 30 + m * 26, ln, 24, 700, hot ? L.acc : L.ink)).join('')); });
     ry += h;
   }
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
