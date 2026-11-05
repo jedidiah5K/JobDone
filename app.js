@@ -624,7 +624,7 @@ function openNewSplit() {
 }
 // "Don't ask again" (Job, 4 Nov): ticking it remembers Yes for that pop-up (and No too when noToo is set).
 // key: false keeps asking every time (permanent deletes). Me → Workouts → Pop-ups brings them all back.
-function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger = false, onOk, key = ok, noToo = false }) {
+function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger = false, onOk, onNo, key = ok, noToo = false }) {
   const sk = key && S && S.profile.skipAsk || {};
   if (key && sk[key] === 'y') return onOk();
   if (key && sk[key] === 'n') return;
@@ -633,7 +633,7 @@ function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger 
     ${key ? `<label class="row cf-skip"><input type="checkbox" class="cbox" id="cf-skip"><span class="sec">Don’t ask again</span></label>` : ''}</div>`, { label: title });
   const keep = v => { if (key && sh.el.querySelector('#cf-skip').checked) { S.profile.skipAsk = { ...S.profile.skipAsk, [key]: v }; persist('jd/meta'); } };
   sh.el.querySelector('#cf-ok').onclick = () => { keep('y'); closeSheet(sh); onOk(); };
-  sh.el.querySelector('#cf-no').onclick = () => { if (noToo) keep('n'); closeSheet(sh); };
+  sh.el.querySelector('#cf-no').onclick = () => { if (noToo) keep('n'); closeSheet(sh); if (onNo) onNo(); };
 }
 
 // ---------- render shell ----------
@@ -827,7 +827,10 @@ function gymFind() {
         + `<button class="link" data-new="">Not one of these? Add a new gym</button>`;
     };
     q.oninput = () => { clearTimeout(t); const v = q.value.trim(); if (v.length < 2) { out.textContent = 'Type at least 2 letters.'; return; }
-      t = setTimeout(async () => { const my = ++n; out.innerHTML = '<div class="gym-sk" style="height:120px"></div>'; try { const rows = await gymRpc('jobdone_gym_search', { q: v }); if (my === n) draw(rows || [], v); } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your signal.'; } }, 250); };
+      t = setTimeout(async () => { const my = ++n; out.innerHTML = '<div class="gym-sk" style="height:120px"></div>'; try { let rows = await gymRpc('jobdone_gym_search', { q: v }) || [], guess = false;
+          // No hit? Typo (Job, 5 Nov): "anytme fitnes" → search by the first letters, keep the close matches
+          if (!rows.length && v.length >= 4) { const w = fzWords(v).sort((a, b) => b.length - a.length)[0] || ''; if (w.length >= 3) { rows = (await gymRpc('jobdone_gym_search', { q: w.slice(0, 3) }) || []).filter(r => fuzzy(r.brand + ' ' + (r.branch || ''), v)); guess = rows.length > 0; } }
+          if (my === n) { draw(rows, v); if (guess) out.insertAdjacentHTML('afterbegin', '<div class="grp">Did you mean</div>'); } } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your signal.'; } }, 250); };
     const joined = async g => { S.profile.gymAt = g; persist('jd/meta'); closeSheet(sh); await gymRefresh(true); NAV.stack = [{ v: 'gym' }]; render(); };
     out.onclick = async ev => {
       const j = ev.target.closest('[data-join]'), nb = ev.target.closest('[data-nb]'), nw = ev.target.closest('[data-new]');
@@ -878,7 +881,7 @@ function gymPick(preset) {
     <button class="btn block primary" id="gp-go" disabled>Add</button>
     <button class="link" data-a="feedback">Can’t find a machine? Send us its name</button></div>`, { label: 'Add machines', mount: b => {
     const l = b.querySelector('#gp-l'), q = b.querySelector('#gp-q'), go = b.querySelector('#gp-go');
-    const sc = (t, v) => { if (!v) return 1; v = v.toLowerCase(); const hit = s => s.toLowerCase().includes(v); return hit(t.name) ? 3 : t.nicknames.some(hit) ? 2 : t.lifts.some(hit) ? 1 : 0; };
+    const sc = (t, v) => { if (!v) return 1; v = v.toLowerCase(); const hit = s => s.toLowerCase().includes(v); return hit(t.name) ? 3 : t.nicknames.some(hit) ? 2 : t.lifts.some(hit) ? 1 : fuzzy([t.name, ...t.nicknames, ...t.lifts].join(' '), v) ? 0.5 : 0; }; // last: typos
     const draw = () => {
       const v = q.value.trim(), list = types.map(t => ({ t, s: sc(t, v) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s || a.t.sort - b.t.sort);
       l.innerHTML = list.map(({ t }) => `<label class="li"><div class="grow"><div class="t">${esc(t.name)}</div><div class="s">${have.has(t.key) ? 'Already added' : esc(t.lifts.slice(0, 3).join(', '))}</div></div><input type="checkbox" class="cbox" value="${t.key}" ${pick.has(t.key) || have.has(t.key) ? 'checked' : ''} ${have.has(t.key) ? 'disabled' : ''}></label>`).join('') || `<div class="empty">No machine called “${esc(v)}”. Send us its name below and we’ll add it.</div>`;
@@ -3145,7 +3148,7 @@ function editDist(a, b) {
   return p[b.length];
 }
 const fzWords = t => String(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
-function fuzzy(text, q) {
+function fuzzy(text, q, all) {
   const tw = fzWords(text), qw = fzWords(q).filter(w => w.length > 1); if (!qw.length || !tw.length) return 0;
   let hit = 0, pts = 0;
   for (const w of qw) {
@@ -3153,7 +3156,17 @@ function fuzzy(text, q) {
     for (const t of tw) { best = Math.min(best, editDist(w, t), t.length > w.length ? editDist(w, t.slice(0, w.length)) + 1 : 9); if (!best) break; } // a word start costs one more: "pic" isn't "pre(acher)"
     if (best <= ok) { hit++; pts += 3 - best; }
   }
-  return hit && hit * 2 >= qw.length ? pts : 0;
+  return hit && (all ? hit === qw.length : hit * 2 >= qw.length) ? pts : 0;
+}
+// Best match among names for a typed name, or null. all = every typed word must match (for "Did you mean" prompts).
+function fzBest(q, names, text = n => n, all = true) {
+  let best = null, top = 0; for (const n of names) { const v = fuzzy(text(n), q, all); if (v > top) { top = v; best = n; } } return best;
+}
+// Email typos at sign-up: "gmial.com" → "gmail.com". Returns the fixed address, or null when it looks right.
+const MAIL = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'live.com', 'ymail.com', 'me.com'];
+function mailFix(em) {
+  const m = /^([^@\s]+)@([^@\s]+)$/.exec(String(em).trim().toLowerCase()); if (!m || MAIL.includes(m[2])) return null;
+  const d = MAIL.find(x => editDist(m[2], x) <= (m[2].length > 8 ? 2 : 1)); return d ? m[1] + '@' + d : null;
 }
 // fuzzy:end
 const NICK = { 'Chest Fly': ['pec dec', 'pec deck', 'butterfly', 'machine fly'], 'Pec Deck': ['pec dec', 'butterfly'], 'Incline Press': ['incline machine', 'smith incline'], 'Lat Pulldown': ['pulldown', 'lats'], 'Wide-Grip Row': ['seated row', 'cable row'], 'Close-Grip Row': ['seated row', 'v-bar row', 'cable row'], 'Shoulder Press': ['ohp', 'military press'], 'Overhead Press': ['ohp', 'military press'], 'Lateral Raise': ['side raise', 'laterals', 'side delts'], 'Rear Delt Fly': ['reverse fly', 'rear delts'], 'Tricep Pushdown': ['pushdown', 'cable pushdown'], 'Overhead Tricep Extension': ['overhead tricep', 'french press'], 'Skull Crusher': ['lying tricep extension'], 'Leg Curl': ['hamstring curl', 'ham curl'], 'Leg Extension': ['quad extension'], 'Stiff-Leg Deadlift': ['sldl', 'stiff leg'], 'Romanian Deadlift': ['rdl'], 'Dumbbell RDL': ['rdl', 'db rdl'], 'Adductor': ['inner thigh', 'hip adduction'], 'Abductor': ['outer thigh', 'hip abduction'], 'Calf Raise': ['calves'], 'Bench Press': ['bench', 'flat bench'], 'Dumbbell Bench Press': ['db bench'], 'Pull-Up': ['pullup', 'pull up'], 'Chin-Up': ['chinup', 'chin up'], 'Back Squat': ['squat'], 'Hip Thrust': ['glute thrust'], "Farmer's Carry": ['farmers walk'] };
@@ -3215,7 +3228,7 @@ function openExForm(name, o = {}) {
   const lib = !!(name && libEx(name));
   let mu = lib ? cur.muscle : o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : null;
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${known ? 'Exercise group' : 'New exercise'}</div>
-    <div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(name || '')}" placeholder="e.g. Hammer Curl" ${known ? 'disabled' : ''}></div>
+    <div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(name || o.preset || '')}" placeholder="e.g. Hammer Curl" ${known ? 'disabled' : ''}></div>
     ${lib ? `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap"><span class="chip on" aria-disabled="true">${esc(mu)}</span></div><p class="cap m0">Built-in lifts keep their muscle group.</p></div>`
       : `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap" id="ef-m">${MUSCLES.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>`}
     <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${eqOptions(lib ? name : '').map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>${lib && eqOptions(name).length === 1 ? `<p class="cap m0">This lift only uses this equipment.</p>` : ''}</div>
@@ -3227,6 +3240,8 @@ function openExForm(name, o = {}) {
     b.querySelector('#ef-ok').onclick = () => {
       const n = (b.querySelector('#ef-n').value || '').trim().replace(/\s+/g, ' ');
       if (!n) { toast('Give it a name'); return; }
+      // Typo in a new name (Job, 5 Nov): "bencj pres" → offer Bench Press before making a duplicate
+      if (!known && !o.typoOk && !LIB.some(e => e.name.toLowerCase() === n.toLowerCase())) { const g = fzBest(n, LIB.map(e => e.name).filter(x => !PICK_HIDE.has(x)), x => [x, ...(NICK[x] || [])].join(' ')); if (g) { closeSheet(sh); return confirmSheet({ title: 'Did you mean ' + g + '?', body: 'It’s already in the list.', ok: 'Use ' + g, no: 'Keep “' + esc(n) + '”', key: false, onOk: () => o.onSave ? o.onSave(g) : toast(esc(g) + ' is ready to pick'), onNo: () => openExForm('', { ...o, typoOk: true, preset: n, muscle: mu }) }); } }
       if (!mu) { toast('Pick a muscle group'); return; }
       S.customEx = (S.customEx || []).filter(e => e.name !== n);
       if (!lib || eq !== libEx(n).equip) S.customEx.push({ name: n, muscle: mu, equip: eq || (lib ? libEx(n).equip : 'other') });
@@ -4188,6 +4203,10 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   const shownAt = Date.now();
   const m = (t, ok) => { const e = $('#si-msg'); e.textContent = t; e.style.color = ok ? 'var(--text2)' : 'var(--neg)'; };
   const emailOk = () => { const em = $('#si-email').value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { m('Enter your email address.'); return null; } return em; };
+  // Typo in the email domain (gmial.com): one tap fixes it (5 Nov)
+  { const f = $('#si-email'); if (f) f.addEventListener('blur', () => { document.getElementById('si-fix')?.remove(); const fx = mailFix(f.value); if (!fx) return;
+    f.closest('.field').insertAdjacentHTML('beforeend', `<button type="button" class="link cap" id="si-fix">Did you mean ${esc(fx)}?</button>`);
+    document.getElementById('si-fix').onclick = () => { f.value = fx; document.getElementById('si-fix').remove(); }; }); }
   const go = async () => {
     const em = emailOk(); if (!em) return;
     const pw = $('#si-pw').value; if (pw.length < (make ? 8 : 6)) { m(make ? 'Use a password of at least 8 characters.' : 'Enter your password.'); return; }

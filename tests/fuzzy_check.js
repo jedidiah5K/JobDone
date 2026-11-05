@@ -9,3 +9,12 @@ assert(fuzzy(curl, 'precher curl') > 0 && fuzzy(curl, 'preach') > 0, 'typo and w
 assert.strictEqual(fuzzy(curl, 'chest pic'), 0, 'unrelated words never match');
 assert.strictEqual(fuzzy(fly, 'zzzz qqqq'), 0, 'junk alone matches nothing');
 console.log('fuzzy search: all checks passed');
+const { fzBest, mailFix } = new Function(src.slice(src.indexOf('// fuzzy:start'), src.indexOf('// fuzzy:end')) + '; return { fzBest, mailFix };')();
+assert.strictEqual(fzBest('bencj pres', ['Bench Press', 'Leg Press', 'Chest Fly']), 'Bench Press');
+assert.strictEqual(fzBest('zercher carry', ['Bench Press', 'Leg Press']), null, 'a real new name is left alone');
+assert(fuzzy('Anytime Fitness Bugis', 'anytme fitnes') > 0, 'gym name typo');
+assert.strictEqual(mailFix('job@gmial.com'), 'job@gmail.com');
+assert.strictEqual(mailFix('job@hotmial.com'), 'job@hotmail.com');
+assert.strictEqual(mailFix('job@gmail.com'), null);
+assert.strictEqual(mailFix('job@company.ph'), null, 'work emails are left alone');
+console.log('did you mean + email: all checks passed');
