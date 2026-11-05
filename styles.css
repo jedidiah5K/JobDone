@@ -1287,7 +1287,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 
 /* Friends button, top right of Today and Me (5 Nov) */
 .top:has(> .top-ic) { position: relative; }
-.top-ic { position: absolute; right: 0; top: -10px; width: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+.top-ic { position: absolute; right: 0; top: 8px; width: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
 .top-ic svg { width: 22px; height: 22px; }
 .card.hide { display: none; }
 .me-acts { flex-shrink: 0; }
