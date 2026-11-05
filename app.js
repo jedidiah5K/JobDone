@@ -1133,7 +1133,7 @@ const ID_LOOK = {
 function idArt(t, L) { // 856 × 540 scenes, the busy part on the right so text on the left stays clear
   if (t === 'spidey') {
     const b = [[520, 170], [600, 230], [680, 200], [760, 290], [840, 250]];
-    let s = `<circle cx="770" cy="150" r="36" fill="#F3EBD2" opacity=".5"/>`;
+    let s = '';
     b.forEach(([x, h], i) => { const w = (b[i + 1] ? b[i + 1][0] : 940) - x - 6; s += `<rect x="${x}" y="${540 - h}" width="${w}" height="${h}" fill="#0A1336"/>`;
       for (let r = 0; r < Math.floor(h / 40); r++) for (let c = 0; c < Math.floor((w - 8) / 24); c++) if ((r * 7 + c + i) % 3 === 0) s += `<rect x="${x + 8 + c * 24}" y="${540 - h + 14 + r * 40}" width="9" height="13" fill="#F6C65B" opacity=".6"/>`; });
     return s + `<path d="M856 76 Q 640 200 560 540" stroke="#fff" stroke-width="2" fill="none" opacity=".35"/>`;
@@ -1167,11 +1167,11 @@ function idParts(c, unit) {
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
   c = c || {}; const { t, L, cut, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
-  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".8" stop-color="${L.fade}" stop-opacity="0"/></linearGradient><clipPath id="idph"><rect x="40" y="108" width="196" height="262" rx="14"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + band(ID_LOOK[t].tag);
-  s += `<rect x="40" y="108" width="196" height="262" rx="14" fill="${L.ph}"/>`;
-  s += idPhotoOk(photo) ? `<image href="${photo}" x="40" y="108" width="196" height="262" preserveAspectRatio="xMidYMid slice" clip-path="url(#idph)"/>`
-    : `<circle cx="138" cy="212" r="46" fill="${L.dim}" opacity=".7"/><path d="M58 370 C 62 292, 214 292, 218 370Z" fill="${L.dim}" opacity=".7"/>`;
-  s += `<rect x="40" y="108" width="196" height="262" rx="14" fill="none" stroke="${L.ink}" stroke-opacity=".25" stroke-width="3"/>`;
+  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".8" stop-color="${L.fade}" stop-opacity="0"/></linearGradient><clipPath id="idph"><rect x="40" y="112" width="200" height="200" rx="16"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + band(ID_LOOK[t].tag);
+  s += `<rect x="40" y="112" width="200" height="200" rx="16" fill="${L.ph}"/>`;
+  s += idPhotoOk(photo) ? `<image href="${photo}" x="40" y="112" width="200" height="200" preserveAspectRatio="xMidYMid slice" clip-path="url(#idph)"/>`
+    : `<g clip-path="url(#idph)"><circle cx="140" cy="190" r="42" fill="${L.dim}" opacity=".7"/><path d="M62 312 C 66 246, 214 246, 218 312Z" fill="${L.dim}" opacity=".7"/></g>`;
+  s += `<rect x="40" y="112" width="200" height="200" rx="16" fill="none" stroke="${L.ink}" stroke-opacity=".25" stroke-width="3"/>`;
   s += T(268, 160, cut(c.n || 'Lifter', 16), 50, 800);
   if (c.lv != null) { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(330, 36 + lvl.length * 15);
     s += `<rect x="268" y="182" width="${pw}" height="42" rx="21" fill="${L.acc}"/>` + T(268 + pw / 2, 210, lvl.toUpperCase(), 20, 800, '#fff', 'text-anchor="middle" letter-spacing="1.5"') + T(268 + pw + 16, 210, ID_PLAIN[lv], 20, 600, L.dim); }
@@ -1200,7 +1200,7 @@ function idBack(c, code, unit = 'kg') {
 }
 // idcard:end
 const idOn = k => { const f = (S.profile.id || {}).f || {}, d = ID_FIELDS.find(x => x[0] === k); return k in f ? !!f[k] : !!(d && d[2]); };
-function idCard() {
+function idCard(forFriends) {
   const p = S.profile, o = p.id || {}, ws = ix().ws.filter(w => !w.skipped), best = ix().best, hist = ix().hist;
   const logged = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n));
   // picks: names of logged lifts, or typed-in ones saved as [name, kg, reps]
@@ -1211,6 +1211,7 @@ function idCard() {
   const created = USER && USER.created_at ? new Date(USER.created_at) : (ws[0] ? parseYmd(ws[0].date) : new Date());
   const rot = S.rotation.map(splitById).filter(Boolean).map(s => s.name), g = gymOn() ? gymCur() : null, lw = latestWeight();
   const c = { v: 2, n: (p.name || '').slice(0, 40), t: theme() };
+  if (o.hidden && forFriends) return { ...c, hidden: true }; // friends see only your name; you still see the whole card
   if (idOn('lv')) c.lv = lv;
   if (idOn('yr')) c.yr = o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '';
   if (idOn('wk')) c.wk = ws.length;
@@ -1229,7 +1230,7 @@ let idFetched = false;
 async function idSync(force) {
   if (!HOSTED || !SB || !USER || DEMO || !S || !(S.profile.id || {}).on) return;
   if (!idFetched) { idFetched = true; try { const r = await gymRpc('jobdone_card_get'); if (r) { ID_PHOTO = idPhotoOk(r.photo) ? r.photo : null; try { ID_PHOTO ? localStorage.setItem('jd-idphoto', ID_PHOTO) : localStorage.removeItem('jd-idphoto'); } catch (e) {} } } catch (e) { idFetched = false; } }
-  const j = JSON.stringify(idCard()); if (j === ID_SENT && !force) return; ID_SENT = j;
+  const j = JSON.stringify(idCard(true)); if (j === ID_SENT && !force) return; ID_SENT = j;
   try { const code = await gymRpc('jobdone_card_save', { p: JSON.parse(j) }); if (code && code !== ID_CODE) { ID_CODE = code; try { localStorage.setItem('jd-idcode', code); } catch (e) {} rerender(); } } catch (e) { ID_SENT = ''; }
 }
 const idSrc = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
@@ -1259,7 +1260,7 @@ const frBtn = () => HOSTED ? `<button class="btn sm top-ic" data-a="friends" ari
 function meCard() {
   const lw = latestWeight(), p = S.profile;
   return `<div class="stack g2"><button class="idc-prev" data-a="idOpen" aria-label="Open your ID card"><img class="idc" alt="" src="${idSrc(idFront(idCard(), ID_CODE, U(), ID_PHOTO, 'Tap to open'))}"></button>
-    <div class="row between"><span class="cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</span><button class="btn sm" data-a="idCard">Edit card</button></div></div>`;
+    <div class="row between"><span class="cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</span><span class="row g2 me-acts">${ID_PHOTO ? '' : '<label class="btn sm">Add photo<input type="file" accept="image/*" id="id-photo" hidden></label>'}<button class="btn sm" data-a="idCard">Edit card</button></span></div></div>`;
 }
 function viewIdCard() {
   const o = S.profile.id || {}, c = idCard(), auto = ![0, 1, 2].includes(o.lv), names = ID_LEVELS[c.t] || ID_LEVELS.mono;
@@ -1278,6 +1279,7 @@ function viewIdCard() {
     ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
   </div></section>
   <section><div class="sgh">Show on your card</div><div class="sgrp">
+    ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
     ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, swi(idOn(k), 'idTog', `data-k="${k}"`))).join('')}
   </div><p class="cap mt2">Only friends you’ve added by code see your card. It follows your theme.</p></section>
   <section><div class="sgh">Friend code</div><div class="sgrp">
@@ -1296,7 +1298,7 @@ function viewFriends() {
   <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" data-a="friendAdd">Add</button></div>
     <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
   ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="list">${list.map(f => { const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono';
-    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
+    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${c.hidden ? 'Card hidden' : ''}${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
     : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
 }
 // Share picture: both sides of the card on one Post-size image (1080 × 1350).
@@ -1311,12 +1313,12 @@ async function idShare() {
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'My Job’s Done ID', text: 'Add me on Job’s Done: ' + idCode(ID_CODE) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
-// Photo: cropped to 3:4 and shrunk on the phone to 300 × 400 JPEG (about 25 KB) before it leaves.
+// Photo: cropped square and shrunk on the phone to 320 × 320 JPEG (about 20 KB) before it leaves.
 async function idPhotoPick(file) {
   if (!file || !/^image\//.test(file.type)) return toast('Pick a photo');
   const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
   if (!im) return toast('Couldn’t open that photo');
-  const W = 300, H = 400, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const W = 320, H = 320, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
   const s = Math.max(W / im.naturalWidth, H / im.naturalHeight); g.drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 3, im.naturalWidth * s, im.naturalHeight * s);
   let q = .82, d = cv.toDataURL('image/jpeg', q); while (d.length >= 88000 && q > .4) { q -= .12; d = cv.toDataURL('image/jpeg', q); }
   await idPhotoSave(d);
@@ -1358,8 +1360,12 @@ async function friendAdd() {
 }
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
-  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
-    onOk: async () => { try { await gymRpc('jobdone_friend_remove', { p_friend: id }); FRIENDS = FRIENDS.filter(x => x.id !== id); rerender(); } catch (e) { toast('Couldn’t remove them. Try again.'); } } }) });
+  if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
+  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f) });
+}
+function friendOpenRemove(id, f) {
+  confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
+    onOk: async () => { try { await gymRpc('jobdone_friend_remove', { p_friend: id }); FRIENDS = FRIENDS.filter(x => x.id !== id); rerender(); } catch (e) { toast('Couldn’t remove them. Try again.'); } } });
 }
 document.addEventListener('change', ev => { const t = ev.target; if (!t) return;
   if (t.id === 'id-yr') { S.profile.id = { ...(S.profile.id || {}), yr: t.value }; persist('jd/meta'); rerender(); }
@@ -4264,6 +4270,7 @@ const ACT = {
   idShare: () => idShare(),
   idOpen: () => { idTurnOn(); idView(idCard(), ID_CODE, ID_PHOTO, { share: true }); },
   idPhotoRm: () => idPhotoSave(null),
+  idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
   idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o.f = { ...(o.f || {}), [k]: !idOn(k) }; persist('jd/meta'); rerender(); },

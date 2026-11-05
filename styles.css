@@ -1266,7 +1266,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 /* ID card viewer (5 Nov): blurs the screen behind, card tilts with the phone and flips on a tap */
 .idc-prev { display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 18px; }
 .idc-prev .idc { aspect-ratio: 856 / 540; }
-.fr-ph { width: 36px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.fr-ph { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .idv { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   background: rgba(0,0,0,.35); -webkit-backdrop-filter: blur(16px) saturate(120%); backdrop-filter: blur(16px) saturate(120%); animation: idv-in .2s ease-out; }
 .idv.out { opacity: 0; transition: opacity .18s; }
@@ -1290,3 +1290,5 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .top-ic { position: absolute; right: 0; top: -10px; width: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
 .top-ic svg { width: 22px; height: 22px; }
 .card.hide { display: none; }
+.me-acts { flex-shrink: 0; }
+.me-acts .btn { white-space: nowrap; }
