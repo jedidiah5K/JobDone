@@ -1227,11 +1227,11 @@ function idHolds(below = 540) { // holds lower than `below` are left off so they
     for (let i = 0; i < n; i++) { const a = r * Math.PI / 180 + i / n * Math.PI * 2, k = .66 + ((seed * (i + 3) * 37) % 23) / 23 * .5; p.push([x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]); }
     const m = i => { const a = p[i % n], b = p[(i + 1) % n]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; }, f = v => v.toFixed(1);
     let d = `M${f(m(0)[0])} ${f(m(0)[1])}`; for (let i = 1; i <= n; i++) d += `Q${f(p[i % n][0])} ${f(p[i % n][1])} ${f(m(i)[0])} ${f(m(i)[1])}`; return d + 'Z'; };
-  let s = '';
+  let s = '<g opacity=".5">'; // faded into the wall like the Boulder wallpaper
   [[700, 112, 20, 13, -25, '#8C74D9'], [800, 178, 42, 28, 12, '#EEC64A'], [812, 300, 16, 12, 40, '#5FA46F'], [738, 338, 13, 10, 0, '#E99A57'], [655, 405, 30, 21, -15, '#E58BB0'], [790, 440, 22, 16, 25, '#6F8FD8'], [105, 405, 32, 22, -12, '#6F8FD8'], [240, 352, 14, 10, 20, '#EEC64A'], [350, 432, 22, 15, 35, '#E58BB0'], [480, 352, 38, 25, -6, '#5FA46F'], [555, 445, 15, 11, -30, '#E99A57']]
     .filter(([, y, , ry]) => y + ry < below).forEach(([x, y, rx, ry, r, c], i) => { const d = blob(x, y, rx, ry, r, i + 2);
       s += `<path d="${blob(x + 4, y + 6, rx, ry, r, i + 2)}" fill="#6B5E50" opacity=".28"/><path d="${d}" fill="${c}"/><path d="${blob(x - rx * .12, y - ry * .18, rx * .62, ry * .5, r, i + 2)}" fill="#fff" opacity=".14"/><circle cx="${x + rx * .08}" cy="${y - ry * .1}" r="${rx > 28 ? 4 : 3}" fill="#4A4038" opacity=".55"/>`; });
-  return s;
+  return s + '</g>';
 }
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // code false = no friend code on it
   c = c || {}; const { t, L, cut, kg, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
@@ -1435,10 +1435,9 @@ async function idShare() {
   const c = idCard(), code = (S.profile.id || {}).shareNoCode ? false : ID_CODE;
   const f = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(idFront(c, code, U(), ID_PHOTO, code === false ? '' : 'Add me: Me → Friends')); });
   if (!f) return toast('Couldn’t make the picture. Try again.');
-  const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350; const g = cv.getContext('2d'), L = ID_LOOK[c.t] || ID_LOOK.mono;
-  g.fillStyle = L.bg; g.fillRect(0, 0, 1080, 1350); const w = 1000, h = w * 540 / 856, x = 40, y = (1350 - h) / 2;
-  g.save(); g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowBlur = 40; g.shadowOffsetY = 16; g.beginPath(); g.roundRect(x, y, w, h, 34); g.fillStyle = L.bg; g.fill(); g.restore();
-  g.save(); g.beginPath(); g.roundRect(x, y, w, h, 34); g.clip(); g.drawImage(f, x, y, w, h); g.restore();
+  // just the card, no backdrop (Job, 6 Nov); corners stay see-through
+  const w = 1712, h = 1080, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d');
+  g.beginPath(); g.roundRect(0, 0, w, h, 56); g.clip(); g.drawImage(f, 0, 0, w, h);
   const blob = await new Promise(r => cv.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], 'jobdone-id.png', { type: 'image/png' });
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share(code === false ? { files: [file], title: 'My Job’s Done ID' } : { files: [file], title: 'My Job’s Done ID', text: 'Add me on Job’s Done: ' + idCode(ID_CODE) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
