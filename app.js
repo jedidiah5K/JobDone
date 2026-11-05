@@ -713,7 +713,7 @@ const GYM_SCAN_READY = true; // Gemini key + on-phone face blur are in (Job, 4 N
 const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
 let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
-const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymBeta != null ? S.profile.gymBeta : S.profile.owner));
+const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymBeta != null ? S.profile.gymBeta : true)); // on for everyone since 5 Nov (Job); Me → Beta turns it off
 const gymType = k => (GYM.types || []).find(t => t.key === k);
 const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id === S.profile.gymAt) || m[0] || null; };
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
@@ -730,8 +730,8 @@ function gymRefresh(force) {
       gymRpc('jobdone_gym_mine')]);
     GYM.types = types; GYM.mine = mine;
     const c = gymCur(); if (c) GYM.eq = { ...(GYM.eq || {}), [c.gym_id]: await gymRpc('jobdone_gym_equipment_list', { g: c.gym_id }) };
-    GYM.at = Date.now(); gymSave();
-  })().catch(() => {}).finally(() => { gymBusy = null; if (ready) rerender(); });
+    GYM.at = Date.now(); GYM.failAt = 0; gymSave();
+  })().catch(() => { GYM.failAt = Date.now(); }).finally(() => { gymBusy = null; if (ready) rerender(); });
   return gymBusy;
 }
 async function gymLoadEq(g) { GYM.eq = { ...(GYM.eq || {}), [g]: await gymRpc('jobdone_gym_equipment_list', { g }) }; gymSave(); }
@@ -740,8 +740,10 @@ const gymBeta = '<span class="pill gym-beta">Beta</span>';
 // Today card: one main button.
 function gymCardHTML() {
   if (!gymOn()) return '';
+  // a failed load (offline, server down) waits a minute before trying again instead of looping
+  if (!GYM.mine && GYM.failAt && Date.now() - GYM.failAt < 60e3) return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><p class="cap mt1">Couldn’t load your gym right now.</p><button class="mt2 btn block" data-a="gymRetry">Try again</button></div>`;
   if (!GYM.mine) { gymRefresh(); return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><div class="gym-sk mt2" style="height:22px;width:60%"></div><div class="gym-sk mt2" style="height:44px"></div></div>`; }
-  if (Date.now() - (GYM.at || 0) > 5 * 60e3) gymRefresh();
+  if (Date.now() - (GYM.at || 0) > 5 * 60e3 && Date.now() - (GYM.failAt || 0) > 60e3) gymRefresh();
   const c = gymCur();
   if (!c) return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><h3 class="mt1">Workouts built from your gym’s machines</h3><p class="cap">Pick your gym, add what it has, and get a session that fits.</p><button class="btn block mt2" data-a="gymFind">Find your gym</button></div>`;
   const rows = (GYM.eq || {})[c.gym_id] || [], n = rows.filter(gymUsable).length;
@@ -3830,6 +3832,7 @@ const ACT = {
   gymUse: el => gymUse(el.dataset.g),
   gymPick: () => { while (SHEETS.length) closeSheet(); gymPick(); },
   gymScan: () => gymScan(),
+  gymRetry: () => { GYM.failAt = 0; gymRefresh(true); rerender(); },
   gymMachine: el => gymMachine(el.dataset.e),
   gymVote: el => gymVote(el.dataset.e, +el.dataset.v),
   gymStarterSave: () => { const ks = [...document.querySelectorAll('#gym-st .cbox:checked')].map(x => x.value); if (!ks.length) return toast('Tick the machines you can see first.'); gymAdd(ks, 'starter'); },
