@@ -33,4 +33,5 @@ assert(!/NaN|undefined/.test(both), 'odd numbers never print NaN');
 const bare = idFront({ n: 'Sam', t: 'climb' }, 'ABCDEF') + idBack({ n: 'Sam', t: 'climb' }, 'ABCDEF');
 assert(!/TOP LIFTS|SPLIT|BODY|training|workouts|member since|CRAZY|Beginner/.test(bare), 'nothing hidden leaks onto the card');
 for (const t of Object.keys(ID_LEVELS)) assert(idFront({ t }, '').startsWith('<svg') && idBack({ t }, '').startsWith('<svg'), t);
+assert(idFront({ t: 'mono' }, 'JEDIDIAH').includes('>JEDIDIAH<') && !idFront({ t: 'mono' }, 'JEDIDIAH').includes('JD-JEDIDIAH'), 'custom code shows on its own');
 console.log('id card: all checks passed');

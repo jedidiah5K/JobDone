@@ -1121,7 +1121,8 @@ const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2
 const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
-const idCode = c => c ? 'JD-' + c : 'JD-······';
+// Random codes show as JD-XXXXXX; a custom one (only Job's, JEDIDIAH) shows on its own (Job, 5 Nov).
+const idCode = c => !c ? 'JD-······' : c.length === 6 ? 'JD-' + c : c;
 const idPhotoOk = p => typeof p === 'string' && p.length < 90000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(p);
 // Same layout for all four themes; only colours, words and art change.
 const ID_LOOK = {
