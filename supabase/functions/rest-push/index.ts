@@ -48,7 +48,8 @@ const handle = async (req: Request) => {
     for (const a of due || []) {
       const wait = new Date(a.due_at).getTime() - Date.now();
       if (wait > 0) await new Promise(r => setTimeout(r, Math.min(wait, 2000)));
-      n += await sendTo(a.user_id, { title: a.title, body: a.body, tag: 'rest' });
+      // A new tag each time: iOS swaps a same-tag notification in silently (no banner), and ignores renotify (5 Nov fix)
+      n += await sendTo(a.user_id, { title: a.title, body: a.body, tag: 'rest-' + new Date(a.due_at).getTime() });
     }
     return json(200, { sent: n });
   }
@@ -82,7 +83,7 @@ const handle = async (req: Request) => {
     return error ? json(500, { error: 'Could not save' }) : json(200, { ok: true });
   }
   if (b.action === 'cancel') { await db.from('jobdone_rest_alerts').delete().eq('user_id', uid); return json(200, { ok: true }); }
-  if (b.action === 'test') return json(200, { sent: await sendTo(uid, { title: 'JobDone', body: 'Rest alerts are on. You will get one when rest ends.', tag: 'rest' }) });
+  if (b.action === 'test') return json(200, { sent: await sendTo(uid, { title: 'JobDone', body: 'Rest alerts are on. You will get one when rest ends.', tag: 'rest-test-' + Date.now() }) });
   return json(400, { error: 'Unknown action' });
 };
 

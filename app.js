@@ -138,6 +138,8 @@ async function pushOn() {
   } catch (e) { toast('Could not turn on notifications on this phone.'); return false; }
 }
 async function pushOff() { try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
+// Clear delivered rest alerts when the app comes back, so the lock screen doesn't fill up (each alert has its own tag now).
+document.addEventListener('visibilitychange', () => { if (!document.hidden && 'serviceWorker' in navigator) navigator.serviceWorker.ready.then(r => r.getNotifications()).then(ns => ns.forEach(n => /^rest/.test(n.tag) && n.close())).catch(() => {}); });
 let restPushSent = 0;
 function syncRestPush() {
   if (!HOSTED || !S || !S.profile || !S.profile.restPush || (A && A.practice)) return;
