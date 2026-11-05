@@ -1248,7 +1248,7 @@ function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // 
   if (c.lv != null && idSide(c, 'lv') === 'f') { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(330, 36 + lvl.length * 15);
     s += `<rect x="${X}" y="${PY + 62}" width="${pw}" height="40" rx="20" fill="${L.acc}"/>` + T(X + pw / 2, PY + 89, lvl.toUpperCase(), 19, 800, '#fff', 'text-anchor="middle" letter-spacing="1.5"') + T(X + pw + 14, PY + 89, ID_PLAIN[lv], 19, 600, L.dim); }
   const wk = Math.max(0, Math.floor(+c.wk) || 0);
-  [c.yr && idSide(c, 'yr') === 'f' ? [c.yr, 'training'] : null, c.wk != null && idSide(c, 'wk') === 'f' ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since && idSide(c, 'since') === 'f' ? [c.since, 'member since'] : null].filter(Boolean)
+  [c.yr && idSide(c, 'yr') === 'f' ? [c.yr === 'Under a year' ? '< 1 year' : c.yr, 'training'] : null, c.wk != null && idSide(c, 'wk') === 'f' ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since && idSide(c, 'since') === 'f' ? [c.since, 'member since'] : null].filter(Boolean)
     .forEach(([v, k], i) => { const x = X + i * 176; s += T(x, PY + PS - 24, cut(v, 10), 30, 800) + T(x, PY + PS, k, 17, 500, L.dim); });
   // strip under the photo: two of top lift, split, home gym
   const cells = idCells(c, 'f', unit).slice(0, 3);
