@@ -1167,18 +1167,27 @@ function idParts(c, unit) {
 }
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
-  c = c || {}; const { t, L, cut, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
-  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".8" stop-color="${L.fade}" stop-opacity="0"/></linearGradient><clipPath id="idph"><rect x="40" y="112" width="200" height="200" rx="16"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + band(ID_LOOK[t].tag);
-  s += `<rect x="40" y="112" width="200" height="200" rx="16" fill="${L.ph}"/>`;
-  s += idPhotoOk(photo) ? `<image href="${photo}" x="40" y="112" width="200" height="200" preserveAspectRatio="xMidYMid slice" clip-path="url(#idph)"/>`
-    : `<g clip-path="url(#idph)"><circle cx="140" cy="190" r="42" fill="${L.dim}" opacity=".7"/><path d="M62 312 C 66 246, 214 246, 218 312Z" fill="${L.dim}" opacity=".7"/></g>`;
-  s += `<rect x="40" y="112" width="200" height="200" rx="16" fill="none" stroke="${L.ink}" stroke-opacity=".25" stroke-width="3"/>`;
-  s += T(268, 160, cut(c.n || 'Lifter', 16), 50, 800);
+  c = c || {}; const { t, L, cut, kg, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
+  // Layout (Job, 5 Nov: front felt empty): photo 104 to 304; name level with its top, stats level with its bottom;
+  // then a strip with the top lift and the split (or home gym), so the front has the good stuff too.
+  const PY = 104, PS = 200;
+  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".5" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".85" stop-color="${L.fade}" stop-opacity=".2"/></linearGradient><clipPath id="idph"><rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + band(ID_LOOK[t].tag);
+  s += `<rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16" fill="${L.ph}"/>`;
+  s += idPhotoOk(photo) ? `<image href="${photo}" x="40" y="${PY}" width="${PS}" height="${PS}" preserveAspectRatio="xMidYMid slice" clip-path="url(#idph)"/>`
+    : `<g clip-path="url(#idph)"><circle cx="140" cy="${PY + 78}" r="42" fill="${L.dim}" opacity=".7"/><path d="M62 ${PY + PS} C 66 ${PY + 134}, 214 ${PY + 134}, 218 ${PY + PS}Z" fill="${L.dim}" opacity=".7"/></g>`;
+  s += `<rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16" fill="none" stroke="${L.ink}" stroke-opacity=".25" stroke-width="3"/>`;
+  const X = 272;
+  s += T(X, PY + 40, cut(c.n || 'Lifter', 16), 46, 800);
   if (c.lv != null) { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(330, 36 + lvl.length * 15);
-    s += `<rect x="268" y="182" width="${pw}" height="42" rx="21" fill="${L.acc}"/>` + T(268 + pw / 2, 210, lvl.toUpperCase(), 20, 800, '#fff', 'text-anchor="middle" letter-spacing="1.5"') + T(268 + pw + 16, 210, ID_PLAIN[lv], 20, 600, L.dim); }
+    s += `<rect x="${X}" y="${PY + 62}" width="${pw}" height="40" rx="20" fill="${L.acc}"/>` + T(X + pw / 2, PY + 89, lvl.toUpperCase(), 19, 800, '#fff', 'text-anchor="middle" letter-spacing="1.5"') + T(X + pw + 14, PY + 89, ID_PLAIN[lv], 19, 600, L.dim); }
   const wk = Math.max(0, Math.floor(+c.wk) || 0);
   [c.yr ? [c.yr, 'training'] : null, c.wk != null ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since ? [c.since, 'member since'] : null].filter(Boolean)
-    .forEach(([v, k], i) => { const x = 268 + i * 180; s += T(x, 316, cut(v, 10), 30, 800) + T(x, 344, k, 18, 500, L.dim); });
+    .forEach(([v, k], i) => { const x = X + i * 176; s += T(x, PY + PS - 24, cut(v, 10), 30, 800) + T(x, PY + PS, k, 17, 500, L.dim); });
+  // strip under the photo: two of top lift, split, home gym
+  const top = Array.isArray(c.prs) && Array.isArray(c.prs[0]) ? c.prs[0] : null;
+  const cells = [top ? ['TOP LIFT', cut(top[0], 16) + ' · ' + kg(top[1]) + ' ' + unit + ' × ' + (Math.floor(+top[2]) || 1)] : null, c.sp ? ['SPLIT', String(c.sp).split(' · ')[0]] : null, c.gym ? ['HOME GYM', c.gym] : null].filter(Boolean).slice(0, 2);
+  if (cells.length) { s += `<line x1="40" y1="${PY + PS + 26}" x2="816" y2="${PY + PS + 26}" stroke="${L.ink}" stroke-opacity=".12" stroke-width="2"/>`;
+    cells.forEach(([k, v], i) => { const x = 40 + i * 396; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, PY + PS + 92, cut(v, 28), 23, 700, i === 0 && top ? L.acc : L.ink); }); }
   s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
@@ -1466,13 +1475,20 @@ function applySky() {
   const sun = document.querySelector('#bg .sky-sun'); if (sun) sun.classList.toggle('moon', !day);
   // Cards follow the sky (Job, 16 Oct): dusky glass at sunrise and sunset, sky-tinted light by day, dark at night.
   R.dataset.tod = todOf(h);
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = k.s1;
+  setBar(k.s1);
   clearTimeout(applySky.t); applySky.t = setTimeout(applySky, 5 * 60e3);
+}
+// The status bar stays solid (iOS 26 bug with a see-through one), so the top of the wallpaper fades into the bar's colour
+// and the edge between them disappears (Job, 5 Nov).
+function setBar(col) {
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = col;
+  document.documentElement.style.setProperty('--barc', col);
+  const bg = document.getElementById('bg'); if (bg && !bg.querySelector('.topfade')) { const f = document.createElement('div'); f.className = 'topfade'; bg.appendChild(f); }
 }
 function applyTheme(k = theme()) {
   const t = THEMES.find(x => x.k === k) || THEMES[0];
   if (t.k === 'climb') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t.k;
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t.bar;
+  setBar(t.bar);
   applySky();
   try { localStorage.setItem('jobdone-theme', t.k); } catch (e) {}
   for (const v in VARC) delete VARC[v];

@@ -1311,3 +1311,6 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .ph-crop { width: min(200px, 56%); margin: 0 auto; aspect-ratio: 1; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 2px var(--line, rgba(255,255,255,.2)); }
 .ph-crop canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 #ph-card { aspect-ratio: 856 / 540; }
+
+/* Wallpaper fades into the solid status bar at the top, so there's no hard edge (5 Nov) */
+#bg .topfade { position: absolute; left: 0; right: 0; top: 0; height: 72px; z-index: 5; pointer-events: none; background: linear-gradient(to bottom, var(--barc, transparent) 0%, color-mix(in srgb, var(--barc, transparent) 55%, transparent) 45%, transparent 100%); }
