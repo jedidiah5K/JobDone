@@ -5,3 +5,5 @@
 -- Codes are 6 letters/digits (no 0/O/1/I). Adding is limited to 10 tries an hour per account, counted even when the code is wrong,
 -- so codes can't be guessed. Cards are under 4 KB. Friendship is both ways; deleting an account removes its card and friends.
 -- Full SQL is in the Supabase migrations list for project xvyibgnjibzopwtxajin.
+-- Photo (migration "id_card_photo"): jobdone_cards.photo is a small JPEG data URL (under 90 KB, checked by regex) set through
+-- jobdone_card_photo(p_photo) (null removes it). jobdone_card_get, jobdone_friends_list and jobdone_friend_add also return it.

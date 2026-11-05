@@ -1110,132 +1110,178 @@ function whatsNew() {
   }, 700);
 }
 // ---------- ID card and friends (Job, 5 Nov) ----------
-// A card people share as a picture: name, theme art, level in the theme's words, time training, top lifts, split, home gym, friend code.
-// Friends are added only by typing a code (no links). Each line can be shown or hidden; body weight and height start hidden.
+// A landscape ID card like a real one: photo, name, level in the theme's words and stats on the front; lifts, split, gym and body on the back.
+// Opening it blurs the screen behind, it tilts with the phone and flips on a tap. Friends are added only by typing a code (no links).
+// Each line can be shown or hidden; body weight and height start hidden. Lifts can be typed in by hand; ones logged in the app get a ✓.
 // idcard:start (pure, checked by tests/idcard_check.js)
 const ID_LEVELS = { mono: ['Recruit', 'Field agent', 'Double-oh'], spidey: ['Low-level crook', 'Rooftop runner', 'City legend'], climb: ['Fresh chalk', 'Crazy sender', 'Send specialist'], cliffs: ['Base camp', 'Ridge walker', 'Summit veteran'] };
 const ID_PLAIN = ['Beginner', 'Intermediate', 'Advanced'];
 const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2', '2 years'], ['3', '3 years'], ['4', '4 years'], ['5', '5+ years']];
+const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
 const idCode = c => c ? 'JD-' + c : 'JD-······';
-// What can go on the card (Job, 5 Nov: people choose). [key, label, on by default]. Body weight and height start off.
-const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
-// Theme looks for the card. Same layout and size for all four, only colours, words and art change.
+const idPhotoOk = p => typeof p === 'string' && p.length < 90000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(p);
+// Same layout for all four themes; only colours, words and art change.
 const ID_LOOK = {
-  mono: { bg: '#0B0B0E', ink: '#F2F2F4', dim: 'rgba(242,242,244,.55)', acc: '#E0303C', panel: '#141419', line: 'rgba(255,255,255,.12)', font: 'ui-monospace, Menlo, monospace', tag: 'AGENT DOSSIER' },
-  spidey: { bg: '#0D1A45', ink: '#FFFFFF', dim: 'rgba(255,255,255,.62)', acc: '#E2231A', panel: '#12204F', line: 'rgba(255,255,255,.14)', font: '-apple-system, system-ui, sans-serif', tag: 'CITY ID' },
-  climb: { bg: '#EFEBE5', ink: '#2A2230', dim: '#776B62', acc: '#6C3FD6', panel: '#FBF9F6', line: 'rgba(42,34,48,.12)', font: '-apple-system, system-ui, sans-serif', tag: 'CLIMBER ID' },
-  cliffs: { bg: '#CFE5F1', ink: '#10324A', dim: 'rgba(16,50,74,.62)', acc: '#1F7A99', panel: '#F4F9FC', line: 'rgba(16,50,74,.14)', font: '-apple-system, system-ui, sans-serif', tag: 'EXPEDITION PASS' },
+  mono: { bg: '#0B0B0E', ink: '#F2F2F4', dim: 'rgba(242,242,244,.6)', acc: '#E0303C', band: 'rgba(0,0,0,.45)', fade: '#0B0B0E', ph: '#1C1C22', font: 'ui-monospace, Menlo, monospace', tag: 'AGENT DOSSIER' },
+  spidey: { bg: '#0D1A45', ink: '#FFFFFF', dim: 'rgba(255,255,255,.64)', acc: '#E2231A', band: 'rgba(0,0,0,.35)', fade: '#0D1A45', ph: '#22347A', font: '-apple-system, system-ui, sans-serif', tag: 'CITY ID' },
+  climb: { bg: '#EFEBE5', ink: '#2A2230', dim: '#776B62', acc: '#6C3FD6', band: 'rgba(42,34,48,.08)', fade: '#F6F3EE', ph: '#D9D1C6', font: '-apple-system, system-ui, sans-serif', tag: 'CLIMBER ID' },
+  cliffs: { bg: '#DCEEF6', ink: '#10324A', dim: 'rgba(16,50,74,.64)', acc: '#1F7A99', band: 'rgba(16,50,74,.1)', fade: '#EEF6FA', ph: '#BFD9E6', font: '-apple-system, system-ui, sans-serif', tag: 'EXPEDITION PASS' },
 };
-function idArt(t, L) {
-  if (t === 'spidey') { // night city, taller on the right, every third window lit, one web line from the corner
-    const b = [[0, 90], [70, 150], [150, 110], [230, 190], [320, 140], [400, 230], [500, 170], [590, 260], [690, 210], [790, 300], [900, 250], [990, 330]];
-    let s = `<rect width="1080" height="520" fill="#0D1A45"/><circle cx="860" cy="150" r="54" fill="#F3EBD2" opacity=".85"/>`;
-    b.forEach(([x, h], i) => { const w = (b[i + 1] ? b[i + 1][0] : 1080) - x - 8; s += `<rect x="${x}" y="${520 - h}" width="${w}" height="${h}" fill="#0A1336"/>`;
-      for (let r = 0; r < Math.floor(h / 44); r++) for (let c = 0; c < Math.floor((w - 10) / 30); c++) if ((r * 7 + c + i) % 3 === 0) s += `<rect x="${x + 10 + c * 30}" y="${520 - h + 16 + r * 44}" width="12" height="16" fill="#F6C65B" opacity=".75"/>`; });
-    return s + `<path d="M0 96 Q 260 230 420 470" stroke="#fff" stroke-width="3" fill="none" opacity=".7"/>`;
+function idArt(t, L) { // 856 × 540 scenes, the busy part on the right so text on the left stays clear
+  if (t === 'spidey') {
+    const b = [[520, 170], [600, 230], [680, 200], [760, 290], [840, 250]];
+    let s = `<circle cx="770" cy="150" r="36" fill="#F3EBD2" opacity=".5"/>`;
+    b.forEach(([x, h], i) => { const w = (b[i + 1] ? b[i + 1][0] : 940) - x - 6; s += `<rect x="${x}" y="${540 - h}" width="${w}" height="${h}" fill="#0A1336"/>`;
+      for (let r = 0; r < Math.floor(h / 40); r++) for (let c = 0; c < Math.floor((w - 8) / 24); c++) if ((r * 7 + c + i) % 3 === 0) s += `<rect x="${x + 8 + c * 24}" y="${540 - h + 14 + r * 40}" width="9" height="13" fill="#F6C65B" opacity=".6"/>`; });
+    return s + `<path d="M856 76 Q 640 200 560 540" stroke="#fff" stroke-width="2" fill="none" opacity=".35"/>`;
   }
-  if (t === 'climb') { // chalk wall with resin holds and the purple rope
-    const holds = [[150, 170, '#6C3FD6'], [420, 150, '#F4B728'], [700, 200, '#E2463A'], [930, 160, '#2BA39A'], [290, 340, '#F4B728'], [610, 360, '#6C3FD6'], [860, 380, '#E2463A'], [110, 420, '#2BA39A']];
-    let s = `<rect width="1080" height="520" fill="#E6E0D7"/>`;
-    for (let y = 130; y < 520; y += 120) for (let x = 60; x < 1080; x += 120) s += `<circle cx="${x}" cy="${y}" r="5" fill="#C9C0B4"/>`;
-    holds.forEach(([x, y, c]) => { s += `<ellipse cx="${x}" cy="${y + 8}" rx="54" ry="34" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="54" ry="36" fill="${c}"/><ellipse cx="${x - 12}" cy="${y - 10}" rx="22" ry="10" fill="#fff" opacity=".28"/><circle cx="${x}" cy="${y}" r="6" fill="#3A3340"/>`; });
-    return s + `<path d="M985 96 C 900 260, 1040 360, 965 520" stroke="${L.acc}" stroke-width="10" fill="none" stroke-linecap="round"/>`;
+  if (t === 'climb') {
+    let s = '';
+    for (let y = 120; y < 540; y += 90) for (let x = 470; x < 856; x += 90) s += `<circle cx="${x}" cy="${y}" r="4" fill="#C9C0B4"/>`;
+    [[560, 150, '#6C3FD6'], [740, 200, '#F4B728'], [620, 330, '#E2463A'], [800, 380, '#2BA39A'], [700, 470, '#6C3FD6']].forEach(([x, y, c]) => { s += `<ellipse cx="${x}" cy="${y + 6}" rx="40" ry="26" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="40" ry="27" fill="${c}"/><ellipse cx="${x - 9}" cy="${y - 8}" rx="16" ry="7" fill="#fff" opacity=".3"/><circle cx="${x}" cy="${y}" r="5" fill="#3A3340"/>`; });
+    return s + `<path d="M830 76 C 760 220, 860 330, 800 540" stroke="${L.acc}" stroke-width="8" fill="none" stroke-linecap="round"/>`;
   }
-  if (t === 'cliffs') { // sky, two ridges, a few pines
-    let s = `<defs><linearGradient id="idsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FB3E6"/><stop offset="1" stop-color="#DCEEF6"/></linearGradient></defs><rect width="1080" height="520" fill="url(#idsky)"/><circle cx="820" cy="190" r="60" fill="#FFF4D6" opacity=".9"/>`;
-    s += `<path d="M0 400 L160 250 L300 340 L470 190 L640 330 L780 240 L1080 380 L1080 520 L0 520Z" fill="#8A5A40" opacity=".75"/><path d="M0 470 L220 360 L420 440 L620 350 L860 450 L1080 400 L1080 520 L0 520Z" fill="#5E3E2E"/>`;
-    [[90, 470], [140, 485], [930, 450], [990, 465], [1040, 445]].forEach(([x, y]) => { s += `<path d="M${x} ${y - 70} L${x - 26} ${y} L${x + 26} ${y}Z" fill="#1F4A3A"/>`; });
+  if (t === 'cliffs') {
+    let s = `<defs><linearGradient id="idsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FB3E6"/><stop offset="1" stop-color="#DCEEF6"/></linearGradient></defs><rect width="856" height="540" fill="url(#idsky)"/><circle cx="740" cy="170" r="40" fill="#FFF4D6" opacity=".95"/>`;
+    s += `<path d="M380 470 L520 300 L620 380 L720 250 L856 360 L856 540 L380 540Z" fill="#8A5A40" opacity=".75"/><path d="M420 520 L560 430 L700 480 L856 420 L856 540 L420 540Z" fill="#5E3E2E"/>`;
+    [[600, 500], [640, 510], [800, 470], [840, 480]].forEach(([x, y]) => { s += `<path d="M${x} ${y - 54} L${x - 20} ${y} L${x + 20} ${y}Z" fill="#1F4A3A"/>`; });
     return s;
   }
-  // Agent: obsidian with a red glow and a scope reticle
-  return `<defs><radialGradient id="idglow" cx=".5" cy="0" r=".9"><stop offset="0" stop-color="#7A1420"/><stop offset="1" stop-color="#0B0B0E"/></radialGradient></defs><rect width="1080" height="520" fill="url(#idglow)"/>`
-    + `<g stroke="rgba(255,255,255,.16)" stroke-width="3" fill="none"><circle cx="790" cy="290" r="170"/><circle cx="790" cy="290" r="105"/><path d="M560 290 H750 M830 290 H1020 M790 110 V250 M790 330 V470"/></g><circle cx="790" cy="290" r="9" fill="${L.acc}" opacity=".7"/>`;
+  return `<defs><radialGradient id="idglow" cx=".85" cy="0" r=".9"><stop offset="0" stop-color="#7A1420"/><stop offset="1" stop-color="#0B0B0E"/></radialGradient></defs><rect width="856" height="540" fill="url(#idglow)"/>`
+    + `<g stroke="rgba(255,255,255,.14)" stroke-width="2" fill="none"><circle cx="700" cy="300" r="150"/><circle cx="700" cy="300" r="92"/><path d="M500 300 H668 M732 300 H900 M700 120 V268 M700 332 V480"/></g><circle cx="700" cy="300" r="7" fill="${L.acc}" opacity=".7"/>`;
 }
-// c: the card as stored ({n, t, lv, yr, since, wk, prs: [[lift, kg, reps]], sp, gym}). unit: 'kg' or 'lb'. Returns an SVG string, 1080 × 1350.
-function idSVG(c, code, unit = 'kg') {
+const idEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+function idParts(c, unit) {
   c = c || {};
   const t = ID_LOOK[c.t] ? c.t : 'mono', L = ID_LOOK[t];
-  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const cut = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
   const kg = w => { const v = unit === 'lb' ? Math.round(+w * 2.20462 * 10) / 10 : Math.round(+w * 100) / 100; return String(isFinite(v) ? v : 0); };
-  const lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
-  const T = (x, y, s, sz, wt = 600, fill = L.ink, extra = '') => `<text x="${x}" y="${y}" font-family="${L.font}" font-size="${sz}" font-weight="${wt}" fill="${fill}" ${extra}>${e(s)}</text>`;
-  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350"><rect width="1080" height="1350" fill="${L.bg}"/>${idArt(t, L)}`;
-  s += `<rect x="0" y="0" width="1080" height="96" fill="rgba(0,0,0,.32)"/>` + T(64, 62, L.tag, 30, 800, '#fff', 'letter-spacing="6"') + T(1016, 62, 'JOB’S DONE', 30, 800, '#fff', 'text-anchor="end" letter-spacing="4"');
-  s += `<rect x="40" y="470" width="1000" height="840" rx="36" fill="${L.panel}" stroke="${L.line}" stroke-width="2"/>`;
-  s += T(88, 580, cut(c.n || 'Lifter', 18), 84, 800);
-  // Every piece is optional: a missing key means the person hid it. Cards stay one size.
-  if (c.lv != null) { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(560, 44 + lvl.length * 21);
-    s += `<rect x="88" y="612" width="${pw}" height="58" rx="29" fill="${L.acc}"/>` + T(88 + pw / 2, 652, lvl.toUpperCase(), 28, 800, '#fff', 'text-anchor="middle" letter-spacing="2"') + T(88 + pw + 24, 652, ID_PLAIN[lv], 28, 600, L.dim); }
+  const T = (x, y, s, sz, wt = 600, fill = L.ink, extra = '') => `<text x="${x}" y="${y}" font-family="${L.font}" font-size="${sz}" font-weight="${wt}" fill="${fill}" ${extra}>${idEsc(s)}</text>`;
+  const open = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 856 540" width="856" height="540"><rect width="856" height="540" fill="${L.bg}"/>`;
+  const band = label => `<rect width="856" height="76" fill="${L.band}"/>` + T(40, 49, label, 22, 800, L.ink, 'letter-spacing="5"') + T(816, 49, 'JOB’S DONE', 22, 800, L.acc, 'text-anchor="end" letter-spacing="3"');
+  return { t, L, cut, kg, T, open, band };
+}
+// Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
+function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
+  c = c || {}; const { t, L, cut, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
+  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".8" stop-color="${L.fade}" stop-opacity="0"/></linearGradient><clipPath id="idph"><rect x="40" y="108" width="196" height="262" rx="14"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + band(ID_LOOK[t].tag);
+  s += `<rect x="40" y="108" width="196" height="262" rx="14" fill="${L.ph}"/>`;
+  s += idPhotoOk(photo) ? `<image href="${photo}" x="40" y="108" width="196" height="262" preserveAspectRatio="xMidYMid slice" clip-path="url(#idph)"/>`
+    : `<circle cx="138" cy="212" r="46" fill="${L.dim}" opacity=".7"/><path d="M58 370 C 62 292, 214 292, 218 370Z" fill="${L.dim}" opacity=".7"/>`;
+  s += `<rect x="40" y="108" width="196" height="262" rx="14" fill="none" stroke="${L.ink}" stroke-opacity=".25" stroke-width="3"/>`;
+  s += T(268, 160, cut(c.n || 'Lifter', 16), 50, 800);
+  if (c.lv != null) { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(330, 36 + lvl.length * 15);
+    s += `<rect x="268" y="182" width="${pw}" height="42" rx="21" fill="${L.acc}"/>` + T(268 + pw / 2, 210, lvl.toUpperCase(), 20, 800, '#fff', 'text-anchor="middle" letter-spacing="1.5"') + T(268 + pw + 16, 210, ID_PLAIN[lv], 20, 600, L.dim); }
   const wk = Math.max(0, Math.floor(+c.wk) || 0);
-  [c.yr ? [c.yr, 'training'] : null, c.wk != null ? [String(wk), (wk === 1 ? 'workout' : 'workouts') + ' logged'] : null, c.since ? [c.since, 'member since'] : null].filter(Boolean)
-    .forEach(([v, k], i) => { const x = 88 + i * 318; s += T(x, 760, cut(v, 12), 44, 800) + T(x, 800, k, 26, 500, L.dim); });
-  s += `<line x1="88" y1="836" x2="992" y2="836" stroke="${L.line}" stroke-width="2"/>`;
-  if (Array.isArray(c.prs)) { s += T(88, 888, 'TOP LIFTS', 26, 800, L.dim, 'letter-spacing="4"');
+  [c.yr ? [c.yr, 'training'] : null, c.wk != null ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since ? [c.since, 'member since'] : null].filter(Boolean)
+    .forEach(([v, k], i) => { const x = 268 + i * 180; s += T(x, 316, cut(v, 10), 30, 800) + T(x, 344, k, 18, 500, L.dim); });
+  s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
+  return s + '</svg>';
+}
+// Back: top lifts (✓ = logged in Job's Done, no mark = typed in), then split, home gym, body.
+function idBack(c, code, unit = 'kg') {
+  c = c || {}; const { L, cut, kg, T, open, band } = idParts(c, unit);
+  let s = open + band(Array.isArray(c.prs) ? 'TOP LIFTS' : 'ABOUT'), y = 136;
+  if (Array.isArray(c.prs)) {
     const prs = c.prs.slice(0, 3).filter(x => Array.isArray(x));
-    if (!prs.length) s += T(88, 944, 'No lifts picked yet', 34, 500, L.dim);
-    prs.forEach(([l, w, r], i) => { const y = 944 + i * 58; s += T(88, y, cut(l, 24), 36, 600) + T(992, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 36, 800, L.acc, 'text-anchor="end"'); }); }
+    if (!prs.length) { s += T(40, y, 'No lifts picked yet', 26, 500, L.dim); y += 52; }
+    prs.forEach(([l, w, r, ok]) => { s += T(40, y, cut(l, 22), 28, 600) + (ok ? T(40 + Math.min(22, String(l).length) * 15 + 14, y, '✓', 22, 800, L.acc) : '') + T(816, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 28, 800, L.acc, 'text-anchor="end"');
+      s += `<line x1="40" y1="${y + 16}" x2="816" y2="${y + 16}" stroke="${L.ink}" stroke-opacity=".1" stroke-width="2"/>`; y += 54; });
+    if (prs.some(x => x[3])) { s += T(40, y - 6, '✓ logged in Job’s Done', 16, 600, L.dim); y += 20; }
+    y += 22;
+  }
   const body = [c.bw > 0 ? kg(c.bw) + ' ' + unit : '', c.ht > 0 ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
-  const rows = [['SPLIT', c.sp], ['HOME GYM', c.gym], ['BODY', body]].filter(r => r[1]);
-  let y = Array.isArray(c.prs) ? (rows.length > 2 ? 1108 : 1140) : 896;
-  rows.forEach(([k, v]) => { s += T(88, y, k, 24, 800, L.dim, 'letter-spacing="4"') + T(300, y, cut(v, 36), 32, 600); y += rows.length > 2 ? 44 : 50; });
-  s += `<path d="M40 1222 H1040 V1274 a36 36 0 0 1 -36 36 H76 a36 36 0 0 1 -36 -36Z" fill="${L.acc}" opacity=".14"/>` + T(88, 1284, idCode(code), 44, 800, L.acc, 'letter-spacing="4"') + T(992, 1282, 'Add me: Me → Friends', 28, 600, L.dim, 'text-anchor="end"');
+  [['SPLIT', c.sp], ['HOME GYM', c.gym], ['BODY', body]].filter(r => r[1]).forEach(([k, v]) => { s += T(40, y, k, 17, 800, L.dim, 'letter-spacing="3"') + T(200, y, cut(v, 38), 24, 600); y += 40; });
+  s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, 'Add me: Me → Friends', 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // idcard:end
 const idOn = k => { const f = (S.profile.id || {}).f || {}, d = ID_FIELDS.find(x => x[0] === k); return k in f ? !!f[k] : !!(d && d[2]); };
 function idCard() {
-  const p = S.profile, o = p.id || {}, ws = ix().ws.filter(w => !w.skipped);
-  const best = ix().best, hist = ix().hist;
-  const lifts = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n));
-  const pick = (o.prs && o.prs.length ? o.prs : lifts.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length).slice(0, 3)).filter(n => best[n] && best[n].maxW > 0);
+  const p = S.profile, o = p.id || {}, ws = ix().ws.filter(w => !w.skipped), best = ix().best, hist = ix().hist;
+  const logged = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n));
+  // picks: names of logged lifts, or typed-in ones saved as [name, kg, reps]
+  const own = (o.own || []).filter(x => Array.isArray(x) && x[0]);
+  let picks = o.prs && o.prs.length ? o.prs : logged.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length).slice(0, 3);
+  const prs = picks.map(n => { const m = own.find(x => x[0] === n); if (m) return [String(m[0]).slice(0, 40), +m[1], +m[2] || 1, 0]; const b = best[n]; return b && b.maxW > 0 ? [n.slice(0, 40), b.maxW, b.rep[b.maxW] || 1, 1] : null; }).filter(Boolean).slice(0, 3);
   const lv = [0, 1, 2].includes(o.lv) ? o.lv : idAutoLevel(o.yr ? +o.yr : 0, ws.length);
   const created = USER && USER.created_at ? new Date(USER.created_at) : (ws[0] ? parseYmd(ws[0].date) : new Date());
-  const rot = S.rotation.map(splitById).filter(Boolean).map(s => s.name);
-  const g = gymOn() ? gymCur() : null;
-  const lw = latestWeight(), c = { v: 1, n: (p.name || '').slice(0, 40), t: theme() }, on = idOn;
-  if (on('lv')) c.lv = lv;
-  if (on('yr')) c.yr = o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '';
-  if (on('wk')) c.wk = ws.length;
-  if (on('since')) c.since = created.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-  if (on('prs')) c.prs = pick.map(n => [n.slice(0, 40), best[n].maxW, best[n].rep[best[n].maxW] || 1]);
-  if (on('sp') && rot.length) c.sp = rot.join(' / ').slice(0, 40) + ' · ' + plural(p.weeklyTarget || 4, 'day') + ' a week';
-  if (on('gym') && g) c.gym = (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60);
-  if (on('bw') && lw) c.bw = Math.round(lw.w * 10) / 10;
-  if (on('ht') && p.heightCm) c.ht = p.heightCm;
+  const rot = S.rotation.map(splitById).filter(Boolean).map(s => s.name), g = gymOn() ? gymCur() : null, lw = latestWeight();
+  const c = { v: 2, n: (p.name || '').slice(0, 40), t: theme() };
+  if (idOn('lv')) c.lv = lv;
+  if (idOn('yr')) c.yr = o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '';
+  if (idOn('wk')) c.wk = ws.length;
+  if (idOn('since')) c.since = created.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  if (idOn('prs')) c.prs = prs;
+  if (idOn('sp') && rot.length) c.sp = rot.join(' / ').slice(0, 40) + ' · ' + plural(p.weeklyTarget || 4, 'day') + ' a week';
+  if (idOn('gym') && g) c.gym = (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60);
+  if (idOn('bw') && (lw || o.bw > 0)) c.bw = Math.round((lw ? lw.w : +o.bw) * 10) / 10;
+  if (idOn('ht') && p.heightCm) c.ht = p.heightCm;
   return c;
 }
 // The card is saved for friends only after you open it once (profile.id.on). Sent again when something on it changes.
-let ID_SENT = '', ID_CODE = (() => { try { return localStorage.getItem('jd-idcode') || ''; } catch (e) { return ''; } })();
+let ID_SENT = '', ID_CODE = '', ID_PHOTO = null;
+try { ID_CODE = localStorage.getItem('jd-idcode') || ''; ID_PHOTO = localStorage.getItem('jd-idphoto') || null; } catch (e) {}
+let idFetched = false;
 async function idSync(force) {
   if (!HOSTED || !SB || !USER || DEMO || !S || !(S.profile.id || {}).on) return;
+  if (!idFetched) { idFetched = true; try { const r = await gymRpc('jobdone_card_get'); if (r) { ID_PHOTO = idPhotoOk(r.photo) ? r.photo : null; try { ID_PHOTO ? localStorage.setItem('jd-idphoto', ID_PHOTO) : localStorage.removeItem('jd-idphoto'); } catch (e) {} } } catch (e) { idFetched = false; } }
   const j = JSON.stringify(idCard()); if (j === ID_SENT && !force) return; ID_SENT = j;
   try { const code = await gymRpc('jobdone_card_save', { p: JSON.parse(j) }); if (code && code !== ID_CODE) { ID_CODE = code; try { localStorage.setItem('jd-idcode', code); } catch (e) {} rerender(); } } catch (e) { ID_SENT = ''; }
 }
-const idImg = (c, code) => `<img class="idc" alt="ID card for ${esc(c.n || 'you')}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(idSVG(c, code, U()))}">`;
+const idSrc = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+// The viewer: blurs the screen behind, the card follows the phone's tilt (or a drag), a tap flips it.
+function idView(c, code, photo, o = {}) {
+  document.getElementById('idv')?.remove();
+  const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
+  el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
+    <p class="idv-hint">Tilt your phone or drag the card. Tap to flip.</p><button class="btn block idv-motion" hidden>Let the card follow your phone</button>
+    <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+  document.body.appendChild(el);
+  const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let flip = false, drag = null, moved = 0, base = null;
+  const tilt = (x, y) => { x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y)); card.style.setProperty('--ry', (x * MAX).toFixed(2) + 'deg'); card.style.setProperty('--rx', (-y * MAX).toFixed(2) + 'deg'); card.style.setProperty('--sx', (x * 30 - 10).toFixed(1) + '%'); card.style.setProperty('--sy', (y * 30).toFixed(1) + '%'); };
+  const orient = e => { if (e.beta == null || drag) return; if (!base) base = { b: e.beta, g: e.gamma }; card.classList.add('live'); tilt((e.gamma - base.g) / 22, (e.beta - base.b) / 22); };
+  const D = window.DeviceOrientationEvent;
+  if (!still && D) { if (typeof D.requestPermission === 'function') { let asked = false; try { asked = localStorage.getItem('jd-motion') === '1'; } catch (e) {}
+      const b = el.querySelector('.idv-motion'); const go = () => D.requestPermission().then(s => { if (s === 'granted') { addEventListener('deviceorientation', orient); b.hidden = true; try { localStorage.setItem('jd-motion', '1'); } catch (e) {} } }).catch(() => { b.hidden = false; });
+      if (asked) go(); else { b.hidden = false; b.onclick = go; } } else addEventListener('deviceorientation', orient); }
+  const close = () => { removeEventListener('deviceorientation', orient); el.classList.add('out'); setTimeout(() => el.remove(), 180); };
+  card.addEventListener('pointerdown', e => { drag = card.getBoundingClientRect(); moved = 0; card.classList.add('live'); try { card.setPointerCapture(e.pointerId); } catch (x) {} });
+  card.addEventListener('pointermove', e => { if (!drag || still) return; moved++; tilt(((e.clientX - drag.left) / drag.width - .5) * 2, ((e.clientY - drag.top) / drag.height - .5) * 2); });
+  card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; base = null; tilt(0, 0); });
+  card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
+  card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } });
+  addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
+  setTimeout(() => card.focus(), 50);
+}
 function viewIdCard() {
   const o = S.profile.id || {}, c = idCard(), auto = ![0, 1, 2].includes(o.lv), names = ID_LEVELS[c.t] || ID_LEVELS.mono;
   if (!o.on) { S.profile.id = { ...o, on: true }; persist('jd/meta'); setTimeout(() => idSync(true), 0); }
+  const lw = latestWeight();
   return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Your ID card</h1></div></div>
-  ${idImg(c, ID_CODE)}
-  <button class="btn block primary" data-a="idShare">Share card</button>
+  <button class="idc-prev" data-a="idOpen" aria-label="Open your ID card"><img class="idc" alt="" src="${idSrc(idFront(c, ID_CODE, U(), ID_PHOTO, 'Tap to open'))}"></button>
+  <button class="btn block primary" data-a="idOpen">View card</button>
   <section><div class="sgh">On your card</div><div class="sgrp">
+    <div class="xr"><span class="grow">Photo<span class="s">Only friends you’ve added by code see it</span></span><label class="btn sm">${ID_PHOTO ? 'Change' : 'Add'}<input type="file" accept="image/*" id="id-photo" hidden></label>${ID_PHOTO ? '<button class="btn sm ghost" data-a="idPhotoRm">Remove</button>' : ''}</div>
     ${idOn('lv') ? `<div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
       <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>` : ''}
     <label class="xr"><span class="grow">Time training</span><select class="xr-in" id="id-yr">${ID_YEARS.map(([v, t]) => `<option value="${v}" ${(o.yr || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-    ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs.length ? esc(c.prs.map(x => x[0]).join(', ')) : 'Log a few sets first'}</span></span>${I.right}</button>` : ''}
+    ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs && c.prs.length ? esc(c.prs.map(x => x[0] + (x[3] ? ' ✓' : '')).join(', ')) : 'Pick from your lifts or type one in'}</span></span>${I.right}</button>` : ''}
+    ${idOn('bw') && !lw ? `<label class="xr"><span class="grow">Body weight for the card<span class="s">Or log a weigh-in and it’s used instead</span></span><input class="xr-in" id="id-bw" inputmode="decimal" value="${o.bw ? dw(o.bw) : ''}" placeholder="${U()}"></label>` : ''}
+    ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
   </div></section>
   <section><div class="sgh">Show on your card</div><div class="sgrp">
-    ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, swi(idOn(k), 'idTog', `data-k="${k}"`), k === 'bw' ? (latestWeight() ? 'Your latest weigh-in' : 'Log a weight first') : k === 'ht' ? (S.profile.heightCm ? '' : 'Add your height in Me first') : '')).join('')}
+    ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, swi(idOn(k), 'idTog', `data-k="${k}"`))).join('')}
   </div><p class="cap mt2">Only friends you’ve added by code see your card. It follows your theme.</p></section>
   <section><div class="sgh">Friend code</div><div class="sgrp">
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
     ${slink('Friends', 'friends')}
   </div></section></div>`;
 }
-document.addEventListener('change', ev => { if (ev.target && ev.target.id === 'id-yr') { S.profile.id = { ...(S.profile.id || {}), yr: ev.target.value }; persist('jd/meta'); rerender(); } });
 let FRIENDS = null;
 async function friendsLoad() { try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
 function viewFriends() {
@@ -1245,27 +1291,57 @@ function viewFriends() {
   <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" data-a="friendAdd">Add</button></div>
     <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
   ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="list">${list.map(f => { const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono';
-    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}"><i class="sdot" style="background:${ID_LOOK[t].acc}"></i><div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))])} · ${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
+    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
     : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
 }
+// Share picture: both sides of the card on one Post-size image (1080 × 1350).
 async function idShare() {
-  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(idSVG(idCard(), ID_CODE, U()));
-  const im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); if (!im) return toast('Couldn’t make the picture. Try again.');
-  const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350; cv.getContext('2d').drawImage(im, 0, 0, 1080, 1350);
+  const c = idCard(), load = svg => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(svg); });
+  const [f, b] = await Promise.all([load(idFront(c, ID_CODE, U(), ID_PHOTO, 'Add me: Me → Friends')), load(idBack(c, ID_CODE, U()))]); if (!f || !b) return toast('Couldn’t make the picture. Try again.');
+  const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350; const g = cv.getContext('2d'), L = ID_LOOK[c.t] || ID_LOOK.mono;
+  g.fillStyle = L.bg; g.fillRect(0, 0, 1080, 1350); const w = 1000, h = w * 540 / 856, x = 40, gap = (1350 - 2 * h) / 3;
+  [[f, gap], [b, gap * 2 + h]].forEach(([im, y]) => { g.save(); g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 30; g.shadowOffsetY = 12; g.beginPath(); g.roundRect(x, y, w, h, 34); g.fillStyle = L.bg; g.fill(); g.restore(); g.save(); g.beginPath(); g.roundRect(x, y, w, h, 34); g.clip(); g.drawImage(im, x, y, w, h); g.restore(); });
   const blob = await new Promise(r => cv.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], 'jobdone-id.png', { type: 'image/png' });
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'My Job’s Done ID', text: 'Add me on Job’s Done: ' + idCode(ID_CODE) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
+// Photo: cropped to 3:4 and shrunk on the phone to 300 × 400 JPEG (about 25 KB) before it leaves.
+async function idPhotoPick(file) {
+  if (!file || !/^image\//.test(file.type)) return toast('Pick a photo');
+  const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
+  if (!im) return toast('Couldn’t open that photo');
+  const W = 300, H = 400, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const s = Math.max(W / im.naturalWidth, H / im.naturalHeight); g.drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 3, im.naturalWidth * s, im.naturalHeight * s);
+  let q = .82, d = cv.toDataURL('image/jpeg', q); while (d.length >= 88000 && q > .4) { q -= .12; d = cv.toDataURL('image/jpeg', q); }
+  await idPhotoSave(d);
+}
+async function idPhotoSave(d) {
+  if (d && !idPhotoOk(d)) return toast('That photo is too big. Try another.');
+  try { if (HOSTED && SB && USER && !DEMO) await gymRpc('jobdone_card_photo', { p_photo: d }); ID_PHOTO = d; try { d ? localStorage.setItem('jd-idphoto', d) : localStorage.removeItem('jd-idphoto'); } catch (e) {} rerender(); toast(d ? 'Photo added' : 'Photo removed'); }
+  catch (e) { toast('Couldn’t save the photo. Check your connection.'); }
+}
 function idLiftsSheet() {
-  const best = ix().best, hist = ix().hist, cur = new Set((idCard().prs || []).map(x => x[0]));
+  const best = ix().best, hist = ix().hist, o = S.profile.id || {}, own = (o.own || []).filter(x => Array.isArray(x) && x[0]);
+  const cur = new Set((idCard().prs || []).map(x => x[0]));
   const all = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n)).sort((a, b) => (hist[b] || []).length - (hist[a] || []).length);
-  if (!all.length) return toast('Log a few sets first, then pick your top lifts.');
-  const sh = openSheet(`<div class="stack"><div><h2>Top lifts</h2><p class="cap m0">Pick up to 3. Each shows your heaviest set.</p></div>
-    <div class="list">${all.slice(0, 40).map(n => `<label class="li"><div class="grow"><div class="t">${esc(n)}</div><div class="s">${dw(best[n].maxW)} ${U()} × ${best[n].rep[best[n].maxW] || 1}</div></div><input type="checkbox" class="cbox" value="${esc(n)}" ${cur.has(n) ? 'checked' : ''}></label>`).join('')}</div>
+  const row = (n, sub) => `<label class="li"><div class="grow"><div class="t">${esc(n)}</div><div class="s">${sub}</div></div><input type="checkbox" class="cbox" value="${esc(n)}" ${cur.has(n) ? 'checked' : ''}></label>`;
+  const sh = openSheet(`<div class="stack"><div><h2>Top lifts</h2><p class="cap m0">Pick up to 3. Lifts you logged in Job’s Done get a ✓ on the card.</p></div>
+    <div class="list">${own.map(x => row(x[0], `${dw(+x[1])} ${U()} × ${+x[2] || 1} · typed in`)).join('')}${all.slice(0, 40).map(n => row(n, `${dw(best[n].maxW)} ${U()} × ${best[n].rep[best[n].maxW] || 1} ✓`)).join('')}</div>
+    <div class="card stack"><div class="eyebrow">Add one that isn’t logged</div><input class="input" id="idl-n" placeholder="Lift, e.g. Chest Fly" maxlength="40" autocomplete="off">
+      <div class="row g2"><input class="input grow" id="idl-w" inputmode="decimal" placeholder="${U()}"><input class="input grow" id="idl-r" inputmode="numeric" placeholder="reps"><button class="btn" id="idl-add">Add</button></div></div>
     <button class="btn block primary" id="idl-ok">Save</button></div>`, { label: 'Top lifts', mount: b => {
-    b.onchange = ev => { if (b.querySelectorAll('.cbox:checked').length > 3) { ev.target.checked = false; toast('Up to 3 lifts'); } };
-    b.querySelector('#idl-ok').onclick = () => { S.profile.id = { ...(S.profile.id || {}), prs: [...b.querySelectorAll('.cbox:checked')].map(x => x.value) }; persist('jd/meta'); closeSheet(sh); rerender(); idSync(); };
+    b.onchange = ev => { if (ev.target.classList.contains('cbox') && b.querySelectorAll('.cbox:checked').length > 3) { ev.target.checked = false; toast('Up to 3 lifts'); } };
+    const save = extra => { const picks = [...b.querySelectorAll('.cbox:checked')].map(x => x.value); S.profile.id = { ...(S.profile.id || {}), prs: picks, own: extra || own }; persist('jd/meta'); };
+    b.querySelector('#idl-add').onclick = () => {
+      let n = b.querySelector('#idl-n').value.trim().replace(/\s+/g, ' '); const w = parseFloat(b.querySelector('#idl-w').value), r = parseInt(b.querySelector('#idl-r').value, 10);
+      if (!n || !(w > 0) || !(r > 0)) return toast('Add the lift, the weight and the reps');
+      const g = LIB.some(e => e.name.toLowerCase() === n.toLowerCase()) ? null : fzBest(n, LIB.map(e => e.name), x => [x, ...(NICK[x] || [])].join(' ')); if (g) n = g; // typos land on the real name
+      const kgv = U() === 'lb' ? w / LB : w, next = [[n.slice(0, 40), Math.round(kgv * 100) / 100, Math.min(r, 100)], ...own.filter(x => x[0] !== n)].slice(0, 10);
+      const picks = [...b.querySelectorAll('.cbox:checked')].map(x => x.value).filter(x => x !== n); if (picks.length < 3) picks.push(n);
+      S.profile.id = { ...(S.profile.id || {}), prs: picks.slice(0, 3), own: next }; persist('jd/meta'); closeSheet(sh); rerender(); idSync(); idLiftsSheet();
+    };
+    b.querySelector('#idl-ok').onclick = () => { save(); closeSheet(sh); rerender(); idSync(); };
   } });
 }
 async function friendAdd() {
@@ -1277,11 +1353,13 @@ async function friendAdd() {
 }
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
-  const sh = openSheet(`<div class="stack">${idImg(f.card || {}, f.code)}<button class="btn block ghost" id="fr-rm">Remove friend</button></div>`, { label: 'Friend’s ID card', mount: b => {
-    b.querySelector('#fr-rm').onclick = () => { closeSheet(sh); confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
-      onOk: async () => { try { await gymRpc('jobdone_friend_remove', { p_friend: id }); FRIENDS = FRIENDS.filter(x => x.id !== id); rerender(); } catch (e) { toast('Couldn’t remove them. Try again.'); } } }); };
-  } });
+  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
+    onOk: async () => { try { await gymRpc('jobdone_friend_remove', { p_friend: id }); FRIENDS = FRIENDS.filter(x => x.id !== id); rerender(); } catch (e) { toast('Couldn’t remove them. Try again.'); } } }) });
 }
+document.addEventListener('change', ev => { const t = ev.target; if (!t) return;
+  if (t.id === 'id-yr') { S.profile.id = { ...(S.profile.id || {}), yr: t.value }; persist('jd/meta'); rerender(); }
+  if (t.id === 'id-bw') { const v = parseFloat(t.value); S.profile.id = { ...(S.profile.id || {}), bw: v > 0 ? Math.round((U() === 'lb' ? v / LB : v) * 10) / 10 : null }; persist('jd/meta'); rerender(); }
+  if (t.id === 'id-photo') idPhotoPick(t.files && t.files[0]); });
 // First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
 function coach() {
   const old = document.getElementById('coach'); if (old) old.remove();
@@ -4111,6 +4189,8 @@ const ACT = {
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   friends: () => { NAV.stack.push({ v: 'friends' }); FRIENDS = null; render(); },
   idShare: () => idShare(),
+  idOpen: () => idView(idCard(), ID_CODE, ID_PHOTO, { share: true }),
+  idPhotoRm: () => idPhotoSave(null),
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
   idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o.f = { ...(o.f || {}), [k]: !idOn(k) }; persist('jd/meta'); rerender(); },
