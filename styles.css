@@ -1296,3 +1296,13 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 /* At the gym (5 Nov) */
 .live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2FBF71; box-shadow: 0 0 0 3px rgba(47,191,113,.22); margin-right: 6px; vertical-align: 1px; flex-shrink: 0; }
 .live-txt { color: #2FBF71; font-weight: 600; }
+
+/* Finish page and monthly report: Share and Done stay at the bottom while you scroll (5 Nov) */
+#recap .rc-body > .grid2:last-child { position: sticky; bottom: 0; z-index: 3; margin: 0 calc(-1 * var(--s4)) calc(-1 * (var(--s6) + env(safe-area-inset-bottom, 0px)));
+  padding: var(--s5) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 72%, transparent); }
+.rc-fold { width: 100%; text-align: left; color: inherit; font: inherit; }
+.rc-fold > span { display: flex; flex-direction: column; }
+.rc-fold svg { transition: transform .2s; flex-shrink: 0; }
+.rc-fold.open svg { transform: rotate(180deg); }
+.rc-folded { display: contents; }
+.rc-folded[hidden] { display: none; }
