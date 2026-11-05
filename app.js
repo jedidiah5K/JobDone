@@ -1233,26 +1233,21 @@ async function idSync(force) {
   try { const code = await gymRpc('jobdone_card_save', { p: JSON.parse(j) }); if (code && code !== ID_CODE) { ID_CODE = code; try { localStorage.setItem('jd-idcode', code); } catch (e) {} rerender(); } } catch (e) { ID_SENT = ''; }
 }
 const idSrc = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-// The viewer: blurs the screen behind, the card follows the phone's tilt (or a drag), a tap flips it.
+// The viewer: blurs the screen behind, a drag tilts the card, a tap flips it.
 function idView(c, code, photo, o = {}) {
   document.getElementById('idv')?.remove();
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
-    <p class="idv-hint">Tilt your phone or drag the card. Tap to flip.</p><button class="btn block idv-motion" hidden>Let the card follow your phone</button>
+    <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
     <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let flip = false, drag = null, moved = 0, base = null;
+  let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
   const tilt = (x, y) => { x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y)); card.style.setProperty('--ry', (x * MAX).toFixed(2) + 'deg'); card.style.setProperty('--rx', (-y * MAX).toFixed(2) + 'deg'); card.style.setProperty('--sx', (x * 30 - 10).toFixed(1) + '%'); card.style.setProperty('--sy', (y * 30).toFixed(1) + '%'); };
-  const orient = e => { if (e.beta == null || drag) return; if (!base) base = { b: e.beta, g: e.gamma }; card.classList.add('live'); tilt((e.gamma - base.g) / 22, (e.beta - base.b) / 22); };
-  const D = window.DeviceOrientationEvent;
-  if (!still && D) { if (typeof D.requestPermission === 'function') { let asked = false; try { asked = localStorage.getItem('jd-motion') === '1'; } catch (e) {}
-      const b = el.querySelector('.idv-motion'); const go = () => D.requestPermission().then(s => { if (s === 'granted') { addEventListener('deviceorientation', orient); b.hidden = true; try { localStorage.setItem('jd-motion', '1'); } catch (e) {} } }).catch(() => { b.hidden = false; });
-      if (asked) go(); else { b.hidden = false; b.onclick = go; } } else addEventListener('deviceorientation', orient); }
-  const close = () => { removeEventListener('deviceorientation', orient); el.classList.add('out'); setTimeout(() => el.remove(), 180); };
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 180); };
   card.addEventListener('pointerdown', e => { drag = card.getBoundingClientRect(); moved = 0; card.classList.add('live'); try { card.setPointerCapture(e.pointerId); } catch (x) {} });
   card.addEventListener('pointermove', e => { if (!drag || still) return; moved++; tilt(((e.clientX - drag.left) / drag.width - .5) * 2, ((e.clientY - drag.top) / drag.height - .5) * 2); });
-  card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; base = null; tilt(0, 0); });
+  card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
   el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } });
