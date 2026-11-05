@@ -1148,9 +1148,7 @@ function idArt(t, L) { // 856 × 540 scenes, the busy part on the right so text 
   }
   if (t === 'climb') {
     let s = '';
-    for (let y = 120; y < 540; y += 90) for (let x = 470; x < 856; x += 90) s += `<circle cx="${x}" cy="${y}" r="4" fill="#C9C0B4"/>`;
-    // mixed sizes and angles, kept clear of the name and the stats row
-    [[700, 112, 20, 13, -25, '#6C3FD6'], [800, 178, 44, 29, 12, '#F4B728'], [812, 300, 16, 11, 40, '#2BA39A'], [640, 372, 34, 22, -15, '#E2463A'], [765, 425, 24, 16, 25, '#6C3FD6'], [580, 438, 48, 24, -8, '#2BA39A'], [738, 338, 13, 9, 0, '#F4B728']].forEach(([x, y, rx, ry, r, c]) => { s += `<g transform="rotate(${r} ${x} ${y})"><ellipse cx="${x}" cy="${y + 5}" rx="${rx}" ry="${ry}" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"/><ellipse cx="${x - rx * .22}" cy="${y - ry * .3}" rx="${rx * .4}" ry="${ry * .26}" fill="#fff" opacity=".3"/><circle cx="${x}" cy="${y}" r="${rx > 30 ? 5 : 3.5}" fill="#3A3340"/></g>`; });
+    for (let y = 120; y < 470; y += 90) for (let x = 60; x < 856; x += 90) s += `<circle cx="${x}" cy="${y}" r="4" fill="#C9C0B4"/>`;
     return s + `<path d="M830 76 C 760 220, 860 330, 800 540" stroke="${L.acc}" stroke-width="8" fill="none" stroke-linecap="round"/>`;
   }
   if (t === 'cliffs') {
@@ -1221,12 +1219,19 @@ function idCells(c, side, unit) {
     Array.isArray(c.bdg) && c.bdg.some(badgeOf) && S1('bdg') ? ['BADGES', { badges: c.bdg.filter(badgeOf).slice(0, 3) }] : null, c.motto && S1('motto') ? ['MOTTO', '“' + c.motto + '”'] : null].filter(Boolean);
 }
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
+// climbing holds sit on top of the left-side fade so they don't look washed out
+function idHolds(below = 540) { // holds lower than `below` are left off so they don't sit under the extra front lines
+  let s = '';
+    // mixed sizes and angles, kept clear of the name and the stats row
+    [[700, 112, 20, 13, -25, '#6C3FD6'], [800, 178, 44, 29, 12, '#F4B728'], [812, 300, 16, 11, 40, '#2BA39A'], [738, 338, 13, 9, 0, '#F4B728'], [655, 405, 30, 20, -15, '#E2463A'], [790, 440, 22, 15, 25, '#6C3FD6'], [105, 405, 32, 20, -12, '#E2463A'], [240, 352, 14, 9, 20, '#F4B728'], [350, 432, 22, 14, 35, '#6C3FD6'], [480, 352, 40, 24, -6, '#2BA39A'], [555, 445, 15, 10, -30, '#F4B728']].filter(([, y, , ry]) => y + ry < below).forEach(([x, y, rx, ry, r, c]) => { s += `<g transform="rotate(${r} ${x} ${y})"><ellipse cx="${x}" cy="${y + 5}" rx="${rx}" ry="${ry}" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"/><ellipse cx="${x - rx * .22}" cy="${y - ry * .3}" rx="${rx * .4}" ry="${ry * .26}" fill="#fff" opacity=".3"/><circle cx="${x}" cy="${y}" r="${rx > 30 ? 5 : 3.5}" fill="#3A3340"/></g>`; });
+  return s;
+}
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // code false = no friend code on it
   c = c || {}; const { t, L, cut, kg, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
   // Layout (Job, 5 Nov: front felt empty): photo 104 to 304; name level with its top, stats level with its bottom;
   // then a strip with the top lift and the split (or home gym), so the front has the good stuff too.
   const PY = 104, PS = 200;
-  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".5" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".85" stop-color="${L.fade}" stop-opacity=".2"/></linearGradient><clipPath id="idph"><rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + band(ID_LOOK[t].tag);
+  let s = open + idArt(t, L) + `<defs><linearGradient id="idfade" x1="0" y1="0" x2="1" y2="0"><stop offset=".5" stop-color="${L.fade}" stop-opacity=".96"/><stop offset=".85" stop-color="${L.fade}" stop-opacity=".2"/></linearGradient><clipPath id="idph"><rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16"/></clipPath></defs><rect width="856" height="540" fill="url(#idfade)"/>` + (t === 'climb' ? idHolds(idCells(c, 'f', unit).length ? PY + PS + 22 : 540) : '') + band(ID_LOOK[t].tag);
   s += `<rect x="40" y="${PY}" width="${PS}" height="${PS}" rx="16" fill="${L.ph}"/>`;
   s += idPhotoOk(photo) ? `<image href="${photo}" x="40" y="${PY}" width="${PS}" height="${PS}" preserveAspectRatio="xMidYMid slice" clip-path="url(#idph)"/>`
     : `<g clip-path="url(#idph)"><circle cx="140" cy="${PY + 78}" r="42" fill="${L.dim}" opacity=".7"/><path d="M62 ${PY + PS} C 66 ${PY + 134}, 214 ${PY + 134}, 218 ${PY + PS}Z" fill="${L.dim}" opacity=".7"/></g>`;
