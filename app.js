@@ -747,9 +747,10 @@ function gymCardHTML() {
   const c = gymCur();
   if (!c) return `<div class="card"><div class="eyebrow">My Gym ${gymBeta}</div><h3 class="mt1">Workouts built from your gym’s machines</h3><p class="cap">Pick your gym, add what it has, and get a session that fits.</p><button class="btn block mt2" data-a="gymFind">Find your gym</button></div>`;
   const rows = (GYM.eq || {})[c.gym_id] || [], n = rows.filter(gymUsable).length;
-  return `<div class="card"><div class="card-h"><span class="eyebrow">My Gym ${gymBeta}</span><button class="cap link" data-a="gymOpen">${n ? plural(n, 'machine') : 'Add machines'}</button></div>
-    <h3 class="mt1 gym-1l" title="${esc(gymTitle(c))}">${esc(c.brand)}</h3>${c.independent ? '' : `<div class="cap gym-1l">${esc(c.branch)}</div>`}
-    <button class="btn block mt2" data-a="${n ? 'gymBuild' : 'gymOpen'}">${n ? 'Build today’s workout' : 'Add your gym’s machines'}</button></div>`;
+  // One compact row (5 Nov, less crowded Today): Start in Next up stays the only big button on the screen.
+  return `<div class="card row between g3"><button class="tl grow gym-row" data-a="gymOpen" title="${esc(gymTitle(c))}"><div class="eyebrow">My Gym ${gymBeta}</div>
+    <div class="mt1 mid gym-1l">${esc(c.brand)}</div><div class="cap gym-1l">${c.independent ? '' : esc(c.branch) + ' · '}${n ? plural(n, 'machine') : 'no machines yet'}</div></button>
+    <button class="btn sm" data-a="${n ? 'gymBuild' : 'gymOpen'}">${n ? 'Build workout' : 'Add machines'}</button></div>`;
 }
 
 // Gym page (a screen of its own).
@@ -1229,6 +1230,14 @@ function viewToday() {
   <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
     <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">${past ? 'week of ' + esc(fmtDate(ws)) : esc(streakText())}</span></div>
     <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done)}</div>
+  ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
+    <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
+    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+      ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
+      ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
+      : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}
+  </div>`}
+  ${past ? '' : gymCardHTML()}
   <div class="card grp"><button class="tl full grp-a" data-a="weigh" data-k="${t}">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
     <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
@@ -1241,14 +1250,6 @@ function viewToday() {
     <div class="grow"><div class="eyebrow">Steps</div><div class="mt1 f22 mid">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div></div>
   </button>
   </div>
-  ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
-    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
-      ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
-      : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}
-  </div>`}
-  ${past ? '' : gymCardHTML()}
   ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
   ${past ? '' : goalsCard() + reportCard() + plateauCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
