@@ -34,9 +34,10 @@ const bare = idFront({ n: 'Sam', t: 'climb' }, 'ABCDEF') + idBack({ n: 'Sam', t:
 assert(!/TOP LIFTS|SPLIT|BODY|training|workouts|member since|CRAZY|Beginner/.test(bare), 'nothing hidden leaks onto the card');
 for (const t of Object.keys(ID_LEVELS)) assert(idFront({ t }, '').startsWith('<svg') && idBack({ t }, '').startsWith('<svg'), t);
 assert(idFront({ t: 'mono' }, 'JEDIDIAH').includes('>JEDIDIAH<') && !idFront({ t: 'mono' }, 'JEDIDIAH').includes('JD-JEDIDIAH'), 'custom code shows on its own');
-// People choose the side: lifts on the front, level on the back.
-const moved = { ...card, pl: { prs: 'f', lv: 'b', sp: 'b', gym: 'b', bw: 'f', ht: 'f', yr: 'f', wk: 'f', since: 'f' } };
+// People choose the side for lifts, split, gym and body; level, training, workouts and member since stay on the front.
+const moved = { ...card, pl: { prs: 'f', lv: 'b', sp: 'b', gym: 'b', bw: 'f', ht: 'f', yr: 'b', wk: 'b', since: 'b' } };
 const mf = idFront(moved, 'X'), mb = idBack(moved, 'X');
-assert(mf.includes('TOP LIFT') && mf.includes('78.6 kg · 178 cm') && !mf.includes('ROOFTOP'), 'front follows the choice');
-assert(mb.includes('Rooftop runner') && mb.includes('SPLIT') && !mb.includes('TOP LIFTS'), 'back follows the choice');
+assert(mf.includes('TOP LIFT') && mf.includes('78.6 kg · 178 cm'), 'front follows the choice');
+assert(mf.includes('ROOFTOP') && mf.includes('2 years') && mf.includes('member since'), 'the fixed four stay on the front, even if a card says otherwise');
+assert(mb.includes('SPLIT') && !mb.includes('TOP LIFTS') && !mb.includes('LEVEL'), 'back follows the choice');
 console.log('id card: all checks passed');

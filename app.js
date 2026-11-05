@@ -1121,7 +1121,9 @@ const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2
 const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
 // Where each line goes when you haven't chosen (Job, 5 Nov: people pick front, back or off). c.pl carries your choice to friends.
 const ID_SIDE = { lv: 'f', yr: 'f', wk: 'f', since: 'f', prs: 'b', sp: 'f', gym: 'b', bw: 'b', ht: 'b' };
-const idSide = (c, k) => (c.pl && (c.pl[k] === 'f' || c.pl[k] === 'b') ? c.pl[k] : ID_SIDE[k]);
+// Level, time training, workouts and member since always sit on the front (Job, 5 Nov); the rest can move or hide.
+const ID_FIXED = ['lv', 'yr', 'wk', 'since'], ID_FRONT_MAX = 3; // body weight and height share one spot
+const idSide = (c, k) => ID_FIXED.includes(k) ? 'f' : (c.pl && (c.pl[k] === 'f' || c.pl[k] === 'b') ? c.pl[k] : ID_SIDE[k]);
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
 // Random codes show as JD-XXXXXX; a custom one (only Job's, JEDIDIAH) shows on its own (Job, 5 Nov).
@@ -1224,6 +1226,7 @@ function idBack(c, code, unit = 'kg') {
 // idcard:end
 // 'f', 'b' or '' (off). Older saves only had on/off; those keep their default side.
 const idWhere = k => { const o = S.profile.id || {}, w = o.w || {}, f = o.f || {}, d = ID_FIELDS.find(x => x[0] === k);
+  if (ID_FIXED.includes(k)) return 'f';
   if (k in w) return w[k]; if (k in f) return f[k] ? ID_SIDE[k] : ''; return d && d[2] ? ID_SIDE[k] : ''; };
 const idOn = k => !!idWhere(k);
 function idCard(forFriends) {
@@ -1307,8 +1310,8 @@ function viewIdCard() {
   </div></section>
   <section><div class="sgh">Front, back or off</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
-    ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`)).join('')}
-  </div><p class="cap mt2">Only friends you’ve added by code see your card. It follows your theme.</p></section>
+    ${ID_FIELDS.filter(([k]) => !ID_FIXED.includes(k) && (k !== 'gym' || gymOn())).map(([k, t]) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`)).join('')}
+  </div><p class="cap mt2">Level, time training, workouts and member since are always on the front. The front fits ${ID_FRONT_MAX} more. Only friends you’ve added by code see your card.</p></section>
   <section><div class="sgh">Friend code</div><div class="sgrp">
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
     ${slink('Friends', 'friends')}
@@ -4366,7 +4369,8 @@ const ACT = {
   idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
-  idWhere: el => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.w = { ...(o.w || {}), [el.dataset.k]: el.dataset.v }; persist('jd/meta'); rerender(); idSync(); },
+  idWhere: el => { const k = el.dataset.k; const spot = x => x === 'ht' ? 'bw' : x; if (el.dataset.v === 'f' && idWhere(k) !== 'f' && !ID_FIELDS.some(([x]) => x !== k && spot(x) === spot(k) && idWhere(x) === 'f') && new Set(ID_FIELDS.filter(([x]) => !ID_FIXED.includes(x) && x !== k && idWhere(x) === 'f').map(([x]) => spot(x))).size >= ID_FRONT_MAX) return toast(`The front fits ${ID_FRONT_MAX}. Move one to the back first.`);
+    const o = S.profile.id = { ...(S.profile.id || {}) }; o.w = { ...(o.w || {}), [el.dataset.k]: el.dataset.v }; persist('jd/meta'); rerender(); idSync(); },
   idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o.f = { ...(o.f || {}), [k]: !idOn(k) }; persist('jd/meta'); rerender(); },
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
