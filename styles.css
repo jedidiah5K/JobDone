@@ -1284,3 +1284,9 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .idv-motion { margin-top: 12px; }
 .idv-acts { display: flex; gap: 10px; margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) { .idv-card, .idv-card.live { transition: none; } .idv-card::after { display: none; } .idv { animation: none; } }
+
+/* Friends button, top right of Today and Me (5 Nov) */
+.top:has(> .top-ic) { position: relative; }
+.top-ic { position: absolute; right: 0; top: -10px; width: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+.top-ic svg { width: 22px; height: 22px; }
+.card.hide { display: none; }
