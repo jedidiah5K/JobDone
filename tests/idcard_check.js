@@ -18,5 +18,10 @@ const bad = idSVG({ n: '<script>alert(1)</script>', t: 'nope', lv: 'x', wk: '1e9
 assert(!/<script|<img|<b>|onerror="/.test(bad), 'all text is escaped');
 assert(bad.includes('AGENT DOSSIER'), 'unknown theme falls back to Agent');
 assert(!/NaN|undefined/.test(bad), 'odd numbers never print NaN');
+// People choose what shows: hidden pieces leave nothing behind; body weight and height show only when sent.
+const bare = idSVG({ n: 'Sam', t: 'climb' }, 'ABCDEF');
+assert(!/TOP LIFTS|SPLIT|BODY|training|logged|member since|CRAZY|Beginner/.test(bare), 'nothing hidden leaks onto the card');
+const body = idSVG({ n: 'Sam', t: 'climb', bw: 78.6, ht: 178, sp: 'PPL', gym: 'Gym' }, 'ABCDEF');
+assert(body.includes('78.6 kg · 178 cm') && body.includes('BODY'), 'body weight and height when turned on');
 for (const t of Object.keys(ID_LEVELS)) assert(idSVG({ t }, '').startsWith('<svg'), t);
 console.log('id card: all checks passed');

@@ -1111,7 +1111,7 @@ function whatsNew() {
 }
 // ---------- ID card and friends (Job, 5 Nov) ----------
 // A card people share as a picture: name, theme art, level in the theme's words, time training, top lifts, split, home gym, friend code.
-// Friends are added only by typing a code (no links). Body weight and steps never go on the card.
+// Friends are added only by typing a code (no links). Each line can be shown or hidden; body weight and height start hidden.
 // idcard:start (pure, checked by tests/idcard_check.js)
 const ID_LEVELS = { mono: ['Recruit', 'Field agent', 'Double-oh'], spidey: ['Low-level crook', 'Rooftop runner', 'City legend'], climb: ['Fresh chalk', 'Crazy sender', 'Send specialist'], cliffs: ['Base camp', 'Ridge walker', 'Summit veteran'] };
 const ID_PLAIN = ['Beginner', 'Intermediate', 'Advanced'];
@@ -1119,6 +1119,8 @@ const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
 const idCode = c => c ? 'JD-' + c : 'JD-······';
+// What can go on the card (Job, 5 Nov: people choose). [key, label, on by default]. Body weight and height start off.
+const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
 // Theme looks for the card. Same layout and size for all four, only colours, words and art change.
 const ID_LOOK = {
   mono: { bg: '#0B0B0E', ink: '#F2F2F4', dim: 'rgba(242,242,244,.55)', acc: '#E0303C', panel: '#141419', line: 'rgba(255,255,255,.12)', font: 'ui-monospace, Menlo, monospace', tag: 'AGENT DOSSIER' },
@@ -1164,21 +1166,26 @@ function idSVG(c, code, unit = 'kg') {
   s += `<rect x="0" y="0" width="1080" height="96" fill="rgba(0,0,0,.32)"/>` + T(64, 62, L.tag, 30, 800, '#fff', 'letter-spacing="6"') + T(1016, 62, 'JOB’S DONE', 30, 800, '#fff', 'text-anchor="end" letter-spacing="4"');
   s += `<rect x="40" y="470" width="1000" height="840" rx="36" fill="${L.panel}" stroke="${L.line}" stroke-width="2"/>`;
   s += T(88, 580, cut(c.n || 'Lifter', 18), 84, 800);
-  const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(560, 44 + lvl.length * 21);
-  s += `<rect x="88" y="612" width="${pw}" height="58" rx="29" fill="${L.acc}"/>` + T(88 + pw / 2, 652, lvl.toUpperCase(), 28, 800, '#fff', 'text-anchor="middle" letter-spacing="2"') + T(88 + pw + 24, 652, ID_PLAIN[lv], 28, 600, L.dim);
+  // Every piece is optional: a missing key means the person hid it. Cards stay one size.
+  if (c.lv != null) { const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(560, 44 + lvl.length * 21);
+    s += `<rect x="88" y="612" width="${pw}" height="58" rx="29" fill="${L.acc}"/>` + T(88 + pw / 2, 652, lvl.toUpperCase(), 28, 800, '#fff', 'text-anchor="middle" letter-spacing="2"') + T(88 + pw + 24, 652, ID_PLAIN[lv], 28, 600, L.dim); }
   const wk = Math.max(0, Math.floor(+c.wk) || 0);
-  [[c.yr || '—', 'training'], [String(wk), (wk === 1 ? 'workout' : 'workouts') + ' logged'], [c.since || '—', 'member since']]
+  [c.yr ? [c.yr, 'training'] : null, c.wk != null ? [String(wk), (wk === 1 ? 'workout' : 'workouts') + ' logged'] : null, c.since ? [c.since, 'member since'] : null].filter(Boolean)
     .forEach(([v, k], i) => { const x = 88 + i * 318; s += T(x, 760, cut(v, 12), 44, 800) + T(x, 800, k, 26, 500, L.dim); });
-  s += `<line x1="88" y1="836" x2="992" y2="836" stroke="${L.line}" stroke-width="2"/>` + T(88, 888, 'TOP LIFTS', 26, 800, L.dim, 'letter-spacing="4"');
-  const prs = (Array.isArray(c.prs) ? c.prs : []).slice(0, 3).filter(x => Array.isArray(x));
-  if (!prs.length) s += T(88, 944, 'No lifts picked yet', 34, 500, L.dim);
-  prs.forEach(([l, w, r], i) => { const y = 944 + i * 58; s += T(88, y, cut(l, 24), 36, 600) + T(992, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 36, 800, L.acc, 'text-anchor="end"'); });
-  let y = 1140;
-  [['SPLIT', c.sp], ['HOME GYM', c.gym]].forEach(([k, v]) => { if (!v) return; s += T(88, y, k, 24, 800, L.dim, 'letter-spacing="4"') + T(300, y, cut(v, 36), 32, 600); y += 50; });
+  s += `<line x1="88" y1="836" x2="992" y2="836" stroke="${L.line}" stroke-width="2"/>`;
+  if (Array.isArray(c.prs)) { s += T(88, 888, 'TOP LIFTS', 26, 800, L.dim, 'letter-spacing="4"');
+    const prs = c.prs.slice(0, 3).filter(x => Array.isArray(x));
+    if (!prs.length) s += T(88, 944, 'No lifts picked yet', 34, 500, L.dim);
+    prs.forEach(([l, w, r], i) => { const y = 944 + i * 58; s += T(88, y, cut(l, 24), 36, 600) + T(992, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 36, 800, L.acc, 'text-anchor="end"'); }); }
+  const body = [c.bw > 0 ? kg(c.bw) + ' ' + unit : '', c.ht > 0 ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
+  const rows = [['SPLIT', c.sp], ['HOME GYM', c.gym], ['BODY', body]].filter(r => r[1]);
+  let y = Array.isArray(c.prs) ? (rows.length > 2 ? 1108 : 1140) : 896;
+  rows.forEach(([k, v]) => { s += T(88, y, k, 24, 800, L.dim, 'letter-spacing="4"') + T(300, y, cut(v, 36), 32, 600); y += rows.length > 2 ? 44 : 50; });
   s += `<path d="M40 1222 H1040 V1274 a36 36 0 0 1 -36 36 H76 a36 36 0 0 1 -36 -36Z" fill="${L.acc}" opacity=".14"/>` + T(88, 1284, idCode(code), 44, 800, L.acc, 'letter-spacing="4"') + T(992, 1282, 'Add me: Me → Friends', 28, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // idcard:end
+const idOn = k => { const f = (S.profile.id || {}).f || {}, d = ID_FIELDS.find(x => x[0] === k); return k in f ? !!f[k] : !!(d && d[2]); };
 function idCard() {
   const p = S.profile, o = p.id || {}, ws = ix().ws.filter(w => !w.skipped);
   const best = ix().best, hist = ix().hist;
@@ -1188,11 +1195,17 @@ function idCard() {
   const created = USER && USER.created_at ? new Date(USER.created_at) : (ws[0] ? parseYmd(ws[0].date) : new Date());
   const rot = S.rotation.map(splitById).filter(Boolean).map(s => s.name);
   const g = gymOn() ? gymCur() : null;
-  return { v: 1, n: (p.name || '').slice(0, 40), t: theme(), lv, yr: o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '',
-    since: created.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }), wk: ws.length,
-    prs: pick.map(n => [n.slice(0, 40), best[n].maxW, best[n].rep[best[n].maxW] || 1]),
-    sp: o.noSplit || !rot.length ? '' : (rot.join(' / ').slice(0, 40) + ' · ' + plural(p.weeklyTarget || 4, 'day') + ' a week'),
-    gym: o.noGym || !g ? '' : (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60) };
+  const lw = latestWeight(), c = { v: 1, n: (p.name || '').slice(0, 40), t: theme() }, on = idOn;
+  if (on('lv')) c.lv = lv;
+  if (on('yr')) c.yr = o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '';
+  if (on('wk')) c.wk = ws.length;
+  if (on('since')) c.since = created.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  if (on('prs')) c.prs = pick.map(n => [n.slice(0, 40), best[n].maxW, best[n].rep[best[n].maxW] || 1]);
+  if (on('sp') && rot.length) c.sp = rot.join(' / ').slice(0, 40) + ' · ' + plural(p.weeklyTarget || 4, 'day') + ' a week';
+  if (on('gym') && g) c.gym = (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60);
+  if (on('bw') && lw) c.bw = Math.round(lw.w * 10) / 10;
+  if (on('ht') && p.heightCm) c.ht = p.heightCm;
+  return c;
 }
 // The card is saved for friends only after you open it once (profile.id.on). Sent again when something on it changes.
 let ID_SENT = '', ID_CODE = (() => { try { return localStorage.getItem('jd-idcode') || ''; } catch (e) { return ''; } })();
@@ -1209,13 +1222,14 @@ function viewIdCard() {
   ${idImg(c, ID_CODE)}
   <button class="btn block primary" data-a="idShare">Share card</button>
   <section><div class="sgh">On your card</div><div class="sgrp">
-    <div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
-      <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>
+    ${idOn('lv') ? `<div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
+      <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>` : ''}
     <label class="xr"><span class="grow">Time training</span><select class="xr-in" id="id-yr">${ID_YEARS.map(([v, t]) => `<option value="${v}" ${(o.yr || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-    <button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs.length ? esc(c.prs.map(x => x[0]).join(', ')) : 'Log a few sets first'}</span></span>${I.right}</button>
-    ${srow('Show your split', swi(!o.noSplit, 'idTog', 'data-k="noSplit"'))}
-    ${gymOn() ? srow('Show your home gym', swi(!o.noGym, 'idTog', 'data-k="noGym"')) : ''}
-  </div><p class="cap mt2">The card follows your theme. Body weight and steps are never on it.</p></section>
+    ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs.length ? esc(c.prs.map(x => x[0]).join(', ')) : 'Log a few sets first'}</span></span>${I.right}</button>` : ''}
+  </div></section>
+  <section><div class="sgh">Show on your card</div><div class="sgrp">
+    ${ID_FIELDS.filter(([k]) => k !== 'gym' || gymOn()).map(([k, t]) => srow(t, swi(idOn(k), 'idTog', `data-k="${k}"`), k === 'bw' ? (latestWeight() ? 'Your latest weigh-in' : 'Log a weight first') : k === 'ht' ? (S.profile.heightCm ? '' : 'Add your height in Me first') : '')).join('')}
+  </div><p class="cap mt2">Only friends you’ve added by code see your card. It follows your theme.</p></section>
   <section><div class="sgh">Friend code</div><div class="sgrp">
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
     ${slink('Friends', 'friends')}
@@ -1244,7 +1258,7 @@ async function idShare() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 function idLiftsSheet() {
-  const best = ix().best, hist = ix().hist, cur = new Set(idCard().prs.map(x => x[0]));
+  const best = ix().best, hist = ix().hist, cur = new Set((idCard().prs || []).map(x => x[0]));
   const all = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n)).sort((a, b) => (hist[b] || []).length - (hist[a] || []).length);
   if (!all.length) return toast('Log a few sets first, then pick your top lifts.');
   const sh = openSheet(`<div class="stack"><div><h2>Top lifts</h2><p class="cap m0">Pick up to 3. Each shows your heaviest set.</p></div>
@@ -4099,7 +4113,7 @@ const ACT = {
   idShare: () => idShare(),
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
-  idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o[k] = !o[k]; persist('jd/meta'); rerender(); },
+  idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o.f = { ...(o.f || {}), [k]: !idOn(k) }; persist('jd/meta'); rerender(); },
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
