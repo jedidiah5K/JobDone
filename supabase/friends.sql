@@ -1,0 +1,7 @@
+-- ID cards and friends (5 Nov 2026). Applied as migrations "id_cards_and_friends" and "friend_add_count_failed_tries".
+-- Tables have RLS and no policies; the app only reaches them through these security-definer functions:
+--   jobdone_card_get() → {code, card}   jobdone_card_save(p jsonb) → code   jobdone_friend_add(p_code) → friend or {none|self|full}
+--   jobdone_friends_list()   jobdone_friend_remove(p_friend)
+-- Codes are 6 letters/digits (no 0/O/1/I). Adding is limited to 10 tries an hour per account, counted even when the code is wrong,
+-- so codes can't be guessed. Cards are under 4 KB. Friendship is both ways; deleting an account removes its card and friends.
+-- Full SQL is in the Supabase migrations list for project xvyibgnjibzopwtxajin.

@@ -663,7 +663,7 @@ function render() {
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, friends: viewFriends })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
   try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
   try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
@@ -675,7 +675,7 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
-  screenChanged(); wireSwipe(); coach(); tourAuto(); whatsNew(); labelIcons(document);
+  screenChanged(); wireSwipe(); coach(); tourAuto(); whatsNew(); idSync(); labelIcons(document);
 }
 function labelIcons(root) { root.querySelectorAll('button[aria-label]:not([title])').forEach(b => { if (!b.textContent.trim()) b.title = b.getAttribute('aria-label'); }); }
 document.addEventListener('focusin', e => { const f = e.target; if (f.matches && f.matches('input, textarea, select') && f.closest('.sheet')) setTimeout(() => f.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300); });
@@ -1108,6 +1108,165 @@ function whatsNew() {
       <button class="btn block primary" id="news-ok">Got it</button></div>`, { label: 'What’s new' });
     sh.el.querySelector('#news-ok').onclick = () => closeSheet(sh);
   }, 700);
+}
+// ---------- ID card and friends (Job, 5 Nov) ----------
+// A card people share as a picture: name, theme art, level in the theme's words, time training, top lifts, split, home gym, friend code.
+// Friends are added only by typing a code (no links). Body weight and steps never go on the card.
+// idcard:start (pure, checked by tests/idcard_check.js)
+const ID_LEVELS = { mono: ['Recruit', 'Field agent', 'Double-oh'], spidey: ['Low-level crook', 'Rooftop runner', 'City legend'], climb: ['Fresh chalk', 'Crazy sender', 'Send specialist'], cliffs: ['Base camp', 'Ridge walker', 'Summit veteran'] };
+const ID_PLAIN = ['Beginner', 'Intermediate', 'Advanced'];
+const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2', '2 years'], ['3', '3 years'], ['4', '4 years'], ['5', '5+ years']];
+// The app's pick goes by time training and workouts logged, never by how much you lift.
+const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
+const idCode = c => c ? 'JD-' + c : 'JD-······';
+// Theme looks for the card. Same layout and size for all four, only colours, words and art change.
+const ID_LOOK = {
+  mono: { bg: '#0B0B0E', ink: '#F2F2F4', dim: 'rgba(242,242,244,.55)', acc: '#E0303C', panel: '#141419', line: 'rgba(255,255,255,.12)', font: 'ui-monospace, Menlo, monospace', tag: 'AGENT DOSSIER' },
+  spidey: { bg: '#0D1A45', ink: '#FFFFFF', dim: 'rgba(255,255,255,.62)', acc: '#E2231A', panel: '#12204F', line: 'rgba(255,255,255,.14)', font: '-apple-system, system-ui, sans-serif', tag: 'CITY ID' },
+  climb: { bg: '#EFEBE5', ink: '#2A2230', dim: '#776B62', acc: '#6C3FD6', panel: '#FBF9F6', line: 'rgba(42,34,48,.12)', font: '-apple-system, system-ui, sans-serif', tag: 'CLIMBER ID' },
+  cliffs: { bg: '#CFE5F1', ink: '#10324A', dim: 'rgba(16,50,74,.62)', acc: '#1F7A99', panel: '#F4F9FC', line: 'rgba(16,50,74,.14)', font: '-apple-system, system-ui, sans-serif', tag: 'EXPEDITION PASS' },
+};
+function idArt(t, L) {
+  if (t === 'spidey') { // night city, taller on the right, every third window lit, one web line from the corner
+    const b = [[0, 90], [70, 150], [150, 110], [230, 190], [320, 140], [400, 230], [500, 170], [590, 260], [690, 210], [790, 300], [900, 250], [990, 330]];
+    let s = `<rect width="1080" height="520" fill="#0D1A45"/><circle cx="860" cy="150" r="54" fill="#F3EBD2" opacity=".85"/>`;
+    b.forEach(([x, h], i) => { const w = (b[i + 1] ? b[i + 1][0] : 1080) - x - 8; s += `<rect x="${x}" y="${520 - h}" width="${w}" height="${h}" fill="#0A1336"/>`;
+      for (let r = 0; r < Math.floor(h / 44); r++) for (let c = 0; c < Math.floor((w - 10) / 30); c++) if ((r * 7 + c + i) % 3 === 0) s += `<rect x="${x + 10 + c * 30}" y="${520 - h + 16 + r * 44}" width="12" height="16" fill="#F6C65B" opacity=".75"/>`; });
+    return s + `<path d="M0 96 Q 260 230 420 470" stroke="#fff" stroke-width="3" fill="none" opacity=".7"/>`;
+  }
+  if (t === 'climb') { // chalk wall with resin holds and the purple rope
+    const holds = [[150, 170, '#6C3FD6'], [420, 150, '#F4B728'], [700, 200, '#E2463A'], [930, 160, '#2BA39A'], [290, 340, '#F4B728'], [610, 360, '#6C3FD6'], [860, 380, '#E2463A'], [110, 420, '#2BA39A']];
+    let s = `<rect width="1080" height="520" fill="#E6E0D7"/>`;
+    for (let y = 130; y < 520; y += 120) for (let x = 60; x < 1080; x += 120) s += `<circle cx="${x}" cy="${y}" r="5" fill="#C9C0B4"/>`;
+    holds.forEach(([x, y, c]) => { s += `<ellipse cx="${x}" cy="${y + 8}" rx="54" ry="34" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="54" ry="36" fill="${c}"/><ellipse cx="${x - 12}" cy="${y - 10}" rx="22" ry="10" fill="#fff" opacity=".28"/><circle cx="${x}" cy="${y}" r="6" fill="#3A3340"/>`; });
+    return s + `<path d="M985 96 C 900 260, 1040 360, 965 520" stroke="${L.acc}" stroke-width="10" fill="none" stroke-linecap="round"/>`;
+  }
+  if (t === 'cliffs') { // sky, two ridges, a few pines
+    let s = `<defs><linearGradient id="idsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FB3E6"/><stop offset="1" stop-color="#DCEEF6"/></linearGradient></defs><rect width="1080" height="520" fill="url(#idsky)"/><circle cx="820" cy="190" r="60" fill="#FFF4D6" opacity=".9"/>`;
+    s += `<path d="M0 400 L160 250 L300 340 L470 190 L640 330 L780 240 L1080 380 L1080 520 L0 520Z" fill="#8A5A40" opacity=".75"/><path d="M0 470 L220 360 L420 440 L620 350 L860 450 L1080 400 L1080 520 L0 520Z" fill="#5E3E2E"/>`;
+    [[90, 470], [140, 485], [930, 450], [990, 465], [1040, 445]].forEach(([x, y]) => { s += `<path d="M${x} ${y - 70} L${x - 26} ${y} L${x + 26} ${y}Z" fill="#1F4A3A"/>`; });
+    return s;
+  }
+  // Agent: obsidian with a red glow and a scope reticle
+  return `<defs><radialGradient id="idglow" cx=".5" cy="0" r=".9"><stop offset="0" stop-color="#7A1420"/><stop offset="1" stop-color="#0B0B0E"/></radialGradient></defs><rect width="1080" height="520" fill="url(#idglow)"/>`
+    + `<g stroke="rgba(255,255,255,.16)" stroke-width="3" fill="none"><circle cx="790" cy="290" r="170"/><circle cx="790" cy="290" r="105"/><path d="M560 290 H750 M830 290 H1020 M790 110 V250 M790 330 V470"/></g><circle cx="790" cy="290" r="9" fill="${L.acc}" opacity=".7"/>`;
+}
+// c: the card as stored ({n, t, lv, yr, since, wk, prs: [[lift, kg, reps]], sp, gym}). unit: 'kg' or 'lb'. Returns an SVG string, 1080 × 1350.
+function idSVG(c, code, unit = 'kg') {
+  c = c || {};
+  const t = ID_LOOK[c.t] ? c.t : 'mono', L = ID_LOOK[t];
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const cut = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+  const kg = w => { const v = unit === 'lb' ? Math.round(+w * 2.20462 * 10) / 10 : Math.round(+w * 100) / 100; return String(isFinite(v) ? v : 0); };
+  const lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
+  const T = (x, y, s, sz, wt = 600, fill = L.ink, extra = '') => `<text x="${x}" y="${y}" font-family="${L.font}" font-size="${sz}" font-weight="${wt}" fill="${fill}" ${extra}>${e(s)}</text>`;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350"><rect width="1080" height="1350" fill="${L.bg}"/>${idArt(t, L)}`;
+  s += `<rect x="0" y="0" width="1080" height="96" fill="rgba(0,0,0,.32)"/>` + T(64, 62, L.tag, 30, 800, '#fff', 'letter-spacing="6"') + T(1016, 62, 'JOB’S DONE', 30, 800, '#fff', 'text-anchor="end" letter-spacing="4"');
+  s += `<rect x="40" y="470" width="1000" height="840" rx="36" fill="${L.panel}" stroke="${L.line}" stroke-width="2"/>`;
+  s += T(88, 580, cut(c.n || 'Lifter', 18), 84, 800);
+  const lvl = (ID_LEVELS[t] || ID_LEVELS.mono)[lv], pw = Math.min(560, 44 + lvl.length * 21);
+  s += `<rect x="88" y="612" width="${pw}" height="58" rx="29" fill="${L.acc}"/>` + T(88 + pw / 2, 652, lvl.toUpperCase(), 28, 800, '#fff', 'text-anchor="middle" letter-spacing="2"') + T(88 + pw + 24, 652, ID_PLAIN[lv], 28, 600, L.dim);
+  const wk = Math.max(0, Math.floor(+c.wk) || 0);
+  [[c.yr || '—', 'training'], [String(wk), (wk === 1 ? 'workout' : 'workouts') + ' logged'], [c.since || '—', 'member since']]
+    .forEach(([v, k], i) => { const x = 88 + i * 318; s += T(x, 760, cut(v, 12), 44, 800) + T(x, 800, k, 26, 500, L.dim); });
+  s += `<line x1="88" y1="836" x2="992" y2="836" stroke="${L.line}" stroke-width="2"/>` + T(88, 888, 'TOP LIFTS', 26, 800, L.dim, 'letter-spacing="4"');
+  const prs = (Array.isArray(c.prs) ? c.prs : []).slice(0, 3).filter(x => Array.isArray(x));
+  if (!prs.length) s += T(88, 944, 'No lifts picked yet', 34, 500, L.dim);
+  prs.forEach(([l, w, r], i) => { const y = 944 + i * 58; s += T(88, y, cut(l, 24), 36, 600) + T(992, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 36, 800, L.acc, 'text-anchor="end"'); });
+  let y = 1140;
+  [['SPLIT', c.sp], ['HOME GYM', c.gym]].forEach(([k, v]) => { if (!v) return; s += T(88, y, k, 24, 800, L.dim, 'letter-spacing="4"') + T(300, y, cut(v, 36), 32, 600); y += 50; });
+  s += `<path d="M40 1222 H1040 V1274 a36 36 0 0 1 -36 36 H76 a36 36 0 0 1 -36 -36Z" fill="${L.acc}" opacity=".14"/>` + T(88, 1284, idCode(code), 44, 800, L.acc, 'letter-spacing="4"') + T(992, 1282, 'Add me: Me → Friends', 28, 600, L.dim, 'text-anchor="end"');
+  return s + '</svg>';
+}
+// idcard:end
+function idCard() {
+  const p = S.profile, o = p.id || {}, ws = ix().ws.filter(w => !w.skipped);
+  const best = ix().best, hist = ix().hist;
+  const lifts = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n));
+  const pick = (o.prs && o.prs.length ? o.prs : lifts.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length).slice(0, 3)).filter(n => best[n] && best[n].maxW > 0);
+  const lv = [0, 1, 2].includes(o.lv) ? o.lv : idAutoLevel(o.yr ? +o.yr : 0, ws.length);
+  const created = USER && USER.created_at ? new Date(USER.created_at) : (ws[0] ? parseYmd(ws[0].date) : new Date());
+  const rot = S.rotation.map(splitById).filter(Boolean).map(s => s.name);
+  const g = gymOn() ? gymCur() : null;
+  return { v: 1, n: (p.name || '').slice(0, 40), t: theme(), lv, yr: o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '',
+    since: created.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }), wk: ws.length,
+    prs: pick.map(n => [n.slice(0, 40), best[n].maxW, best[n].rep[best[n].maxW] || 1]),
+    sp: o.noSplit || !rot.length ? '' : (rot.join(' / ').slice(0, 40) + ' · ' + plural(p.weeklyTarget || 4, 'day') + ' a week'),
+    gym: o.noGym || !g ? '' : (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60) };
+}
+// The card is saved for friends only after you open it once (profile.id.on). Sent again when something on it changes.
+let ID_SENT = '', ID_CODE = (() => { try { return localStorage.getItem('jd-idcode') || ''; } catch (e) { return ''; } })();
+async function idSync(force) {
+  if (!HOSTED || !SB || !USER || DEMO || !S || !(S.profile.id || {}).on) return;
+  const j = JSON.stringify(idCard()); if (j === ID_SENT && !force) return; ID_SENT = j;
+  try { const code = await gymRpc('jobdone_card_save', { p: JSON.parse(j) }); if (code && code !== ID_CODE) { ID_CODE = code; try { localStorage.setItem('jd-idcode', code); } catch (e) {} rerender(); } } catch (e) { ID_SENT = ''; }
+}
+const idImg = (c, code) => `<img class="idc" alt="ID card for ${esc(c.n || 'you')}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(idSVG(c, code, U()))}">`;
+function viewIdCard() {
+  const o = S.profile.id || {}, c = idCard(), auto = ![0, 1, 2].includes(o.lv), names = ID_LEVELS[c.t] || ID_LEVELS.mono;
+  if (!o.on) { S.profile.id = { ...o, on: true }; persist('jd/meta'); setTimeout(() => idSync(true), 0); }
+  return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Your ID card</h1></div></div>
+  ${idImg(c, ID_CODE)}
+  <button class="btn block primary" data-a="idShare">Share card</button>
+  <section><div class="sgh">On your card</div><div class="sgrp">
+    <div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
+      <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>
+    <label class="xr"><span class="grow">Time training</span><select class="xr-in" id="id-yr">${ID_YEARS.map(([v, t]) => `<option value="${v}" ${(o.yr || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs.length ? esc(c.prs.map(x => x[0]).join(', ')) : 'Log a few sets first'}</span></span>${I.right}</button>
+    ${srow('Show your split', swi(!o.noSplit, 'idTog', 'data-k="noSplit"'))}
+    ${gymOn() ? srow('Show your home gym', swi(!o.noGym, 'idTog', 'data-k="noGym"')) : ''}
+  </div><p class="cap mt2">The card follows your theme. Body weight and steps are never on it.</p></section>
+  <section><div class="sgh">Friend code</div><div class="sgrp">
+    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
+    ${slink('Friends', 'friends')}
+  </div></section></div>`;
+}
+document.addEventListener('change', ev => { if (ev.target && ev.target.id === 'id-yr') { S.profile.id = { ...(S.profile.id || {}), yr: ev.target.value }; persist('jd/meta'); rerender(); } });
+let FRIENDS = null;
+async function friendsLoad() { try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
+function viewFriends() {
+  if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
+  const list = FRIENDS || [];
+  return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div></div>
+  <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" data-a="friendAdd">Add</button></div>
+    <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
+  ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="list">${list.map(f => { const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono';
+    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}"><i class="sdot" style="background:${ID_LOOK[t].acc}"></i><div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))])} · ${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
+    : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
+}
+async function idShare() {
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(idSVG(idCard(), ID_CODE, U()));
+  const im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); if (!im) return toast('Couldn’t make the picture. Try again.');
+  const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350; cv.getContext('2d').drawImage(im, 0, 0, 1080, 1350);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png')); if (!blob) return;
+  const file = new File([blob], 'jobdone-id.png', { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'My Job’s Done ID', text: 'Add me on Job’s Done: ' + idCode(ID_CODE) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function idLiftsSheet() {
+  const best = ix().best, hist = ix().hist, cur = new Set(idCard().prs.map(x => x[0]));
+  const all = Object.keys(best).filter(n => best[n].maxW > 0 && !/ \((L|R)\)$/.test(n)).sort((a, b) => (hist[b] || []).length - (hist[a] || []).length);
+  if (!all.length) return toast('Log a few sets first, then pick your top lifts.');
+  const sh = openSheet(`<div class="stack"><div><h2>Top lifts</h2><p class="cap m0">Pick up to 3. Each shows your heaviest set.</p></div>
+    <div class="list">${all.slice(0, 40).map(n => `<label class="li"><div class="grow"><div class="t">${esc(n)}</div><div class="s">${dw(best[n].maxW)} ${U()} × ${best[n].rep[best[n].maxW] || 1}</div></div><input type="checkbox" class="cbox" value="${esc(n)}" ${cur.has(n) ? 'checked' : ''}></label>`).join('')}</div>
+    <button class="btn block primary" id="idl-ok">Save</button></div>`, { label: 'Top lifts', mount: b => {
+    b.onchange = ev => { if (b.querySelectorAll('.cbox:checked').length > 3) { ev.target.checked = false; toast('Up to 3 lifts'); } };
+    b.querySelector('#idl-ok').onclick = () => { S.profile.id = { ...(S.profile.id || {}), prs: [...b.querySelectorAll('.cbox:checked')].map(x => x.value) }; persist('jd/meta'); closeSheet(sh); rerender(); idSync(); };
+  } });
+}
+async function friendAdd() {
+  const el = document.getElementById('fr-code'), v = (el && el.value || '').trim(); if (v.replace(/^jd-?/i, '').length < 6) return toast('Type the 6 letters after JD-');
+  try { const r = await gymRpc('jobdone_friend_add', { p_code: v });
+    if (r && r.none) return toast('No one has that code. Check the letters.'); if (r && r.self) return toast('That’s your own code.'); if (r && r.full) return toast('You have 200 friends already.');
+    el.value = ''; toast(esc(((r && r.card) || {}).n || 'Friend') + ' added'); await friendsLoad();
+  } catch (e) { toast(/Too many/.test(e.message) ? 'Too many tries. Wait an hour.' : 'Couldn’t add them. Check your connection.'); }
+}
+function friendOpen(id) {
+  const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
+  const sh = openSheet(`<div class="stack">${idImg(f.card || {}, f.code)}<button class="btn block ghost" id="fr-rm">Remove friend</button></div>`, { label: 'Friend’s ID card', mount: b => {
+    b.querySelector('#fr-rm').onclick = () => { closeSheet(sh); confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
+      onOk: async () => { try { await gymRpc('jobdone_friend_remove', { p_friend: id }); FRIENDS = FRIENDS.filter(x => x.id !== id); rerender(); } catch (e) { toast('Couldn’t remove them. Try again.'); } } }); };
+  } });
 }
 // First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
 function coach() {
@@ -1674,6 +1833,7 @@ function viewMe() {
   return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div></div>
   <div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>since ${fw ? esc(fmtDate(fw.d)) + (fw.src === 'estimated' ? ' (est.)' : '') : 'start'}</span></div></div>
     <div class="mt3 cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}${goal && lw ? ' · ' + goal : ''}</div></div>
+  ${HOSTED ? `<section><div class="sgrp">${slink('Your ID card<span class="s">Share it, and add friends by code</span>', 'idCard')}${slink('Friends', 'friends')}</div></section>` : ''}
   <section><div class="sgh">You</div><div class="sgrp">
     ${snum('Name', 'set-name', 'name', esc(p.name || ''), 'Your name')}
     ${snum('Height', 'set-h', 'heightCm', p.heightCm || '', 'Add', 'cm')}
@@ -3934,6 +4094,15 @@ const ACT = {
   gymVote: el => gymVote(el.dataset.e, +el.dataset.v),
   gymStarterSave: () => { const ks = [...document.querySelectorAll('#gym-st .cbox:checked')].map(x => x.value); if (!ks.length) return toast('Tick the machines you can see first.'); gymAdd(ks, 'starter'); },
   gymLeave: () => { const c = gymCur(); if (c) confirmSheet({ title: 'Leave ' + gymTitle(c) + '?', body: 'Machines you added stay for everyone else.', ok: 'Leave', key: false, onOk: async () => { try { await gymRpc('jobdone_gym_leave', { g: c.gym_id }); if (S.profile.gymAt === c.gym_id) { delete S.profile.gymAt; persist('jd/meta'); } await gymRefresh(true); if (!(GYM.mine || []).length) { NAV.stack = []; render(); } } catch (e) { gymErr(e); } } }); },
+  idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
+  friends: () => { NAV.stack.push({ v: 'friends' }); FRIENDS = null; render(); },
+  idShare: () => idShare(),
+  idLifts: () => idLiftsSheet(),
+  idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
+  idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o[k] = !o[k]; persist('jd/meta'); rerender(); },
+  idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
+  friendAdd: () => friendAdd(),
+  friendOpen: el => friendOpen(el.dataset.k),
   askAgain: () => { delete S.profile.skipAsk; persist('jd/meta'); rerender(); toast('Pop-ups will ask again'); },
   remind: async () => {
     const r = S.profile.remind || {};
