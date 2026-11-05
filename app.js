@@ -1118,11 +1118,13 @@ function whatsNew() {
 const ID_LEVELS = { mono: ['Recruit', 'Field agent', 'Double-oh'], spidey: ['Low-level crook', 'Rooftop runner', 'City legend'], climb: ['Fresh chalk', 'Crazy sender', 'Send specialist'], cliffs: ['Base camp', 'Ridge walker', 'Summit veteran'] };
 const ID_PLAIN = ['Beginner', 'Intermediate', 'Advanced'];
 const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2', '2 years'], ['3', '3 years'], ['4', '4 years'], ['5', '5+ years']];
-const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false]];
+const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false],
+  ['st', 'Current streak', true], ['fav', 'Favourite lift', false], ['life', 'Lifetime kg lifted', true], ['prc', 'PR count', true], ['mon', 'Workouts this month', false], ['bdg', 'Badges', false], ['motto', 'Motto', false]];
 // Where each line goes when you haven't chosen (Job, 5 Nov: people pick front, back or off). c.pl carries your choice to friends.
-const ID_SIDE = { lv: 'f', yr: 'f', wk: 'f', since: 'f', prs: 'b', sp: 'f', gym: 'b', bw: 'b', ht: 'b' };
+const ID_SIDE = { lv: 'f', yr: 'f', wk: 'f', since: 'f', prs: 'b', sp: 'f', gym: 'b', bw: 'b', ht: 'b', st: 'f', fav: 'b', life: 'b', prc: 'b', mon: 'b', bdg: 'b', motto: 'b' };
 // Level, time training, workouts and member since always sit on the front (Job, 5 Nov); the rest can move or hide.
 const ID_FIXED = ['lv', 'yr', 'wk', 'since'], ID_FRONT_MAX = 3; // body weight and height share one spot
+const idBackMax = liftsOnBack => liftsOnBack ? 4 : 10;
 const idSide = (c, k) => ID_FIXED.includes(k) ? 'f' : (c.pl && (c.pl[k] === 'f' || c.pl[k] === 'b') ? c.pl[k] : ID_SIDE[k]);
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
@@ -1170,6 +1172,22 @@ function idParts(c, unit) {
   const band = label => `<rect width="856" height="76" fill="${L.band}"/>` + T(40, 49, label, 22, 800, L.ink, 'letter-spacing="5"') + T(816, 49, 'JOB’S DONE', 22, 800, L.acc, 'text-anchor="end" letter-spacing="3"');
   return { t, L, cut, kg, T, open, band };
 }
+// Big weights read short: 1.2M kg, 89k kg.
+const idBig = (w, unit) => { const v = unit === 'lb' ? +w * 2.20462 : +w; if (!(v > 0)) return '0 ' + unit; return (v >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : v >= 1e4 ? Math.round(v / 1000) + 'k' : String(Math.round(v))) + ' ' + unit; };
+// Every movable line as [label, value, highlight] for one side. Body weight and height share one spot.
+function idCells(c, side, unit) {
+  const S1 = k => idSide(c, k) === side, cut = (t, n) => { t = String(t == null ? '' : t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+  const kgv = w => { const v = unit === 'lb' ? Math.round(+w * 2.20462 * 10) / 10 : Math.round(+w * 100) / 100; return String(isFinite(v) ? v : 0); };
+  const n = v => Math.max(0, Math.floor(+v) || 0);
+  const top = side === 'f' && Array.isArray(c.prs) && Array.isArray(c.prs[0]) && S1('prs') ? c.prs[0] : null;
+  const body = [c.bw > 0 && S1('bw') ? kgv(c.bw) + ' ' + unit : '', c.ht > 0 && S1('ht') ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
+  return [top ? ['TOP LIFT', cut(top[0], 14) + ' · ' + kgv(top[1]) + ' ' + unit + ' × ' + (n(top[2]) || 1), 1] : null,
+    c.sp && S1('sp') ? ['SPLIT', String(c.sp).split(' · ')[0]] : null, c.gym && S1('gym') ? ['HOME GYM', c.gym] : null, body ? ['BODY', body] : null,
+    c.st != null && S1('st') ? ['STREAK', n(c.st) + (n(c.st) === 1 ? ' week' : ' weeks'), n(c.st) >= 4] : null, c.fav && S1('fav') ? ['FAVOURITE LIFT', c.fav] : null,
+    c.life != null && S1('life') ? ['LIFTED', idBig(c.life, unit)] : null, c.prc != null && S1('prc') ? ['PRS', String(n(c.prc))] : null,
+    c.mon != null && S1('mon') ? ['THIS MONTH', n(c.mon) + (n(c.mon) === 1 ? ' workout' : ' workouts')] : null,
+    Array.isArray(c.bdg) && c.bdg.length && S1('bdg') ? ['BADGES', c.bdg.slice(0, 3).map(String).join(' · ')] : null, c.motto && S1('motto') ? ['MOTTO', '“' + c.motto + '”'] : null].filter(Boolean);
+}
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
   c = c || {}; const { t, L, cut, kg, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
@@ -1189,10 +1207,7 @@ function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
   [c.yr && idSide(c, 'yr') === 'f' ? [c.yr, 'training'] : null, c.wk != null && idSide(c, 'wk') === 'f' ? [String(wk), wk === 1 ? 'workout' : 'workouts'] : null, c.since && idSide(c, 'since') === 'f' ? [c.since, 'member since'] : null].filter(Boolean)
     .forEach(([v, k], i) => { const x = X + i * 176; s += T(x, PY + PS - 24, cut(v, 10), 30, 800) + T(x, PY + PS, k, 17, 500, L.dim); });
   // strip under the photo: two of top lift, split, home gym
-  const top = Array.isArray(c.prs) && Array.isArray(c.prs[0]) && idSide(c, 'prs') === 'f' ? c.prs[0] : null;
-  const body = [c.bw > 0 && idSide(c, 'bw') === 'f' ? kg(c.bw) + ' ' + unit : '', c.ht > 0 && idSide(c, 'ht') === 'f' ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
-  const cells = [top ? ['TOP LIFT', cut(top[0], 14) + ' · ' + kg(top[1]) + ' ' + unit + ' × ' + (Math.floor(+top[2]) || 1), 1] : null, c.sp && idSide(c, 'sp') === 'f' ? ['SPLIT', String(c.sp).split(' · ')[0]] : null,
-    c.gym && idSide(c, 'gym') === 'f' ? ['HOME GYM', c.gym] : null, body ? ['BODY', body] : null].filter(Boolean).slice(0, 3);
+  const cells = idCells(c, 'f', unit).slice(0, 3);
   if (cells.length) { s += `<line x1="40" y1="${PY + PS + 26}" x2="816" y2="${PY + PS + 26}" stroke="${L.ink}" stroke-opacity=".12" stroke-width="2"/>`;
     const cw = 776 / cells.length, n = cells.length === 3 ? 18 : 28;
     cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, PY + PS + 92, cut(v, n), cells.length === 3 ? 20 : 23, 700, hot ? L.acc : L.ink); }); }
@@ -1212,13 +1227,10 @@ function idBack(c, code, unit = 'kg') {
     if (prs.some(x => x[3])) { s += T(40, y - 6, '✓ logged in Job’s Done', 16, 600, L.dim); y += 20; }
     y += 22;
   }
-  const B = k => idSide(c, k) === 'b', wk = Math.max(0, Math.floor(+c.wk) || 0), t = ID_LOOK[c.t] ? c.t : 'mono';
-  const body = [c.bw > 0 && B('bw') ? kg(c.bw) + ' ' + unit : '', c.ht > 0 && B('ht') ? Math.round(+c.ht) + ' cm' : ''].filter(Boolean).join(' · ');
-  const rows = [['LEVEL', c.lv != null && B('lv') ? ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] + ' · ' + ID_PLAIN[Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] : ''],
-    ['TRAINING', B('yr') ? c.yr : ''], ['WORKOUTS', c.wk != null && B('wk') ? String(wk) : ''], ['MEMBER SINCE', B('since') ? c.since : ''],
-    ['SPLIT', B('sp') ? c.sp : ''], ['HOME GYM', B('gym') ? c.gym : ''], ['BODY', body]].filter(r => r[1]);
-  const gap = rows.length > 6 ? 36 : 40;
-  rows.forEach(([k, v]) => { if (y > 436) return; s += T(40, y, k, 17, 800, L.dim, 'letter-spacing="3"') + T(230, y, cut(v, 36), 24, 600); y += gap; });
+  // two columns; 4 fit under the lifts, 10 without them
+  const rows = idCells(c, 'b', unit).slice(0, backLifts ? 4 : 10);
+  if (!backLifts) y = 128;
+  rows.forEach(([k, v, hot], i) => { const x = 40 + (i % 2) * 400, yy = y + Math.floor(i / 2) * 62; s += T(x, yy, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, yy + 28, cut(v, 30), 22, 700, hot ? L.acc : L.ink); });
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
   s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, 'Add me: Me → Friends', 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
@@ -1250,6 +1262,13 @@ function idCard(forFriends) {
   if (idOn('gym') && g) c.gym = (g.brand + (g.independent ? '' : ' · ' + g.branch)).slice(0, 60);
   if (idOn('bw') && (lw || o.bw > 0)) c.bw = Math.round((lw ? lw.w : +o.bw) * 10) / 10;
   if (idOn('ht') && p.heightCm) c.ht = p.heightCm;
+  if (idOn('st')) c.st = parseInt(streakText(), 10) || 0;
+  if (idOn('fav')) { const f = logged.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length)[0]; if (f) c.fav = f.slice(0, 40); }
+  if (idOn('life')) c.life = Math.round(ws.reduce((a, w) => a + wVol(w), 0));
+  if (idOn('prc')) c.prc = ix().prs.length;
+  if (idOn('mon')) c.mon = ws.filter(w => ymOf(w.date) === ymOf(today())).length;
+  if (idOn('bdg')) c.bdg = badgeList().filter(b => b.at).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 3).map(b => String(b.t).slice(0, 20));
+  if (idOn('motto') && o.motto) c.motto = String(o.motto).slice(0, 40);
   c.pl = {}; for (const [k] of ID_FIELDS) if (idOn(k)) c.pl[k] = idWhere(k);
   return c;
 }
@@ -1307,11 +1326,12 @@ function viewIdCard() {
     ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs && c.prs.length ? esc(c.prs.map(x => x[0] + (x[3] ? ' ✓' : '')).join(', ')) : 'Pick from your lifts or type one in'}</span></span>${I.right}</button>` : ''}
     ${idOn('bw') && !lw ? `<label class="xr"><span class="grow">Body weight for the card<span class="s">Or log a weigh-in and it’s used instead</span></span><input class="xr-in" id="id-bw" inputmode="decimal" value="${o.bw ? dw(o.bw) : ''}" placeholder="${U()}"></label>` : ''}
     ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
+    ${idOn('motto') ? `<label class="xr"><span class="grow">Motto<span class="s">One line, up to 40 letters. Only friends see it.</span></span><input class="xr-in" id="id-motto" maxlength="40" value="${esc(o.motto || '')}" placeholder="Earn it"></label>` : ''}
   </div></section>
   <section><div class="sgh">Card layout</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
     ${ID_FIELDS.filter(([k]) => !ID_FIXED.includes(k) && (k !== 'gym' || gymOn())).map(([k, t]) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`)).join('')}
-  </div><p class="cap mt2">Level, time training, workouts and member since are always on the front. The front fits ${ID_FRONT_MAX} more. Only friends you’ve added by code see your card.</p></section>
+  </div><p class="cap mt2">Level, time training, workouts and member since are always on the front. The front fits ${ID_FRONT_MAX} more and the back fits ${idBackMax(idWhere('prs') === 'b')}. Only friends you’ve added by code see your card.</p></section>
   <section><div class="sgh">Friend code</div><div class="sgrp">
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
     ${slink('Friends', 'friends')}
@@ -1439,7 +1459,8 @@ function friendOpenRemove(id, f) {
 document.addEventListener('change', ev => { const t = ev.target; if (!t) return;
   if (t.id === 'id-yr') { S.profile.id = { ...(S.profile.id || {}), yr: t.value }; persist('jd/meta'); rerender(); }
   if (t.id === 'id-bw') { const v = parseFloat(t.value); S.profile.id = { ...(S.profile.id || {}), bw: v > 0 ? Math.round((U() === 'lb' ? v / LB : v) * 10) / 10 : null }; persist('jd/meta'); rerender(); }
-  if (t.id === 'id-photo') idPhotoPick(t.files && t.files[0]); });
+  if (t.id === 'id-photo') idPhotoPick(t.files && t.files[0]);
+  if (t.id === 'id-motto') { S.profile.id = { ...(S.profile.id || {}), motto: t.value.trim().replace(/\s+/g, ' ').slice(0, 40) }; persist('jd/meta'); rerender(); idSync(); } });
 // First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
 function coach() {
   const old = document.getElementById('coach'); if (old) old.remove();
@@ -4380,7 +4401,9 @@ const ACT = {
   idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },
-  idWhere: el => { const k = el.dataset.k; const spot = x => x === 'ht' ? 'bw' : x; if (el.dataset.v === 'f' && idWhere(k) !== 'f' && !ID_FIELDS.some(([x]) => x !== k && spot(x) === spot(k) && idWhere(x) === 'f') && new Set(ID_FIELDS.filter(([x]) => !ID_FIXED.includes(x) && x !== k && idWhere(x) === 'f').map(([x]) => spot(x))).size >= ID_FRONT_MAX) return toast(`The front fits ${ID_FRONT_MAX}. Move one to the back first.`);
+  idWhere: el => { const k = el.dataset.k; const spot = x => x === 'ht' ? 'bw' : x;
+    if (el.dataset.v === 'b' && k !== 'prs' && idWhere(k) !== 'b' && !ID_FIELDS.some(([x]) => x !== k && spot(x) === spot(k) && idWhere(x) === 'b') && new Set(ID_FIELDS.filter(([x]) => !ID_FIXED.includes(x) && x !== 'prs' && x !== k && idWhere(x) === 'b').map(([x]) => spot(x))).size >= idBackMax(idWhere('prs') === 'b')) return toast('The back is full. Turn one off first.');
+    if (el.dataset.v === 'f' && idWhere(k) !== 'f' && !ID_FIELDS.some(([x]) => x !== k && spot(x) === spot(k) && idWhere(x) === 'f') && new Set(ID_FIELDS.filter(([x]) => !ID_FIXED.includes(x) && x !== k && idWhere(x) === 'f').map(([x]) => spot(x))).size >= ID_FRONT_MAX) return toast(`The front fits ${ID_FRONT_MAX}. Move one to the back first.`);
     const o = S.profile.id = { ...(S.profile.id || {}) }; o.w = { ...(o.w || {}), [el.dataset.k]: el.dataset.v }; persist('jd/meta'); rerender(); idSync(); },
   idTog: el => { const k = el.dataset.k, o = S.profile.id = { ...(S.profile.id || {}) }; o.f = { ...(o.f || {}), [k]: !idOn(k) }; persist('jd/meta'); rerender(); },
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },

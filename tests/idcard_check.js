@@ -40,4 +40,13 @@ const mf = idFront(moved, 'X'), mb = idBack(moved, 'X');
 assert(mf.includes('TOP LIFT') && mf.includes('78.6 kg · 178 cm'), 'front follows the choice');
 assert(mf.includes('ROOFTOP') && mf.includes('2 years') && mf.includes('member since'), 'the fixed four stay on the front, even if a card says otherwise');
 assert(mb.includes('SPLIT') && !mb.includes('TOP LIFTS') && !mb.includes('LEVEL'), 'back follows the choice');
+// The newer lines: streak, favourite, lifetime, PRs, this month, badges, motto.
+const extra = { t: 'climb', st: 5, fav: 'Chest Fly', life: 1234567, prc: 42, mon: 6, bdg: ['50 workouts', '12-week streak'], motto: '<b>Earn it</b>',
+  pl: { st: 'f', fav: 'b', life: 'b', prc: 'b', mon: 'b', bdg: 'b', motto: 'b' } };
+const ef = idFront(extra, 'X'), eb = idBack(extra, 'X'), elb = idBack(extra, 'X', 'lb');
+assert(ef.includes('5 weeks') && eb.includes('1.2M kg') && eb.includes('42') && eb.includes('6 workouts') && eb.includes('50 workouts · 12-week streak'), 'new lines show');
+assert(elb.includes('2.7M lb'), 'lifetime in the viewer’s unit');
+assert(eb.includes('&lt;b&gt;Earn it&lt;/b&gt;') && !eb.includes('<b>'), 'motto is escaped');
+const full = { ...extra, prs: [['A', 1, 1, 1]], gym: 'G', sp: 'S', pl: { ...extra.pl, prs: 'b', gym: 'b', sp: 'b' } };
+assert((idBack(full, 'X').match(/font-size="15" font-weight="800"/g) || []).length === 4, 'under the lifts the back holds 4');
 console.log('id card: all checks passed');
