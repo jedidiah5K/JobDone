@@ -3135,6 +3135,27 @@ function lastSided(name) {
   return ONE_SIDE.test(name); // never logged: one-arm and one-leg lifts start as Left and Right
 }
 // Left out of the add list (Job, 2 Nov): a one-side lift is the normal lift split into Left and Right (⋯ menu). Logged history keeps its names.
+// fuzzy:start (pure, checked by tests/fuzzy_check.js)
+// Typo-friendly search (Job, 5 Nov): "chest pic dkecasdl" still finds Chest Fly (pec dec). Each search word counts if it is
+// within a letter or two of a word in the text (or the start of one); junk words are ignored. 0 = no match, higher = better.
+function editDist(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let p = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
+  return p[b.length];
+}
+const fzWords = t => String(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+function fuzzy(text, q) {
+  const tw = fzWords(text), qw = fzWords(q).filter(w => w.length > 1); if (!qw.length || !tw.length) return 0;
+  let hit = 0, pts = 0;
+  for (const w of qw) {
+    const ok = w.length <= 2 ? 0 : w.length <= 5 ? 1 : 2; let best = 9;
+    for (const t of tw) { best = Math.min(best, editDist(w, t), t.length > w.length ? editDist(w, t.slice(0, w.length)) + 1 : 9); if (!best) break; } // a word start costs one more: "pic" isn't "pre(acher)"
+    if (best <= ok) { hit++; pts += 3 - best; }
+  }
+  return hit && hit * 2 >= qw.length ? pts : 0;
+}
+// fuzzy:end
 const NICK = { 'Chest Fly': ['pec dec', 'pec deck', 'butterfly', 'machine fly'], 'Pec Deck': ['pec dec', 'butterfly'], 'Incline Press': ['incline machine', 'smith incline'], 'Lat Pulldown': ['pulldown', 'lats'], 'Wide-Grip Row': ['seated row', 'cable row'], 'Close-Grip Row': ['seated row', 'v-bar row', 'cable row'], 'Shoulder Press': ['ohp', 'military press'], 'Overhead Press': ['ohp', 'military press'], 'Lateral Raise': ['side raise', 'laterals', 'side delts'], 'Rear Delt Fly': ['reverse fly', 'rear delts'], 'Tricep Pushdown': ['pushdown', 'cable pushdown'], 'Overhead Tricep Extension': ['overhead tricep', 'french press'], 'Skull Crusher': ['lying tricep extension'], 'Leg Curl': ['hamstring curl', 'ham curl'], 'Leg Extension': ['quad extension'], 'Stiff-Leg Deadlift': ['sldl', 'stiff leg'], 'Romanian Deadlift': ['rdl'], 'Dumbbell RDL': ['rdl', 'db rdl'], 'Adductor': ['inner thigh', 'hip adduction'], 'Abductor': ['outer thigh', 'hip abduction'], 'Calf Raise': ['calves'], 'Bench Press': ['bench', 'flat bench'], 'Dumbbell Bench Press': ['db bench'], 'Pull-Up': ['pullup', 'pull up'], 'Chin-Up': ['chinup', 'chin up'], 'Back Squat': ['squat'], 'Hip Thrust': ['glute thrust'], "Farmer's Carry": ['farmers walk'] };
 const PICK_HIDE = new Set(['Single-Arm Pulldown', 'Single-Arm Tricep', 'Tricep Bar']);
 function pickExercise(onPick, opts = {}) {
@@ -3143,7 +3164,9 @@ function pickExercise(onPick, opts = {}) {
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
   const score0 = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
   // Nicknames and muscle names find lifts too (Job, 4 Nov): "pec dec" finds Chest Fly, "chest" lists chest lifts.
-  const score = e => Math.max(score0(e.name, q), ...(NICK[e.name] || []).map(a => score0(a, q) - 5), q.trim().length > 2 && e.muscle.toLowerCase().startsWith(q.trim().toLowerCase()) ? 5 : 0);
+  const exact0 = e => Math.max(score0(e.name, q), ...(NICK[e.name] || []).map(a => score0(a, q) - 5), q.trim().length > 2 && e.muscle.toLowerCase().startsWith(q.trim().toLowerCase()) ? 5 : 0);
+  // typos: below every real match, so "pec" still lists exact hits first
+  const score = e => exact0(e) || Math.min(9, fuzzy([e.name, ...(NICK[e.name] || []), e.muscle].join(' '), q)) / 10;
   const list = () => {
     let l = all().filter(e => !mf || e.muscle === mf).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
     l.sort((a, b) => b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
@@ -3158,8 +3181,10 @@ function pickExercise(onPick, opts = {}) {
         + (rec.length ? `<div class="grp">Recent</div>` + rec.map(row).join('') : '')
         + MUSCLES.map(m => { const g = all2.filter(e => e.muscle === m).sort((a, b) => a.name.localeCompare(b.name)); return g.length ? `<div class="grp">${esc(m)} <span>${g.length}</span></div>` + g.map(row).join('') : ''; }).join('');
     }
-    return (q.trim() && !exact ? `<button class="li" data-pick-new="1"><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Custom exercise${mf ? ' · ' + esc(mf) : ''}</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>` : '') +
-      l.slice(0, 80).map(e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}${recent.includes(e.name) ? ' · used before' : ''}${!opts.title && lastSided(e.name) ? ' · left and right' : ''}</div></div></button>`).join('');
+    const create = q.trim() && !exact ? `<button class="li" data-pick-new="1"><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Custom exercise${mf ? ' · ' + esc(mf) : ''}</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>` : '';
+    const typo = l.length && !l.some(e => exact0(e) > 0); // only typo matches: suggest them first, Create last
+    return (typo ? '<div class="grp">Did you mean</div>' : create) +
+      l.slice(0, typo ? 5 : 80).map(e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}${recent.includes(e.name) ? ' · used before' : ''}${!opts.title && lastSided(e.name) ? ' · left and right' : ''}</div></div></button>`).join('') + (typo ? create : '');
   };
   const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(opts.title || 'Add exercise')}</div><input class="input" id="pk-q" placeholder="Search exercises" autocomplete="off">
     <div class="chips" id="pk-m">${MUSCLES.map(m => `<button class="chip" data-m="${m}">${m}</button>`).join('')}</div>
