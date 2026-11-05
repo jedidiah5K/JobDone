@@ -1172,6 +1172,12 @@ function idParts(c, unit) {
   const band = label => `<rect width="856" height="76" fill="${L.band}"/>` + T(40, 49, label, 22, 800, L.ink, 'letter-spacing="5"') + T(816, 49, 'JOB’S DONE', 22, 800, L.acc, 'text-anchor="end" letter-spacing="3"');
   return { t, L, cut, kg, T, open, band };
 }
+// Long values wrap onto a second line instead of being cut (Job, 5 Nov: a long motto didn't show).
+function idWrap(t, n) {
+  t = String(t == null ? '' : t); if (t.length <= n) return [t];
+  let a = t.lastIndexOf(' ', n); if (a < n * .5) a = n; const l1 = t.slice(0, a).trimEnd(), rest = t.slice(a).trimStart();
+  return [l1, rest.length > n ? rest.slice(0, n - 1).trimEnd() + '…' : rest];
+}
 // Big weights read short: 1.2M kg, 89k kg.
 const idBig = (w, unit) => { const v = unit === 'lb' ? +w * 2.20462 : +w; if (!(v > 0)) return '0 ' + unit; return (v >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : v >= 1e4 ? Math.round(v / 1000) + 'k' : String(Math.round(v))) + ' ' + unit; };
 // Every movable line as [label, value, highlight] for one side. Body weight and height share one spot.
@@ -1189,7 +1195,7 @@ function idCells(c, side, unit) {
     Array.isArray(c.bdg) && c.bdg.length && S1('bdg') ? ['BADGES', c.bdg.slice(0, 3).map(String).join(' · ')] : null, c.motto && S1('motto') ? ['MOTTO', '“' + c.motto + '”'] : null].filter(Boolean);
 }
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
-function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
+function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // code false = no friend code on it
   c = c || {}; const { t, L, cut, kg, T, open, band } = idParts(c, unit), lv = Math.max(0, Math.min(2, Math.floor(+c.lv) || 0));
   // Layout (Job, 5 Nov: front felt empty): photo 104 to 304; name level with its top, stats level with its bottom;
   // then a strip with the top lift and the split (or home gym), so the front has the good stuff too.
@@ -1209,9 +1215,9 @@ function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') {
   // strip under the photo: two of top lift, split, home gym
   const cells = idCells(c, 'f', unit).slice(0, 3);
   if (cells.length) { s += `<line x1="40" y1="${PY + PS + 26}" x2="816" y2="${PY + PS + 26}" stroke="${L.ink}" stroke-opacity=".12" stroke-width="2"/>`;
-    const cw = 776 / cells.length, n = cells.length === 3 ? 18 : 28;
-    cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, PY + PS + 92, cut(v, n), cells.length === 3 ? 20 : 23, 700, hot ? L.acc : L.ink); }); }
-  s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
+    const cw = 776 / cells.length, n = cells.length === 3 ? 22 : 32, fs = cells.length === 3 ? 20 : 23;
+    cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + idWrap(v, n).map((ln, j) => T(x, PY + PS + 92 + j * (fs + 4), ln, fs, 700, hot ? L.acc : L.ink)).join(''); }); }
+  s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + (code === false ? T(40, 508, 'JOB’S DONE', 30, 800, L.acc, 'letter-spacing="4"') : T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"')) + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // Back: top lifts (✓ = logged in Job's Done, no mark = typed in), then split, home gym, body.
@@ -1230,7 +1236,14 @@ function idBack(c, code, unit = 'kg') {
   // two columns; 4 fit under the lifts, 10 without them
   const rows = idCells(c, 'b', unit).slice(0, backLifts ? 4 : 10);
   if (!backLifts) y = 128;
-  rows.forEach(([k, v, hot], i) => { const x = 40 + (i % 2) * 400, yy = y + Math.floor(i / 2) * 62; s += T(x, yy, k, 15, 800, L.dim, 'letter-spacing="3"') + T(x, yy + 28, cut(v, 30), 22, 700, hot ? L.acc : L.ink); });
+  // rows grow when a value needs two lines; anything that would run into the code strip is left off
+  let ry = y;
+  for (let i = 0; i < rows.length; i += 2) {
+    const pair = rows.slice(i, i + 2).map(r => [r, idWrap(r[1], 32)]), h = pair.some(([, w]) => w.length > 1) ? 84 : 62;
+    if (ry + h - 34 > 440) break;
+    pair.forEach(([[k, , hot], w], j) => { const x = 40 + j * 400; s += T(x, ry, k, 15, 800, L.dim, 'letter-spacing="3"') + w.map((ln, m) => T(x, ry + 28 + m * 24, ln, 22, 700, hot ? L.acc : L.ink)).join(''); });
+    ry += h;
+  }
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
   s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 508, idCode(code), 34, 800, L.acc, 'letter-spacing="3"') + T(816, 506, 'Add me: Me → Friends', 20, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
@@ -1344,8 +1357,9 @@ function viewIdCard() {
   <section><div class="sgh">Sharing</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
+    ${srow('Friend code on shared picture', swi(!o.shareNoCode, 'idShareCode'), o.shareNoCode ? 'Left off when you share your card' : 'Turn off to share your card without it')}
     ${slink('Friends', 'friends')}
-  </div><div class="sgf">Only friends you’ve added by code see your card. It follows your theme.</div></section></div>`;
+  </div><div class="sgf">Only friends you’ve added by code see your card. Sharing makes a picture of the front only.</div></section></div>`;
 }
 // Opening the card or Friends gives you a code (your card is then saved for friends to see).
 function idTurnOn() { const o = S.profile.id || {}; if (o.on) return; S.profile.id = { ...o, on: true }; persist('jd/meta'); idSync(true); }
@@ -1378,15 +1392,18 @@ function viewFriends() {
     : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
 }
 // Share picture: both sides of the card on one Post-size image (1080 × 1350).
+// Share picture (Job, 5 Nov): only the front of the card, centred on the theme colour. The friend code can be left off.
 async function idShare() {
-  const c = idCard(), load = svg => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(svg); });
-  const [f, b] = await Promise.all([load(idFront(c, ID_CODE, U(), ID_PHOTO, 'Add me: Me → Friends')), load(idBack(c, ID_CODE, U()))]); if (!f || !b) return toast('Couldn’t make the picture. Try again.');
+  const c = idCard(), code = (S.profile.id || {}).shareNoCode ? false : ID_CODE;
+  const f = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(idFront(c, code, U(), ID_PHOTO, code === false ? '' : 'Add me: Me → Friends')); });
+  if (!f) return toast('Couldn’t make the picture. Try again.');
   const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350; const g = cv.getContext('2d'), L = ID_LOOK[c.t] || ID_LOOK.mono;
-  g.fillStyle = L.bg; g.fillRect(0, 0, 1080, 1350); const w = 1000, h = w * 540 / 856, x = 40, gap = (1350 - 2 * h) / 3;
-  [[f, gap], [b, gap * 2 + h]].forEach(([im, y]) => { g.save(); g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 30; g.shadowOffsetY = 12; g.beginPath(); g.roundRect(x, y, w, h, 34); g.fillStyle = L.bg; g.fill(); g.restore(); g.save(); g.beginPath(); g.roundRect(x, y, w, h, 34); g.clip(); g.drawImage(im, x, y, w, h); g.restore(); });
+  g.fillStyle = L.bg; g.fillRect(0, 0, 1080, 1350); const w = 1000, h = w * 540 / 856, x = 40, y = (1350 - h) / 2;
+  g.save(); g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowBlur = 40; g.shadowOffsetY = 16; g.beginPath(); g.roundRect(x, y, w, h, 34); g.fillStyle = L.bg; g.fill(); g.restore();
+  g.save(); g.beginPath(); g.roundRect(x, y, w, h, 34); g.clip(); g.drawImage(f, x, y, w, h); g.restore();
   const blob = await new Promise(r => cv.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], 'jobdone-id.png', { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'My Job’s Done ID', text: 'Add me on Job’s Done: ' + idCode(ID_CODE) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share(code === false ? { files: [file], title: 'My Job’s Done ID' } : { files: [file], title: 'My Job’s Done ID', text: 'Add me on Job’s Done: ' + idCode(ID_CODE) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 // Photo: cropped square and shrunk on the phone to 320 × 320 JPEG (about 20 KB) before it leaves.
@@ -4447,6 +4464,7 @@ const ACT = {
   idPhotoRm: () => idPhotoSave(null),
   atGymOn: () => atGymSet(true).then(rerender),
   atGymOff: async () => { await atGymSet(false); if (A) { A.atGym = false; touchA(); } rerender(); toast('Stopped sharing'); },
+  idShareCode: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.shareNoCode = !o.shareNoCode; persist('jd/meta'); rerender(); },
   idHide: () => { const o = S.profile.id = { ...(S.profile.id || {}) }; o.hidden = !o.hidden; persist('jd/meta'); rerender(); idSync(); toast(o.hidden ? 'Your card is hidden' : 'Friends can see your card'); },
   idLifts: () => idLiftsSheet(),
   idLevel: el => { const k = el.dataset.k; S.profile.id = { ...(S.profile.id || {}), lv: k === 'auto' ? null : +k }; persist('jd/meta'); rerender(); },

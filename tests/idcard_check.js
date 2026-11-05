@@ -49,4 +49,7 @@ assert(elb.includes('2.7M lb'), 'lifetime in the viewer’s unit');
 assert(eb.includes('&lt;b&gt;Earn it&lt;/b&gt;') && !eb.includes('<b>'), 'motto is escaped');
 const full = { ...extra, prs: [['A', 1, 1, 1]], gym: 'G', sp: 'S', pl: { ...extra.pl, prs: 'b', gym: 'b', sp: 'b' } };
 assert((idBack(full, 'X').match(/font-size="15" font-weight="800"/g) || []).length === 4, 'under the lifts the back holds 4');
+const longM = idFront({ t: 'spidey', motto: 'Not a God, Just a guy who lifts a lot', sp: 'A', gym: 'B', pl: { motto: 'f', sp: 'f', gym: 'f' } }, 'X');
+assert(longM.includes('“Not a God, Just a guy') && longM.includes('who lifts a lot”'), 'a long motto wraps onto a second line, nothing cut');
+assert(!idFront({ t: 'mono' }, false).includes('JD-'), 'friend code can be left off');
 console.log('id card: all checks passed');
