@@ -3007,21 +3007,90 @@ function showMonth(ym) {
   el.querySelector('#rc-done').onclick = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); };
   el.querySelector('#rc-share').onclick = () => shareMonth(d);
 }
+// Monthly report picture (Job, 5 Nov): same art and branding as the workout share cards, one per theme. Post size, 1080 × 1350.
+async function drawMonth(d) {
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), k = theme();
+  const SANS = '-apple-system, "SF Pro Display", system-ui, sans-serif', MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
+  const F = (wt, px, fam = SANS) => `${wt} ${px}px ${fam}`;
+  try { await document.fonts.ready; } catch (e) {}
+  const img = src => new Promise(r => { if (!src) return r(null); const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; setTimeout(() => r(null), 3000); });
+  const urlOf = s => { const m = /url\(\s*"((?:[^"\\]|\\.)*)"\s*\)/.exec(s || '') || /url\(\s*'?([^')]+)'?\s*\)/.exec(s || ''); return m ? m[1].replace(/\\"/g, '"') : null; };
+  const bgOf = (sel, ps) => { const el = document.querySelector(sel); return el ? urlOf(getComputedStyle(el, ps || null).backgroundImage) : null; };
+  const cover = (i, x = 0, y = 0, w = W, h = H, ay = 0) => { if (!i) return; const iw = i.naturalWidth || 390, ih = i.naturalHeight || 844, s = Math.max(w / iw, h / ih); g.drawImage(i, x + (w - iw * s) / 2, y + (h - ih * s) * ay, iw * s, ih * s); };
+  const cs = getComputedStyle(document.documentElement), tok = (n, f) => cs.getPropertyValue(n).trim() || f;
+  const RR = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+  const sp = (t, ls) => { g.letterSpacing = ls + 'px'; return t; };
+  const fit = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;
+  const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
+  const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.letterSpacing = '0px'; g.fillStyle = col; g.font = F(800, 34 * s); g.fillText('Job’s Done', x0, y); };
+  const mon = monthName(d.ym), wd = d.w0 && d.w1 && d.w0 !== d.w1 ? bw(d.w1.w - d.w0.w, true) : '—';
+  const stats = [[String(d.ws.length), d.ws.length === 1 ? 'workout' : 'workouts'], [dvol(d.vol), U() + ' lifted'], [String(d.top.length), d.top.length === 1 ? 'PR' : 'PRs'], [String(d.days), 'days trained']];
+  const dv = d.pvol ? Math.round((d.vol - d.pvol) / d.pvol * 100) : null;
+  const vsLine = dv == null ? '' : `${Math.abs(dv)}% ${dv >= 0 ? 'more' : 'less'} volume than ${monthName(addMonths(d.ym, -1)).split(' ')[0]}`;
+  // per-theme look: background, words, colours
+  let S0;
+  if (k === 'mono') {
+    g.fillStyle = '#0B0B0E'; g.fillRect(0, 0, W, H); cover(await img(bgOf('#bg', '::before')));
+    let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(8,8,10,.3)'); gr.addColorStop(.45, 'rgba(8,8,10,.75)'); gr.addColorStop(1, 'rgba(8,8,10,.92)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.save(); g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 3; const cx = 830, cy = 300; [200, 130].forEach(r => { g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); });
+    g.beginPath(); g.moveTo(cx - 250, cy); g.lineTo(cx - 40, cy); g.moveTo(cx + 40, cy); g.lineTo(cx + 250, cy); g.moveTo(cx, cy - 250); g.lineTo(cx, cy - 40); g.moveTo(cx, cy + 40); g.lineTo(cx, cy + 250); g.stroke();
+    g.fillStyle = 'rgba(224,48,60,.55)'; g.beginPath(); g.arc(cx, cy, 8, 0, 7); g.fill(); g.restore();
+    S0 = { fam: MONO, ink: '#F2F2F4', dim: 'rgba(255,255,255,.58)', acc: '#E0303C', card: 'rgba(20,20,26,.86)', line: 'rgba(255,255,255,.14)', tag: 'MONTHLY DEBRIEF', right: 'EYES ONLY', head: mon.toUpperCase(), lifts: 'NEW RECORDS ON FILE', mus: 'TARGETS HIT', foot: `Recruiting · ${APP_URL}`.toUpperCase(), invite: INVITE.mono };
+  } else if (k === 'spidey') {
+    g.fillStyle = '#0D1A45'; g.fillRect(0, 0, W, H); cover(await img(bgOf('#bg', '::before')), 0, 0, W, H, 1);
+    let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(9,16,44,.35)'); gr.addColorStop(.5, 'rgba(9,16,44,.78)'); gr.addColorStop(1, 'rgba(9,16,44,.6)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(91,140,255,.17)';
+    for (let y = 0, row = 0; y <= H; y += 30, row++) for (let x = row % 2 ? 15 : 0; x <= W; x += 30) { const r = 8.5 * (1 - Math.hypot(W - x, H - y) / 1450); if (r > 1) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } }
+    try { g.save(); g.translate(W - 380, 0); g.scale(380 / 150, 380 / 150); g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = 1.1; g.lineCap = 'round'; g.stroke(new Path2D(/ d="([^"]+)"/.exec(webSVG(''))[1])); g.restore(); } catch (e) { g.restore(); }
+    S0 = { fam: SANS, ink: '#fff', dim: 'rgba(255,255,255,.7)', acc: '#E2231A', card: 'rgba(13,26,69,.88)', line: 'rgba(255,255,255,.18)', tag: 'CITY REPORT', right: 'THE DAILY WEB', head: mon, lifts: 'VILLAINS BEATEN', mus: 'POWERS USED', foot: `Job’s Done! ${INVITE.spidey} at ${APP_URL}`, hex: true, yellow: '#FFD21F' };
+  } else if (k === 'cliffs') {
+    const s1 = tok('--sky1', '#5B9BCF'), s2 = tok('--sky2', '#93C2E3'), s3 = tok('--sky3', '#CFE5F1'), night = /^#0|^#1/.test(s1);
+    let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, s1); gr.addColorStop(.3, s2); gr.addColorStop(.55, s3); gr.addColorStop(1, s2); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const rid = await img(urlOf(tok('--ridges', ''))); if (rid) { g.globalAlpha = .9; cover(rid, 0, 300, W, H - 300, 0); g.globalAlpha = 1; }
+    S0 = { fam: SANS, ink: night ? '#fff' : '#12304A', dim: night ? 'rgba(255,255,255,.75)' : 'rgba(18,48,74,.7)', acc: night ? '#9CC4E8' : '#1F7A99', card: night ? 'rgba(14,24,40,.8)' : 'rgba(255,255,255,.84)', line: night ? 'rgba(255,255,255,.15)' : 'rgba(18,48,74,.12)', tag: 'SUMMIT LOG', right: 'MONTH IN THE MOUNTAINS', head: mon, lifts: 'NEW HEIGHTS', mus: 'TERRAIN COVERED', foot: `Job’s Done! ${INVITE.cliffs} at ${APP_URL}`, peak: true };
+  } else {
+    g.fillStyle = '#EFEBE5'; g.fillRect(0, 0, W, H); cover(await img(bgOf('#bg', '::before'))); g.fillStyle = 'rgba(120,108,96,.18)'; g.fillRect(0, 0, W, H);
+    [[150, 170, '#6C3FD6', 58], [930, 150, '#F4B728', 50], [990, 760, '#2BA39A', 46], [80, 1010, '#E2463A', 44]].forEach(([x, y, col, r]) => { g.fillStyle = 'rgba(0,0,0,.14)'; g.beginPath(); g.ellipse(x, y + 8, r * 1.15, r * .8, 0, 0, 7); g.fill(); g.fillStyle = col; g.beginPath(); g.ellipse(x, y, r * 1.15, r * .8, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(x - r * .3, y - r * .3, r * .45, r * .2, 0, 0, 7); g.fill(); g.fillStyle = '#3A3340'; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); });
+    g.strokeStyle = '#6C3FD6'; g.lineWidth = 10; g.lineCap = 'round'; g.beginPath(); g.moveTo(1010, 0); g.bezierCurveTo(940, 300, 1060, 520, 1000, 760); g.stroke();
+    S0 = { fam: SANS, ink: '#2A2230', dim: '#776B62', acc: '#6C3FD6', card: 'rgba(251,249,246,.94)', line: 'rgba(42,34,48,.12)', tag: 'ROUTE BOOK', right: 'MONTHLY SENDS', head: mon, lifts: 'PROJECTS SENT', mus: 'HOLDS USED', foot: `Job’s Done! ${INVITE.climb} at ${APP_URL}`, tape: true };
+  }
+  const { fam, ink, dim, acc, card, line } = S0;
+  // header: logo, the theme's label, the month
+  mark(72, 112, ink, .9); g.textAlign = 'right'; g.fillStyle = dim; g.font = F(700, 24, fam); g.fillText(sp(S0.right, 4), W - 72, 104); g.textAlign = 'left';
+  g.fillStyle = acc; g.font = F(800, 28, fam); g.fillText(sp(S0.tag, 6), 72, 210);
+  g.letterSpacing = '0px'; g.fillStyle = ink; g.font = F(900, mon.length > 13 ? 104 : 120, fam); g.fillText(sp(S0.head, -2), 64, 330); g.letterSpacing = '0px';
+  if (vsLine) { g.fillStyle = S0.yellow || dim; g.font = F(700, 32, fam); g.fillText(vsLine, 72, 390); }
+  // stats: hex cells on Skyline, tiles everywhere else
+  const ty = 450;
+  if (S0.hex) { const hex = (x, y, r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); };
+    stats.forEach(([a, b], i) => { const x = W / 2 + (i - 1.5) * 234, y = ty + 110; hex(x, y, 112); g.fillStyle = i === 2 && d.top.length ? acc : 'rgba(20,34,84,.92)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.stroke();
+      g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = F(800, a.length > 5 ? 42 : 54, fam); g.fillText(a, x, y + 6); g.font = F(700, 20, fam); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(sp(b.toUpperCase(), 2), x, y + 44); g.letterSpacing = '0px'; g.textAlign = 'left'; }); }
+  else { const tw = (W - 144 - 3 * 20) / 4; stats.forEach(([a, b], i) => { const x = 72 + i * (tw + 20);
+      if (S0.tape) { g.save(); g.translate(x + tw / 2, ty + 110); g.rotate((i % 2 ? 1 : -1) * .015); g.translate(-(x + tw / 2), -(ty + 110)); }
+      g.fillStyle = card; RR(x, ty, tw, 220, 26); g.fill(); g.strokeStyle = line; g.lineWidth = 2; g.stroke();
+      if (S0.tape) { g.fillStyle = 'rgba(244,183,40,.55)'; g.fillRect(x + tw / 2 - 40, ty - 14, 80, 30); }
+      g.fillStyle = i === 2 && d.top.length ? acc : ink; g.font = F(800, a.length > 5 ? 44 : 60, fam); g.fillText(a, x + 22, ty + 120); g.fillStyle = dim; g.font = F(600, 24, fam); g.fillText(b, x + 22, ty + 170);
+      if (S0.tape) g.restore(); }); }
+  // records, then sets by muscle as bars
+  let y = 760; const lifts = d.top.slice(0, 4), mus = d.musL.slice(0, 4), mx = mus.length ? mus[0][1] : 1;
+  const boxH = 60 + Math.max(1, lifts.length) * 64;
+  g.fillStyle = card; RR(56, y, W - 112, boxH, 28); g.fill(); g.strokeStyle = line; g.lineWidth = 2; g.stroke();
+  g.fillStyle = dim; g.font = F(800, 24, fam); g.fillText(sp(S0.lifts, 4), 92, y + 50); g.letterSpacing = '0px';
+  if (!lifts.length) { g.fillStyle = dim; g.font = F(600, 32, fam); g.fillText('No new records this month', 92, y + 104); }
+  lifts.forEach((p, i) => { const yy = y + 104 + i * 64; g.fillStyle = ink; g.font = F(700, 34, fam); g.fillText(fit(p.ex, 24), 92, yy); g.textAlign = 'right'; g.fillStyle = acc; g.font = F(800, 34, fam); g.fillText(setStr(p.set), W - 92, yy); g.textAlign = 'left'; });
+  y += boxH + 24;
+  if (mus.length && y + 200 < H - 90) { const mh = Math.min(H - 110 - y, 70 + mus.length * 52); g.fillStyle = card; RR(56, y, W - 112, mh, 28); g.fill(); g.strokeStyle = line; g.lineWidth = 2; g.stroke();
+    g.fillStyle = dim; g.font = F(800, 24, fam); g.fillText(sp(S0.mus, 4), 92, y + 50); g.letterSpacing = '0px';
+    mus.forEach(([m, n], i) => { const yy = y + 96 + i * 52; if (yy > y + mh - 16) return; g.fillStyle = ink; g.font = F(700, 28, fam); g.fillText(fit(m, 12), 92, yy); const bx = 330, bwd = W - 92 - bx - 70;
+      g.fillStyle = line; RR(bx, yy - 20, bwd, 18, 9); g.fill(); g.fillStyle = acc; RR(bx, yy - 20, Math.max(18, bwd * n / mx), 18, 9); g.fill(); g.textAlign = 'right'; g.fillStyle = dim; g.font = F(700, 26, fam); g.fillText(String(Math.round(n)), W - 92, yy); g.textAlign = 'left'; }); }
+  g.fillStyle = dim; g.font = F(600, 26, fam); g.textAlign = 'center'; g.fillText(sp(S0.foot, k === 'mono' ? 2 : 0), W / 2, H - 44); g.textAlign = 'left'; g.letterSpacing = '0px';
+  return c;
+}
 async function shareMonth(d) {
-  const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
-  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-  const F = (wt, px) => `${wt} ${px}px -apple-system, system-ui, sans-serif`;
-  g.fillStyle = v('--bg') || '#EFEBE5'; g.fillRect(0, 0, W, H);
-  g.fillStyle = v('--accent') || '#6C3FD6'; g.fillRect(0, 0, W, 330);
-  g.fillStyle = v('--accent-ink') || '#fff'; g.font = F(700, 40); g.fillText('MONTHLY REPORT', 72, 110); g.font = F(800, 120); g.fillText(monthName(d.ym), 64, 250);
-  const st = [[String(d.ws.length), 'workouts'], [dvol(d.vol), U() + ' lifted'], [String(d.top.length), 'PRs'], [d.w0 && d.w1 && d.w0 !== d.w1 ? bw(d.w1.w - d.w0.w, true) : '—', U() + ' weight']];
-  st.forEach(([a, b], i) => { const x = 56 + i * 246; g.fillStyle = v('--surface-solid') || '#fff'; g.beginPath(); g.roundRect(x, 380, 226, 190, 36); g.fill(); g.fillStyle = v('--text') || '#222'; g.font = F(800, 58); g.fillText(a, x + 26, 470); g.fillStyle = v('--text2') || '#666'; g.font = F(600, 32); g.fillText(b, x + 26, 528); });
-  let y = 670; g.font = F(700, 34); g.fillStyle = v('--text2') || '#666'; g.fillText('TOP LIFTS', 72, y); y += 70;
-  for (const p of d.top.slice(0, 7)) { g.fillStyle = v('--text') || '#222'; g.font = F(600, 44); g.fillText(p.ex.length > 26 ? p.ex.slice(0, 25) + '…' : p.ex, 72, y); g.textAlign = 'right'; g.fillText(setStr(p.set), W - 72, y); g.textAlign = 'left'; y += 72; }
-  g.fillStyle = v('--muted') || '#999'; g.font = F(800, 36); g.fillText('Job’s Done', 72, H - 72);
+  const c = await drawMonth(d);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
   const file = new File([blob], `jobdone-${d.ym}.png`, { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s Done ' + monthName(d.ym) }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Job’s Done ' + monthName(d.ym), text: inviteText() }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 function reportCard() {
