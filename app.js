@@ -1308,7 +1308,7 @@ function viewIdCard() {
     ${idOn('bw') && !lw ? `<label class="xr"><span class="grow">Body weight for the card<span class="s">Or log a weigh-in and it’s used instead</span></span><input class="xr-in" id="id-bw" inputmode="decimal" value="${o.bw ? dw(o.bw) : ''}" placeholder="${U()}"></label>` : ''}
     ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
   </div></section>
-  <section><div class="sgh">Front, back or off</div><div class="sgrp">
+  <section><div class="sgh">Card layout</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
     ${ID_FIELDS.filter(([k]) => !ID_FIXED.includes(k) && (k !== 'gym' || gymOn())).map(([k, t]) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`)).join('')}
   </div><p class="cap mt2">Level, time training, workouts and member since are always on the front. The front fits ${ID_FRONT_MAX} more. Only friends you’ve added by code see your card.</p></section>
@@ -2601,6 +2601,18 @@ function finHero(d) {
     <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold">${check}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
 }
+function monthHero(ym, d) {
+  const k = theme(), mon = esc(monthName(ym)), short = esc(monthName(ym).split(' ')[0]);
+  const tags = `<div class="rc-tags"><span class="rc-tag">${plural(d.ws.length, 'workout')}</span>${d.top.length ? `<span class="rc-tag pr">${d.top.length} PR${d.top.length === 1 ? '' : 's'}</span>` : ''}</div>`;
+  const sub = `<div class="fin-sub">${plural(d.days, 'day')} trained · ${dvol(d.vol)} ${U()} lifted</div>`;
+  if (k === 'mono') return `<div class="rc-hero fin fin-agent"><svg class="fin-scope" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="56"/><path d="M100 0v70M100 130v70M0 100h70M130 100h70"/></svg>
+    <div class="fin-eb">Monthly debrief · ${short}</div><h1>${mon}</h1><div class="fin-stamp">Case closed</div>${sub}${tags}</div>`;
+  if (k === 'spidey') return `<div class="rc-hero fin fin-sky">${halftoneSVG()}${webSVG('fin-web')}<div class="fin-cap"><div class="fin-eb">City report · The Daily Web</div><h1>${mon}</h1>${sub}</div>${tags}</div>`;
+  if (k === 'cliffs') { const n = new Date(), sk = skyNow(n.getHours() + n.getMinutes() / 60), tod = todOf(n.getHours());
+    return `<div class="rc-hero fin fin-summit tod-${tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}"><div class="fin-ridges" aria-hidden="true"></div><div class="fin-eb">Summit log · Month in the mountains</div><h1>${mon}</h1>${sub}${tags}</div>`; }
+  return `<div class="rc-hero fin fin-boulder">${chalkSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
+    <div class="fin-eb">Route book · Monthly sends</div><h1>${mon}</h1>${sub}${tags}</div></div>`;
+}
 // Boulder: a strip of used climbing tape: torn zigzag ends, creases, grime and chalky thumbprints.
 function tapeSVG(cls, seed) {
   let n = seed * 9301 + 49297; const r = () => ((n = (n * 16807) % 2147483647) / 2147483647);
@@ -3096,8 +3108,7 @@ function showMonth(ym) {
   const wd = d.w0 && d.w1 && d.w0 !== d.w1 ? d.w1.w - d.w0.w : null;
   UI.seenReport = UI.seenReport && UI.seenReport > ym ? UI.seenReport : ym; lsSave();
   el.innerHTML = `<div class="rc-body" style="--split:var(--accent);--ink:var(--accent-ink)">
-    <div class="rc-hero"><div class="rc-date">Monthly report</div><h1>${esc(monthName(ym))}</h1>
-      <div class="rc-tags"><span class="rc-tag">${d.ws.length} workout${d.ws.length === 1 ? '' : 's'}</span>${d.prs.length ? `<span class="rc-tag pr">${d.top.length} PR${d.top.length === 1 ? '' : 's'}</span>` : ''}</div></div>
+    ${monthHero(ym, d)}
     <div class="card rc-vol"><div class="eyebrow">Volume</div><div class="rc-big num">${dvol(d.vol)}<span class="unit">${U()}</span></div>
       ${d.pvol ? `<div class="rc-cmp"><div class="rc-bar"><span>${esc(monthName(ym).split(' ')[0])}</span><i><b style="width:${Math.round(d.vol / Math.max(d.vol, d.pvol) * 100)}%"></b></i><em class="num">${dvol(d.vol)}</em></div>
       <div class="rc-bar was"><span>${esc(monthName(addMonths(ym, -1)).split(' ')[0])}</span><i><b style="width:${Math.round(d.pvol / Math.max(d.vol, d.pvol) * 100)}%"></b></i><em class="num">${dvol(d.pvol)}</em></div>
