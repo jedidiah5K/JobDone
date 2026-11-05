@@ -2012,7 +2012,6 @@ function viewMe() {
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
     ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
     ${Object.keys(p.skipAsk || {}).length ? srow('Pop-ups you turned off', '<button class="btn sm" data-a="askAgain">Ask again</button>', plural(Object.keys(p.skipAsk).length, 'pop-up') + ' set to don’t ask again') : ''}
-    ${slink('Plate loader', 'plates')}
     ${slink('My exercises and muscle groups', 'myEx')}
   </div></section>
   <section><div class="sgh">Reminders</div><div class="sgrp">
@@ -2269,6 +2268,9 @@ const Sound = {
       // 20% louder (Job, 19 Oct), through a gentle limiter so peaks never get harsh
       const lim = this.ctx.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = .003; lim.release.value = .15;
       this.master.connect(lim).connect(this.ctx.destination);
+      // Keep the audio output awake (Job, 5 Nov: sounds sometimes came late). iPhone powers audio down when nothing plays,
+      // and waking it delays the next sound. A steady signal far too quiet to hear (-80 dB) keeps it ready; it mixes with music.
+      try { const k = this.ctx.createOscillator(), kg = this.ctx.createGain(); k.frequency.value = 40; kg.gain.value = .0001; k.connect(kg).connect(this.ctx.destination); k.start(); } catch (e) {}
     }
     if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') this.ctx.resume();
   },
