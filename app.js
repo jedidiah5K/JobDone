@@ -554,7 +554,7 @@ function openSheet(html, opts = {}) {
 // Pull a sheet down to close it, like iOS sheets.
 function dragToDismiss(sh) {
   const el = sh.el.querySelector('.sheet'); let y0 = null, x0 = 0, dy = 0, on = false;
-  el.addEventListener('touchstart', e => { if (el.scrollTop > 0 || e.target.closest('.ruler, textarea, input, .plate-tray, .bar-wrap')) { y0 = null; return; } y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; on = false; }, { passive: true });
+  el.addEventListener('touchstart', e => { if (el.scrollTop > 0 || e.target.closest('.ruler, textarea, input, .plate-tray, .bar-wrap, .ph-crop')) { y0 = null; return; } y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; on = false; }, { passive: true });
   el.addEventListener('touchmove', e => {
     if (y0 == null) return; const t = e.touches[0]; dy = t.clientY - y0;
     if (!on && (dy < 8 || Math.abs(t.clientX - x0) > dy)) { if (dy < -4) y0 = null; return; }
@@ -1330,14 +1330,37 @@ async function idShare() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 // Photo: cropped square and shrunk on the phone to 320 × 320 JPEG (about 20 KB) before it leaves.
+// Photo editor (Job, 5 Nov): drag to move, slider or pinch to zoom, and the card updates as you go. Saved as a 320 × 320 JPEG.
 async function idPhotoPick(file) {
   if (!file || !/^image\//.test(file.type)) return toast('Pick a photo');
   const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
   if (!im) return toast('Couldn’t open that photo');
-  const W = 320, H = 320, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
-  const s = Math.max(W / im.naturalWidth, H / im.naturalHeight); g.drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 3, im.naturalWidth * s, im.naturalHeight * s);
-  let q = .82, d = cv.toDataURL('image/jpeg', q); while (d.length >= 88000 && q > .4) { q -= .12; d = cv.toDataURL('image/jpeg', q); }
-  await idPhotoSave(d);
+  const N = 320, iw = im.naturalWidth, ih = im.naturalHeight, base = Math.max(N / iw, N / ih);
+  let z = 1, cx = 0, cy = 0; // zoom on top of "fill the square", and the offset of the photo's centre in square pixels
+  const clamp = () => { const s = base * z, mx = Math.max(0, (iw * s - N) / 2), my = Math.max(0, (ih * s - N) / 2); cx = Math.max(-mx, Math.min(mx, cx)); cy = Math.max(-my, Math.min(my, cy)); };
+  const paint = cv => { const g = cv.getContext('2d'), s = base * z, k = cv.width / N; g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, (N / 2 + cx - iw * s / 2) * k, (N / 2 + cy - ih * s / 2) * k, iw * s * k, ih * s * k); };
+  const sh = openSheet(`<div class="stack"><div><h2>Your photo</h2><p class="cap m0">Drag to move it. Use the slider to zoom.</p></div>
+    <div class="ph-crop"><canvas id="ph-cv" width="640" height="640"></canvas></div>
+    <label class="row g3"><span class="cap">Zoom</span><input type="range" id="ph-z" min="1" max="4" step="0.01" value="1" class="grow"></label>
+    <img id="ph-card" class="idc" alt="How your card will look">
+    <button class="btn block primary" id="ph-ok">Use photo</button></div>`, { label: 'Your photo', mount: b => {
+    const cv = b.querySelector('#ph-cv'), zr = b.querySelector('#ph-z'), card = b.querySelector('#ph-card'); let t = 0;
+    const out = () => { const o = document.createElement('canvas'); o.width = o.height = N; paint(o); let q = .82, d = o.toDataURL('image/jpeg', q); while (d.length >= 88000 && q > .4) { q -= .12; d = o.toDataURL('image/jpeg', q); } return d; };
+    const preview = () => { clearTimeout(t); t = setTimeout(() => { card.src = idSrc(idFront(idCard(), ID_CODE, U(), out(), 'Tap to open')); }, 120); };
+    const draw = () => { clamp(); paint(cv); preview(); };
+    zr.oninput = () => { z = +zr.value; draw(); };
+    const pts = new Map(); let last = null, pinch = null;
+    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, e); last = e; if (pts.size === 2) { const [p, q] = [...pts.values()]; pinch = { d: Math.hypot(p.clientX - q.clientX, p.clientY - q.clientY), z }; } });
+    cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, e); const k = N / cv.getBoundingClientRect().width;
+      if (pts.size === 2 && pinch) { const [p, q] = [...pts.values()]; z = Math.max(1, Math.min(4, pinch.z * Math.hypot(p.clientX - q.clientX, p.clientY - q.clientY) / pinch.d)); zr.value = z; }
+      else if (last) { cx += (e.clientX - last.clientX) * k; cy += (e.clientY - last.clientY) * k; }
+      last = e; draw(); });
+    const up = e => { pts.delete(e.pointerId); pinch = null; last = pts.size ? [...pts.values()][0] : null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    b.querySelector('#ph-ok').onclick = async () => { const d = out(); closeSheet(sh); await idPhotoSave(d); };
+    draw();
+  } });
+  const inp = document.getElementById('id-photo'); if (inp) inp.value = ''; // picking the same photo again still opens the editor
 }
 async function idPhotoSave(d) {
   if (d && !idPhotoOk(d)) return toast('That photo is too big. Try another.');
