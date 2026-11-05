@@ -1352,7 +1352,7 @@ function idLiftsSheet() {
   } });
 }
 async function friendAdd() {
-  const el = document.getElementById('fr-code'), v = (el && el.value || '').trim(); if (v.replace(/^jd-?/i, '').length < 6) return toast('Type the 6 letters after JD-');
+  const el = document.getElementById('fr-code'), v = (el && el.value || '').trim(); if (v.replace(/[^a-z0-9]/gi, '').length < 4) return toast('Type their friend code');
   try { const r = await gymRpc('jobdone_friend_add', { p_code: v });
     if (r && r.none) return toast('No one has that code. Check the letters.'); if (r && r.self) return toast('That’s your own code.'); if (r && r.full) return toast('You have 200 friends already.');
     el.value = ''; toast(esc(((r && r.card) || {}).n || 'Friend') + ' added'); await friendsLoad();

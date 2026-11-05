@@ -7,6 +7,6 @@
 -- Full SQL is in the Supabase migrations list for project xvyibgnjibzopwtxajin.
 -- Photo (migration "id_card_photo"): jobdone_cards.photo is a small JPEG data URL (under 90 KB, checked by regex) set through
 -- jobdone_card_photo(p_photo) (null removes it). jobdone_card_get, jobdone_friends_list and jobdone_friend_add also return it.
--- Pending (needs Job's OK): migration "id_hide_and_custom_codes"
+-- Applied 5 Nov: migration "id_hide_and_custom_codes"
 --   codes may be 4 to 12 letters/digits (custom ones like JEDIDIAH); Job's account gets JEDIDIAH;
 --   friends_list and friend_add return no photo when the card says hidden; friend_add tries the code as typed, then without a leading JD.
