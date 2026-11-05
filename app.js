@@ -1242,7 +1242,7 @@ function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // 
   if (cells.length) { s += `<line x1="40" y1="${PY + PS + 26}" x2="816" y2="${PY + PS + 26}" stroke="${L.ink}" stroke-opacity=".12" stroke-width="2"/>`;
     const cw = 776 / cells.length, n = cells.length === 3 ? 22 : 32, fs = cells.length === 3 ? 20 : 23;
     cells.forEach(([k, v, hot], i) => { const x = 40 + i * cw; s += T(x, PY + PS + 60, k, 15, 800, L.dim, 'letter-spacing="3"') + (v && v.badges ? v.badges.map((b, m) => badgeSVG(b, x + 20 + m * 50, PY + PS + 92, 19)).join('') : idWrap(v, n).map((ln, j) => T(x, PY + PS + 92 + j * (fs + 4), ln, fs, 700, hot ? L.acc : L.ink)).join('')); }); }
-  s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + (code === false ? T(40, 508, 'JOB’S DONE', 30, 800, L.acc, 'letter-spacing="4"') : T(40, 506, idCode(code), 28, 800, L.acc, 'letter-spacing="3"')) + T(816, 506, foot, 20, 600, L.dim, 'text-anchor="end"');
+  s += `<rect y="470" width="856" height="70" fill="${L.acc}" opacity=".14"/>` + (code === false ? T(40, 516, 'JOB’S DONE', 26, 800, L.acc, 'letter-spacing="4"') : T(40, 515, idCode(code), 26, 800, L.acc, 'letter-spacing="3"')) + T(816, 514, foot, 18, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // Back: top lifts (✓ = logged in Job's Done, no mark = typed in), then split, home gym, body.
@@ -1254,7 +1254,7 @@ function idBack(c, code, unit = 'kg') {
     const prs = c.prs.slice(0, 3).filter(x => Array.isArray(x));
     if (!prs.length) { s += T(40, y, 'No lifts picked yet', 26, 500, L.dim); y += 52; }
     prs.forEach(([l, w, r, ok]) => { s += T(40, y, cut(l, 22), 25, 600).replace('</text>', ok ? `<tspan dx="10" font-size="18" font-weight="800" fill="${L.acc}">✓</tspan></text>` : '</text>') + T(816, y, `${kg(w)} ${unit} × ${Math.floor(+r) || 1}`, 25, 800, L.acc, 'text-anchor="end"');
-      s += `<line x1="40" y1="${y + 16}" x2="816" y2="${y + 16}" stroke="${L.ink}" stroke-opacity=".1" stroke-width="2"/>`; y += 54; });
+      s += `<line x1="40" y1="${y + 16}" x2="816" y2="${y + 16}" stroke="${L.ink}" stroke-opacity=".1" stroke-width="2"/>`; y += 50; });
     if (prs.some(x => x[3])) { s += T(40, y - 6, '✓ logged in Job’s Done', 16, 600, L.dim); y += 20; }
     y += 22;
   }
@@ -1265,12 +1265,12 @@ function idBack(c, code, unit = 'kg') {
   let ry = y;
   for (let i = 0; i < rows.length; i += 2) {
     const pair = rows.slice(i, i + 2).map(r => [r, r[1] && r[1].badges ? r[1] : idWrap(r[1], 32)]), h = pair.some(([, w]) => w.length > 1) ? 88 : 64;
-    if (ry + h - 34 > 440) break;
+    if (ry + h - 10 > 470) break; // keep a gap above the code strip
     pair.forEach(([[k, , hot], w], j) => { const x = 40 + j * 400; s += T(x, ry, k, 15, 800, L.dim, 'letter-spacing="3"') + (w.badges ? w.badges.map((b, m) => badgeSVG(b, x + 20 + m * 52, ry + 32, 19)).join('') : w.map((ln, m) => T(x, ry + 30 + m * 26, ln, 24, 700, hot ? L.acc : L.ink)).join('')); });
     ry += h;
   }
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
-  s += `<rect y="452" width="856" height="88" fill="${L.acc}" opacity=".14"/>` + T(40, 506, idCode(code), 28, 800, L.acc, 'letter-spacing="3"') + T(816, 506, 'Add me: Me → Friends', 20, 600, L.dim, 'text-anchor="end"');
+  s += `<rect y="470" width="856" height="70" fill="${L.acc}" opacity=".14"/>` + T(40, 515, idCode(code), 26, 800, L.acc, 'letter-spacing="3"') + T(816, 514, 'Add me: Me → Friends', 18, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // idcard:end
