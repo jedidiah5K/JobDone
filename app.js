@@ -1220,10 +1220,17 @@ function idCells(c, side, unit) {
 }
 // Front: photo, name, level, stats. photo is a data:image/jpeg URL or null (a silhouette stands in).
 // climbing holds sit on top of the left-side fade so they don't look washed out
+// climbing holds sit on top of the left-side fade. Matte, lumpy shapes like the Boulder wallpaper (not glossy ovals).
 function idHolds(below = 540) { // holds lower than `below` are left off so they don't sit under the extra front lines
+  // a lumpy blob: points round an ellipse with set bumps, smoothed through midpoints
+  const blob = (x, y, rx, ry, r, seed) => { const n = 5 + seed % 2, p = [];
+    for (let i = 0; i < n; i++) { const a = r * Math.PI / 180 + i / n * Math.PI * 2, k = .66 + ((seed * (i + 3) * 37) % 23) / 23 * .5; p.push([x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]); }
+    const m = i => { const a = p[i % n], b = p[(i + 1) % n]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; }, f = v => v.toFixed(1);
+    let d = `M${f(m(0)[0])} ${f(m(0)[1])}`; for (let i = 1; i <= n; i++) d += `Q${f(p[i % n][0])} ${f(p[i % n][1])} ${f(m(i)[0])} ${f(m(i)[1])}`; return d + 'Z'; };
   let s = '';
-    // mixed sizes and angles, kept clear of the name and the stats row
-    [[700, 112, 20, 13, -25, '#6C3FD6'], [800, 178, 44, 29, 12, '#F4B728'], [812, 300, 16, 11, 40, '#2BA39A'], [738, 338, 13, 9, 0, '#F4B728'], [655, 405, 30, 20, -15, '#E2463A'], [790, 440, 22, 15, 25, '#6C3FD6'], [105, 405, 32, 20, -12, '#E2463A'], [240, 352, 14, 9, 20, '#F4B728'], [350, 432, 22, 14, 35, '#6C3FD6'], [480, 352, 40, 24, -6, '#2BA39A'], [555, 445, 15, 10, -30, '#F4B728']].filter(([, y, , ry]) => y + ry < below).forEach(([x, y, rx, ry, r, c]) => { s += `<g transform="rotate(${r} ${x} ${y})"><ellipse cx="${x}" cy="${y + 5}" rx="${rx}" ry="${ry}" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"/><ellipse cx="${x - rx * .22}" cy="${y - ry * .3}" rx="${rx * .4}" ry="${ry * .26}" fill="#fff" opacity=".3"/><circle cx="${x}" cy="${y}" r="${rx > 30 ? 5 : 3.5}" fill="#3A3340"/></g>`; });
+  [[700, 112, 20, 13, -25, '#8C74D9'], [800, 178, 42, 28, 12, '#EEC64A'], [812, 300, 16, 12, 40, '#5FA46F'], [738, 338, 13, 10, 0, '#E99A57'], [655, 405, 30, 21, -15, '#E58BB0'], [790, 440, 22, 16, 25, '#6F8FD8'], [105, 405, 32, 22, -12, '#6F8FD8'], [240, 352, 14, 10, 20, '#EEC64A'], [350, 432, 22, 15, 35, '#E58BB0'], [480, 352, 38, 25, -6, '#5FA46F'], [555, 445, 15, 11, -30, '#E99A57']]
+    .filter(([, y, , ry]) => y + ry < below).forEach(([x, y, rx, ry, r, c], i) => { const d = blob(x, y, rx, ry, r, i + 2);
+      s += `<path d="${blob(x + 4, y + 6, rx, ry, r, i + 2)}" fill="#6B5E50" opacity=".28"/><path d="${d}" fill="${c}"/><path d="${blob(x - rx * .12, y - ry * .18, rx * .62, ry * .5, r, i + 2)}" fill="#fff" opacity=".14"/><circle cx="${x + rx * .08}" cy="${y - ry * .1}" r="${rx > 28 ? 4 : 3}" fill="#4A4038" opacity=".55"/>`; });
   return s;
 }
 function idFront(c, code, unit = 'kg', photo = null, foot = 'Tap to flip') { // code false = no friend code on it
