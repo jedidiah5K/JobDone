@@ -1124,7 +1124,7 @@ const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 
 const ID_SIDE = { lv: 'f', yr: 'f', wk: 'f', since: 'f', prs: 'b', sp: 'f', gym: 'b', bw: 'b', ht: 'b', st: 'f', fav: 'b', life: 'b', prc: 'b', mon: 'b', bdg: 'b', motto: 'b' };
 // Level, time training, workouts and member since always sit on the front (Job, 5 Nov); the rest can move or hide.
 const ID_FIXED = ['lv', 'yr', 'wk', 'since'], ID_FRONT_MAX = 3; // body weight and height share one spot
-const idBackMax = liftsOnBack => liftsOnBack ? 4 : 10;
+const idBackMax = liftsOnBack => liftsOnBack ? 4 : 8; // what fits without crowding the code strip
 const idSide = (c, k) => ID_FIXED.includes(k) ? 'f' : (c.pl && (c.pl[k] === 'f' || c.pl[k] === 'b') ? c.pl[k] : ID_SIDE[k]);
 // The app's pick goes by time training and workouts logged, never by how much you lift.
 const idAutoLevel = (years, workouts) => years >= 3 || workouts >= 300 ? 2 : years >= 1 || workouts >= 80 ? 1 : 0;
@@ -1149,7 +1149,8 @@ function idArt(t, L) { // 856 × 540 scenes, the busy part on the right so text 
   if (t === 'climb') {
     let s = '';
     for (let y = 120; y < 540; y += 90) for (let x = 470; x < 856; x += 90) s += `<circle cx="${x}" cy="${y}" r="4" fill="#C9C0B4"/>`;
-    [[560, 150, '#6C3FD6'], [740, 200, '#F4B728'], [620, 330, '#E2463A'], [800, 380, '#2BA39A'], [700, 470, '#6C3FD6']].forEach(([x, y, c]) => { s += `<ellipse cx="${x}" cy="${y + 6}" rx="40" ry="26" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="40" ry="27" fill="${c}"/><ellipse cx="${x - 9}" cy="${y - 8}" rx="16" ry="7" fill="#fff" opacity=".3"/><circle cx="${x}" cy="${y}" r="5" fill="#3A3340"/>`; });
+    // mixed sizes and angles, kept clear of the name and the stats row
+    [[700, 112, 20, 13, -25, '#6C3FD6'], [800, 178, 44, 29, 12, '#F4B728'], [812, 300, 16, 11, 40, '#2BA39A'], [640, 372, 34, 22, -15, '#E2463A'], [765, 425, 24, 16, 25, '#6C3FD6'], [580, 438, 48, 24, -8, '#2BA39A'], [738, 338, 13, 9, 0, '#F4B728']].forEach(([x, y, rx, ry, r, c]) => { s += `<g transform="rotate(${r} ${x} ${y})"><ellipse cx="${x}" cy="${y + 5}" rx="${rx}" ry="${ry}" fill="rgba(0,0,0,.12)"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"/><ellipse cx="${x - rx * .22}" cy="${y - ry * .3}" rx="${rx * .4}" ry="${ry * .26}" fill="#fff" opacity=".3"/><circle cx="${x}" cy="${y}" r="${rx > 30 ? 5 : 3.5}" fill="#3A3340"/></g>`; });
     return s + `<path d="M830 76 C 760 220, 860 330, 800 540" stroke="${L.acc}" stroke-width="8" fill="none" stroke-linecap="round"/>`;
   }
   if (t === 'cliffs') {
