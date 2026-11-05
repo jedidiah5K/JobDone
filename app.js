@@ -664,7 +664,7 @@ function render() {
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, friends: viewFriends })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, friends: viewFriends, set: viewSet })[top.v](top) : ({ today: viewToday, splits: viewSplits, progress: viewProgress, me: viewMe })[NAV.tab]();
   try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
   try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
@@ -1311,31 +1311,41 @@ function meCard() {
   return `<div class="stack g2"><button class="idc-prev" data-a="idOpen" aria-label="Open your ID card"><img class="idc" alt="" src="${idSrc(idFront(idCard(), ID_CODE, U(), ID_PHOTO, 'Tap to open'))}"></button>
     <div class="row between"><span class="cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</span><span class="row g2 me-acts">${ID_PHOTO ? '' : '<label class="btn sm">Add photo<input type="file" accept="image/*" id="id-photo" hidden></label>'}<button class="btn sm" data-a="idCard">Edit card</button></span></div></div>`;
 }
+// Card editor, grouped (Job, 5 Nov): About you, What's on the card (front / back / off, with each line's own input right under it), Sharing.
+const idSeg = (k, t) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`);
 function viewIdCard() {
   const o = S.profile.id || {}, c = idCard(), auto = ![0, 1, 2].includes(o.lv), names = ID_LEVELS[c.t] || ID_LEVELS.mono;
   if (!o.on) { S.profile.id = { ...o, on: true }; persist('jd/meta'); setTimeout(() => idSync(true), 0); }
-  const lw = latestWeight();
-  return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Your ID card</h1></div></div>
+  const lw = latestWeight(), seg = k => { const f = ID_FIELDS.find(x => x[0] === k); return f && (k !== 'gym' || gymOn()) ? idSeg(k, f[1]) : ''; };
+  return `<div class="stack">${backBtn('Me')}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Your ID card</h1></div></div>
   <button class="idc-prev" data-a="idOpen" aria-label="Open your ID card"><img class="idc" alt="" src="${idSrc(idFront(c, ID_CODE, U(), ID_PHOTO, 'Tap to open'))}"></button>
   <button class="btn block primary" data-a="idOpen">View card</button>
-  <section><div class="sgh">On your card</div><div class="sgrp">
+  <section><div class="sgh">About you</div><div class="sgrp">
     <div class="xr"><span class="grow">Photo<span class="s">Only friends you’ve added by code see it</span></span><label class="btn sm">${ID_PHOTO ? 'Change' : 'Add'}<input type="file" accept="image/*" id="id-photo" hidden></label>${ID_PHOTO ? '<button class="btn sm ghost" data-a="idPhotoRm">Remove</button>' : ''}</div>
-    ${idOn('lv') ? `<div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
-      <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>` : ''}
+    <div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
+      <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>
     <label class="xr"><span class="grow">Time training</span><select class="xr-in" id="id-yr">${ID_YEARS.map(([v, t]) => `<option value="${v}" ${(o.yr || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-    ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Top lifts<span class="s">${c.prs && c.prs.length ? esc(c.prs.map(x => x[0] + (x[3] ? ' ✓' : '')).join(', ')) : 'Pick from your lifts or type one in'}</span></span>${I.right}</button>` : ''}
-    ${idOn('bw') && !lw ? `<label class="xr"><span class="grow">Body weight for the card<span class="s">Or log a weigh-in and it’s used instead</span></span><input class="xr-in" id="id-bw" inputmode="decimal" value="${o.bw ? dw(o.bw) : ''}" placeholder="${U()}"></label>` : ''}
-    ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
-    ${idOn('motto') ? `<label class="xr"><span class="grow">Motto<span class="s">One line, up to 40 letters. Only friends see it.</span></span><input class="xr-in" id="id-motto" maxlength="40" value="${esc(o.motto || '')}" placeholder="Earn it"></label>` : ''}
+  </div><div class="sgf">Level, time training, workouts and member since are always on the front.</div></section>
+  <section><div class="sgh">Your training</div><div class="sgrp">
+    ${seg('prs')}
+    ${idOn('prs') ? `<button class="xr" data-a="idLifts"><span class="grow">Pick your top lifts<span class="s">${c.prs && c.prs.length ? esc(c.prs.map(x => x[0] + (x[3] ? ' ✓' : '')).join(', ')) : 'Pick from your lifts or type one in'}</span></span>${I.right}</button>` : ''}
+    ${seg('sp')}${seg('gym')}${seg('fav')}${seg('prc')}${seg('life')}${seg('st')}${seg('mon')}${seg('bdg')}
   </div></section>
-  <section><div class="sgh">Card layout</div><div class="sgrp">
+  <section><div class="sgh">About your body</div><div class="sgrp">
+    ${seg('bw')}
+    ${idOn('bw') && !lw ? `<label class="xr"><span class="grow">Body weight for the card<span class="s">Or log a weigh-in and it’s used instead</span></span><input class="xr-in" id="id-bw" inputmode="decimal" value="${o.bw ? dw(o.bw) : ''}" placeholder="${U()}"></label>` : ''}
+    ${seg('ht')}
+    ${idOn('ht') && !S.profile.heightCm ? snum('Height', 'set-h', 'heightCm', '', 'Add', 'cm') : ''}
+  </div></section>
+  <section><div class="sgh">Your words</div><div class="sgrp">
+    ${seg('motto')}
+    ${idOn('motto') ? `<label class="xr"><span class="grow">Motto<span class="s">One line, up to 40 letters. Only friends see it.</span></span><input class="xr-in" id="id-motto" maxlength="40" value="${esc(o.motto || '')}" placeholder="Earn it"></label>` : ''}
+  </div><div class="sgf">The front fits ${ID_FRONT_MAX} of these and the back fits ${idBackMax(idWhere('prs') === 'b')}.</div></section>
+  <section><div class="sgh">Sharing</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
-    ${ID_FIELDS.filter(([k]) => !ID_FIXED.includes(k) && (k !== 'gym' || gymOn())).map(([k, t]) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`)).join('')}
-  </div><p class="cap mt2">Level, time training, workouts and member since are always on the front. The front fits ${ID_FRONT_MAX} more and the back fits ${idBackMax(idWhere('prs') === 'b')}. Only friends you’ve added by code see your card.</p></section>
-  <section><div class="sgh">Friend code</div><div class="sgrp">
     ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
     ${slink('Friends', 'friends')}
-  </div></section></div>`;
+  </div><div class="sgf">Only friends you’ve added by code see your card. It follows your theme.</div></section></div>`;
 }
 // Opening the card or Friends gives you a code (your card is then saved for friends to see).
 function idTurnOn() { const o = S.profile.id || {}; if (o.on) return; S.profile.id = { ...o, on: true }; persist('jd/meta'); idSync(true); }
@@ -2027,12 +2037,21 @@ function repRangeRow() {
   const r = S.profile.repRange || [], set = r[0] && r[1];
   return `<div class="xr rr-row"><span class="grow">Rep range<span class="s">${set ? `Move up a weight once you hit ${r[1]} reps, then start again at ${r[0]}` : 'Optional. Your desired rep range before moving up a weight. Skipped means 6 to 9'}</span></span>${repPick(r[0], r[1], 'me')}</div>`;
 }
-function viewMe() {
+// Me is a short hub (Job, 5 Nov: organise the settings): your ID card, then one row per group. Each group is its own page.
+const ME_GROUPS = [
+  ['profile', 'Profile and goals', 'Name, height, goal weight, units, weekly target'],
+  ['workouts', 'Workouts', 'Rest, targets, rep range, your exercises'],
+  ['alerts', 'Reminders and sounds', 'Daily reminder, weigh-in pop-up, sounds'],
+  ['look', 'Theme and app', 'Wallpaper and colours, Home Screen app'],
+  ['steps', 'Steps', 'Apple Health and the evening Shortcut'],
+  ['account', 'Account and data', 'Sign-in, backups, import and export'],
+  ['help', 'Help and about', 'Tour, feedback, privacy, beta features']
+];
+function meParts() {
   const p = S.profile, lw = latestWeight(), fw = firstWeight(), on = f => !p[f];
   const goal = p.goalW ? `${bw(Math.abs(lw ? lw.w - p.goalW : 0))} ${U()} to your goal of ${bw(p.goalW)} ${U()}` : '';
-  return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div>${frBtn()}</div>
-  ${HOSTED && !DEMO ? meCard() : ''}<div class="card${HOSTED && !DEMO ? ' hide' : ''}"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${lw && fw ? bw(lw.w - fw.w, true) : '—'}</b><span>since ${fw ? esc(fmtDate(fw.d)) + (fw.src === 'estimated' ? ' (est.)' : '') : 'start'}</span></div></div>
-    <div class="mt3 cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}${goal && lw ? ' · ' + goal : ''}</div></div>
+    return {
+    profile: `
   <section><div class="sgh">You</div><div class="sgrp">
     ${snum('Name', 'set-name', 'name', esc(p.name || ''), 'Your name')}
     ${snum('Height', 'set-h', 'heightCm', p.heightCm || '', 'Add', 'cm')}
@@ -2043,6 +2062,8 @@ function viewMe() {
     ${snum('Daily steps', 'set-steps', 'stepGoal', p.stepGoal, '10000')}
     ${snum('Workouts per week', 'set-week', 'weeklyTarget', p.weeklyTarget, '4')}
   </div></section>
+`,
+    workouts: `
   <section><div class="sgh">Workouts</div><div class="sgrp">
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
@@ -2055,6 +2076,8 @@ function viewMe() {
     ${Object.keys(p.skipAsk || {}).length ? srow('Pop-ups you turned off', '<button class="btn sm" data-a="askAgain">Ask again</button>', plural(Object.keys(p.skipAsk).length, 'pop-up') + ' set to don’t ask again') : ''}
     ${slink('My exercises and muscle groups', 'myEx')}
   </div></section>
+`,
+    alerts: `
   <section><div class="sgh">Reminders</div><div class="sgrp">
     ${HOSTED ? remindRows(p) : ''}
     ${srow('Morning weigh-in pop-up', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
@@ -2063,12 +2086,16 @@ function viewMe() {
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
     ${slink('Play a test sound', 'soundTest', 'act')}
   </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your iPhone is on silent: flip the switch on the side (or turn off Silent Mode in Control Centre) to hear them. iPhone doesn’t let websites play sounds on silent without pausing your music.</div></section>
-  <section><div class="sgh">App</div><div class="sgrp">
-    ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add Job’s Done to your Home Screen', 'a2hs')}
-  </div></section>
+`,
+    look: `
   <section><div class="sgh">Theme</div><div class="sgrp pad">
     <div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div>
   </div></section>
+  <section><div class="sgh">App</div><div class="sgrp">
+    ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add Job’s Done to your Home Screen', 'a2hs')}
+  </div></section>
+`,
+    steps: `
   <section><div class="sgh">${p.stepSrc ? 'Steps from ' + esc(p.stepSrc) : 'Steps from Apple Health'}</div><div class="sgrp">
     ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to Apple Health' : 'Your iPhone (and any watch that syncs to it) counts steps in Apple Health'}, and an evening Apple Shortcut sends them on to Job’s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
     ${slink('Create sync key', 'syncKey', 'act')}
@@ -2085,6 +2112,8 @@ function viewMe() {
       </ol></details>` : `<p class="xr-p">Your steps are in Apple Health. Type them on Today, or paste them here. Sign in on the Job’s Done website to have a Shortcut send them every evening.</p>`}
     ${slink('Add or paste steps by hand', 'steps', 'act')}
   </div></section>
+`,
+    account: `
   ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
     ${srow('Signed in as', `<span class="xr-v">${esc(USER.email || 'your account')}</span>`)}
     ${slink('Change password', 'setPassword')}
@@ -2098,6 +2127,8 @@ function viewMe() {
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'danger')}
   </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+`,
+    help: `
   ${HOSTED && USER ? `<section><div class="sgh">Beta</div><div class="sgrp">
     ${srow('My Gym', swi(gymOn(), 'gymToggle'), 'Workouts built from your gym’s machines. Gym lists are shared with others at that gym')}
   </div></section>` : ''}
@@ -2111,8 +2142,25 @@ function viewMe() {
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED && USER ? slink('Delete account', 'delAccount', 'danger') : ''}
   </div></section>
+`
+  };
+}
+function viewMe() {
+  const p = S.profile, lw = latestWeight();
+  const sub = { look: (THEMES.find(t => t.k === theme()) || THEMES[0]).name + ' theme', account: HOSTED && USER ? esc(USER.email || 'Your account') : 'Backups, import and export', steps: p.stepSrc ? 'From ' + esc(p.stepSrc) : 'From Apple Health' };
+  return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div>${frBtn()}</div>
+  ${HOSTED && !DEMO ? meCard() : `<div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(w => !w.skipped).length, 'workout')}</b><span>logged</span></div></div></div>`}
+  <section><div class="sgh">Settings</div><div class="sgrp">
+    ${ME_GROUPS.filter(([k]) => k !== 'steps' || true).map(([k, t, d]) => `<button class="xr" data-a="meGroup" data-k="${k}"><span class="grow">${t}<span class="s">${sub[k] || d}</span></span>${I.right}</button>`).join('')}
+  </div></section>
   <p class="tc cap">Job’s Done early beta · Oct 2026</p>
 </div>`;
+}
+function viewSet(top) {
+  const g = ME_GROUPS.find(x => x[0] === top.k) || ME_GROUPS[0];
+  return `<div class="stack">${backBtn('Me')}<div class="top pt0"><div><div class="eyebrow">Settings</div><h1>${g[1]}</h1></div></div>
+${(h => (h.match(/class="sgh"/g) || []).length === 1 ? h.replace(/<div class="sgh">[^<]*(<[^>]+>[^<]*)*?<\/div>/, '') : h)(meParts()[g[0]])}
+</div>`; // one section: its heading would repeat the page title
 }
 
 // ---------- active workout ----------
@@ -4394,6 +4442,7 @@ const ACT = {
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   friends: () => { idTurnOn(); NAV.stack.push({ v: 'friends' }); FRIENDS = null; render(); },
   idShare: () => idShare(),
+  meGroup: el => { NAV.stack = [{ v: 'set', k: el.dataset.k }]; render(); },
   idOpen: () => { idTurnOn(); idView(idCard(), ID_CODE, ID_PHOTO, { share: true }); },
   idPhotoRm: () => idPhotoSave(null),
   atGymOn: () => atGymSet(true).then(rerender),
