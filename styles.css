@@ -1244,3 +1244,8 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 /* Big text on the smallest phones (under 300 px of room): drop the Previous column so kg, reps and the tick still fit */
 @media (max-width: 299px) { .sets th:nth-child(2), .sets td.prev { display: none; } }
 .wk-body { overflow-x: hidden; } /* never slides sideways, even with big text on small phones */
+
+/* What's new sheet */
+.news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.news li { display: flex; flex-direction: column; gap: 2px; }
+.news .sec { font-size: 15px; line-height: 1.35; }

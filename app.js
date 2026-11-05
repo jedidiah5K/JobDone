@@ -659,7 +659,7 @@ function render() {
     `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
-  screenChanged(); wireSwipe(); coach(); tourAuto(); labelIcons(document);
+  screenChanged(); wireSwipe(); coach(); tourAuto(); whatsNew(); labelIcons(document);
 }
 function labelIcons(root) { root.querySelectorAll('button[aria-label]:not([title])').forEach(b => { if (!b.textContent.trim()) b.title = b.getAttribute('aria-label'); }); }
 document.addEventListener('focusin', e => { const f = e.target; if (f.matches && f.matches('input, textarea, select') && f.closest('.sheet')) setTimeout(() => f.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300); });
@@ -1056,6 +1056,29 @@ function tourAuto() {
   const p = S && S.profile;
   if (!p || p.tour1 || !p.onboarded || TOUR || A || DEMO || ix().ws.length || SHEETS.length || NAV.stack.length) return;
   setTimeout(() => { if (!TOUR && !A && !SHEETS.length && S.profile && !S.profile.tour1) tourGo(); }, 900);
+}
+// What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
+// Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
+// To announce the next update: change NEWS_ID and the NEWS lines.
+const NEWS_ID = '2026-11-gym';
+const NEWS = [
+  ['My Gym (beta)', 'Pick your gym and branch, see its machines and build a workout from them. Snap a corner to add machines. Faces get blurred on your phone first.'],
+  ['Take the tour', 'Every tab, plus a practice workout that never saves. Me → Help.'],
+  ['Faster sets', 'Swipe a set left to delete it. Hold a set to copy it down. Add set copies your last ticked one.'],
+  ['PR on your first set', 'It asks if you want that weight for the rest of your sets.'],
+  ['Don’t ask again', 'Pop-ups can be silenced. Turn them back on in Me.'],
+];
+function whatsNew() {
+  const p = S && S.profile;
+  if (!p || !p.onboarded || p.news === NEWS_ID || DEMO || TOUR || A || SHEETS.length) return;
+  p.news = NEWS_ID; persist('jd/meta');
+  if (!ix().ws.length) return;
+  setTimeout(() => { if (TOUR || A || SHEETS.length) return;
+    const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Updated</div><h2>What’s new</h2></div>
+      <ul class="news">${NEWS.map(([t, d]) => `<li><b>${esc(t)}</b><span class="sec">${esc(d)}</span></li>`).join('')}</ul>
+      <button class="btn block primary" id="news-ok">Got it</button></div>`, { label: 'What’s new' });
+    sh.el.querySelector('#news-ok').onclick = () => closeSheet(sh);
+  }, 700);
 }
 // First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
 function coach() {
