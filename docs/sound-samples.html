@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sound samples</title>
+<style>
+:root { --bg: #0B1438; --card: #12204F; --ink: #fff; --dim: rgba(255,255,255,.65); --acc: #E2231A; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px -apple-system, system-ui, sans-serif; padding: 24px 16px 40px; max-width: 560px; margin: 0 auto; }
+h1 { font-size: 28px; margin-bottom: 6px; } p { color: var(--dim); margin-bottom: 18px; line-height: 1.4; }
+.row { background: var(--card); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.row b { display: block; margin-bottom: 4px; } .row span { display: block; color: var(--dim); font-size: 14px; margin-bottom: 10px; }
+.btns { display: flex; gap: 10px; }
+button { flex: 1; min-height: 44px; border: 0; border-radius: 10px; font: 600 15px -apple-system, system-ui, sans-serif; background: #22347A; color: #fff; }
+button.new { background: var(--acc); }
+button:active { transform: scale(.97); }
+</style></head><body>
+<h1>Sound samples</h1>
+<p>Tap Now for what the app plays today, and New for the tuned version. The new ones have a soft start so there's no click, a little shimmer so they sound like a bell instead of a beep, and a bit more body. Turn your silent switch off, or use AirPods.</p>
+<div id="list"></div>
+<script>
+// Same engine as the app: one Web Audio context, a master gain and a gentle limiter.
+let ctx, master;
+function init() {
+  if (ctx) { if (ctx.state !== 'running') ctx.resume(); return; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 1.2;
+  const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = .003; lim.release.value = .15;
+  master.connect(lim).connect(ctx.destination);
+}
+// Today's tone: starts at full volume (that's the tiny click) and fades out.
+function oldTone(f, dur, type, vol, at) {
+  const t0 = ctx.currentTime + at, o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + .02);
+}
+const oldPlay = (notes, type = 'sine', vol = .22) => notes.forEach(([f, at, len = .18]) => oldTone(f, len, type, vol * .6, at));
+// New tone: 6 ms fade-in, a bell's shimmer (two quiet overtones, slightly out of tune), and a longer soft tail.
+function bell(f, dur, vol, at, bright = 1) {
+  const t0 = ctx.currentTime + at;
+  [[1, 1], [2.005, .32 * bright], [3.01, .12 * bright]].forEach(([m, v], i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = i ? 'sine' : 'triangle';
+    o.frequency.setValueAtTime(f * m, t0);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol * v, t0 + .006);
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + dur * (i ? .6 : 1));
+    o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + .05);
+  });
+}
+const newPlay = (notes, vol = .13, bright = 1) => notes.forEach(([f, at, len = .25]) => bell(f, len, vol, at, bright));
+function softTick(at = 0) { // a short filtered click, like a dial notch
+  const t0 = ctx.currentTime + at, n = ctx.createBuffer(1, ctx.sampleRate * .012, ctx.sampleRate), d = n.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  const s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = n; bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 2; g.gain.value = .5;
+  s.connect(bp).connect(g).connect(master); s.start(t0);
+}
+const S = [
+  ['Rest done', 'When the rest timer ends',
+    () => oldPlay([[880, 0, .15], [880, .2, .15], [1175, .42, .4]]),
+    () => newPlay([[880, 0, .35], [880, .22, .35], [1175, .46, .9]], .14)],
+  ['Set ticked (nice)', 'A good set',
+    () => oldPlay([[659, 0, .2], [880, .1, .3]]),
+    () => newPlay([[659, 0, .35], [880, .1, .55]], .12)],
+  ['Great set', 'Beat last time',
+    () => oldPlay([[523, 0], [659, .09], [784, .18, .35]], 'triangle'),
+    () => newPlay([[523, 0, .3], [659, .09, .3], [784, .18, .7]], .13)],
+  ['PR / finished workout', 'The big one',
+    () => oldPlay([[523, 0], [659, .08], [784, .16], [1047, .26, .5], [1319, .26, .5]], 'triangle', .2),
+    () => { newPlay([[523, 0, .3], [659, .08, .3], [784, .16, .35], [1047, .26, 1.2], [1319, .26, 1.2]], .12); newPlay([[2093, .3, .8]], .04, .5); }],
+  ['Low set', 'Fewer reps than last time',
+    () => oldPlay([[392, 0, .22], [330, .16, .3]], 'triangle', .18),
+    () => newPlay([[392, 0, .35], [330, .16, .5]], .11, .6)],
+  ['Next exercise', 'Moving on to the next lift',
+    () => oldPlay([[784, 0, .12], [988, .1, .12], [1175, .2, .12], [1568, .3, .45]], 'square', .08),
+    () => newPlay([[784, 0, .22], [988, .1, .22], [1175, .2, .22], [1568, .3, .7]], .11)],
+  ['Dial tick', 'Scrolling the kg or reps dial',
+    () => oldPlay([[1800, 0, .025]], 'sine', .05),
+    () => softTick()],
+];
+document.getElementById('list').innerHTML = S.map(([t, d], i) => `<div class="row"><b>${t}</b><span>${d}</span><div class="btns"><button data-i="${i}" data-v="0">Now</button><button class="new" data-i="${i}" data-v="1">New</button></div></div>`).join('');
+document.getElementById('list').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; init(); S[+b.dataset.i][2 + +b.dataset.v](); });
+</script>
+</body></html>

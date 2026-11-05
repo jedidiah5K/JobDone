@@ -2287,34 +2287,47 @@ const Sound = {
       const pr = this.media.play(); if (pr && pr.catch) pr.catch(() => { this.media = null; });
     } catch (e) { this.media = null; }
   },
-  tone(freq, dur, type = 'sine', vol = .1, delay = 0) {
-    const c = this.ctx, t0 = c.currentTime + delay, osc = c.createOscillator(), g = c.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(freq, t0);
-    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
-    osc.connect(g).connect(this.master); osc.start(t0); osc.stop(t0 + dur + .02);
+  // Tuned sounds (Job picked all of them, 5 Nov): 6 ms fade-in so there's no click, two quiet slightly-detuned overtones
+  // for a bell's shimmer, and a longer soft tail.
+  bell(f, dur, vol, delay = 0, bright = 1) {
+    const c = this.ctx, t0 = c.currentTime + delay;
+    [[1, 1], [2.005, .32 * bright], [3.01, .12 * bright]].forEach(([m, v], i) => {
+      const o = c.createOscillator(), g = c.createGain(); o.type = i ? 'sine' : 'triangle'; o.frequency.setValueAtTime(f * m, t0);
+      g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol * v, t0 + .006); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur * (i ? .6 : 1));
+      o.connect(g).connect(this.master); o.start(t0); o.stop(t0 + dur + .05);
+    });
   },
+  // a short filtered click, like a dial notch
+  notch(delay = 0) {
+    const c = this.ctx, t0 = c.currentTime + delay, n = c.createBuffer(1, Math.ceil(c.sampleRate * .012), c.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(); src.buffer = n; bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 2; g.gain.value = .5;
+    src.connect(bp).connect(g).connect(this.master); src.start(t0);
+  },
+
 };
 let sfxLast = null;
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => Sound.unlock(), { passive: true, capture: true }));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Sound.ctx) Sound.ctx.resume(); });
-function tones(notes, type = 'sine', vol = .22) {
+// Plays a sound once audio is unlocked; skips when sounds are off in Me.
+function voice(play) {
   if (S && S.profile && S.profile.sound === false) return;
-  if (type === 'tick') type = 'sine';
   if (!Sound.ctx) Sound.unlock();
   Sound.silentMode();
   if (!Sound.ctx) { sfxLast = { name: 'no Web Audio' }; return; }
-  const go = () => { Sound.master.gain.value = SOUND_VOL; for (const [f, at, len = .18] of notes) Sound.tone(f, len, type, vol * .6, at); };
+  const go = () => { Sound.master.gain.value = SOUND_VOL; play(); };
   if (Sound.ctx.state === 'running') { go(); return; }
   return Sound.ctx.resume().then(() => { if (Sound.ctx.state === 'running') go(); else sfxLast = { name: 'audio ' + Sound.ctx.state }; }, e => { sfxLast = e; });
 }
+const bells = (notes, vol = .13, bright = 1) => voice(() => notes.forEach(([f, at, len = .25]) => Sound.bell(f, len, vol, at, bright)));
 const SOUNDS = {
-  low: () => tones([[392, 0, .22], [330, .16, .3]], 'triangle', .18),
-  nice: () => tones([[659, 0, .2], [880, .1, .3]]),
-  great: () => tones([[523, 0], [659, .09], [784, .18, .35]], 'triangle'),
-  amazing: () => tones([[523, 0], [659, .08], [784, .16], [1047, .26, .5], [1319, .26, .5]], 'triangle', .2),
-  next: () => tones([[784, 0, .12], [988, .1, .12], [1175, .2, .12], [1568, .3, .45]], 'square', .08),
-  tick: () => tones([[1800, 0, .025]], 'tick', .05),
-  rest: () => tones([[880, 0, .15], [880, .2, .15], [1175, .42, .4]]),
+  low: () => bells([[392, 0, .35], [330, .16, .5]], .11, .6),
+  nice: () => bells([[659, 0, .35], [880, .1, .55]], .12),
+  great: () => bells([[523, 0, .3], [659, .09, .3], [784, .18, .7]], .13),
+  amazing: () => voice(() => { [[523, 0, .3], [659, .08, .3], [784, .16, .35], [1047, .26, 1.2], [1319, .26, 1.2]].forEach(([f, at, len]) => Sound.bell(f, len, .12, at)); Sound.bell(2093, .8, .04, .3, .5); }),
+  next: () => bells([[784, 0, .22], [988, .1, .22], [1175, .2, .22], [1568, .3, .7]], .11),
+  tick: () => voice(() => Sound.notch()),
+  rest: () => bells([[880, 0, .35], [880, .22, .35], [1175, .46, .9]], .14),
   clank: (big = 1, delay = 0) => clank(big, delay),
 };
 // A plate sliding on and smacking into the one already on the bar: a sharp noise hit, a low thud and
