@@ -707,6 +707,15 @@ function gymBuild({ focus, have, last, swap = {}, extras = [], extra = () => [] 
   }
   return { list, missing };
 }
+// Machine taken (Job, 5 Nov): lifts that work the same thing on a different machine at your gym.
+// Same movement first (Job's list order), then the same muscle. The busy machine's other lifts are left out too.
+function gymTaken(name, rows, types, sameMuscle = []) {
+  // ponytail: a lift on two machine types (Lateral Raise: cables + dumbbells) marks both busy; pick by equipment if that bites
+  const busy = new Set(types.filter(t => t.lifts.includes(name)).map(t => t.key));
+  const have = gymLifts(rows.filter(r => !busy.has(r.type_key)), types);
+  const mv = GYM_MOVES.find(m => m.lifts.includes(name));
+  return [...new Set([...(mv ? mv.lifts : []), ...sameMuscle])].filter(l => l !== name && have.has(l));
+}
 // gym-builder:end
 
 const GYM_SCAN_READY = true; // Gemini key + on-phone face blur are in (Job, 4 Nov)
@@ -2633,16 +2642,22 @@ async function shareRecap(d) {
 }
 
 // ---------- Swap: same-muscle alternatives, ranked by your own history ----------
-function openSwap(ei) {
+function openSwap(ei, taken) {
   const e = A.ex[ei], cur = exInfo(e.name), h = ix().hist;
   const names = new Set([...LIB.map(x => x.name), ...(S.customEx || []).map(x => x.name)]);
   const n = x => (h[x] || []).length + (h[x + ' (L)'] || []).length;
   const alts = [...names].map(exInfo).filter(x => x.muscle === cur.muscle && x.name !== baseName(e.name))
     .sort((a, b) => n(b.name) - n(a.name) || (b.equip === cur.equip) - (a.equip === cur.equip) || a.name.localeCompare(b.name));
-  const sp = A.splitId && splitById(A.splitId), inSplit = sp && sp.ex.some(x => x.name === e.name);
-  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Swap ${esc(e.name)}</div><div class="mt1 cap">Other ${plural(esc(cur.muscle.toLowerCase()), 'exercise')}, the ones you do most first.</div></div>
+  const sp = A.splitId && splitById(A.splitId), inSplit = !taken && sp && sp.ex.some(x => x.name === e.name);
+  let list = alts.slice(0, 14), head = `Other ${plural(esc(cur.muscle.toLowerCase()), 'exercise')}, the ones you do most first.`;
+  if (taken) {
+    const c = gymCur(), byN = new Map(alts.map(x => [x.name, x]));
+    list = gymTaken(baseName(e.name), (GYM.eq || {})[c.gym_id] || [], GYM.types || [], alts.map(x => x.name)).filter(l => !A.ex.some(y => baseName(y.name) === l)).map(l => byN.get(l) || exInfo(l)).slice(0, 14); // not lifts already in today's workout
+    head = list.length ? `Same muscle, different machine at ${esc(c.brand)}.` : `Nothing else at ${esc(c.brand)} works this on another machine. Search all exercises, or wait it out.`;
+  }
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">${taken ? 'Machine taken' : 'Swap ' + esc(e.name)}</div>${taken ? `<h2 class="mt1">${esc(e.name)}</h2>` : ''}<div class="mt1 cap">${head}</div></div>
     ${inSplit ? `<label class="row between card tight"><span>Also change it in ${esc(sp.name)}</span><input type="checkbox" id="sw-keep" class="cbox"></label>` : ''}
-    <div class="list">${alts.slice(0, 14).map(x => { const l = lastSession(x.name); return `<button class="li" data-sw="${esc(x.name)}"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.equip)}${l ? ' · last ' + esc(l.sets.filter(validSet).map(setStr).join(', ')) + ' · ' + esc(relDay(l.date)) : ''}</div></div>${I.right}</button>`; }).join('') || '<div class="empty">No other exercises for this muscle yet.</div>'}</div>
+    ${list.length ? `<div class="list">${list.map(x => { const l = lastSession(x.name); return `<button class="li" data-sw="${esc(x.name)}"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.equip)}${l ? ' · last ' + esc(l.sets.filter(validSet).map(setStr).join(', ')) + ' · ' + esc(relDay(l.date)) : ''}</div></div>${I.right}</button>`; }).join('') || '<div class="empty">No other exercises for this muscle yet.</div>'}</div>` : ''}
     <button class="btn block" id="sw-all">Search all exercises</button></div>`, { label: 'Swap exercise', mount: b => {
     const go = name => {
       const keep = b.querySelector('#sw-keep') && b.querySelector('#sw-keep').checked; closeSheet(sh);
@@ -3303,7 +3318,7 @@ function exMenu(ei) {
     ${ei < A.ex.length - 1 ? `<button class="btn block" data-m="ss">${e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))}</button>` : ''}
     <button class="btn block" data-m="rest">Rest for this exercise: ${fmtRest(restFor(e.name))}${(S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'}</button>
     <button class="btn block" data-m="sides">${sideOf(e.name) ? 'Log both sides together' : 'Split into left and right'}</button>
-    <button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>${howtoFor(e.name) ? '<button class="btn block" data-m="howto">How to do it</button>' : ''}
+    ${gymOn() && gymCur() ? '<button class="btn block" data-m="taken">Machine taken</button>' : ''}<button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>${howtoFor(e.name) ? '<button class="btn block" data-m="howto">How to do it</button>' : ''}
     <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
     onClose: () => { },
@@ -3314,6 +3329,7 @@ function exMenu(ei) {
         if (m === 'rm') { if (!A) return; const [gone] = A.ex.splice(ei, 1); touchA(); toast(esc(e.name) + ' removed', 0, () => { if (!A) return; A.ex.splice(Math.min(ei, A.ex.length), 0, gone); touchA(); }); }
         if (m === 'sides') toggleSides(ei);
         if (m === 'swap') openSwap(ei);
+        if (m === 'taken') openSwap(ei, true);
         if (m === 'setup') openSetup(baseName(e.name));
         if (m === 'rest') openExRest(e.name);
         if (m === 'warm') addWarmups(ei);

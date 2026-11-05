@@ -47,3 +47,16 @@ assert.strictEqual(new Set(r.list.map(i => i.lift)).size, r.list.length, 'no lif
 // Everything = upper + lower.
 assert.strictEqual(gymBuild({ focus: 'all', have, last: never }).list.length, 5); // 3 upper + squat + calf
 console.log('gym builder: all checks passed');
+
+// Machine taken: same movement first, never the busy machine or its other lifts, only what the gym has.
+const { gymTaken } = new Function(code + '; return { gymTaken };')();
+const t2 = [...types, { key: 'smith', lifts: ['Smith Incline Press'] }, { key: 'dumbbells', lifts: ['Incline Dumbbell Press', 'Lateral Raise'] }];
+const r2 = [row('pec_dec', 2, 0, null), row('cable_stack', 2, 0, null), row('dumbbells', 2, 0, null), row('smith', 2, 0, null)];
+let tk = gymTaken('Chest Fly', r2, t2, ['Cable Crossover', 'Reverse Pec Deck', 'Incline Dumbbell Press']);
+assert.strictEqual(tk[0], 'Cable Crossover', 'same movement first');
+assert(!tk.includes('Reverse Pec Deck'), 'the busy pec dec is left out');
+assert(tk.includes('Incline Dumbbell Press'), 'same muscle on free weights is offered');
+tk = gymTaken('Lateral Raise', r2, t2, []);
+assert(!tk.includes('Lateral Raise'));
+assert.deepStrictEqual(gymTaken('Chest Fly', [row('pec_dec', 2, 0, null)], t2, ['Cable Crossover']), [], 'nothing else at the gym');
+console.log('machine taken: all checks passed');
