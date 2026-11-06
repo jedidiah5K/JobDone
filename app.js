@@ -1476,6 +1476,7 @@ const IC = {
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.6 3.6-5.5 6.5-5.5s5.5 1.9 6.5 5.5M19 8v6M16 11h6"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   smile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>',
+  rf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.6 4.5L20 16"/><path d="M20 21v-5h-5"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg>',
 };
 // A round face: their card photo, or their first letter on their theme colour.
@@ -1507,6 +1508,23 @@ function frFaces(list) {
   return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
     return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="ring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
 }
+// Refresh (Job, 6 Nov): the button, or pull down at the top of Friends. Friends, requests and the feed load side by side,
+// and what's on screen stays until the new data arrives (no blank flash).
+let FR_BUSY = false;
+async function frRefresh() {
+  if (FR_BUSY || !HOSTED) return; FR_BUSY = true; rerender();
+  const [f, r, p] = await Promise.allSettled([gymRpc('jobdone_friends_list'), gymRpc('jobdone_friend_requests'), gymRpc('jobdone_feed')]);
+  if (f.status === 'fulfilled') FRIENDS = f.value || []; if (r.status === 'fulfilled') REQS = r.value || []; if (p.status === 'fulfilled') FEED = p.value || [];
+  FR_BUSY = false; rerender();
+  toast([f, r, p].some(x => x.status === 'rejected') ? 'Couldn’t refresh everything. Check your connection.' : 'Up to date');
+}
+// Pull to refresh: drag down 70 px from the very top of the Friends page.
+{ let y0 = null, pulled = 0;
+  const onFriends = () => NAV.stack.length && NAV.stack[NAV.stack.length - 1].v === 'friends' && !SHEETS.length;
+  addEventListener('touchstart', e => { y0 = onFriends() && (document.scrollingElement.scrollTop <= 0) ? e.touches[0].clientY : null; pulled = 0; }, { passive: true });
+  addEventListener('touchmove', e => { if (y0 == null) return; pulled = Math.max(0, e.touches[0].clientY - y0); const ind = document.getElementById('fr-pull'); if (ind) { const k = Math.min(1, pulled / 70); ind.style.opacity = k; ind.style.transform = `translateY(${Math.min(pulled, 90) * .5}px) rotate(${k * 270}deg)`; } }, { passive: true });
+  addEventListener('touchend', () => { const ind = document.getElementById('fr-pull'); if (ind) { ind.style.opacity = ''; ind.style.transform = ''; } if (y0 != null && pulled > 70) frRefresh(); y0 = null; pulled = 0; }, { passive: true });
+}
 function viewFriends() {
   if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
   if (FEED === null && HOSTED) feedLoad();
@@ -1514,7 +1532,7 @@ function viewFriends() {
   const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
   const tab = UI.frTab || (list.length ? 'feed' : 'friends');
   const req = (r, btns) => `<div class="li"><span class="av av-l" style="--avc:var(--raised)">${esc((r.n || '?').charAt(0).toUpperCase())}</span><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
-  const head = `<div class="stack">${backBtn()}<div class="top pt0 fr-top"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
+  const head = `<div class="stack"><i class="fr-pull" id="fr-pull" aria-hidden="true">${IC.rf}</i>${backBtn()}<div class="top pt0 fr-top"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn fr-rf${FR_BUSY ? ' spin' : ''}" data-a="frRefresh" aria-label="Refresh" title="Refresh">${IC.rf}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
@@ -4782,6 +4800,7 @@ const ACT = {
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
+  frRefresh: () => frRefresh(),
   frTab: el => { UI.frTab = el.dataset.k; UI.rxOpen = null; rerender(); }, frAddSheet: () => frAddSheet(), frSettings: () => frSettings(),
   postRxOpen: el => { UI.rxOpen = UI.rxOpen === +el.dataset.k ? null : +el.dataset.k; rerender(); }, postComments: el => postComments(el.dataset.k),
   snap: () => snapStart(), nudge: el => nudge(el.dataset.k), postReact: el => postReact(el.dataset.k, el.dataset.v), postMenu: el => postMenu(el.dataset.k),

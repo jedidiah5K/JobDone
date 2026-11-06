@@ -1456,3 +1456,10 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .po-lifts div:last-child { border-bottom: 0; }
 .po-lifts span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .po-lifts b { font-weight: 600; white-space: nowrap; }
+
+/* Friends refresh (6 Nov): spinning icon while loading, and a pull indicator at the top */
+.fr-rf.spin svg { animation: frSpin .8s linear infinite; }
+@keyframes frSpin { to { transform: rotate(360deg); } }
+.fr-pull { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 6px); width: 30px; height: 30px; margin-left: -15px; z-index: 40; opacity: 0; pointer-events: none; color: var(--text); background: var(--surface); border-radius: 50%; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.fr-pull svg { width: 18px; height: 18px; }
+@media (prefers-reduced-motion: reduce) { .fr-rf.spin svg { animation: none; } }
