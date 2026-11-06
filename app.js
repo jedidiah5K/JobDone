@@ -1522,8 +1522,8 @@ async function frRefresh() {
 { let y0 = null, pulled = 0;
   const onFriends = () => NAV.stack.length && NAV.stack[NAV.stack.length - 1].v === 'friends' && !SHEETS.length;
   addEventListener('touchstart', e => { y0 = onFriends() && (document.scrollingElement.scrollTop <= 0) ? e.touches[0].clientY : null; pulled = 0; }, { passive: true });
-  addEventListener('touchmove', e => { if (y0 == null) return; pulled = Math.max(0, e.touches[0].clientY - y0); const ind = document.getElementById('fr-pull'); if (ind) { const k = Math.min(1, pulled / 70); ind.style.opacity = k; ind.style.transform = `translateY(${Math.min(pulled, 90) * .5}px) rotate(${k * 270}deg)`; } }, { passive: true });
-  addEventListener('touchend', () => { const ind = document.getElementById('fr-pull'); if (ind) { ind.style.opacity = ''; ind.style.transform = ''; } if (y0 != null && pulled > 70) frRefresh(); y0 = null; pulled = 0; }, { passive: true });
+  addEventListener('touchmove', e => { if (y0 == null) return; pulled = Math.max(0, e.touches[0].clientY - y0); const ind = document.getElementById('fr-pull'); if (ind) { const k = Math.min(1, pulled / 70); ind.style.visibility = pulled > 4 ? 'visible' : ''; ind.style.opacity = k; ind.style.transform = `translateY(${Math.min(pulled, 90) * .5}px) rotate(${k * 270}deg)`; } }, { passive: true });
+  addEventListener('touchend', () => { const ind = document.getElementById('fr-pull'); if (ind) { ind.style.opacity = ''; ind.style.transform = ''; ind.style.visibility = ''; } if (y0 != null && pulled > 70) frRefresh(); y0 = null; pulled = 0; }, { passive: true });
 }
 function viewFriends() {
   if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
