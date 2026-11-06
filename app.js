@@ -1759,6 +1759,17 @@ function inkOn(hex) {
   return L > .36 ? '#221E2B' : '#fff';
 }
 // A burst of hold-coloured confetti for PRs and finished workouts.
+// Numbers roll up from zero instead of appearing (Job, 6 Nov). Skipped when Reduce Motion is on.
+function rollNums(root) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  root.querySelectorAll('[data-roll]').forEach(el => {
+    const txt = el.textContent, to = parseFloat(txt.replace(/,/g, '')); if (!(to > 0)) return;
+    const dec = (txt.split('.')[1] || '').length, t0 = performance.now(), ms = 700;
+    const fmt = v => v.toLocaleString('en-GB', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const step = t => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = k < 1 ? fmt(to * e) : txt; if (k < 1) requestAnimationFrame(step); };
+    el.textContent = fmt(0); requestAnimationFrame(step);
+  });
+}
 function confetti(n = 60) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || S.profile.noConfetti) return;
   n = Math.min(40, Math.round(n * .4)); // brief and subtle since the Oct 2026 redesign
@@ -1836,7 +1847,7 @@ function viewToday() {
     <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
   ${past ? '' : frStrip()}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
+    <div class="card-h"><span class="eyebrow">${nextLbl()} ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
       ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
       ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
@@ -2859,22 +2870,27 @@ function recapData(id) {
 }
 const RC_LINE = {};
 // The top of the finish page, dressed for each theme (Job, 16 Oct: "more interesting", smaller title).
+// Small touches per theme (Job, 6 Nov): what "Next up" is called, and the seal stamped on the finish page.
+const NEXT_LBL = { mono: 'Next assignment', cliffs: 'Next ascent', climb: 'Next route', spidey: 'Next patrol' };
+const nextLbl = () => NEXT_LBL[theme()] || 'Next up';
+const FIN_SEAL = { cliffs: 'Summit reached', spidey: 'City safe' }; // Boulder's check hold presses in instead (its corner is full)
+const finSeal = k => FIN_SEAL[k] ? `<div class="fin-seal seal-${k} fin-press" aria-hidden="true">${FIN_SEAL[k]}</div>` : '';
 function finHero(d) {
   const k = theme(), num = String(d.num).padStart(3, '0'), when = esc(fmtDate(d.w.date, { wd: true }));
   const line = esc(d.line || (d.line = doneLine(d.w)));
   const tags = `<div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div>`;
   const check = `<div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>`;
   if (k === 'mono') return `<div class="rc-hero fin fin-agent"><svg class="fin-scope" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="56"/><path d="M100 0v70M100 130v70M0 100h70M130 100h70"/><circle class="dot" cx="100" cy="100" r="4"/></svg>
-    <div class="fin-eb">Mission complete · File ${num}</div><h1>Job’s done!</h1><div class="fin-stamp">Target down</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
+    <div class="fin-eb">Debrief · File ${num}</div><h1>Job’s done!</h1><div class="fin-stamp fin-press">Mission complete</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
   if (k === 'spidey') {
-    return `<div class="rc-hero fin fin-sky">${halftoneSVG()}${webSVG('fin-web')}
+    return `<div class="rc-hero fin fin-sky">${finSeal('spidey')}${halftoneSVG()}${webSVG('fin-web')}
       <canvas class="fin-bamc" width="860" height="580" aria-label="Job’s done!"></canvas>
       <div class="fin-cap"><div class="rc-line">${line}</div><div class="fin-sub">Swing #${d.num} · ${when}</div></div>${tags}</div>`;
   }
-  if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}"><div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
-    <div class="fin-eb">Summit reached · Route #${d.num}</div><h1>Job’s done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
+  if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}">${finSeal('cliffs')}<div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
+    <div class="fin-eb">Trail log · Route #${d.num}</div><h1>Job’s done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
   return `<div class="rc-hero fin fin-boulder">${chalkSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
-    <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold">${check}</div></div>
+    <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold fin-press">${check}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
 }
 function monthHero(ym, d) {
@@ -2943,14 +2959,14 @@ function showRecap(id, fresh) {
     ${finHero(d)}
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
-      <div class="rc-big num">${dvol(d.vol)}<span class="unit">${U()}</span></div>
+      <div class="rc-big num"><span data-roll>${dvol(d.vol)}</span><span class="unit">${U()}</span></div>
       <div class="cap">${esc(d.heavy)}</div>
       ${d.prev ? `<div class="rc-cmp">
         <div class="rc-bar"><span>Today</span><i><b style="width:${Math.round(d.vol / top * 100)}%"></b></i><em class="num">${dvol(d.vol)}</em></div>
         <div class="rc-bar was"><span>Last ${esc(fmtDate(d.prev.date))}</span><i><b style="width:${Math.round(pv / top * 100)}%"></b></i><em class="num">${dvol(pv)}</em></div>
         <div class="cap ${d.dv >= 0 ? 'c-pos' : ''}">${d.dv >= 0 ? `${Math.round(d.dv * 100)}% more volume than your last ${esc(d.w.splitName || 'workout')}` : d.w.planned && d.sets < d.w.planned ? `A shorter session: ${d.sets} of ${d.w.planned} planned sets done.` : `${Math.abs(Math.round(d.dv * 100))}% less volume than your last ${esc(d.w.splitName || 'workout')}`}</div></div>` : ''}
     </div>
-    <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b>${d.w.ex.length}</b><span>exercises</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.reps}</b><span>reps</span></div></div></div>
+    <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b data-roll>${d.w.ex.length}</b><span>exercises</span></div><div class="kpi"><b data-roll>${d.sets}</b><span>sets</span></div><div class="kpi"><b data-roll>${d.reps}</b><span>reps</span></div></div></div>
     ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
     <button class="card row between rc-fold" aria-expanded="false" data-fold><span><span class="eyebrow">Every lift</span><span class="mt1 rc-fold-s">${plural(h.length, 'exercise')} · muscles worked</span></span>${I.down}</button>
     <div class="rc-folded" hidden><div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${h.map(({ e, t, dl }) => `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><div class="rc-right"><b class="num">${t ? setStr(t) : '—'}</b>${dl}</div></div>`).join('')}</div></div>
@@ -2959,7 +2975,7 @@ function showRecap(id, fresh) {
     ${(() => { const nb = badgeList().filter(b => b.at === d.w.date); return nb.length ? `<div class="card"><div class="mb3 eyebrow">${nb.length > 1 ? 'Badges' : 'Badge'} earned</div><div class="badges">${nb.map(badgeHTML).join('')}</div></div>` : ''; })()}
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
-      <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · Next up: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
+      <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · ${nextLbl()}: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
     ${fresh && soOn() ? `<div class="card stack g2" id="rc-stamp" hidden><div class="eyebrow">Done Stamp</div><p class="cap m0">Sent to friends. Adding a photo is up to you.</p><div class="row g2"><button class="btn sm" id="rc-ph">Add photo</button><button class="btn sm ghost" id="rc-unst">Take it down</button></div></div>` : ''}
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
@@ -2971,6 +2987,7 @@ function showRecap(id, fresh) {
   { const f = el.querySelector('[data-fold]'), box = el.querySelector('.rc-folded'); if (f && box) f.onclick = () => { const open = box.hidden; box.hidden = !open; f.setAttribute('aria-expanded', open); f.classList.toggle('open', open); }; }
   el.querySelector('#rc-share').onclick = () => openShareSheet(d);
   stampWire(el, id);
+  if (fresh) rollNums(el); else el.querySelectorAll('.fin-press').forEach(x => x.classList.remove('fin-press'));
   if (fresh) { const w0 = S.workouts[id]; if (!(w0 && w0.planned && wSets(w0) < w0.planned)) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
 }
 // Draw the recap as a 1080x1350 share card. Each theme has its own card (Job, 16 Oct):
