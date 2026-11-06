@@ -1836,7 +1836,7 @@ function viewToday() {
     if (trained) done++;
     const cls = (trained ? 'done' : skipped ? 'miss' : d > T ? 'future' : d === T ? 'today' : '') + (past && d === t ? ' sel' : '');
     const sp = wk.find(w => !w.skipped);
-    return `<button class="d" data-a="day" data-k="${d}" aria-label="${esc(fmtDate(d, { wd: true }))}"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(splitTag(sp.splitName)) : skipped ? '×' : ''}</span></button>`;
+    return `<button class="d" data-a="day" data-k="${d}" aria-label="${esc(fmtDate(d, { wd: true }))}"><span>${WD[parseYmd(d).getDay()].slice(0, 1)}</span><span class="dot ${cls}" ${sp && wSplit(sp) ? `style="background:${wSplit(sp).color};border-color:${wSplit(sp).color};color:${inkOn(wSplit(sp).color)}"` : ''} title="${esc(fmtDate(d, { wd: true }))}${sp ? ': ' + esc(sp.splitName) : skipped ? ': skipped' : ''}">${sp ? esc(splitTag(sp.splitName)) : skipped ? '×' : ''}</span></button>`;
   }).join('');
   const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">

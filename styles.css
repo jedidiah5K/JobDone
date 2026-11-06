@@ -1369,3 +1369,10 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 :root[data-theme="mono"] .btn.primary:active { background: linear-gradient(180deg, #9E1025, #740A1A); }
 .rc-hero.fin > .fin-seal { position: absolute !important; left: auto; right: 14px; top: calc(14px + env(safe-area-inset-top, 0px)); }
 .tod-dusk > .seal-cliffs, .tod-night > .seal-cliffs { color: #FFC07A; }
+/* Tour bubble sits on the accent colour: its links and plain buttons always use the bubble's text colour,
+   even in themes that colour every link (Job, 6 Nov: red "Skip tour" on the red Skyline bubble). */
+#tour .tour-btns .link, #tour .tour-btns .btn:not(.primary) { color: inherit !important; }
+#tour .tour-btns .btn.primary { background: var(--accent-ink, #fff) !important; color: var(--accent) !important; }
+#coach .coach-x, #coach button:not(.primary) { color: inherit !important; }
+/* The monthly report banner keeps its accent colour in every theme (Boulder's cream card turned its white text invisible). */
+:root .card.rc-ready, :root[data-theme] .card.rc-ready { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000)) !important; color: var(--accent-ink, #fff) !important; }
