@@ -1362,7 +1362,8 @@ const frBtn = () => { if (!HOSTED) return ''; if (REQS === null) reqsLoad(); if 
 function meCard() {
   const lw = latestWeight(), p = S.profile;
   return `<div class="stack g2"><button class="idc-prev" data-a="idOpen" aria-label="Open your ID card"><img class="idc" alt="" src="${idSrc(idFront(idCard(), ID_CODE, U(), ID_PHOTO, 'Tap to open'))}"></button>
-    <div class="row between"><span class="cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged · BMI ${lw && p.heightCm ? (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : '—'}</span><span class="row g2 me-acts">${ID_PHOTO ? '' : '<label class="btn sm">Add photo<input type="file" accept="image/*" id="id-photo" hidden></label>'}<button class="btn sm" data-a="idCard">Edit card</button></span></div></div>`;
+    <div class="row between g3"><span class="cap">${plural(ix().ws.filter(w => !w.skipped).length, 'workout')} logged${lw && p.heightCm ? ' · BMI ' + (lw.w / (p.heightCm / 100) ** 2).toFixed(1) : ''}</span>${ID_PHOTO ? '' : '<label class="link">Add photo<input type="file" accept="image/*" id="id-photo" hidden></label>'}</div>
+    <button class="btn block primary" data-a="idCard">Edit card</button></div>`;
 }
 // Card editor, grouped (Job, 5 Nov): About you, What's on the card (front / back / off, with each line's own input right under it), Sharing.
 const idSeg = (k, t) => srow(t, `<div class="seg id-seg">${[['f', 'Front'], ['b', 'Back'], ['', 'Off']].map(([v, l]) => `<button class="${idWhere(k) === v ? 'on' : ''}" data-a="idWhere" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`);
@@ -1543,7 +1544,7 @@ async function stampPost(id) {
 function stampWire(el, id) {
   const ph = el.querySelector('#rc-ph'), un = el.querySelector('#rc-unst'); if (!ph) return;
   ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added to your stamp'); FEED = null; } catch (e) { postErr(e); } });
-  un.onclick = async () => { try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); el.querySelector('#rc-stamp').hidden = true; toast('Stamp taken down'); FEED = null; } catch (e) { toast('Couldn’t take it down. Try again.'); } };
+  un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); el.querySelector('#rc-stamp').hidden = true; toast('Stamp taken down'); FEED = null; } catch (e) { toast('Couldn’t take it down. Try again.'); } };
 }
 async function nudge(id) {
   const n = esc(((FRIENDS || []).find(x => x.id === id) || { card: {} }).card.n || 'them');
@@ -1899,7 +1900,7 @@ function viewSplits() {
   };
   return `<div class="stack">
   <div class="top"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
-  <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div><div class="mt1 cap">Next up on Today is the split after the one you did last. Saving a new order starts again from the first.</div></div><span class="cap">Edit</span></button>
+  <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div><div class="mt1 cap">Next up is the split after your last one.</div></div><span class="cap">Edit</span></button>
   ${act.map(card).join('')}
   ${arc.length ? `<details><summary class="link">Archived (${arc.length})</summary><div class="mt2 stack">${arc.map(card).join('')}</div></details>` : ''}
 </div>`;
@@ -1953,7 +1954,7 @@ function progBody() {
   const bmi = w => p.heightCm ? (w / ((p.heightCm / 100) ** 2)).toFixed(1) : '—';
   const st = steps30();
   return `<div class="card"><div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${U()}</span></div>
-    <div class="mb3 seg">${Object.keys(ranges).map(k => `<button class="${NAV.range === k ? 'on' : ''}" data-a="range" data-k="${k}">${k}</button>`).join('')}</div>
+    <div class="mb3 seg rng">${Object.keys(ranges).map(k => `<button class="${NAV.range === k ? 'on' : ''}" data-a="range" data-k="${k}">${k}</button>`).join('')}</div>
     ${lineChart({ series: [{ pts: list.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--text2)', dots: true, dotsOnly: list.length > 1, noArea: true, noEnd: true }, { pts: trend, color: 'var(--accent)', width: 2.6 }], h: 190, yfmt: v => bw(v) })}
     <div class="mt2 legend"><span><i style="background:var(--accent)"></i>Trend</span><span><i style="background:var(--text2);width:6px;height:6px;border-radius:50%"></i>Logged</span><span><i style="background:transparent;border:1.5px solid var(--text2);width:7px;height:7px;border-radius:50%"></i>Estimated</span></div>
   </div>
@@ -2516,7 +2517,7 @@ function exCardHTML(e, ei) {
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1">Delete</button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
-    <div class="mt2 row between"><button class="btn sm ghost" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="btn sm ghost sec" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
+    <div class="mt2 row between"><button class="btn sm" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="link sec rm-set" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
     ${cmp}`}
   </section>`;
 }
@@ -2738,7 +2739,6 @@ function celebrate(v, delay = 0) {
     c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>${v.note ? `<i>${esc(v.note)}</i>` : ''}`;
     c.onclick = () => c.remove(); // tap to close early
     document.body.appendChild(c); setTimeout(() => c.remove(), v.ms || 2200);
-    if (v.bits) confetti(v.bits);
     (SOUNDS[v.k] || (() => {}))();
   }, delay);
 }
@@ -2778,7 +2778,7 @@ function logSet(ei, si) {
         if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
       }
     }
-    if (pr.length) { buzz([20, 40, 60]); confetti(); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
+    if (pr.length) { buzz([20, 40, 60]); toast(`<span class="pill pr">PR</span> ${esc(e.name)}: ${esc(setStr(s))} · ${esc(pr.join(', '))}`); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
     // Job (4 Nov): PR on the first working set → offer that weight for the sets still to do.
     const work1 = e.sets.filter(x => x.t !== 'warm');
     if (pr.length && work1[0] === s && s.w > 0 && !TOUR) {
@@ -3541,8 +3541,8 @@ function measCard() {
   const m = S.meas || {}, ds = Object.keys(m).sort(), f = ds[0] && m[ds[0]], l = ds.length && m[ds[ds.length - 1]];
   const rows = MEAS.filter(([k]) => l && l[k]).map(([k, n]) => { const first = ds.map(d => m[d][k]).find(Boolean); const dd = l[k] - first; return `<tr><td>${n}</td><td class="r num">${trim(l[k])} cm</td><td class="r num ${dd < 0 ? 'c-pos' : 'sec'}">${ds.length > 1 && Math.abs(dd) > 0.05 ? (dd > 0 ? '+' : '−') + trim(Math.abs(Math.round(dd * 10) / 10)) : ''}</td></tr>`; }).join('');
   return `<div class="card"><div class="card-h"><span class="eyebrow">Measurements</span><span class="cap">optional</span></div>
-    ${rows ? `<table class="tbl"><tr><th>Area</th><th class="r">Latest</th><th class="r">Since ${esc(fmtDate(ds[0]))}</th></tr>${rows}</table>` : `<div class="cap">The scale can hide fat loss while you keep muscle. Add a tape measurement now and then if you like. Nothing here is required.</div>`}
-    <div class="mt3 row g4"><button class="link" data-a="meas">${rows ? 'Add measurements' : 'Add measurements'}</button><button class="link" data-a="photos">Progress photos</button></div></div>`;
+    ${rows ? `<table class="tbl"><tr><th>Area</th><th class="r">Latest</th><th class="r">Since ${esc(fmtDate(ds[0]))}</th></tr>${rows}</table>` : `<div class="cap">No measurements yet.</div>`}
+    <div class="mt3 row g4"><button class="link" data-a="meas">Add measurements</button><button class="link" data-a="photos">Progress photos</button></div></div>`;
 }
 function openMeas() {
   const t = today(), cur = (S.meas || {})[t] || {};
@@ -4588,7 +4588,7 @@ const ACT = {
   minWk: () => minimizeWk(),
   finish: () => {
     const work = A.ex.flatMap(e => e.sets.filter(s => s.t !== 'warm')), left = work.filter(s => !s.done).length;
-    const go = () => { A.view = 'summary'; touchA(); if (!left) setTimeout(() => confetti(90), 250); };
+    const go = () => { A.view = 'summary'; touchA(); };
     if (left && work.length - left > 0) confirmSheet({ title: `${plural(left, 'set')} left. Finish anyway?`, body: 'Sets you didn’t tick off aren’t saved. You can keep going instead.', ok: 'Finish workout', onOk: go });
     else go();
   },
@@ -4687,7 +4687,8 @@ const ACT = {
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-a]'); if (!el || el.disabled) return;
   const now = Date.now(); if (el === tapEl && now - tapAt < 350 && el.dataset.a !== 'rest') { ev.preventDefault(); return; } tapEl = el; tapAt = now; // no double runs on a double tap
-  const f = ACT[el.dataset.a]; if (f) { ev.preventDefault(); f(el, ev); }
+  // Slow actions (sending a request, a nudge…) keep their button off until they finish, so a second tap can't send twice.
+  const f = ACT[el.dataset.a]; if (f) { ev.preventDefault(); const r = f(el, ev); if (r && typeof r.finally === 'function') { el.disabled = true; r.finally(() => { el.disabled = false; }); } }
 });
 let tapEl = null, tapAt = 0;
 const IN = {
