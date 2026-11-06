@@ -1095,6 +1095,7 @@ function tourAuto() {
 const NEWS_ID = '2026-11-feed';
 const NEWS = [
   ['A proper feed', 'Friends now has a Feed: faces with today’s status, then posts with photos, stats, emoji reactions and comments. Double-tap a photo for a 🔥.'],
+  ['Share your workout', 'After a workout, post it to your feed with a line, every lift and a photo if you like. Or turn on Post every workout.'],
   ['Every theme, its own touches', 'Next up has a new name in each theme, the finish page stamps a seal, and the numbers count up. Agent has a new look.'],
   ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap the people button on Today.'],
   ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
@@ -1488,12 +1489,13 @@ function postHTML(p) {
   const who = mine ? 'You' : p.n || 'Friend', sub = (p.kind === 'snap' ? 'Snap' : esc(b.sp || 'Workout')) + ' · ' + agoShort(p.at);
   const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<div class="po-media" data-dbl="${p.id}"><img alt="${p.kind === 'snap' ? 'Snap' : 'Workout photo'} from ${esc(who)}" src="${p.photo}"><i class="po-burst" aria-hidden="true"></i></div>` : '';
   const stats = p.kind === 'stamp' ? `<div class="po-stats"><div><span>Volume</span><b class="num">${esc(b.v || '—')}</b></div><div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>${b.pr ? 'PRs' : 'Lifts'}</span><b class="num">${esc(b.pr ? String(b.pr) : String(b.l || '').replace(/\D/g, '') || '—')}</b></div></div>${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}` : '';
-  const cap = p.kind === 'snap' && b.c ? `<p class="po-cap"><b>${esc(who)}</b> ${esc(b.c)}</p>` : '';
+  const cap = b.c ? `<p class="po-cap"><b>${esc(who)}</b> ${esc(b.c)}</p>` : '';
+  const lifts = p.kind === 'stamp' && Array.isArray(b.ex) && b.ex.length ? `<div class="po-lifts">${b.ex.slice(0, 10).map(x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`).join('')}</div>` : '';
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
   const last = cm.slice(-2).map(c => `<p class="po-cm"><b>${esc(USER && c.u === USER.id ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p>`).join('');
   return `<article class="card po${p.kind === 'stamp' ? ' po-stamp' : ''}">
     <header class="po-h">${mine ? myFace() : face(p.n, p.ph, t)}<div class="grow"><b>${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
-    ${ph}<div class="po-b">${stats}${cap}
+    ${ph}<div class="po-b">${cap}${stats}${lifts}
     <div class="po-acts"><button class="po-act${p.mine ? ' on' : ''}" data-a="postRxOpen" data-k="${p.id}" aria-label="React" title="React">${p.mine ? `<span class="po-mine">${p.mine}</span>` : IC.smile}</button><button class="po-act" data-a="postComments" data-k="${p.id}" aria-label="Comments" title="Comments">${IC.chat}${cm.length ? `<b class="num">${cm.length}</b>` : ''}</button><span class="grow"></span>${sum}</div>
     ${UI.rxOpen === p.id ? `<div class="po-pick" role="group" aria-label="Pick a reaction">${REACTS.map(e => `<button class="${p.mine === e ? 'on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>` : ''}
     ${mine && p.who && p.who.length ? `<p class="po-who">${esc(p.who.map(w => w[1] + ' ' + (w[0] || 'Friend')).join(' · '))}</p>` : ''}
@@ -1537,7 +1539,7 @@ function frAddSheet() {
 function frSettings() {
   const body = () => { const o = SO(); return `<div class="stack"><h2>What friends see</h2><div class="sgrp">
     ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
-    ${o.off ? '' : srow('Ask for a snap during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
+    ${o.off ? '' : srow('Post every workout', swi(!!o.autoPost, 'soAuto'), o.autoPost ? 'Your Done Stamp goes up as soon as you finish' : 'Off: you choose on the finish page') + srow('Ask for a snap during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
     </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="btn block" data-a="closeSheet">Done</button></div>`; };
   const sh = openSheet(body(), { label: 'What friends see', mount: b => { b.addEventListener('click', () => setTimeout(() => { if (b.isConnected) b.innerHTML = body(); }, 0)); } });
 }
@@ -1601,16 +1603,40 @@ function snapMaybe() {
 }
 // Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
 const STAMP = {};
-async function stampPost(id) {
-  statSync(); if (!soOn()) return;
-  const d = recapData(id); if (!d.w) return;
+// Share to your feed (Job, 6 Nov): on the finish page you choose to post, add a line, show every lift, and add a photo.
+// "Post every workout" in What friends see skips the choice and posts the plain stamp straight away.
+async function stampPost(id, o = {}) {
+  statSync(); if (!soOn()) return false;
+  const d = recapData(id); if (!d.w) return false;
   const body = { sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
-  try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: null }); FEED = null; const el = document.getElementById('rc-stamp'); if (el) el.hidden = false; } catch (e) {}
+  if (o.c) body.c = String(o.c).slice(0, 80);
+  if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t ? setStr(t) : '']; });
+  try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: o.photo || null }); FEED = null; const el = document.getElementById('rc-feed'); if (el) el.innerHTML = stampDone(!!o.photo); return true; }
+  catch (e) { postErr(e); return false; }
 }
+const stampDone = ph => `<div class="row between"><span class="eyebrow">On your feed</span><span class="cap">Friends see it for 24 hours</span></div><div class="row g2"><button class="btn sm" id="rc-ph">${ph ? 'Change photo' : 'Add photo'}</button><button class="btn sm ghost" id="rc-unst">Take it down</button></div>`;
+const stampAsk = () => `<div class="eyebrow">Share to your feed</div><input class="input" id="rc-cap" maxlength="80" placeholder="Say something (optional)" autocomplete="off">
+  <label class="row between rc-opt"><span>Show every lift and top set</span><input type="checkbox" class="cbox" id="rc-ex" checked></label>
+  <div class="rc-ph-prev" id="rc-prev" hidden></div>
+  <div class="row g2"><button class="btn" id="rc-addph">Add photo</button><button class="btn grow rc-post" id="rc-post">Post to friends</button></div>`;
 function stampWire(el, id) {
-  const ph = el.querySelector('#rc-ph'), un = el.querySelector('#rc-unst'); if (!ph) return;
-  ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added to your stamp'); FEED = null; } catch (e) { postErr(e); } });
-  un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); el.querySelector('#rc-stamp').hidden = true; toast('Stamp taken down'); FEED = null; } catch (e) { toast('Couldn’t take it down. Try again.'); } };
+  const box = el.querySelector('#rc-feed'); if (!box) return;
+  let photo = null;
+  const wireDone = () => {
+    const ph = box.querySelector('#rc-ph'), un = box.querySelector('#rc-unst'); if (!ph) return;
+    ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added'); FEED = null; } catch (e) { postErr(e); } });
+    un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; box.innerHTML = stampAsk(); wireAsk(); toast('Taken down'); FEED = null; } catch (e) { un.disabled = false; toast('Couldn’t take it down. Try again.'); } };
+  };
+  const wireAsk = () => {
+    const add = box.querySelector('#rc-addph'), post = box.querySelector('#rc-post'), prev = box.querySelector('#rc-prev'); if (!post) return;
+    add.onclick = () => pickPhoto(d => { photo = d; prev.hidden = false; prev.innerHTML = `<img alt="Your photo" src="${d}"><button class="link" id="rc-rmph">Remove</button>`; add.textContent = 'Change photo'; prev.querySelector('#rc-rmph').onclick = () => { photo = null; prev.hidden = true; prev.innerHTML = ''; add.textContent = 'Add photo'; }; });
+    post.onclick = async () => { post.disabled = true; add.disabled = true;
+      const ok = await stampPost(id, { c: box.querySelector('#rc-cap').value.trim(), ex: box.querySelector('#rc-ex').checked, photo });
+      if (ok) { toast('Posted to your feed'); wireDone(); } else { post.disabled = false; add.disabled = false; } };
+  };
+  if (STAMP[id]) { box.innerHTML = stampDone(false); wireDone(); } else wireAsk();
+  // posted automatically while the page was opening
+  const mo = new MutationObserver(() => wireDone()); mo.observe(box, { childList: true });
 }
 async function nudge(id) {
   const n = esc(((FRIENDS || []).find(x => x.id === id) || { card: {} }).card.n || 'them');
@@ -2910,7 +2936,7 @@ function saveWorkout() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   persist(monthPath(w.date), 'jd/active', ...(metaChanged ? ['jd/meta'] : []));
   NAV.tab = 'today'; NAV.stack = []; render();
-  showRecap(w.id, true); stampPost(w.id);
+  showRecap(w.id, true); if (SO().autoPost) stampPost(w.id); else statSync();
 }
 
 // ---------- Job’s Done recap (after saving, or from a past workout) ----------
@@ -3044,7 +3070,7 @@ function showRecap(id, fresh) {
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · ${nextLbl()}: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
-    ${fresh && soOn() ? `<div class="card stack g2" id="rc-stamp" hidden><div class="eyebrow">Done Stamp</div><p class="cap m0">Sent to friends. Adding a photo is up to you.</p><div class="row g2"><button class="btn sm" id="rc-ph">Add photo</button><button class="btn sm ghost" id="rc-unst">Take it down</button></div></div>` : ''}
+    ${fresh && soOn() ? `<div class="card stack g2" id="rc-feed">${SO().autoPost ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
   document.body.appendChild(el);
@@ -4761,6 +4787,7 @@ const ACT = {
   snap: () => snapStart(), nudge: el => nudge(el.dataset.k), postReact: el => postReact(el.dataset.k, el.dataset.v), postMenu: el => postMenu(el.dataset.k),
   restDay: () => { S.profile.restDay = S.profile.restDay === today() ? null : today(); persist('jd/meta'); statSync(); rerender(); },
   soShare: () => { S.profile.so = { ...SO(), off: !SO().off }; persist('jd/meta'); statSync(); rerender(); },
+  soAuto: () => { S.profile.so = { ...SO(), autoPost: !SO().autoPost }; persist('jd/meta'); rerender(); },
   soSnap: () => { S.profile.so = { ...SO(), noSnap: !SO().noSnap }; persist('jd/meta'); rerender(); },
   soNudge: () => { S.profile.so = { ...SO(), nn: !SO().nn }; persist('jd/meta'); statSync(); rerender(); },
   frYes: el => friendAnswer(el.dataset.k, true), frNo: el => friendAnswer(el.dataset.k, false), frCancel: el => friendCancel(el.dataset.k),

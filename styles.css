@@ -1446,3 +1446,13 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .fr-faces { align-items: flex-start; }
 .fr-face .ring { margin-bottom: 2px; }
 .fr-face { width: 76px; } .fr-face b { max-width: 76px; } .fr-faces { gap: 8px; }
+
+/* Share to your feed (6 Nov) */
+.rc-opt { min-height: 44px; font-size: 15px; }
+.rc-ph-prev { display: flex; align-items: center; gap: 12px; }
+.rc-ph-prev img { width: 64px; height: 80px; object-fit: cover; border-radius: 8px; }
+.po-lifts { margin-top: 8px; border-top: .5px solid color-mix(in srgb, var(--text2) 25%, transparent); }
+.po-lifts div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 14px; border-bottom: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); }
+.po-lifts div:last-child { border-bottom: 0; }
+.po-lifts span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.po-lifts b { font-weight: 600; white-space: nowrap; }
