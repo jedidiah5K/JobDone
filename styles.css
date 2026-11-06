@@ -1439,3 +1439,10 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .cm-del { min-height: 0; font-size: 13px; padding: 0; color: var(--text2) !important; }
 .cm-in { align-items: center; }
 .ring.sm { padding: 2px; flex: none; } .ring.sm .av { width: 40px; height: 40px; font-size: 16px; display: grid; }
+/* Rings (6 Nov fix): every ring is the same size and drawn the same way, only colour and dash change, so the faces line up. */
+.ring, .ring.gym, .ring.done, .ring.rest, .ring.none { box-shadow: none; outline: 0; padding: 2.5px; border: 2.5px solid color-mix(in srgb, var(--text2) 30%, transparent); border-radius: 50%; display: inline-grid; place-items: center; box-sizing: content-box; }
+.ring.gym { border-color: #2FBF71; } .ring.done { border-color: var(--accent); } .ring.rest { border-style: dashed; border-color: var(--text2); }
+.ring.sm { padding: 2px; border-width: 2px; }
+.fr-faces { align-items: flex-start; }
+.fr-face .ring { margin-bottom: 2px; }
+.fr-face { width: 76px; } .fr-face b { max-width: 76px; } .fr-faces { gap: 8px; }
