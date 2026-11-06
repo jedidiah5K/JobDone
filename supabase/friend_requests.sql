@@ -1,0 +1,7 @@
+-- Friend requests (6 Nov 2026). Applied as migration "friend_requests" for project xvyibgnjibzopwtxajin.
+-- Typing a code now sends a request; the other person accepts or declines. If both ask each other, they become friends.
+-- New: table jobdone_friend_requests (RLS on, no policies), jobdone_friend_request(p_code) → {sent|friends|already|none|self|full|many, n},
+--   jobdone_friend_requests() → (id, n, code, dir 'in'|'out', at), jobdone_friend_answer(p_from, p_ok).
+-- jobdone_friend_remove(p_friend) now also cancels a request you sent. Same 10 tries an hour as before; 50 pending requests max.
+-- Before accepting, only the name (and the sender's code) shows. The old jobdone_friend_add is unused once v115 is live.
+-- Full SQL is in the Supabase migrations list.

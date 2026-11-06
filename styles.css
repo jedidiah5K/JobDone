@@ -1297,6 +1297,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .top:has(> .top-ic) { position: relative; }
 .top-ic { position: absolute; right: 0; top: 8px; width: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
 .top-ic svg { width: 22px; height: 22px; }
+.top-ic.has-dot::after { content: ''; position: absolute; top: 7px; right: 7px; width: 10px; height: 10px; border-radius: 50%; background: #E5484D; box-shadow: 0 0 0 2px var(--bg, #000); }
 .card.hide { display: none; }
 .me-acts { flex-shrink: 0; }
 .me-acts .btn { white-space: nowrap; }

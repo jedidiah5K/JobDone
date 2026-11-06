@@ -1356,7 +1356,9 @@ function idView(c, code, photo, o = {}) {
   setTimeout(() => card.focus(), 50);
 }
 // Me: the ID card itself sits at the top (Job, 5 Nov). Tap it to enlarge and flip; Edit card changes what's on it.
-const frBtn = () => HOSTED ? `<button class="btn sm top-ic" data-a="friends" aria-label="Friends" title="Friends">${I.friends}</button>` : '';
+// Friend requests (Job, 6 Nov): a red dot on the Friends button when someone has asked. Checked once per app open.
+const frBtn = () => { if (!HOSTED) return ''; if (REQS === null) reqsLoad(); const n = (REQS || []).filter(r => r.dir === 'in').length;
+  return `<button class="btn sm top-ic${n ? ' has-dot' : ''}" data-a="friends" aria-label="Friends${n ? ', ' + n + ' new' : ''}" title="Friends">${I.friends}</button>`; };
 function meCard() {
   const lw = latestWeight(), p = S.profile;
   return `<div class="stack g2"><button class="idc-prev" data-a="idOpen" aria-label="Open your ID card"><img class="idc" alt="" src="${idSrc(idFront(idCard(), ID_CODE, U(), ID_PHOTO, 'Tap to open'))}"></button>
@@ -1394,7 +1396,7 @@ function viewIdCard() {
   </div><div class="sgf">The front fits ${ID_FRONT_MAX} of these and the back fits ${idBackMax(idWhere('prs') === 'b')}.</div></section>
   <section><div class="sgh">Sharing</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
-    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends. There are no invite links.')}
+    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends to send you a request. There are no invite links.')}
     ${srow('Friend code on shared picture', swi(!o.shareNoCode, 'idShareCode'), o.shareNoCode ? 'Left off when you share your card' : 'Turn off to share your card without it')}
     ${slink('Friends', 'friends')}
   </div><div class="sgf">Only friends you’ve added by code see your card. Sharing makes a picture of the front only.</div></section></div>`;
@@ -1415,16 +1417,20 @@ function atGymAsk() {
   setTimeout(() => { if (!A) return; confirmSheet({ title: 'Tell friends you’re at the gym?', body: esc(atGymWhere()) + '. It clears when you finish.', ok: 'Tell them', no: 'Not now', key: 'atGym', noToo: true, onOk: () => atGymSet(true) }); }, 700);
 }
 const atGymAgo = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; };
-let FRIENDS = null;
-async function friendsLoad() { try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
+let FRIENDS = null, REQS = null;
+async function reqsLoad() { REQS = undefined; try { REQS = await gymRpc('jobdone_friend_requests') || []; } catch (e) { REQS = []; } rerender(); }
+async function friendsLoad() { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
 function viewFriends() {
   if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
-  const list = FRIENDS || [];
+  const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out');
+  const req = (r, btns) => `<div class="li"><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
   return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div></div>
   <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" data-a="friendAdd">Add</button></div>
     <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
   ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
     : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
+  ${rin.length ? `<div class="card"><div class="eyebrow">Friend requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
+  ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
   ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="list">${list.map(f => { const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono';
     return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${f.at_gym ? `<span class="live-txt"><i class="live-dot"></i>At ${esc(f.at_gym)} · ${atGymAgo(f.at_since)}</span><br>` : ''}${c.hidden ? 'Card hidden' : ''}${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
     : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
@@ -1506,10 +1512,20 @@ function idLiftsSheet() {
 }
 async function friendAdd() {
   const el = document.getElementById('fr-code'), v = (el && el.value || '').trim(); if (v.replace(/[^a-z0-9]/gi, '').length < 4) return toast('Type their friend code');
-  try { const r = await gymRpc('jobdone_friend_add', { p_code: v });
-    if (r && r.none) return toast('No one has that code. Check the letters.'); if (r && r.self) return toast('That’s your own code.'); if (r && r.full) return toast('You have 200 friends already.');
-    el.value = ''; toast(esc(((r && r.card) || {}).n || 'Friend') + ' added'); await friendsLoad();
-  } catch (e) { toast(/Too many/.test(e.message) ? 'Too many tries. Wait an hour.' : 'Couldn’t add them. Check your connection.'); }
+  try { const r = await gymRpc('jobdone_friend_request', { p_code: v }) || {}, n = esc(r.n || 'They');
+    if (r.none) return toast('No one has that code. Check the letters.'); if (r.self) return toast('That’s your own code.'); if (r.full) return toast('You have 200 friends already.');
+    if (r.many) return toast('You have 50 requests waiting. Cancel some first.'); if (r.already) return toast(n + ' is already your friend.');
+    el.value = ''; toast(r.friends ? n + ' asked you too. You’re friends now.' : 'Request sent. ' + n + ' needs to accept.'); await friendsLoad();
+  } catch (e) { toast(/Too many/.test(e.message) ? 'Too many tries. Wait an hour.' : 'Couldn’t send it. Check your connection.'); }
+}
+async function friendAnswer(id, ok) {
+  REQS = (REQS || []).filter(r => !(r.id === id && r.dir === 'in')); rerender();
+  try { await gymRpc('jobdone_friend_answer', { p_from: id, p_ok: ok }); if (ok) { toast('Friend added'); await friendsLoad(); } }
+  catch (e) { toast('Couldn’t do that. Check your connection.'); reqsLoad(); }
+}
+async function friendCancel(id) {
+  REQS = (REQS || []).filter(r => !(r.id === id && r.dir === 'out')); rerender();
+  try { await gymRpc('jobdone_friend_remove', { p_friend: id }); } catch (e) { toast('Couldn’t cancel it. Check your connection.'); reqsLoad(); }
 }
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
@@ -4514,6 +4530,7 @@ const ACT = {
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
+  frYes: el => friendAnswer(el.dataset.k, true), frNo: el => friendAnswer(el.dataset.k, false), frCancel: el => friendCancel(el.dataset.k),
   askAgain: () => { delete S.profile.skipAsk; persist('jd/meta'); rerender(); toast('Pop-ups will ask again'); },
   remind: async () => {
     const r = S.profile.remind || {};
