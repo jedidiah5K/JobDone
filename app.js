@@ -1357,7 +1357,7 @@ function idView(c, code, photo, o = {}) {
 }
 // Me: the ID card itself sits at the top (Job, 5 Nov). Tap it to enlarge and flip; Edit card changes what's on it.
 // Friend requests (Job, 6 Nov): a red dot on the Friends button when someone has asked. Checked once per app open.
-const frBtn = () => { if (!HOSTED) return ''; if (REQS === null) reqsLoad(); const n = (REQS || []).filter(r => r.dir === 'in').length;
+const frBtn = () => { if (!HOSTED) return ''; if (REQS === null) reqsLoad(); if (FRIENDS === null && USER) { FRIENDS = undefined; friendsLoad(true); } statSync(); const n = (REQS || []).filter(r => r.dir === 'in').length;
   return `<button class="btn sm top-ic${n ? ' has-dot' : ''}" data-a="friends" aria-label="Friends${n ? ', ' + n + ' new' : ''}" title="Friends">${I.friends}</button>`; };
 function meCard() {
   const lw = latestWeight(), p = S.profile;
@@ -1419,21 +1419,153 @@ function atGymAsk() {
 const atGymAgo = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; };
 let FRIENDS = null, REQS = null;
 async function reqsLoad() { REQS = undefined; try { REQS = await gymRpc('jobdone_friend_requests') || []; } catch (e) { REQS = []; } rerender(); }
-async function friendsLoad() { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
+async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; if (!quiet) toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
+// ---------- Friends today (Job, 6 Nov) ----------
+// Each friend's status for today (at the gym, trained, rest day, nothing yet), Done Stamps and snaps that last 24 hours,
+// three reactions, a once-a-day nudge, and weekly streaks you keep with each friend: weeks in a row you both hit your own number.
+const SO = () => S.profile.so || {};
+const soOn = () => HOSTED && SB && USER && !DEMO && !!(S.profile.id || {}).on && !SO().off;
+function myStat() {
+  const T = today(), ws = ix().ws.filter(w => !w.skipped), m = mondayOf(T), goal = S.profile.weeklyTarget || 3;
+  const per = {}; ws.forEach(w => { const k = mondayOf(w.date); per[k] = (per[k] || 0) + 1; }); const rw = new Set(S.profile.restWeeks || []);
+  let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
+  while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
+  const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k };
+  if (SO().nn) s.nn = true; return s;
+}
+let STAT_SENT = '';
+function statSync() {
+  if (!HOSTED || !SB || !USER || DEMO || !(S.profile.id || {}).on) return;
+  const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
+  gymRpc('jobdone_stat', { p: JSON.parse(s) }).catch(() => { STAT_SENT = ''; });
+}
+const frWeek = s => s && s.w === mondayOf(today()) ? `${s.wd} of ${s.wg} this week` : '';
+function frStatus(f) {
+  const s = f.stat, T = today(), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
+  if (f.at_gym) return { c: 'gym', t: `At ${f.at_gym} · ${atGymAgo(f.at_since)}` };
+  if (!s) return { c: '', t: '' };
+  if (s.d === T && s.tr && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.join(', ')) };
+  if (s.d === T && s.rest) return { c: 'rest', t: plus('Rest day') };
+  if (wk && s.wd >= s.wg) return { c: 'rest', t: 'Week done · ' + wk };
+  return { c: 'none', t: plus('Nothing yet today'), nudge: !s.nn };
+}
+// Weeks in a row you've both hit your own number. Their count is only trusted if they've opened the app since last week.
+const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(today()), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
+let FEED = null; const NUDGED = {};
+async function feedLoad() { FEED = undefined; try { FEED = await gymRpc('jobdone_feed') || []; } catch (e) { FEED = []; } rerender(); }
+const postHidden = () => { try { return JSON.parse(localStorage.getItem('jd-hidepost') || '[]'); } catch (e) { return []; } };
+const REACTS = [['light', 'Light weight'], ['strong', 'Strong'], ['respect', 'Respect']];
+function postHTML(p) {
+  const b = p.body || {}, mine = USER && p.user_id === USER.id, rc = p.reacts || {};
+  const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<img class="po-ph" alt="${p.kind === 'snap' ? 'Snap' : 'Workout photo'}" src="${p.photo}">` : '';
+  const main = p.kind === 'stamp' ? `<div class="po-big num">${esc(b.v || '')}</div><div class="cap">${esc([b.t, b.l, b.pr ? plural(+b.pr, 'PR') : ''].filter(Boolean).join(' · '))}</div>${b.h ? `<div class="cap">${esc(b.h)}</div>` : ''}`
+    : b.c ? `<div class="po-cap">${esc(b.c)}</div>` : '';
+  const who = mine && p.who && p.who.length ? `<div class="cap">${esc(p.who.map(w => (w[0] || 'Friend') + ': ' + ((REACTS.find(r => r[0] === w[1]) || [])[1] || '')).join(', '))}</div>` : '';
+  return `<div class="card stack g2 po${p.kind === 'stamp' ? ' po-stamp' : ''}"><div class="row between"><span class="eyebrow">${esc(mine ? 'You' : p.n || 'Friend')} · ${p.kind === 'snap' ? 'Snap' : esc(b.sp || 'Workout')}</span><span class="row g2"><span class="cap">${atGymAgo(p.at)} ago</span><button class="btn sm ghost po-more" data-a="postMenu" data-k="${p.id}" aria-label="More">···</button></span></div>
+    ${ph}${main}${mine ? who : `<div class="row g2 wrap">${REACTS.map(([k, l]) => `<button class="chip${p.mine === k ? ' on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${k}">${l}${rc[k] ? ` <b class="num">${rc[k]}</b>` : ''}</button>`).join('')}</div>`}</div>`;
+}
+function frRow(f) {
+  const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono', st = frStatus(f), k = frStreak(f);
+  const sub = [st.t || ((c.lv != null ? ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] + ' · ' : '') + plural(Math.floor(+c.wk) || 0, 'workout')), k ? plural(k, 'week') + ' together' : '', f.nudged_me ? 'Nudged you' : ''].filter(Boolean);
+  return `<div class="li fr-row"><button class="fr-open" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="fr-st lead ${st.c || 'none'}"${st.c ? '' : ` style="background:${ID_LOOK[t].acc}"`}></i>`}<span class="grow"><span class="t">${st.c && idPhotoOk(f.photo) && !c.hidden ? `<i class="fr-st ${st.c}"></i>` : ''}${esc(c.n || 'Friend')}</span><span class="s">${st.c === 'gym' ? '<span class="live-txt">' + esc(sub[0]) + '</span>' + (sub.length > 1 ? ' · ' + esc(sub.slice(1).join(' · ')) : '') : esc(sub.join(' · '))}</span></span></button>${st.nudge && soOn() ? `<button class="btn sm ghost" data-a="nudge" data-k="${esc(f.id)}" ${NUDGED[f.id] ? 'disabled' : ''}>${NUDGED[f.id] ? 'Nudged' : 'Nudge'}</button>` : I.right}</div>`;
+}
 function viewFriends() {
   if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
-  const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out');
+  if (FEED === null && HOSTED) feedLoad();
+  statSync();
+  const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
   const req = (r, btns) => `<div class="li"><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
-  return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div></div>
-  <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" data-a="friendAdd">Add</button></div>
-    <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
+  const o = SO();
+  return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div>${soOn() && list.length ? '<button class="btn sm primary" data-a="snap">Snap</button>' : ''}</div>
+  ${rin.length ? `<div class="card"><div class="eyebrow">Friend requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
   ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
     : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
-  ${rin.length ? `<div class="card"><div class="eyebrow">Friend requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
+  ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : ''}
+  ${posts.length ? `<div class="eyebrow fr-h">Last 24 hours</div>${posts.map(postHTML).join('')}` : ''}
+  <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn${list.length ? '' : ' primary'}" data-a="friendAdd">Add</button></div>
+    <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
   ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
-  ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="list">${list.map(f => { const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono';
-    return `<button class="li" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="sdot" style="background:${ID_LOOK[t].acc}"></i>`}<div class="grow"><div class="t">${esc(c.n || 'Friend')}</div><div class="s">${f.at_gym ? `<span class="live-txt"><i class="live-dot"></i>At ${esc(f.at_gym)} · ${atGymAgo(f.at_since)}</span><br>` : ''}${c.hidden ? 'Card hidden' : ''}${c.lv != null ? esc(ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))]) + ' · ' : ''}${esc(plural(Math.floor(+c.wk) || 0, 'workout'))}</div></div>${I.right}</button>`; }).join('')}</div></div>`
-    : '<div class="empty">No friends yet. Share your code, or type theirs above.</div>'}</div>`;
+  ${FRIENDS !== undefined && !list.length ? '<div class="empty">No friends yet. Share your code, or type theirs above.</div>' : ''}
+  <section><div class="sgh">What friends see</div><div class="sgrp">
+    ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
+    ${o.off ? '' : srow('Ask for a snap during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
+  </div><div class="sgf">Stamps and snaps disappear after 24 hours.</div></section></div>`;
+}
+// Small strip on Today: who's at the gym, who trained, who's resting, and who nudged you. Tap for Friends.
+function frStrip() {
+  if (!HOSTED || !(FRIENDS && FRIENDS.length)) return '';
+  const live = FRIENDS.map(f => ({ f, st: frStatus(f) })).filter(x => (x.st.c && x.st.c !== 'none') || x.f.nudged_me).slice(0, 3);
+  if (!live.length) return '';
+  return `<button class="card fr-strip" data-a="friends"><div class="row between"><span class="eyebrow">Friends today</span>${I.right}</div>${live.map(({ f, st }) => `<div class="fr-sl"><i class="fr-st ${st.c || 'none'}"></i><b>${esc((f.card || {}).n || 'Friend')}</b><span class="cap">${f.nudged_me && st.c !== 'gym' && st.c !== 'done' ? 'asked if you’re training today' : esc(st.t.split(' · ').slice(0, st.c === 'gym' ? 1 : 2).join(' · '))}</span></div>`).join('')}</button>`;
+}
+function restDayLine(T, trained) {
+  if (A || trained || !soOn() || !(FRIENDS && FRIENDS.length)) return '';
+  return S.profile.restDay === T ? `<div class="row between mt2 cap rest-line"><span>Rest day. Friends can see it.</span><button class="link" data-a="restDay">Undo</button></div>`
+    : `<div class="row between mt2 cap rest-line"><span>Not training today?</span><button class="link" data-a="restDay">Mark a rest day</button></div>`;
+}
+// Photos for stamps and snaps: cropped to 4:5, 720 × 900 JPEG, under 110 KB, made on the phone.
+// ponytail: photos live in the database row; move to a Storage bucket if posts ever get busy.
+async function postPhoto(file) {
+  if (!file || !/^image\//.test(file.type)) { toast('Pick a photo'); return null; }
+  const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
+  if (!im) { toast('Couldn’t open that photo'); return null; }
+  const W = 720, H = 900, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  cv.getContext('2d').drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
+  let q = .8, d = cv.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .25) { q -= .1; d = cv.toDataURL('image/jpeg', q); }
+  if (d.length >= 110000) { toast('That photo is too big. Try another.'); return null; }
+  return d;
+}
+function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const d = await postPhoto(i.files && i.files[0]); if (d) cb(d); }; i.click(); }
+const postErr = e => toast(/Too many/.test(e.message) ? 'That’s enough posts for today.' : 'Couldn’t send it. Check your connection.');
+function snapStart() {
+  if (!soOn()) return toast('Turn on Share my training in Friends first.');
+  pickPhoto(d => { const sh = openSheet(`<div class="stack"><h2>Snap</h2><img class="po-ph" src="${d}" alt="Your snap"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Send to friends</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Snap', mount: b => {
+    const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
+      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Snap sent'); FEED = null; rerender(); }
+      catch (e) { ok.disabled = false; postErr(e); } }; } }); });
+}
+// Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
+function snapMaybe() {
+  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap || !(FRIENDS && FRIENDS.length)) return;
+  if (!A.snapAt) A.snapAt = 3 + Math.floor(Math.random() * 6);
+  const n = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0); if (n < A.snapAt) return;
+  A.snapAsked = true; persist('jd/active');
+  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick snap?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
+}
+// Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
+const STAMP = {};
+async function stampPost(id) {
+  statSync(); if (!soOn()) return;
+  const d = recapData(id); if (!d.w) return;
+  const body = { sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
+  try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: null }); FEED = null; const el = document.getElementById('rc-stamp'); if (el) el.hidden = false; } catch (e) {}
+}
+function stampWire(el, id) {
+  const ph = el.querySelector('#rc-ph'), un = el.querySelector('#rc-unst'); if (!ph) return;
+  ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added to your stamp'); FEED = null; } catch (e) { postErr(e); } });
+  un.onclick = async () => { try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); el.querySelector('#rc-stamp').hidden = true; toast('Stamp taken down'); FEED = null; } catch (e) { toast('Couldn’t take it down. Try again.'); } };
+}
+async function nudge(id) {
+  const n = esc(((FRIENDS || []).find(x => x.id === id) || { card: {} }).card.n || 'them');
+  try { const r = await gymRpc('jobdone_nudge', { p_friend: id }) || {};
+    if (r.ok) { NUDGED[id] = 1; rerender(); return toast('Nudge sent to ' + n); }
+    if (r.done) { NUDGED[id] = 1; rerender(); }
+    toast(r.off ? n + ' has nudges turned off.' : r.done ? 'You already nudged ' + n + ' today.' : r.many ? 'That’s enough nudges for today.' : 'Couldn’t send it.');
+  } catch (e) { toast('Couldn’t send it. Check your connection.'); }
+}
+async function postReact(id, r) {
+  const p = (FEED || []).find(x => x.id === +id); if (!p) return;
+  const was = p.mine, rc = p.reacts = { ...(p.reacts || {}) }, nx = was === r ? null : r;
+  if (was) rc[was] = Math.max(0, (rc[was] || 1) - 1); if (nx) rc[nx] = (rc[nx] || 0) + 1; p.mine = nx; rerender();
+  try { await gymRpc('jobdone_react', { p_id: p.id, p_r: nx }); } catch (e) { toast('Couldn’t send that. Check your connection.'); feedLoad(); }
+}
+function postMenu(id) {
+  const p = (FEED || []).find(x => x.id === +id); if (!p) return;
+  if (USER && p.user_id === USER.id) return confirmSheet({ title: 'Take this down?', body: 'Friends won’t see it any more.', ok: 'Take it down', danger: true, key: false,
+    onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(x => x !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
+  const hide = () => { try { localStorage.setItem('jd-hidepost', JSON.stringify([...postHidden(), p.id].slice(-200))); } catch (e) {} rerender(); };
+  confirmSheet({ title: 'Hide this post?', body: 'Only you stop seeing it. Report it if it shouldn’t be here.', ok: 'Hide it', no: 'Report it', key: false, onOk: hide,
+    onNo: async () => { hide(); try { await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
 }
 // Share picture: both sides of the card on one Post-size image (1080 × 1350).
 // Share picture (Job, 5 Nov): only the front of the card, centred on the theme colour. The friend code can be left off.
@@ -1696,7 +1828,8 @@ function viewToday() {
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
   <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
     <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">${past ? 'week of ' + esc(fmtDate(ws)) : esc(streakText())}</span></div>
-    <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done)}</div>
+    <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
+  ${past ? '' : frStrip()}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     <div class="card-h"><span class="eyebrow">Next up ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
@@ -2633,7 +2766,7 @@ function logSet(ei, si) {
     const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
     if (!left) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
-    touchA();
+    touchA(); snapMaybe();
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
@@ -2694,7 +2827,7 @@ function saveWorkout() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   persist(monthPath(w.date), 'jd/active', ...(metaChanged ? ['jd/meta'] : []));
   NAV.tab = 'today'; NAV.stack = []; render();
-  showRecap(w.id, true);
+  showRecap(w.id, true); stampPost(w.id);
 }
 
 // ---------- Job’s Done recap (after saving, or from a past workout) ----------
@@ -2823,6 +2956,7 @@ function showRecap(id, fresh) {
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · Next up: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
+    ${fresh && soOn() ? `<div class="card stack g2" id="rc-stamp" hidden><div class="eyebrow">Done Stamp</div><p class="cap m0">Sent to friends. Adding a photo is up to you.</p><div class="row g2"><button class="btn sm" id="rc-ph">Add photo</button><button class="btn sm ghost" id="rc-unst">Take it down</button></div></div>` : ''}
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
   document.body.appendChild(el);
@@ -2832,6 +2966,7 @@ function showRecap(id, fresh) {
   el.querySelector('#rc-done').onclick = close;
   { const f = el.querySelector('[data-fold]'), box = el.querySelector('.rc-folded'); if (f && box) f.onclick = () => { const open = box.hidden; box.hidden = !open; f.setAttribute('aria-expanded', open); f.classList.toggle('open', open); }; }
   el.querySelector('#rc-share').onclick = () => openShareSheet(d);
+  stampWire(el, id);
   if (fresh) { const w0 = S.workouts[id]; if (!(w0 && w0.planned && wSets(w0) < w0.planned)) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
 }
 // Draw the recap as a 1080x1350 share card. Each theme has its own card (Job, 16 Oct):
@@ -4510,7 +4645,7 @@ const ACT = {
   gymStarterSave: () => { const ks = [...document.querySelectorAll('#gym-st .cbox:checked')].map(x => x.value); if (!ks.length) return toast('Tick the machines you can see first.'); gymAdd(ks, 'starter'); },
   gymLeave: () => { const c = gymCur(); if (c) confirmSheet({ title: 'Leave ' + gymTitle(c) + '?', body: 'Machines you added stay for everyone else.', ok: 'Leave', key: false, onOk: async () => { try { await gymRpc('jobdone_gym_leave', { g: c.gym_id }); if (S.profile.gymAt === c.gym_id) { delete S.profile.gymAt; persist('jd/meta'); } await gymRefresh(true); if (!(GYM.mine || []).length) { NAV.stack = []; render(); } } catch (e) { gymErr(e); } } }); },
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
-  friends: () => { idTurnOn(); NAV.stack.push({ v: 'friends' }); FRIENDS = null; render(); },
+  friends: () => { idTurnOn(); NAV.stack.push({ v: 'friends' }); FRIENDS = null; FEED = null; render(); },
   idShare: () => idShare(),
   meGroup: el => { NAV.stack = [{ v: 'set', k: el.dataset.k }]; render(); },
   idOpen: () => { idTurnOn(); idView(idCard(), ID_CODE, ID_PHOTO, { share: true }); },
@@ -4530,6 +4665,11 @@ const ACT = {
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
+  snap: () => snapStart(), nudge: el => nudge(el.dataset.k), postReact: el => postReact(el.dataset.k, el.dataset.v), postMenu: el => postMenu(el.dataset.k),
+  restDay: () => { S.profile.restDay = S.profile.restDay === today() ? null : today(); persist('jd/meta'); statSync(); rerender(); },
+  soShare: () => { S.profile.so = { ...SO(), off: !SO().off }; persist('jd/meta'); statSync(); rerender(); },
+  soSnap: () => { S.profile.so = { ...SO(), noSnap: !SO().noSnap }; persist('jd/meta'); rerender(); },
+  soNudge: () => { S.profile.so = { ...SO(), nn: !SO().nn }; persist('jd/meta'); statSync(); rerender(); },
   frYes: el => friendAnswer(el.dataset.k, true), frNo: el => friendAnswer(el.dataset.k, false), frCancel: el => friendCancel(el.dataset.k),
   askAgain: () => { delete S.profile.skipAsk; persist('jd/meta'); rerender(); toast('Pop-ups will ask again'); },
   remind: async () => {
