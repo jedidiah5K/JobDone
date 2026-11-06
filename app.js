@@ -1013,9 +1013,11 @@ const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
   { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
+  { tab: 'today', el: () => tq('#screen .top-ic'), t: 'Friends', d: 'Add friends by code. See who trained today, send a snap, or nudge someone who hasn’t.' },
   { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
   { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
   { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
+  { tab: 'me', el: () => tq('#screen .idc-prev'), t: 'Your ID card', d: 'Friends see it. Edit card picks what goes on it, and you can share a picture of it.' },
   { tab: 'me', el: () => [...document.querySelectorAll('#screen section .sgh')].find(e => e.textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
   { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
@@ -1090,13 +1092,15 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-gym';
+const NEWS_ID = '2026-11-friends';
 const NEWS = [
-  ['My Gym (beta)', 'Pick your gym and branch, see its machines and build a workout from them. Snap a corner to add machines. Faces get blurred on your phone first.'],
-  ['Take the tour', 'Every tab, plus a practice workout that never saves. Me → Help.'],
-  ['Faster sets', 'Swipe a set left to delete it. Hold a set to copy it down. Add set copies your last ticked one.'],
-  ['PR on your first set', 'It asks if you want that weight for the rest of your sets.'],
-  ['Don’t ask again', 'Pop-ups can be silenced. Turn them back on in Me.'],
+  ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap the people button on Today.'],
+  ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
+  ['Snaps and nudges', 'Send friends a quick photo that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
+  ['Streaks together', 'Weeks in a row you and a friend both hit your own number, even if you train on different days.'],
+  ['Your ID card', 'Level, top lifts, badges and more. Flip it, share a picture of it, or hide it. Me → Edit card.'],
+  ['Badges and monthly report', 'Earn badges as you train, and get a report card at the start of each month.'],
+  ['Rest days', 'Not training today? Mark it on Today so friends know.'],
 ];
 function whatsNew() {
   const p = S && S.profile;
@@ -4296,6 +4300,8 @@ function obTour() {
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
       mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job’s done!</div>`)],
+    ['Train with friends', 'Add friends by code and see who trained today. Your Done Stamp goes to them when you finish. Photos are optional.',
+      mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Sam · at the gym</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">2 weeks in a row together</div>`)],
     ['No signal? Keep lifting', 'Gym basement or flight mode, it still logs. Your sets sync when you’re back online, and your account is backed up every day.',
       mock('m-off', `<div class="m-pill"><i class="m-dot off"></i>Offline · 3 sets saved on this phone</div><div class="m-pill"><i class="m-dot"></i>Back online · All synced</div><div class="m-cap">Daily backup · kept for 14 days</div>`)],
   ];
