@@ -1558,6 +1558,80 @@ function postComments(id) {
         try { await gymRpc('jobdone_comment_delete', { p_cid: cid }); p.comments = p.comments.filter(c => c.id !== cid); b.innerHTML = html(); wire(); rerender(); } catch (e) { x.disabled = false; toast('Couldn’t delete it. Try again.'); } });
     }; wire(); } });
 }
+// Small strip on Today: who's at the gym, who trained, who's resting, and who nudged you. Tap for Friends.
+function frStrip() {
+  if (!HOSTED || !(FRIENDS && FRIENDS.length)) return '';
+  const live = FRIENDS.map(f => ({ f, st: frStatus(f) })).filter(x => (x.st.c && x.st.c !== 'none') || x.f.nudged_me).slice(0, 3);
+  if (!live.length) return '';
+  return `<button class="card fr-strip" data-a="friends"><div class="row between"><span class="eyebrow">Friends today</span>${I.right}</div>${live.map(({ f, st }) => `<div class="fr-sl"><i class="fr-st ${st.c || 'none'}"></i><b>${esc((f.card || {}).n || 'Friend')}</b><span class="cap">${f.nudged_me && st.c !== 'gym' && st.c !== 'done' ? 'asked if you’re training today' : esc(st.t.split(' · ').slice(0, st.c === 'gym' ? 1 : 2).join(' · '))}</span></div>`).join('')}</button>`;
+}
+function restDayLine(T, trained) {
+  if (A || trained || !soOn() || !(FRIENDS && FRIENDS.length)) return '';
+  return S.profile.restDay === T ? `<div class="row between mt2 cap rest-line"><span>Rest day. Friends can see it.</span><button class="link" data-a="restDay">Undo</button></div>`
+    : `<div class="row between mt2 cap rest-line"><span>Not training today?</span><button class="link" data-a="restDay">Mark a rest day</button></div>`;
+}
+// Photos for stamps and snaps: cropped to 4:5, 720 × 900 JPEG, under 110 KB, made on the phone.
+// ponytail: photos live in the database row; move to a Storage bucket if posts ever get busy.
+async function postPhoto(file) {
+  if (!file || !/^image\//.test(file.type)) { toast('Pick a photo'); return null; }
+  const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
+  if (!im) { toast('Couldn’t open that photo'); return null; }
+  const W = 720, H = 900, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  cv.getContext('2d').drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
+  let q = .8, d = cv.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .25) { q -= .1; d = cv.toDataURL('image/jpeg', q); }
+  if (d.length >= 110000) { toast('That photo is too big. Try another.'); return null; }
+  return d;
+}
+function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const d = await postPhoto(i.files && i.files[0]); if (d) cb(d); }; i.click(); }
+const postErr = e => toast(/Too many/.test(e.message) ? 'That’s enough posts for today.' : 'Couldn’t send it. Check your connection.');
+function snapStart() {
+  if (!soOn()) return toast('Turn on Share my training in Friends first.');
+  pickPhoto(d => { const sh = openSheet(`<div class="stack"><h2>Snap</h2><img class="po-ph" src="${d}" alt="Your snap"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Send to friends</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Snap', mount: b => {
+    const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
+      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Snap sent'); FEED = null; rerender(); }
+      catch (e) { ok.disabled = false; postErr(e); } }; } }); });
+}
+// Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
+function snapMaybe() {
+  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap || !(FRIENDS && FRIENDS.length)) return;
+  if (!A.snapAt) A.snapAt = 3 + Math.floor(Math.random() * 6);
+  const n = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0); if (n < A.snapAt) return;
+  A.snapAsked = true; persist('jd/active');
+  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick snap?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
+}
+// Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
+const STAMP = {};
+async function stampPost(id) {
+  statSync(); if (!soOn()) return;
+  const d = recapData(id); if (!d.w) return;
+  const body = { sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
+  try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: null }); FEED = null; const el = document.getElementById('rc-stamp'); if (el) el.hidden = false; } catch (e) {}
+}
+function stampWire(el, id) {
+  const ph = el.querySelector('#rc-ph'), un = el.querySelector('#rc-unst'); if (!ph) return;
+  ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added to your stamp'); FEED = null; } catch (e) { postErr(e); } });
+  un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); el.querySelector('#rc-stamp').hidden = true; toast('Stamp taken down'); FEED = null; } catch (e) { toast('Couldn’t take it down. Try again.'); } };
+}
+async function nudge(id) {
+  const n = esc(((FRIENDS || []).find(x => x.id === id) || { card: {} }).card.n || 'them');
+  try { const r = await gymRpc('jobdone_nudge', { p_friend: id }) || {};
+    if (r.ok) { NUDGED[id] = 1; rerender(); return toast('Nudge sent to ' + n); }
+    if (r.done) { NUDGED[id] = 1; rerender(); }
+    toast(r.off ? n + ' has nudges turned off.' : r.done ? 'You already nudged ' + n + ' today.' : r.many ? 'That’s enough nudges for today.' : 'Couldn’t send it.');
+  } catch (e) { toast('Couldn’t send it. Check your connection.'); }
+}
+async function postReact(id, r) {
+  const p = (FEED || []).find(x => x.id === +id); if (!p) return;
+  const was = p.mine, rc = p.reacts = { ...(p.reacts || {}) }, nx = was === r ? null : r;
+  if (was) rc[was] = Math.max(0, (rc[was] || 1) - 1); if (nx) rc[nx] = (rc[nx] || 0) + 1; p.mine = nx; UI.rxOpen = null; rerender();
+  try { await gymRpc('jobdone_react', { p_id: p.id, p_r: nx }); } catch (e) { toast('Couldn’t send that. Check your connection.'); feedLoad(); }
+}
+// Double-tap a photo for a 🔥 (like Instagram's heart).
+let dblAt = 0, dblId = null;
+document.addEventListener('click', ev => { const m = ev.target.closest('[data-dbl]'); if (!m) return; const id = m.dataset.dbl, now = Date.now();
+  if (dblId === id && now - dblAt < 320) { dblAt = 0; const b = m.querySelector('.po-burst'); if (b) { b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); } const p = (FEED || []).find(x => x.id === +id); if (p && p.mine !== '🔥' && !(USER && p.user_id === USER.id)) postReact(id, '🔥'); }
+  else { dblAt = now; dblId = id; } });
+
 function postMenu(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
   if (USER && p.user_id === USER.id) return confirmSheet({ title: 'Take this down?', body: 'Friends won’t see it any more.', ok: 'Take it down', danger: true, key: false,
