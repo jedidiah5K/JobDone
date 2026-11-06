@@ -1959,7 +1959,7 @@ function viewToday() {
     <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
   ${past ? '' : frStrip()}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow">${nextLbl()} ${infoBtn('rotation')}</span><button class="mh32 cap" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
+    <div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span><button class="mh32 cap nx-rot" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
     ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
       ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
       ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`

@@ -1474,3 +1474,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .ring .av { width: 60px; height: 60px; } .ring.sm .av { width: 40px; height: 40px; }
 .ring, .ring.sm { display: inline-block !important; width: fit-content; height: fit-content; line-height: 0; flex: none; }
 .fr-pull { visibility: hidden; }
+/* Next up header stays on one line (6 Nov: long theme names like "Next assignment" plus a 4-split rotation wrapped). */
+.card.nextup .card-h { flex-wrap: nowrap; gap: 10px; }
+.nx-lbl { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.nx-rot { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
