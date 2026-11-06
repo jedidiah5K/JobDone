@@ -1013,7 +1013,7 @@ const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
   { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
-  { tab: 'today', el: () => tq('#screen .top-ic'), t: 'Friends', d: 'Add friends by code. See who trained today, send a snap, or nudge someone who hasn’t.' },
+  { tab: 'today', el: () => tq('#screen .top-ic'), t: 'Friends', d: 'Your friends’ workouts and snaps. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
   { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
   { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
   { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
@@ -1092,8 +1092,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-friends';
+const NEWS_ID = '2026-11-feed';
 const NEWS = [
+  ['A proper feed', 'Friends now has a Feed: faces with today’s status, then posts with photos, stats, emoji reactions and comments. Double-tap a photo for a 🔥.'],
+  ['Every theme, its own touches', 'Next up has a new name in each theme, the finish page stamps a seal, and the numbers count up. Agent has a new look.'],
   ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap the people button on Today.'],
   ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
   ['Snaps and nudges', 'Send friends a quick photo that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
@@ -1459,110 +1461,102 @@ const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(to
 let FEED = null; const NUDGED = {};
 async function feedLoad() { FEED = undefined; try { FEED = await gymRpc('jobdone_feed') || []; } catch (e) { FEED = []; } rerender(); }
 const postHidden = () => { try { return JSON.parse(localStorage.getItem('jd-hidepost') || '[]'); } catch (e) { return []; } };
-const REACTS = [['light', 'Light weight'], ['strong', 'Strong'], ['respect', 'Respect']];
-function postHTML(p) {
-  const b = p.body || {}, mine = USER && p.user_id === USER.id, rc = p.reacts || {};
-  const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<img class="po-ph" alt="${p.kind === 'snap' ? 'Snap' : 'Workout photo'}" src="${p.photo}">` : '';
-  const main = p.kind === 'stamp' ? `<div class="po-big num">${esc(b.v || '')}</div><div class="cap">${esc([b.t, b.l, b.pr ? plural(+b.pr, 'PR') : ''].filter(Boolean).join(' · '))}</div>${b.h ? `<div class="cap">${esc(b.h)}</div>` : ''}`
-    : b.c ? `<div class="po-cap">${esc(b.c)}</div>` : '';
-  const who = mine && p.who && p.who.length ? `<div class="cap">${esc(p.who.map(w => (w[0] || 'Friend') + ': ' + ((REACTS.find(r => r[0] === w[1]) || [])[1] || '')).join(', '))}</div>` : '';
-  return `<div class="card stack g2 po${p.kind === 'stamp' ? ' po-stamp' : ''}"><div class="row between"><span class="eyebrow">${esc(mine ? 'You' : p.n || 'Friend')} · ${p.kind === 'snap' ? 'Snap' : esc(b.sp || 'Workout')}</span><span class="row g2"><span class="cap">${atGymAgo(p.at)} ago</span><button class="btn sm ghost po-more" data-a="postMenu" data-k="${p.id}" aria-label="More">···</button></span></div>
-    ${ph}${main}${mine ? who : `<div class="row g2 wrap">${REACTS.map(([k, l]) => `<button class="chip${p.mine === k ? ' on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${k}">${l}${rc[k] ? ` <b class="num">${rc[k]}</b>` : ''}</button>`).join('')}</div>`}</div>`;
-}
 function frRow(f) {
   const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono', st = frStatus(f), k = frStreak(f);
   const sub = [st.t || ((c.lv != null ? ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] + ' · ' : '') + plural(Math.floor(+c.wk) || 0, 'workout')), k ? plural(k, 'week') + ' together' : '', f.nudged_me ? 'Nudged you' : ''].filter(Boolean);
-  return `<div class="li fr-row"><button class="fr-open" data-a="friendOpen" data-k="${esc(f.id)}">${idPhotoOk(f.photo) && !c.hidden ? `<img class="fr-ph" alt="" src="${f.photo}">` : `<i class="fr-st lead ${st.c || 'none'}"${st.c ? '' : ` style="background:${ID_LOOK[t].acc}"`}></i>`}<span class="grow"><span class="t">${st.c && idPhotoOk(f.photo) && !c.hidden ? `<i class="fr-st ${st.c}"></i>` : ''}${esc(c.n || 'Friend')}</span><span class="s">${st.c === 'gym' ? '<span class="live-txt">' + esc(sub[0]) + '</span>' + (sub.length > 1 ? ' · ' + esc(sub.slice(1).join(' · ')) : '') : esc(sub.join(' · '))}</span></span></button>${st.nudge && soOn() ? `<button class="btn sm ghost" data-a="nudge" data-k="${esc(f.id)}" ${NUDGED[f.id] ? 'disabled' : ''}>${NUDGED[f.id] ? 'Nudged' : 'Nudge'}</button>` : I.right}</div>`;
+  return `<div class="li fr-row"><button class="fr-open" data-a="friendOpen" data-k="${esc(f.id)}"><span class="ring sm ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><span class="grow"><span class="t">${esc(c.n || 'Friend')}</span><span class="s">${st.c === 'gym' ? '<span class="live-txt">' + esc(sub[0]) + '</span>' + (sub.length > 1 ? ' · ' + esc(sub.slice(1).join(' · ')) : '') : esc(sub.join(' · '))}</span></span></button>${st.nudge && soOn() ? `<button class="btn sm ghost" data-a="nudge" data-k="${esc(f.id)}" ${NUDGED[f.id] ? 'disabled' : ''}>${NUDGED[f.id] ? 'Nudged' : 'Nudge'}</button>` : I.right}</div>`;
+}
+// Friends page v2 (Job, 6 Nov: "looks like HTML", "separate things"): two tabs, Feed and Friends, laid out like a social app.
+// Feed: a row of friends' faces with today's status rings, a "Share a snap" bar, then posts with a header (face, name, time),
+// the photo edge to edge, Strava-style stats, emoji reactions (one per person) and comments. Add-a-friend and settings move into sheets.
+const REACTS = ['🔥', '💪', '👏', '😂', '😮', '❤️'];
+const IC = {
+  cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg>',
+  add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.6 3.6-5.5 6.5-5.5s5.5 1.9 6.5 5.5M19 8v6M16 11h6"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  smile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg>',
+};
+// A round face: their card photo, or their first letter on their theme colour.
+function face(name, photo, t, cls = '') {
+  return idPhotoOk(photo) ? `<img class="av ${cls}" alt="" src="${photo}">` : `<span class="av av-l ${cls}" style="--avc:${(ID_LOOK[ID_LEVELS[t] ? t : 'mono'] || ID_LOOK.mono).acc}">${esc((name || '?').trim().charAt(0).toUpperCase())}</span>`;
+}
+const myFace = (cls = '') => face(S.profile.name || 'You', ID_PHOTO, theme(), cls);
+const agoShort = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h'; };
+function postHTML(p) {
+  const b = p.body || {}, mine = USER && p.user_id === USER.id, rc = p.reacts || {}, cm = p.comments || [], fr = (FRIENDS || []).find(f => f.id === p.user_id), t = fr ? (fr.card || {}).t : theme();
+  const who = mine ? 'You' : p.n || 'Friend', sub = (p.kind === 'snap' ? 'Snap' : esc(b.sp || 'Workout')) + ' · ' + agoShort(p.at);
+  const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<div class="po-media" data-dbl="${p.id}"><img alt="${p.kind === 'snap' ? 'Snap' : 'Workout photo'} from ${esc(who)}" src="${p.photo}"><i class="po-burst" aria-hidden="true"></i></div>` : '';
+  const stats = p.kind === 'stamp' ? `<div class="po-stats"><div><span>Volume</span><b class="num">${esc(b.v || '—')}</b></div><div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>${b.pr ? 'PRs' : 'Lifts'}</span><b class="num">${esc(b.pr ? String(b.pr) : String(b.l || '').replace(/\D/g, '') || '—')}</b></div></div>${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}` : '';
+  const cap = p.kind === 'snap' && b.c ? `<p class="po-cap"><b>${esc(who)}</b> ${esc(b.c)}</p>` : '';
+  const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
+  const last = cm.slice(-2).map(c => `<p class="po-cm"><b>${esc(USER && c.u === USER.id ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p>`).join('');
+  return `<article class="card po${p.kind === 'stamp' ? ' po-stamp' : ''}">
+    <header class="po-h">${mine ? myFace() : face(p.n, p.ph, t)}<div class="grow"><b>${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
+    ${ph}<div class="po-b">${stats}${cap}
+    <div class="po-acts"><button class="po-act${p.mine ? ' on' : ''}" data-a="postRxOpen" data-k="${p.id}" aria-label="React" title="React">${p.mine ? `<span class="po-mine">${p.mine}</span>` : IC.smile}</button><button class="po-act" data-a="postComments" data-k="${p.id}" aria-label="Comments" title="Comments">${IC.chat}${cm.length ? `<b class="num">${cm.length}</b>` : ''}</button><span class="grow"></span>${sum}</div>
+    ${UI.rxOpen === p.id ? `<div class="po-pick" role="group" aria-label="Pick a reaction">${REACTS.map(e => `<button class="${p.mine === e ? 'on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>` : ''}
+    ${mine && p.who && p.who.length ? `<p class="po-who">${esc(p.who.map(w => w[1] + ' ' + (w[0] || 'Friend')).join(' · '))}</p>` : ''}
+    ${last}${cm.length > 2 ? `<button class="link po-all" data-a="postComments" data-k="${p.id}">View all ${cm.length} comments</button>` : ''}
+    </div></article>`;
+}
+// Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
+function frFaces(list) {
+  return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
+    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="ring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
 }
 function viewFriends() {
   if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
   if (FEED === null && HOSTED) feedLoad();
   statSync();
   const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
-  const req = (r, btns) => `<div class="li"><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
-  const o = SO();
-  return `<div class="stack">${backBtn()}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div>${soOn() && list.length ? '<button class="btn sm primary" data-a="snap">Snap</button>' : ''}</div>
-  ${rin.length ? `<div class="card"><div class="eyebrow">Friend requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
-  ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
-    : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
-  ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : ''}
-  ${posts.length ? `<div class="eyebrow fr-h">Last 24 hours</div>${posts.map(postHTML).join('')}` : ''}
-  <div class="card stack"><div class="eyebrow">Add a friend</div><div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn${list.length ? '' : ' primary'}" data-a="friendAdd">Add</button></div>
-    <p class="cap m0">Ask for the code on their ID card. Yours is <b class="num">${esc(idCode(ID_CODE))}</b>.</p></div>
-  ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
-  ${FRIENDS !== undefined && !list.length ? '<div class="empty">No friends yet. Share your code, or type theirs above.</div>' : ''}
-  <section><div class="sgh">What friends see</div><div class="sgrp">
+  const tab = UI.frTab || (list.length ? 'feed' : 'friends');
+  const req = (r, btns) => `<div class="li"><span class="av av-l" style="--avc:var(--raised)">${esc((r.n || '?').charAt(0).toUpperCase())}</span><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
+  const head = `<div class="stack">${backBtn()}<div class="top pt0 fr-top"><div><div class="eyebrow">Profile</div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
+    <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
+  if (tab === 'feed') return `${head}
+    ${list.length ? frFaces(list) : ''}
+    ${soOn() ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a snap</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
+    ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : `<div class="empty fr-empty">${list.length ? 'Nothing from the last 24 hours yet. Finish a workout and your Done Stamp shows up here.' : 'Add a friend to see their workouts here.'}${list.length ? '' : '<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button>'}</div>`}
+  </div>`;
+  return `${head}
+    ${rin.length ? `<div class="card"><div class="eyebrow">Requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
+    ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
+      : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
+    ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : `<div class="empty fr-empty">No friends yet.<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`}
+    ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
+  </div>`;
+}
+function frAddSheet() {
+  const sh = openSheet(`<div class="stack"><h2>Add a friend</h2><p class="cap m0">Type the code on their ID card. They’ll get a request to accept.</p>
+    <div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
+    <div class="row between"><span class="cap">Your code <b class="num c-text">${esc(idCode(ID_CODE))}</b></span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button></div></div>`, { label: 'Add a friend', mount: b => {
+    const go = b.querySelector('#fr-go'); go.onclick = async () => { go.disabled = true; await friendAdd(); go.disabled = false; if (!b.querySelector('#fr-code').value) closeSheet(sh); };
+    setTimeout(() => b.querySelector('#fr-code').focus(), 250); } });
+}
+function frSettings() {
+  const body = () => { const o = SO(); return `<div class="stack"><h2>What friends see</h2><div class="sgrp">
     ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
     ${o.off ? '' : srow('Ask for a snap during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
-  </div><div class="sgf">Stamps and snaps disappear after 24 hours.</div></section></div>`;
+    </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="btn block" data-a="closeSheet">Done</button></div>`; };
+  const sh = openSheet(body(), { label: 'What friends see', mount: b => { b.addEventListener('click', () => setTimeout(() => { if (b.isConnected) b.innerHTML = body(); }, 0)); } });
 }
-// Small strip on Today: who's at the gym, who trained, who's resting, and who nudged you. Tap for Friends.
-function frStrip() {
-  if (!HOSTED || !(FRIENDS && FRIENDS.length)) return '';
-  const live = FRIENDS.map(f => ({ f, st: frStatus(f) })).filter(x => (x.st.c && x.st.c !== 'none') || x.f.nudged_me).slice(0, 3);
-  if (!live.length) return '';
-  return `<button class="card fr-strip" data-a="friends"><div class="row between"><span class="eyebrow">Friends today</span>${I.right}</div>${live.map(({ f, st }) => `<div class="fr-sl"><i class="fr-st ${st.c || 'none'}"></i><b>${esc((f.card || {}).n || 'Friend')}</b><span class="cap">${f.nudged_me && st.c !== 'gym' && st.c !== 'done' ? 'asked if you’re training today' : esc(st.t.split(' · ').slice(0, st.c === 'gym' ? 1 : 2).join(' · '))}</span></div>`).join('')}</button>`;
-}
-function restDayLine(T, trained) {
-  if (A || trained || !soOn() || !(FRIENDS && FRIENDS.length)) return '';
-  return S.profile.restDay === T ? `<div class="row between mt2 cap rest-line"><span>Rest day. Friends can see it.</span><button class="link" data-a="restDay">Undo</button></div>`
-    : `<div class="row between mt2 cap rest-line"><span>Not training today?</span><button class="link" data-a="restDay">Mark a rest day</button></div>`;
-}
-// Photos for stamps and snaps: cropped to 4:5, 720 × 900 JPEG, under 110 KB, made on the phone.
-// ponytail: photos live in the database row; move to a Storage bucket if posts ever get busy.
-async function postPhoto(file) {
-  if (!file || !/^image\//.test(file.type)) { toast('Pick a photo'); return null; }
-  const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
-  if (!im) { toast('Couldn’t open that photo'); return null; }
-  const W = 720, H = 900, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  cv.getContext('2d').drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
-  let q = .8, d = cv.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .25) { q -= .1; d = cv.toDataURL('image/jpeg', q); }
-  if (d.length >= 110000) { toast('That photo is too big. Try another.'); return null; }
-  return d;
-}
-function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const d = await postPhoto(i.files && i.files[0]); if (d) cb(d); }; i.click(); }
-const postErr = e => toast(/Too many/.test(e.message) ? 'That’s enough posts for today.' : 'Couldn’t send it. Check your connection.');
-function snapStart() {
-  if (!soOn()) return toast('Turn on Share my training in Friends first.');
-  pickPhoto(d => { const sh = openSheet(`<div class="stack"><h2>Snap</h2><img class="po-ph" src="${d}" alt="Your snap"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Send to friends</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Snap', mount: b => {
-    const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
-      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Snap sent'); FEED = null; rerender(); }
-      catch (e) { ok.disabled = false; postErr(e); } }; } }); });
-}
-// Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
-function snapMaybe() {
-  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap || !(FRIENDS && FRIENDS.length)) return;
-  if (!A.snapAt) A.snapAt = 3 + Math.floor(Math.random() * 6);
-  const n = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0); if (n < A.snapAt) return;
-  A.snapAsked = true; persist('jd/active');
-  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick snap?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
-}
-// Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
-const STAMP = {};
-async function stampPost(id) {
-  statSync(); if (!soOn()) return;
-  const d = recapData(id); if (!d.w) return;
-  const body = { sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
-  try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: null }); FEED = null; const el = document.getElementById('rc-stamp'); if (el) el.hidden = false; } catch (e) {}
-}
-function stampWire(el, id) {
-  const ph = el.querySelector('#rc-ph'), un = el.querySelector('#rc-unst'); if (!ph) return;
-  ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added to your stamp'); FEED = null; } catch (e) { postErr(e); } });
-  un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); el.querySelector('#rc-stamp').hidden = true; toast('Stamp taken down'); FEED = null; } catch (e) { toast('Couldn’t take it down. Try again.'); } };
-}
-async function nudge(id) {
-  const n = esc(((FRIENDS || []).find(x => x.id === id) || { card: {} }).card.n || 'them');
-  try { const r = await gymRpc('jobdone_nudge', { p_friend: id }) || {};
-    if (r.ok) { NUDGED[id] = 1; rerender(); return toast('Nudge sent to ' + n); }
-    if (r.done) { NUDGED[id] = 1; rerender(); }
-    toast(r.off ? n + ' has nudges turned off.' : r.done ? 'You already nudged ' + n + ' today.' : r.many ? 'That’s enough nudges for today.' : 'Couldn’t send it.');
-  } catch (e) { toast('Couldn’t send it. Check your connection.'); }
-}
-async function postReact(id, r) {
+function postComments(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
-  const was = p.mine, rc = p.reacts = { ...(p.reacts || {}) }, nx = was === r ? null : r;
-  if (was) rc[was] = Math.max(0, (rc[was] || 1) - 1); if (nx) rc[nx] = (rc[nx] || 0) + 1; p.mine = nx; rerender();
-  try { await gymRpc('jobdone_react', { p_id: p.id, p_r: nx }); } catch (e) { toast('Couldn’t send that. Check your connection.'); feedLoad(); }
+  const row = c => { const own = USER && c.u === USER.id, can = own || (USER && p.user_id === USER.id), fr = (FRIENDS || []).find(f => f.id === c.u);
+    return `<div class="cm-row">${own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm')}<div class="grow"><p><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}</span></div></div>`; };
+  const html = () => `<div class="stack"><h2>Comments</h2><div class="cm-list">${(p.comments || []).length ? p.comments.map(row).join('') : '<p class="cap m0">No comments yet. Say something nice.</p>'}</div>
+    <div class="row g2 cm-in">${myFace('sm')}<input class="input grow" id="cm-t" maxlength="200" placeholder="Add a comment" autocomplete="off" enterkeyhint="send"><button class="btn primary" id="cm-go">Post</button></div></div>`;
+  const sh = openSheet(html(), { label: 'Comments', mount: b => {
+    const wire = () => {
+      const t = b.querySelector('#cm-t'), go = b.querySelector('#cm-go');
+      const send = async () => { const v = t.value.trim(); if (!v || go.disabled) return; go.disabled = true;
+        try { const cid = await gymRpc('jobdone_comment', { p_id: p.id, p_body: v }); p.comments = [...(p.comments || []), { id: cid, u: USER.id, n: S.profile.name, b: v, at: new Date().toISOString() }]; b.innerHTML = html(); wire(); rerender(); }
+        catch (e) { go.disabled = false; toast(/Too many/.test(e.message) ? 'That’s enough comments for today.' : 'Couldn’t post it. Check your connection.'); } };
+      go.onclick = send; t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); send(); } };
+      b.querySelectorAll('.cm-del').forEach(x => x.onclick = async () => { const cid = +x.dataset.cid; x.disabled = true;
+        try { await gymRpc('jobdone_comment_delete', { p_cid: cid }); p.comments = p.comments.filter(c => c.id !== cid); b.innerHTML = html(); wire(); rerender(); } catch (e) { x.disabled = false; toast('Couldn’t delete it. Try again.'); } });
+    }; wire(); } });
 }
 function postMenu(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
@@ -4688,6 +4682,8 @@ const ACT = {
   idCopy: () => { try { navigator.clipboard.writeText(idCode(ID_CODE)).then(() => toast('Code copied'), () => toast(idCode(ID_CODE))); } catch (e) { toast(idCode(ID_CODE)); } },
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
+  frTab: el => { UI.frTab = el.dataset.k; UI.rxOpen = null; rerender(); }, frAddSheet: () => frAddSheet(), frSettings: () => frSettings(),
+  postRxOpen: el => { UI.rxOpen = UI.rxOpen === +el.dataset.k ? null : +el.dataset.k; rerender(); }, postComments: el => postComments(el.dataset.k),
   snap: () => snapStart(), nudge: el => nudge(el.dataset.k), postReact: el => postReact(el.dataset.k, el.dataset.v), postMenu: el => postMenu(el.dataset.k),
   restDay: () => { S.profile.restDay = S.profile.restDay === today() ? null : today(); persist('jd/meta'); statSync(); rerender(); },
   soShare: () => { S.profile.so = { ...SO(), off: !SO().off }; persist('jd/meta'); statSync(); rerender(); },
