@@ -1,4 +1,4 @@
--- back-05 (part a applied and validated 7 Nov 2026. Part b NOT applied: its jobdone_feed would undo perf-07, merge them first): server-side checks for friends data.
+-- back-05 (part a applied and validated 7 Nov 2026; part b applied as supabase/friends_two_step.sql, so do not run part b from here): server-side checks for friends data.
 -- a) Post bodies and friend status are free-form jsonb today; the app trusts their shape when it renders.
 --    NOT VALID: old rows are left alone, every new write is checked.
 alter table public.jobdone_posts add constraint jobdone_posts_body_shape check (
