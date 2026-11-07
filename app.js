@@ -2128,7 +2128,7 @@ function viewToday() {
   </button>
   </div>
   ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
-  ${past ? '' : goalsCard() + reportCard() + plateauCard()}
+  ${past ? '' : goalsCard() + reportCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -2785,7 +2785,7 @@ function exCardHTML(e, ei) {
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
     ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
-    ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
+    ${setupHTML(e.name)}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
@@ -2935,7 +2935,6 @@ const GLOSSARY = [
   ['volume', 'Volume', 'Weight × reps, added up across sets. 3 sets of 10 at 50 kg is 1,500 kg. Warm-up sets don’t count.'],
   ['pr', 'PRs (personal records)', 'You get at most one PR per exercise per workout, and left and right sides count as one lift. Heaviest: more weight than ever before. e1RM: your strongest set ever once reps are taken into account. Reps: more reps than ever at a weight you’ve lifted before.'],
   ['target', 'Today’s target', 'If you reached the top of your rep range last time, the target adds a small weight jump and aims for the bottom of the range. Otherwise it keeps the weight and asks for one more rep. Without a rep range set in Me, that’s 6 to 9 reps. You can turn targets off in Me too.'],
-  ['plateau', 'Plateau alert', 'A lift that hasn’t set a record of any kind for 3 to 12 weeks across at least 3 sessions. A lighter week or a new rep range usually gets it moving again.'],
   ['muscle', 'Sets per muscle', 'Working sets this week for each muscle, with the grey marker showing your 4-week average. Left and right sides of one exercise count as half a set each, which is why you can see 3.5.'],
   ['strength', 'Weight vs strength', 'Both lines start at 100% in the same week. Strength is the middle value of your e1RMs across lifts. If weight falls while strength holds, you are losing fat and keeping muscle.'],
   ['rotation', 'Rotation and Next up', 'Your splits in the order you train them. Next up is the split after the last one you did, so if you skip a day nothing gets out of order. Change the order in Splits → Rotation.'],
@@ -3616,31 +3615,6 @@ function openSwap(ei, taken) {
   } });
 }
 
-// ---------- Plateau alerts: no new best e1RM for 3+ weeks across 3+ sessions ----------
-function plateaus() {
-  return [];   // Job, 16 Oct: plateaus are normal, no alerts or change-your-weight advice anywhere.
-  if (S && S.profile && S.profile.noPlateau) return [];
-  const out = [], hide = UI.plHide || {}, t = today();
-  for (const [name, ss] of Object.entries(ix().hist)) {
-    const v = ss.filter(x => x.e1 > 0); if (v.length < 4) continue;
-    if (daysBetween(v[v.length - 1].date, t) > 21) continue;
-    let best = 0, at = null, since = 0;
-    for (const x of v) { if (x.e1 > best * 1.01) { best = x.e1; at = x.date; since = 0; } else since++; }
-    // any kind of record (heavier, more reps, more volume) also counts as progress
-    const lp = ix().prs.filter(x => x.ex === name).pop(); if (lp && lp.date > at) { at = lp.date; since = v.filter(x => x.date > lp.date).length; }
-    const days = daysBetween(at, t);
-    if (days >= 21 && days <= 84 && since >= 3 && !(hide[name] && daysBetween(hide[name], t) < 14)) out.push({ name, weeks: Math.floor(days / 7), since, best: (v.find(x => x.date === at) || {}).top || (lp && lp.set) });
-  }
-  const seen = new Set();
-  return out.sort((a, b) => b.weeks - a.weeks).filter(x => { const k = baseName(x.name); if (seen.has(k)) return false; seen.add(k); x.name0 = x.name; return true; });
-}
-const plateauTip = p => p.weeks >= 6 ? 'Try a lighter week (about 90% of your weight), then build back up.' : 'Try a new rep range for 2 weeks, like 10 to 12 reps, or a lighter week at about 90%.';
-function plateauCard() {
-  const ps = plateaus(); if (!ps.length) return '';
-  return `<div class="card"><div class="card-h"><span class="eyebrow">Plateau alert ${infoBtn('plateau')}</span><span class="cap">no new best lately</span></div>
-    <div class="list">${ps.slice(0, 3).map(p => `<div class="li"><button class="grow tl" data-a="openEx" data-name="${esc(p.name)}"><div class="t">${esc(baseName(p.name))}</div><div class="s">${plural(p.weeks, 'week')}, ${plural(p.since, 'session')} since your best (${p.best ? esc(setStr(p.best)) : '—'})</div></button><button class="mh32 cap" data-a="plHide" data-name="${esc(p.name)}">Hide</button></div>`).join('')}</div>
-    <div class="mt2 cap">${esc(plateauTip(ps[0]))}</div></div>`;
-}
 
 // ---------- Monthly report ----------
 const ymOf = d => d.slice(0, 7);
@@ -4666,7 +4640,7 @@ function obBody(k) {
     <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>`;
 }
 function renderWelcomePublic() {
-  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
+  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true } };
   const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
   if (k === 'theme') { document.documentElement.classList.remove('ob-on'); applyTheme(OB.theme); } else { document.documentElement.classList.add('ob-on'); document.documentElement.dataset.theme = 'mono'; delete document.documentElement.dataset.tod; }
   const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Next' : last ? 'Start training' : 'Continue';
@@ -4713,7 +4687,7 @@ function obFinish() {
   const p = S.profile, num = x => { const v = parseFloat(x); return isNaN(v) ? null : v; };
   p.name = OB.name.slice(0, 40); p.unit = OB.unit; p.weeklyTarget = OB.days || 3; p.goal = OB.goal; p.exp = OB.exp; p.theme = OB.theme; p.cliffs1 = true; p.onboarded = today();
   if (!OB.skippedHome) p.a2hs = today();
-  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = false; p.music2 = true; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.plateau === false) p.noPlateau = true; if (pf.repLo && pf.repHi > pf.repLo) p.repRange = [pf.repLo, pf.repHi];
+  const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = false; p.music2 = true; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.repLo && pf.repHi > pf.repLo) p.repRange = [pf.repLo, pf.repHi];
   const toKg2 = v => v == null ? null : Math.round((OB.unit === 'lb' ? v / LB : v) * 100) / 100;
   const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
   if (w) S.weights[today()] = { w, src: 'manual' };
@@ -4919,7 +4893,6 @@ const ACT = {
   exMenu: el => exMenu(+el.dataset.e),
   swapEx: el => openSwap(+el.dataset.e),
   foldEx: el => { const ei = +el.dataset.e, e = A.ex[ei], shut = !!document.querySelector('#ex-' + ei + '.folded'); e.fold = !shut; persist('jd/active'); renderWorkout(); },
-  plHide: el => { UI.plHide = UI.plHide || {}; UI.plHide[el.dataset.name] = today(); lsSave(); rerender(); toast('Hidden for 2 weeks'); },
   month: el => showMonth(el.dataset.k),
   allBadges: () => openBadges(),
   meas: () => openMeas(),
