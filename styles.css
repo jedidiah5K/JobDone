@@ -807,7 +807,6 @@ html.ob-on .ob-prog { background: var(--raised); }
 :root:not([data-theme]) .sets tr.done td:first-child { border-radius: 16px 0 0 16px; } :root:not([data-theme]) .sets tr.done td:last-child { border-radius: 0 16px 16px 0; }
 /* floating tab bar with the raised Start button */
 :root:not([data-theme]) #tabs { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); max-width: 536px; align-items: center; padding: 6px 8px; border-radius: 26px; border: 1px solid rgba(43,33,58,.08); background: rgba(255,253,250,.94); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: 0 14px 34px -14px rgba(43,33,58,.35); }
-:root:not([data-theme]) .tab { min-height: 50px; justify-content: center; font-size: 11px; font-weight: 600; gap: 3px; }
 :root:not([data-theme]) .tab svg { width: 24px; height: 24px; }
 :root:not([data-theme]) .tab-start { justify-self: center; width: 54px; height: 54px; min-height: 54px; margin-top: -18px; border-radius: 20px; background: var(--accent); color: #fff; justify-content: center; box-shadow: 0 8px 18px -8px rgba(108,63,214,.7); }
 :root:not([data-theme]) .tab-start.live { background: var(--green); color: #fff; box-shadow: 0 8px 18px -8px rgba(46,139,78,.7); }
@@ -1761,3 +1760,20 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .rc-pr .t { overflow-wrap: anywhere; }
 :root[data-theme] .rc-bar.was i b, :root:not([data-theme]) .rc-bar.was i b { background: var(--muted); }
 .rc-hero.fin > .fin-seal, .rc-hero.fin.fin-agent > .fin-stamp { top: calc(8px + env(safe-area-inset-top, 0px)); font-size: 11px; line-height: 16px; padding: 2px 8px; }
+/* Contrast and touch fixes (review 2) */
+/* V5: grey labels on Boulder and Summit-by-day cards reach 4.5:1 */
+:root:not([data-theme]), :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) { --text2: rgba(40,38,50,.84); --muted: rgba(40,38,50,.8); }
+/* V5: Summit's white titles get a soft shadow so they read on a pale sky; the beta footer too */
+:root[data-theme="cliffs"] .top, :root[data-theme="cliffs"] .top .eyebrow, :root[data-theme="cliffs"] .fr-face > b, :root[data-theme="cliffs"] .fr-face > span:last-child, :root[data-theme="cliffs"] #screen > .stack > .back { text-shadow: 0 1px 2px rgba(10,30,50,.55), 0 0 18px rgba(10,30,50,.35); }
+:root[data-theme="cliffs"] .beta-foot { color: #fff; text-shadow: 0 1px 2px rgba(10,30,50,.7); }
+/* V10: the + on Summit at dusk and night sits on a deep teal, not light cyan (white on #155A73 is 7.4:1) */
+:root[data-theme="cliffs"][data-tod="dusk"], :root[data-theme="cliffs"][data-tod="night"] { --startc: #155A73; }
+:root[data-theme="cliffs"][data-tod="dusk"] .tab-start:not(.live), :root[data-theme="cliffs"][data-tod="night"] .tab-start:not(.live) { background: #155A73; }
+/* V14: the monthly report label on Boulder's purple banner is white, not purple on purple */
+#screen .card.rc-ready .eyebrow { color: inherit !important; opacity: .86; }
+/* Tab labels 11 px (V7, part) */
+:root .tab, :root[data-theme] .tab, :root:not([data-theme]) .tab { font-size: 11px; line-height: 13px; }
+/* V12: 44 pt tap areas on the small Progress and date controls without making them look bigger */
+.seg button, .daychip { position: relative; }
+.datepick input { top: 50%; bottom: auto; height: 44px; transform: translateY(-50%); }
+.seg button::after, .daychip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }

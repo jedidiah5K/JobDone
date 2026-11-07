@@ -483,12 +483,6 @@ function barChart({ bars, h = 150, yfmt = v => n0(v), line, color = 'var(--text2
   CH[id] = { W, h, pt, pb, bars: pts, yfmt };
   return `<div class="chart" data-chart="${id}"><svg viewBox="0 0 ${W} ${h}" height="${h}" role="img" aria-label="Bar chart">${g}${body}<line class="scrub" x1="0" x2="0" y1="${pt}" y2="${h - pb}" stroke="var(--text2)" stroke-width="1" opacity="0"/></svg><div class="tip" hidden></div></div>`;
 }
-function sparkline(vals, color) {
-  if (vals.length < 2) return '<svg class="spark"></svg>';
-  const mx = Math.max(...vals), mn = Math.min(...vals), W = 72, H = 28;
-  const p = vals.map((v, i) => [(i / (vals.length - 1)) * (W - 4) + 2, H - 3 - ((v - mn) / ((mx - mn) || 1)) * (H - 6)]);
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}"><path d="${p.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ')}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="${p[p.length - 1][0]}" cy="${p[p.length - 1][1]}" r="2.4" fill="${color}"/></svg>`;
-}
 let lastScrubIdx = null;
 function scrub(el, clientX) {
   const c = CH[el.dataset.chart]; if (!c) return;
@@ -696,7 +690,8 @@ function render() {
   screenChanged(); wireSwipe(); coach(); tourAuto(); whatsNew(); idSync(); labelIcons(document);
 }
 function labelIcons(root) { root.querySelectorAll('button[aria-label]:not([title])').forEach(b => { if (!b.textContent.trim()) b.title = b.getAttribute('aria-label'); }); }
-document.addEventListener('focusin', e => { const f = e.target; if (f.matches && f.matches('input, textarea, select') && f.closest('.sheet')) setTimeout(() => f.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300); });
+const smooth = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; // JS scrolls follow Reduce Motion too
+document.addEventListener('focusin', e => { const f = e.target; if (f.matches && f.matches('input, textarea, select') && f.closest('.sheet')) setTimeout(() => f.scrollIntoView({ block: 'center', behavior: smooth() }), 300); });
 // ---------- My Gym (beta), Job 4 Nov 2026 ----------
 // Pick your gym branch, add its machines (AI scan or the list), and get a workout built from what's there.
 // Shared data lives in Supabase behind security-definer functions (supabase/gym.sql). The main lifts are Job's.
@@ -2049,7 +2044,7 @@ let VIEWDAY = null;
 function setViewDay(d) {
   const t = today();
   if (d && d > t) { toast('That day hasn’t happened yet'); return; }
-  VIEWDAY = d && d !== t ? d : null; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  VIEWDAY = d && d !== t ? d : null; render(); window.scrollTo({ top: 0, behavior: smooth() });
 }
 const longDay = d => fmtDate(d, { wd: true }).replace(/^(\w+) /, (m, x) => ({ Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[x] + ', '));
 const datePick = d => `<label class="cap datepick">${esc(d === today() ? 'Today, ' + fmtDate(d) : fmtDate(d, { wd: true }))} ▾<input type="date" data-in="viewDay" value="${d}" max="${today()}" aria-label="Pick a day"></label>`;
@@ -2156,7 +2151,7 @@ function prRow(p) {
 function splitMuscles(sp, n = 3) {
   const c = {}; for (const e of sp.ex) { const m = exInfo(e.name).muscle; if (m !== 'Other') c[m] = (c[m] || 0) + (e.sets || 1); }
   const top = Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, n);
-  return top.length ? `<div class="mus">${top.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : '';
+  return top.length ? `<div class="mt1 cap ell">${top.map(esc).join(' · ')}</div>` : ''; // one plain line, no pills (review 2)
 }
 function viewSplits() {
   const rk = sp => { const i = S.rotation.indexOf(sp.id); return i < 0 ? 1e3 : i; };
@@ -2164,8 +2159,7 @@ function viewSplits() {
   const nx = nextSplit();
   const card = sp => {
     const l = lastOfSplit(sp);
-    const vols = ix().ws.filter(w => !w.skipped && (w.splitId === sp.id || (!w.splitId && w.splitName === sp.name))).slice(-8).map(wVol);
-    return `<div class="swipe"><button class="swipe-del" data-a="spDelete" data-id="${sp.id}" tabindex="-1">Delete</button><button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${plural(sp.ex.length, 'exercise')} · ${l ? relDay(l.date) : 'not done yet'}</div>${splitMuscles(sp)}</div>${sparkline(vols, sp.color)}${I.right}</button></div>`;
+    return `<div class="swipe"><button class="swipe-del" data-a="spDelete" data-id="${sp.id}" tabindex="-1">Delete</button><button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${plural(sp.ex.length, 'exercise')} · ${l ? relDay(l.date) : 'not done yet'}</div>${splitMuscles(sp)}</div>${I.right}</button></div>`;
   };
   return `<div class="stack">
   <button class="back" data-a="tab" data-k="today">${I.left}Today</button>
@@ -2240,7 +2234,7 @@ function steps30() {
   const t = today(), days = []; for (let i = 29; i >= 0; i--) days.push(addDays(t, -i));
   const vals = days.map(d => S.steps[d] || 0);
   const avg = vals.map((_, i) => { const w = vals.slice(Math.max(0, i - 6), i + 1).filter(v => v > 0); return w.length ? w.reduce((a, b) => a + b, 0) / w.length : null; });
-  return { any: vals.some(v => v > 0), bars: days.map((d, i) => ({ v: vals[i], label: i % 7 === 0 ? String(parseYmd(d).getDate()) : '', tip: fmtDate(d, { wd: true }) + ' · ' + n0(vals[i]) + ' steps', hi: d === t })), avg };
+  return { any: vals.some(v => v > 0), bars: days.map((d, i) => ({ v: vals[i], label: fmtDate(d), tip: fmtDate(d, { wd: true }) + ' · ' + n0(vals[i]) + ' steps', hi: d === t })), avg };
 }
 function viewWeights() {
   const l = weightList().reverse();
@@ -2627,7 +2621,7 @@ function viewMe() {
   <section><div class="sgh">Settings</div><div class="sgrp">
     ${ME_GROUPS.filter(([k]) => k !== 'steps' || true).map(([k, t, d]) => `<button class="xr" data-a="meGroup" data-k="${k}"><span class="grow">${t}<span class="s">${sub[k] || d}</span></span>${I.right}</button>`).join('')}
   </div></section>
-  <p class="tc cap">Job’s Done early beta</p>
+  <p class="tc cap beta-foot">Job’s Done early beta</p>
 </div>`;
 }
 function viewSet(top) {
@@ -4927,7 +4921,7 @@ const ACT = {
   delAccount: () => openDeleteAccount(),
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
-  wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }), 50); }),
+  wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: smooth() }), 50); }),
   // Undo instead of "Are you sure?" (Job, 4 Nov)
   wkDiscard: () => { const was = A; if (A && A.atGym) atGymSet(false); A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
   rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
