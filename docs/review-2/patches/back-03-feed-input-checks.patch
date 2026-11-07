@@ -1,0 +1,31 @@
+diff --git a/a/app.js b/b/app.js
+index 773f674..e68399b 100644
+--- a/a/app.js
++++ b/b/app.js
+@@ -1464,7 +1464,7 @@ function frStatus(f) {
+   const s = f.stat, T = today(), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
+   if (f.at_gym) return { c: 'gym', t: `At ${f.at_gym} · ${atGymAgo(f.at_since)}` };
+   if (!s) return { c: '', t: '' };
+-  if (s.d === T && s.tr && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.join(', ')) };
++  if (s.d === T && Array.isArray(s.tr) && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.map(String).join(', ')) };
+   if (s.d === T && s.rest) return { c: 'rest', t: plus('Rest day') };
+   if (wk && s.wd >= s.wg) return { c: 'rest', t: 'Week done · ' + wk };
+   return { c: 'none', t: plus('Nothing yet today'), nudge: !s.nn };
+@@ -1509,7 +1509,7 @@ function postHTML(p) {
+   const sub = (story ? 'Story' : 'Finished a workout') + ' · ' + agoShort(p.at);
+   const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<div class="po-media" data-dbl="${p.id}"><img alt="${story ? 'Story' : 'Workout photo'} from ${esc(who)}" src="${p.photo}">${story ? `<span class="po-badge">${left}h left</span>` : ''}<i class="po-burst" aria-hidden="true"></i></div>` : '';
+   const nLifts = Array.isArray(b.ex) && b.ex.length ? b.ex.length : String(b.l || '').replace(/\D/g, '') || '—';
+-  const wk = p.kind === 'stamp' ? `<section class="po-wk"><div class="po-wk-h"><b>${esc(b.sp || 'Workout')}</b>${b.pr ? `<span class="pill pr">${b.pr} PR${b.pr > 1 ? 's' : ''}</span>` : ''}</div>
++  const wk = p.kind === 'stamp' ? `<section class="po-wk"><div class="po-wk-h"><b>${esc(b.sp || 'Workout')}</b>${+b.pr > 0 ? `<span class="pill pr">${Math.floor(+b.pr)} PR${+b.pr > 1 ? 's' : ''}</span>` : ''}</div>
+     <div class="po-stats${b.v ? '' : ' po-st2'}">${b.v ? `<div><span>Volume</span><b class="num">${esc(b.v)}</b></div>` : ''}<div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>Lifts</span><b class="num">${esc(String(nLifts))}</b></div></div>
+     ${Array.isArray(b.ex) && b.ex.length ? `<div class="po-lifts">${b.ex.slice(0, 10).map(x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`).join('')}</div>` : ''}
+     ${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}</section>` : '';
+@@ -1800,7 +1800,7 @@ function postMenu(id) {
+         onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
+       if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
+       if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
+-        onOk: async () => { hide(); try { await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
++        onOk: async () => { hide(); try { const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); if (error) throw error; toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
+     }; },
+   });
+ }

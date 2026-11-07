@@ -1464,7 +1464,7 @@ function frStatus(f) {
   const s = f.stat, T = today(), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
   if (f.at_gym) return { c: 'gym', t: `At ${f.at_gym} · ${atGymAgo(f.at_since)}` };
   if (!s) return { c: '', t: '' };
-  if (s.d === T && s.tr && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.join(', ')) };
+  if (s.d === T && Array.isArray(s.tr) && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.map(String).join(', ')) };
   if (s.d === T && s.rest) return { c: 'rest', t: plus('Rest day') };
   if (wk && s.wd >= s.wg) return { c: 'rest', t: 'Week done · ' + wk };
   return { c: 'none', t: plus('Nothing yet today'), nudge: !s.nn };
@@ -1509,7 +1509,7 @@ function postHTML(p) {
   const sub = (story ? 'Story' : 'Finished a workout') + ' · ' + agoShort(p.at);
   const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<div class="po-media" data-dbl="${p.id}"><img alt="${story ? 'Story' : 'Workout photo'} from ${esc(who)}" src="${p.photo}">${story ? `<span class="po-badge">${left}h left</span>` : ''}<i class="po-burst" aria-hidden="true"></i></div>` : '';
   const nLifts = Array.isArray(b.ex) && b.ex.length ? b.ex.length : String(b.l || '').replace(/\D/g, '') || '—';
-  const wk = p.kind === 'stamp' ? `<section class="po-wk"><div class="po-wk-h"><b>${esc(b.sp || 'Workout')}</b>${b.pr ? `<span class="pill pr">${b.pr} PR${b.pr > 1 ? 's' : ''}</span>` : ''}</div>
+  const wk = p.kind === 'stamp' ? `<section class="po-wk"><div class="po-wk-h"><b>${esc(b.sp || 'Workout')}</b>${+b.pr > 0 ? `<span class="pill pr">${Math.floor(+b.pr)} PR${+b.pr > 1 ? 's' : ''}</span>` : ''}</div>
     <div class="po-stats${b.v ? '' : ' po-st2'}">${b.v ? `<div><span>Volume</span><b class="num">${esc(b.v)}</b></div>` : ''}<div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>Lifts</span><b class="num">${esc(String(nLifts))}</b></div></div>
     ${Array.isArray(b.ex) && b.ex.length ? `<div class="po-lifts">${b.ex.slice(0, 10).map(x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`).join('')}</div>` : ''}
     ${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}</section>` : '';
@@ -1800,7 +1800,7 @@ function postMenu(id) {
         onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
       if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
       if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-        onOk: async () => { hide(); try { await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
+        onOk: async () => { hide(); try { const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); if (error) throw error; toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
     }; },
   });
 }
@@ -3000,11 +3000,12 @@ function tick() {
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
     const re = $('[data-rest-end]'); if (re) re.textContent = REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000);
     const re2 = $('[data-rest-end2]'); if (re2) re2.textContent = REST.paused ? '' : hm(Date.now() + left * 1000);
-    const hg = $('.restpop .hg, .restpill .hg-mini'); if (hg && !REST.paused) hg.innerHTML = hourglass(1 - left / REST.total, false);
+    const hg = $('.restpop .hg, .restpill .hg-mini'); if (hg && !REST.paused) { const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); }
   }
 }
 function logSet(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
+  if (!s.done && !s.r) { toast('Add your reps first.'); return; } // an empty set shouldn't count or start rest
   s.done = !s.done; s.at = s.done ? Date.now() : null; if (s.done) delete A.endAt;
   if (s.done) {
     buzz(10);
@@ -3973,9 +3974,10 @@ function openKeypad(ei, si, f) {
           const key = k.dataset.k;
           if (key === 'done') { closeSheet(sh); return; }
           if (key === 'plates') { commit(); closeSheet(sh); openSetPlates(ei, si); return; }
-          if (key === 'next') { commit(); closeSheet(sh); if (f === 'w') openKeypad(ei, si, 'r'); else if (si + 1 < e.sets.length) openKeypad(ei, si + 1, 'w'); return; }
+          // Next on kg goes to reps; Next on reps ticks the set (rest starts), as the tour says
+          if (key === 'next') { commit(); closeSheet(sh); if (f === 'w') openKeypad(ei, si, 'r'); else if (e.sets[si] && !e.sets[si].done && e.sets[si].r) logSet(ei, si); return; }
           if (key === 'del') buf = (buf == null ? cur() : buf).slice(0, -1);
-          else { if (buf == null) buf = ''; if (key === '.' && buf.includes('.')) return; if (buf.length < 6) buf += key; }
+          else { if (buf == null) buf = ''; if (key === '.' && (f === 'r' || buf.includes('.'))) return; if (buf.length < 6) buf += key; }
         }
         show(); dialTo();
       };
@@ -4951,7 +4953,8 @@ const ACT = {
 };
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-a]'); if (!el || el.disabled) return;
-  const now = Date.now(); if (el === tapEl && now - tapAt < 350 && el.dataset.a !== 'rest') { ev.preventDefault(); return; } tapEl = el; tapAt = now; // no double runs on a double tap
+  // no double runs on a double tap: a re-render swaps the button for a new node, so compare what it does, not the node
+  const now = Date.now(), key = JSON.stringify({ ...el.dataset }); if (key === tapEl && now - tapAt < 350 && el.dataset.a !== 'rest') { ev.preventDefault(); return; } tapEl = key; tapAt = now;
   // Slow actions (sending a request, a nudge…) keep their button off until they finish, so a second tap can't send twice.
   const f = ACT[el.dataset.a]; if (f) { ev.preventDefault(); const r = f(el, ev); if (r && typeof r.finally === 'function') { el.disabled = true; r.finally(() => { el.disabled = false; }); } }
 });
@@ -5031,7 +5034,7 @@ document.addEventListener('touchend', () => {
     s0.el.style.transition = 'transform .2s ease'; s0.el.style.transform = '';
     // Swipe left shows Delete (Job, 4 Nov); swipe right logs the set
     if (s0.dx < -50 && s0.el.querySelector('.set-del')) { s0.el.classList.add('sw-open'); }
-    else if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); logSet(ei, si); }
+    else if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); if (A && A.ex[ei] && A.ex[ei].sets[si] && !A.ex[ei].sets[si].done) logSet(ei, si); } // swipe right only logs, never un-logs
   } else {
     const sc = $('#screen'); sc.style.transition = 'transform .2s ease'; sc.style.transform = '';
     if (s0.dx > 90) back();

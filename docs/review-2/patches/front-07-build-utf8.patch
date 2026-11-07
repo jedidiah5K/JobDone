@@ -1,0 +1,45 @@
+diff --git a/build.py b/build.py
+index 9cdb8dc..d005790 100644
+--- a/build.py
++++ b/build.py
+@@ -5,8 +5,8 @@ import os, shutil, subprocess, sys, zipfile
+ here = os.path.dirname(os.path.abspath(__file__))
+ seed_script = os.path.join(here, 'personal', 'build_seed.py')
+ seed = subprocess.check_output([sys.executable, seed_script, os.path.join(here, '..', 'prompts', 'workout-log-may-oct-2026.csv')]).decode() if os.path.exists(seed_script) else None
+-src_js = open(os.path.join(here, 'app.js')).read()
+-css = open(os.path.join(here, 'styles.css')).read()
++src_js = open(os.path.join(here, 'app.js'), encoding='utf-8').read()
++css = open(os.path.join(here, 'styles.css'), encoding='utf-8').read()
+ import base64
+ css = css.replace('/*FONT*/', '')  # Oct 2026: system font (SF Pro on iPhone) instead of the rounded Nunito
+ # The Claude artifact carries Job's log; the public website does not (data comes from a backup file).
+@@ -16,7 +16,7 @@ def fill(t, with_seed):
+ dist = os.path.join(here, 'dist'); os.makedirs(dist, exist_ok=True)
+ seed_ok = seed is not None
+ if seed_ok:
+-    open(os.path.join(dist, 'jobdone.html'), 'w').write(fill(open(os.path.join(here, 'shell.html')).read(), True))
++    open(os.path.join(dist, 'jobdone.html'), 'w', encoding='utf-8').write(fill(open(os.path.join(here, 'shell.html'), encoding='utf-8').read(), True))
+ # web/ is the deployed site (Vercel serves it as-is). config.js holds your Supabase keys and is never overwritten.
+ src, web = os.path.join(here, 'web-src'), os.path.join(here, 'web')
+ os.makedirs(web, exist_ok=True)
+@@ -33,7 +33,7 @@ if esb and os.path.exists(esb):
+     run = lambda txt, loader: subprocess.run([esb, '--minify', '--loader=' + loader, '--target=safari15', '--log-level=error'], input=txt.encode(), capture_output=True, check=True).stdout.decode()
+     _js, _css = src_js, css
+     src_js, css = run(src_js, 'js'), run(css, 'css')
+-html = fill(open(os.path.join(src, 'index-shell.html')).read(), False)
++html = fill(open(os.path.join(src, 'index-shell.html'), encoding='utf-8').read(), False)
+ if esb and os.path.exists(esb): src_js, css = _js, _css
+ # Content security policy: only our own files, Supabase, and the inline app script (pinned by its hash) may run.
+ import re, hashlib, base64
+@@ -42,9 +42,9 @@ sb = 'https://xvyibgnjibzopwtxajin.supabase.co'
+ csp = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval' %s; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; "
+        "connect-src 'self' %s wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'") % (hashes, sb)
+ html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
+-open(os.path.join(web, 'index.html'), 'w').write(html)
++open(os.path.join(web, 'index.html'), 'w', encoding='utf-8').write(html)
+ # Owner icon page: /?icon=skyline is rewritten here by vercel.json, so iPhone sees the Skyline icon in the page itself
+-open(os.path.join(web, 'owner.html'), 'w').write(html.replace('href="icons/apple-touch-icon.png?v=7"', 'href="icons/job-skyline-180.png?v=2"', 1))
++open(os.path.join(web, 'owner.html'), 'w', encoding='utf-8').write(html.replace('href="icons/apple-touch-icon.png?v=7"', 'href="icons/job-skyline-180.png?v=2"', 1))
+ z = os.path.join(dist, 'jobdone-web.zip')
+ with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as f:
+     for root, _, files in os.walk(web):

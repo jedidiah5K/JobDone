@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finish page redesign</title>
+<link rel="stylesheet" href="assets/mock.css">
+<style>
+@font-face { font-family: Marker; src: url(../../../web/fonts/permanent-marker.woff2) format("woff2"); }
+.hero { position: relative; height: 220px; padding: 22px 16px 0; overflow: hidden; }
+.hero .eb2 { font: 700 11px/14px ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.hero h1 { font-size: 40px; line-height: 44px; margin-top: 6px; }
+.hero .ln { font-size: 15px; font-weight: 600; margin-top: 6px; color: var(--hdr); }
+.hero .when { font-size: 13px; color: var(--hdr2); margin-top: 2px; }
+.sp { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.sp .nm { min-width: 0; max-width: 100%; height: 30px; padding: 0 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; background: rgba(0,0,0,.35); color: #fff; }
+.sp .nm i { width: 8px; height: 8px; border-radius: 50%; background: #FFC94D; flex: none; }
+.stamp { position: absolute; right: 14px; top: 18px; font: 800 12px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; padding: 6px 9px; border: 2px solid currentColor; border-radius: 4px; transform: rotate(-7deg); }
+/* Agent */
+[data-theme="mono"] .hero { background: radial-gradient(120% 80% at 80% 0%, rgba(200,16,46,.45), transparent 60%), #0B0B0D; }
+[data-theme="mono"] .hero .eb2, [data-theme="mono"] .stamp { color: #E0303C; }
+[data-theme="mono"] .scope { position: absolute; right: -40px; top: 40px; width: 190px; height: 190px; opacity: .35; }
+/* Summit */
+[data-theme="cliffs"] .hero { background: url(assets/bg-cliffs.png) 0 -330px / 390px 844px; }
+[data-theme="cliffs"] .hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(240,142,92,.55), rgba(62,92,154,.35)); }
+[data-theme="cliffs"] .hero > :not(.sp):not(.stamp) { position: relative; }
+[data-theme="cliffs"] .hero .eb2 { color: #fff; } [data-theme="cliffs"] .stamp { color: #FFE2A8; position: absolute; }
+[data-theme="cliffs"] .hero h1, [data-theme="cliffs"] .hero .ln { text-shadow: 0 1px 3px rgba(20,20,50,.5); }
+/* Boulder */
+[data-theme="climb"] .hero { background: url(assets/bg-climb.png) 0 0 / 390px 844px; }
+[data-theme="climb"] .paper { position: absolute; left: 12px; right: 12px; top: 14px; bottom: 54px; background: #FFFDFA; border-radius: 6px; transform: rotate(-1.2deg); box-shadow: 0 6px 16px rgba(43,33,58,.14); padding: 14px 16px; }
+[data-theme="climb"] .paper h1 { font-family: Marker, var(--font-display); color: #6C3FD6; font-size: 44px; line-height: 48px; font-weight: 400; }
+[data-theme="climb"] .paper .eb2 { color: rgba(22,21,26,.6); font-family: var(--font); }
+[data-theme="climb"] .paper .ln { color: #16151A; } [data-theme="climb"] .paper .when { color: rgba(22,21,26,.65); }
+[data-theme="climb"] .hold { position: absolute; right: 20px; top: 18px; width: 54px; height: 54px; border-radius: 46% 54% 50% 50%; background: #F4B728; display: grid; place-items: center; box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); }
+[data-theme="climb"] .sp .nm { background: #EDE6FB; color: #3A2378; }
+/* Skyline */
+[data-theme="spidey"] .hero { background: url(assets/bg-spidey.png) 0 0 / 390px 844px; }
+[data-theme="spidey"] .burst { position: absolute; left: 6px; top: 8px; width: 270px; height: 150px; }
+[data-theme="spidey"] .stamp { color: #F2C14E; }
+[data-theme="spidey"] .hero .ln { position: absolute; left: 16px; top: 150px; }
+.stats4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+.stats4 div + div { border-left: 1px solid var(--hair); padding-left: 10px; }
+.stats4 b { display: block; font: 700 20px/24px var(--font-display); letter-spacing: -.01em; }
+.stats4 span { font-size: 12px; color: var(--muted); }
+.cmp { display: grid; grid-template-columns: 64px 1fr 56px; gap: 8px; align-items: center; font-size: 13px; margin-top: 8px; }
+.cmp i { display: block; height: 8px; border-radius: 4px; }
+.pr { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--hair); }
+.pr:first-of-type { border-top: 0; }
+.medal { width: 26px; height: 26px; border-radius: 50%; background: #E0A526; display: grid; place-items: center; color: #3A2A06; font: 800 12px var(--font); flex: none; }
+.bt { position: absolute; left: 16px; right: 16px; bottom: 30px; display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+</style></head>
+<body>
+<div class="scr">
+  <div class="hero" id="hero"></div>
+  <div style="padding:0 16px">
+    <div class="card" style="margin-top:12px">
+      <div class="stats4"><div><b class="num">1h 01m</b><span>time</span></div><div><b class="num">3,473</b><span>kg lifted</span></div><div><b class="num">15</b><span>sets</span></div><div><b class="num">2</b><span>PRs</span></div></div>
+    </div>
+    <div class="card">
+      <div class="eb">Volume</div>
+      <p class="sec" style="margin-top:4px" data-mono="That’s like pushing 2 Aston Martins out of a car park. Quietly." data-cliffs="That’s 6 grumpy grizzly bears carried to the summit." data-climb="That’s 17 haul bags dragged up El Cap." data-spidey="That’s 2 falling taxis, caught before they hit the street."></p>
+      <div class="cmp"><span>Today</span><i style="background:var(--bar1);width:79%"></i><b class="num" style="text-align:right">3,473</b></div>
+      <div class="cmp"><span class="cap">2 Nov</span><i style="background:var(--bar2);width:100%"></i><span class="num cap" style="text-align:right">4,398</span></div>
+    </div>
+    <div class="card">
+      <div class="eb" style="margin-bottom:2px">Personal records</div>
+      <div class="pr"><span class="medal">PR</span><div class="grow"><div style="font-weight:600">Shoulder Press</div><div class="cap">Best estimated max · was 42.5 × 8</div></div><b class="num">45 × 8</b></div>
+      <div class="pr"><span class="medal">PR</span><div class="grow"><div style="font-weight:600">Lateral Raise</div><div class="cap">Best estimated max · was 12.5 × 5</div></div><b class="num">12.5 × 6</b></div>
+    </div>
+  </div>
+  <div class="bt"><div class="btn s">Share</div><div class="btn p">Done</div></div>
+</div>
+<script src="assets/mock.js"></script>
+<script>
+const t = document.documentElement.dataset.t, h = document.getElementById('hero');
+const pill = '<div class="sp"><span class="nm"><i></i><span class="ell">Anterior Chain Power Day Heavy</span></span></div>';
+h.innerHTML = {
+  mono: `<svg class="scope" viewBox="0 0 100 100" fill="none" stroke="#E0303C" stroke-width="1"><circle cx="50" cy="50" r="40"/><circle cx="50" cy="50" r="24"/><path d="M50 0v36M50 64v36M0 50h36M64 50h36"/></svg><div class="eb2">Debrief · File 046</div><h1>Job’s done!</h1><div class="ln">Mission accomplished. Martini earned.</div><div class="when">Sat 7 Nov</div><span class="stamp">Mission complete</span>${pill}`,
+  cliffs: `<div class="eb2">Trail log · Route #46</div><h1>Job’s done!</h1><div class="ln">Golden hour, earned.</div><div class="when" style="color:#fff">Sat 7 Nov</div><span class="stamp" style="top:18px;right:14px">Summit reached</span>${pill}`,
+  climb: `<div class="paper"><div class="eb2">Route sent · #46</div><h1>Sent!</h1><div class="ln">Chalked up and topped out.</div><div class="when">Sat 7 Nov</div><span class="hold"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3A2A06" stroke-width="3" stroke-linecap="round"><path d="m5 12 5 5 9-10"/></svg></span></div>${pill}`,
+  spidey: `<svg class="burst" viewBox="0 0 270 150"><path d="M20 70 0 40l45 5L40 5l45 30 25-35 20 38L175 8l5 40 45-25-10 45 55 5-45 25 35 35-55-5 10 40-45-28-20 30-25-33-40 25 5-40-50 10 30-30z" fill="#F2C14E" stroke="#16151A" stroke-width="3"/><text x="135" y="88" text-anchor="middle" font-family="Impact, Arial Black, sans-serif" font-size="40" fill="#E2231A" stroke="#16151A" stroke-width="2" transform="rotate(-6 135 80)">JOB’S DONE!</text></svg><span class="stamp">City safe</span><div class="ln">City’s safe tonight. <span style="color:var(--hdr2);font-weight:400">Sat 7 Nov</span></div>${pill}`
+}[t];
+</script>
+</body></html>

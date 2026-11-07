@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Today redesign</title>
+<link rel="stylesheet" href="assets/mock.css">
+<style>
+.wk-dots { display: flex; justify-content: space-between; margin-top: 10px; }
+.wd { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 40px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.wd i { width: 30px; height: 30px; display: grid; place-items: center; font: 700 12px var(--font); font-style: normal; color: #221E2B; }
+.wd svg { width: 30px; height: 30px; }
+[data-theme="mono"] .wd i.on svg circle, [data-theme="mono"] .wd i.on svg path { stroke: #fff; }
+.next h2 { font: 700 24px/29px var(--font-display); letter-spacing: -.015em; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rot { display: flex; gap: 4px; margin-top: 12px; }
+.rot span { flex: 1; min-width: 0; font-size: 11px; font-weight: 600; color: var(--muted); }
+.rot span b { display: block; height: 4px; border-radius: 2px; background: var(--edge); margin-bottom: 4px; }
+.rot span.done b { background: var(--muted); }
+.rot span.cur b { background: var(--accent); }
+.rot span.cur { color: var(--text); }
+[data-theme="mono"] .rot span.cur b { background: #E0303C; }
+.lifts { margin-top: 10px; font-size: 14px; line-height: 20px; color: var(--text2); }
+.next .btn { margin-top: 14px; width: 100%; }
+[data-theme="climb"] .next { background: #FF8A5C; box-shadow: none; }
+[data-theme="climb"] .next .eb, [data-theme="climb"] .next .cap, [data-theme="climb"] .next .lifts, [data-theme="climb"] .next .rot span { color: rgba(34,30,43,.8); }
+[data-theme="climb"] .next .rot span b { background: rgba(34,30,43,.18); } [data-theme="climb"] .next .rot span.done b { background: rgba(34,30,43,.45); } [data-theme="climb"] .next .rot span.cur b { background: #221E2B; }
+[data-theme="climb"] .next .btn.p { background: #221E2B; color: #FF8A5C; border-radius: 14px; }
+.bw { display: grid; grid-template-columns: 1fr 1px 118px; gap: 14px; align-items: center; }
+.bw .sep { align-self: stretch; background: var(--hair); }
+.big { font: 700 30px/34px var(--font-display); letter-spacing: -.02em; }
+.big small { font: 500 15px var(--font); color: var(--text2); margin-left: 2px; }
+.ring { width: 54px; height: 54px; }
+.last { display: flex; align-items: center; gap: 12px; }
+.chev { width: 9px; height: 15px; stroke: var(--muted); fill: none; stroke-width: 2; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #3DDC97; flex: none; }
+.spark { width: 100%; height: 34px; margin-top: 6px; }
+</style></head>
+<body>
+<div class="scr">
+  <div class="scroll">
+    <div class="hdr-eb" style="margin-top:4px">Saturday, 7 Nov</div>
+    <h1>Afternoon, Maximilian</h1>
+
+    <div class="card">
+      <div class="row between"><span class="eb">This week</span><span class="cap"><b style="color:var(--text)">3 of 4</b> · 12-week streak</span></div>
+      <div class="wk-dots" id="dots"></div>
+    </div>
+
+    <div class="card next">
+      <div class="row between"><span class="eb" data-mono="Next assignment" data-cliffs="Next ascent" data-climb="Next route" data-spidey="Next patrol">Next up</span><span class="cap">2 of 4</span></div>
+      <h2>Anterior Chain Power Day Heavy</h2>
+      <div class="cap" style="margin-top:2px">5 exercises · last done 5 days ago</div>
+      <div class="lifts ell">Bench Press · Single-Arm Incline Cable Flyes X · Shoulder Press · +2</div>
+      <div class="rot"><span class="done ell"><b></b>Push</span><span class="cur ell"><b></b>Anterior Chain</span><span class="ell"><b></b>Posterior Chain</span><span class="ell"><b></b>Pull</span></div>
+      <div class="btn p">Start workout</div>
+    </div>
+
+    <div class="card">
+      <div class="bw">
+        <div>
+          <div class="row between"><span class="eb">Body weight</span><span class="cap">today</span></div>
+          <div class="big num" style="margin-top:4px">78.6<small>kg</small></div>
+          <div class="cap num">Avg 78.6 · −3.5 since Aug</div>
+          <svg class="spark" viewBox="0 0 200 34" preserveAspectRatio="none"><path d="M0 6 L20 8 L40 7 L60 12 L80 13 L100 17 L120 18 L140 22 L160 24 L180 27 L200 30" fill="none" stroke="var(--bar1)" stroke-width="2"/></svg>
+        </div>
+        <div class="sep"></div>
+        <div style="text-align:center">
+          <span class="eb">Steps</span>
+          <svg class="ring" viewBox="0 0 54 54" style="display:block;margin:8px auto 4px"><circle cx="27" cy="27" r="23" fill="none" stroke="var(--edge)" stroke-width="5"/><circle cx="27" cy="27" r="23" fill="none" stroke="#3DDC97" stroke-width="5" stroke-linecap="round"/></svg>
+          <div class="num" style="font:700 17px var(--font-display)">12,493</div>
+          <div class="cap">of 9,000</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card last">
+      <span class="dot"></span>
+      <div class="grow"><div class="cap">Last session · 2 days ago</div><div style="font:600 17px/22px var(--font-display)">Push</div><div class="cap num">5 lifts · 10,128 kg · 1h 01m</div></div>
+      <span style="color:var(--accent);font-weight:600;font-size:15px">Recap</span><svg class="chev" viewBox="0 0 9 15"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>
+    </div>
+  </div>
+  <nav class="tabs" data-on="today"></nav>
+</div>
+<script src="assets/mock.js"></script>
+<script>
+const t = document.documentElement.dataset.t, days = ['M','T','W','T','F','S','S'], done = { 0: ['#FFC94D', 'A'], 1: ['#FF6FA8', 'Po'], 3: ['#3DDC97', 'P'] }, todayI = 5;
+const shape = (c, on, lab) => {
+  if (t === 'mono') return `<svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="11" fill="none" stroke="${c ? '#E0303C' : on ? '#fff' : 'rgba(255,255,255,.35)'}" stroke-width="1.6"/><path d="M15 1v8M15 21v8M1 15h8M21 15h8" stroke="${c ? '#E0303C' : on ? '#fff' : 'rgba(255,255,255,.35)'}" stroke-width="1.6"/>${c ? '<circle cx="15" cy="15" r="3" fill="#E0303C"/>' : ''}</svg>`;
+  if (t === 'cliffs') return `<svg viewBox="0 0 30 30"><path d="M4 25 11 8l5 6 3-4 7 15z" fill="${c || 'rgba(30,111,140,.18)'}" stroke="${on ? '#16151A' : 'none'}" stroke-width="1.5"/><text x="15" y="23" text-anchor="middle" font-size="9" font-weight="700" fill="#221E2B">${c ? lab : ''}</text></svg>`;
+  if (t === 'climb') return `<svg viewBox="0 0 30 30"><path d="M6 13c0-6 7-9 12-7s8 6 6 11-8 9-13 7-5-5-5-11z" fill="${c || '#F1EDE6'}" stroke="${on ? '#6C3FD6' : 'rgba(43,33,58,.15)'}" stroke-width="${on ? 2 : 1}"/><text x="15" y="19" text-anchor="middle" font-size="9" font-weight="700" fill="#221E2B">${c ? lab : ''}</text></svg>`;
+  return `<svg viewBox="0 0 30 30"><path d="M15 2 26 8.5v13L15 28 4 21.5v-13z" fill="${c ? '#E2231A' : 'rgba(150,170,230,.14)'}" stroke="${on ? '#fff' : 'rgba(255,255,255,.18)'}" stroke-width="1.3"/><text x="15" y="19" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${c ? lab : ''}</text></svg>`;
+};
+document.getElementById('dots').innerHTML = days.map((d, i) => `<div class="wd" style="${i === todayI ? 'color:var(--text)' : ''}">${d}<i class="${i === todayI ? 'on' : ''}">${shape(done[i] && done[i][0], i === todayI, done[i] && done[i][1])}</i></div>`).join('');
+</script>
+</body></html>

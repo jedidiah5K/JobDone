@@ -1,0 +1,19 @@
+diff --git a/app.js b/app.js
+index 773f674..4391667 100644
+--- a/app.js
++++ b/app.js
+@@ -4840,7 +4840,13 @@ const ACT = {
+   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
+   export: el => doExport(el.dataset.k),
+   reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, key: false, onOk: eraseAll }),
+-  signOut: () => DEMO ? (location.hash = '', location.reload()) : confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => { await flushNow(); try { localStorage.removeItem(LS_KEY); } catch (e) {} await SB.auth.signOut(); } }),
++  signOut: () => DEMO ? (location.hash = '', location.reload()) : confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => {
++    pend().forEach(p => dirty.add(p)); await flushNow();
++    if (pend().size) return toast('Some of your training hasn’t synced yet. Get signal, then sign out.', 4500);
++    const { error } = await SB.auth.signOut(); if (error) return toast('Couldn’t sign out. Check your signal and try again.');
++    try { for (const k of [LS_KEY, LS_KEY + ':pending', 'jd-idphoto', 'jd-idcode', 'jd-gym', 'jd-hidepost', 'jd-nav']) localStorage.removeItem(k); } catch (e) {}
++    location.reload(); // drops the last account's friends, feed, ID photo and code from memory
++  } }),
+   doImport: () => doImport(true),
+   skipImport: () => doImport(false),
+   // workout

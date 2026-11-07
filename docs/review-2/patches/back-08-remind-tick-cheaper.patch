@@ -1,0 +1,13 @@
+diff --git a/a/schema.sql b/b/schema.sql
+index f40a9bb..589c158 100644
+--- a/a/schema.sql
++++ b/b/schema.sql
+@@ -148,7 +148,7 @@ begin
+       and exists (select 1 from jobdone_push_subs s where s.user_id = m.user_id)
+   loop
+     begin
+-      if not exists (select 1 from pg_timezone_names where name = r.p->'remind'->>'tz') then continue; end if;
++      -- An unknown time zone raises below and is skipped by the handler (pg_timezone_names re-reads every zone file on each call).
+       if coalesce(r.p->'remind'->>'at', '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then continue; end if;
+       lt := now() at time zone (r.p->'remind'->>'tz'); at := (r.p->'remind'->>'at')::time;
+       if lt < lt::date + at or lt > lt::date + at + interval '2 hours' then continue; end if;

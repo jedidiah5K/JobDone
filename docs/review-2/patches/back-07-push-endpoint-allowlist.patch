@@ -1,0 +1,22 @@
+diff --git a/a/supabase/functions/rest-push/index.ts b/b/supabase/functions/rest-push/index.ts
+index 3aedaaa..3febb43 100644
+--- a/a/supabase/functions/rest-push/index.ts
++++ b/b/supabase/functions/rest-push/index.ts
+@@ -9,6 +9,8 @@ import webpush from 'npm:web-push@3.6.7';
+ 
+ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+ const cors = { 'Access-Control-Allow-Origin': 'https://jobdone-peach.vercel.app', 'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
++// Only the real push services (Apple, Google, Mozilla, Microsoft), so the server never posts to any other address.
++const PUSH_HOST = /^https:\/\/([a-z0-9-]+\.)*(push\.apple\.com|fcm\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com)\//;
+ const json = (status: number, o: unknown) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+ 
+ // Reminder lines per theme, in each theme's voice (Agent, Summit, Boulder, Skyline). Short, and never about weights or reps.
+@@ -86,7 +88,7 @@ const handle = async (req: Request) => {
+   if (b.action === 'sub') {
+     const s = b.sub || {};
+     const short = (v: unknown, n: number) => typeof v === 'string' && v.length > 0 && v.length <= n;
+-    if (!short(s.endpoint, 1000) || !/^https:\/\//.test(s.endpoint) || !short(s.keys?.p256dh, 200) || !short(s.keys?.auth, 200)) return json(400, { error: 'Bad subscription' });
++    if (!short(s.endpoint, 1000) || !PUSH_HOST.test(s.endpoint) || !short(s.keys?.p256dh, 200) || !short(s.keys?.auth, 200)) return json(400, { error: 'Bad subscription' });
+     const { error } = await db.from('jobdone_push_subs').upsert({ endpoint: s.endpoint, user_id: uid, p256dh: s.keys.p256dh, auth: s.keys.auth, created_at: new Date().toISOString() });
+     if (error) return json(500, { error: 'Could not save' });
+     // Keep each person's 5 newest devices, so one account can't pile up endpoints.

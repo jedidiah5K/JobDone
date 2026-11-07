@@ -295,7 +295,8 @@ tr.pop .check { animation: pop .3s var(--ease); }
 .hg-cap { fill: var(--text); }
 .hg-glass { fill: var(--raised); stroke: var(--text); stroke-width: 2; stroke-linejoin: round; }
 .hg-sand { fill: var(--accent); transition: y .9s linear, height .9s linear; }
-.hg-stream { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 5; animation: stream .5s linear infinite; }
+.hg-stream { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 5; animation: stream .5s steps(2) infinite; } /* 4 repaints a second, not 60-120 */
+@media (prefers-reduced-motion: reduce) { .hg-stream { animation: none; } }
 @keyframes stream { to { stroke-dashoffset: -8; } }
 .hg-mini { width: 18px; height: 28px; display: block; }
 .restpill .hg-cap { fill: var(--bg); } .restpill .hg-glass { stroke: var(--bg); fill: transparent; }

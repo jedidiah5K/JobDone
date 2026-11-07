@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exercise menu redesign</title>
+<link rel="stylesheet" href="assets/mock.css">
+<style>
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+.behind { position: absolute; inset: 0; padding: 14px 16px; filter: saturate(.9); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 8px 16px 30px; box-shadow: 0 -8px 40px rgba(0,0,0,.25); }
+[data-theme="cliffs"] .sheet { background: #F2F8FC; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--edge); margin: 0 auto 12px; }
+.sh-h { display: flex; align-items: center; gap: 10px; }
+.sh-h b { font: 700 20px/25px var(--font-display); }
+.grp { margin-top: 14px; border-radius: 14px; background: var(--raised); overflow: hidden; }
+[data-theme="climb"] .grp { background: #fff; box-shadow: inset 0 0 0 1px rgba(43,33,58,.12); }
+[data-theme="cliffs"] .grp { background: #fff; }
+.it { display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 14px; font-size: 16px; }
+.it + .it { box-shadow: 0 -1px 0 var(--hair); }
+.it svg { width: 22px; height: 22px; stroke: var(--text2); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.it .v { margin-left: auto; color: var(--muted); font-size: 15px; }
+.it.del { color: var(--bad); justify-content: center; font-weight: 600; }
+.lbl { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 16px 4px -8px; }
+</style></head>
+<body>
+<div class="scr">
+  <div class="behind"><div class="card" style="height:300px;margin-top:90px"></div><div class="card" style="height:300px"></div></div>
+  <div class="scrim"></div>
+  <div class="sheet" role="dialog" aria-label="Single-Arm Incline Cable Flyes X">
+    <div class="grab"></div>
+    <div class="sh-h"><div class="grow"><b style="display:block">Single-Arm Incline Cable Flyes X</b><span class="cap">Cable · Chest · 3 sets</span></div></div>
+    <div class="lbl">This workout</div>
+    <div class="grp">
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/></svg>Add note</div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>Add warm-up sets</div>
+      <div class="it"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>Rest time<span class="v">2:00</span></div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M7 4v16M17 4v16M7 12h10"/></svg>Superset with Shoulder Press</div>
+    </div>
+    <div class="lbl">Change</div>
+    <div class="grp">
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>Swap exercise</div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 8l-2 4 2 4M19 8l2 4-2 4"/></svg>Split into left and right</div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Reorder exercises</div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>Machine setup notes</div>
+      <div class="it"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>See history</div>
+    </div>
+    <div class="grp" style="margin-top:14px"><div class="it del">Remove from this workout</div></div>
+  </div>
+</div>
+<script src="assets/mock.js"></script>
+</body></html>

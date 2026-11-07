@@ -1,0 +1,26 @@
+diff --git a/app.js b/app.js
+index 773f674..1baa552 100644
+--- a/app.js
++++ b/app.js
+@@ -4987,9 +4987,12 @@ document.addEventListener('pointerup', () => { if (scrubEl) { const c = scrubEl;
+ document.addEventListener('pointerout', ev => { if (ev.pointerType === 'mouse') { const c = ev.target.closest('.chart'); if (c && !c.contains(ev.relatedTarget)) endScrub(c); } });
+ document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && SHEETS.length) closeSheet(); });
+ let rsT = null; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (ready && S && $('#screen') && !SHEETS.length) rerender(); }, 200); });
++// Coming back: one tiny query for the newest change; the full reload (every month of history) only runs when it moved.
++// ponytail: own writes also move it, so the first resume after logging still reloads once.
++let CLOUD_AT = null;
+ document.addEventListener('visibilitychange', async () => {
+   if (document.visibilityState !== 'visible' || !DB || !S || dirty.size || inflight.size || SHEETS.length) return;
+-  try { if (await loadCloud()) { lsSave(); rerender(); } } catch (e) {}
++  try { const at = DB.stamp ? await DB.stamp() : null; if (at && at === CLOUD_AT) return; if (await loadCloud()) { CLOUD_AT = at; lsSave(); rerender(); } } catch (e) {}
+ });
+ document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ready) setTimeout(maybeStale, 400); });
+ setInterval(tick, 500);
+@@ -5177,6 +5180,7 @@ function supaDB() {
+       set: async body => { const { error } = await SB.from(TABLE).upsert({ user_id: USER.id, path, body, updated_at: new Date().toISOString() }); if (error) throw fail(error); },
+       delete: async () => { const { error } = await SB.from(TABLE).delete().eq('path', path); if (error) throw fail(error); },
+     }),
++    stamp: async () => { const { data, error } = await SB.from(TABLE).select('updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle(); if (error) throw fail(error); return data ? data.updated_at : null; },
+     collection: c => ({
+       get: async () => { const { data, error } = await SB.from(TABLE).select('path,body').like('path', c + '/%'); if (error) throw fail(error); const docs = (data || []).map(r => ({ id: r.path.split('/').pop(), exists: true, data: () => r.body })); return { docs, size: docs.length, empty: !docs.length }; },
+     }),

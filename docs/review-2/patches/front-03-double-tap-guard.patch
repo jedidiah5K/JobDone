@@ -1,0 +1,23 @@
+diff --git a/app.js b/app.js
+index 773f674..601912d 100644
+--- a/app.js
++++ b/app.js
+@@ -4951,7 +4951,8 @@ const ACT = {
+ };
+ document.addEventListener('click', ev => {
+   const el = ev.target.closest('[data-a]'); if (!el || el.disabled) return;
+-  const now = Date.now(); if (el === tapEl && now - tapAt < 350 && el.dataset.a !== 'rest') { ev.preventDefault(); return; } tapEl = el; tapAt = now; // no double runs on a double tap
++  // no double runs on a double tap: a re-render swaps the button for a new node, so compare what it does, not the node
++  const now = Date.now(), key = JSON.stringify({ ...el.dataset }); if (key === tapEl && now - tapAt < 350 && el.dataset.a !== 'rest') { ev.preventDefault(); return; } tapEl = key; tapAt = now;
+   // Slow actions (sending a request, a nudge…) keep their button off until they finish, so a second tap can't send twice.
+   const f = ACT[el.dataset.a]; if (f) { ev.preventDefault(); const r = f(el, ev); if (r && typeof r.finally === 'function') { el.disabled = true; r.finally(() => { el.disabled = false; }); } }
+ });
+@@ -5031,7 +5032,7 @@ document.addEventListener('touchend', () => {
+     s0.el.style.transition = 'transform .2s ease'; s0.el.style.transform = '';
+     // Swipe left shows Delete (Job, 4 Nov); swipe right logs the set
+     if (s0.dx < -50 && s0.el.querySelector('.set-del')) { s0.el.classList.add('sw-open'); }
+-    else if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); logSet(ei, si); }
++    else if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); if (A && A.ex[ei] && A.ex[ei].sets[si] && !A.ex[ei].sets[si].done) logSet(ei, si); } // swipe right only logs, never un-logs
+   } else {
+     const sc = $('#screen'); sc.style.transition = 'transform .2s ease'; sc.style.transform = '';
+     if (s0.dx > 90) back();
