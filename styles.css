@@ -1390,10 +1390,10 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .fr-face { flex: none; width: 68px; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 0; color: var(--text); font: inherit; }
 .fr-face b { font-size: 13px; font-weight: 600; max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fr-face > span:last-child { font-size: 11px; color: var(--text2); }
-.ring { padding: 3px; border-radius: 50%; box-shadow: 0 0 0 2px var(--raised); }
-.ring .av { width: 56px; height: 56px; font-size: 22px; display: grid; }
-.ring.gym { box-shadow: 0 0 0 2.5px #2FBF71; } .ring.done { box-shadow: 0 0 0 2.5px var(--accent); }
-.ring.rest { box-shadow: none; outline: 2px dashed var(--text2); outline-offset: -1px; }
+.fring { padding: 3px; border-radius: 50%; box-shadow: 0 0 0 2px var(--raised); }
+.fring .av { width: 56px; height: 56px; font-size: 22px; display: grid; }
+.fring.gym { box-shadow: 0 0 0 2.5px #2FBF71; } .fring.done { box-shadow: 0 0 0 2.5px var(--accent); }
+.fring.rest { box-shadow: none; outline: 2px dashed var(--text2); outline-offset: -1px; }
 .fr-share { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; color: var(--text2); font: inherit; font-size: 16px; }
 .fr-cam { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink, #fff); }
 .fr-cam svg { width: 22px; height: 22px; }
@@ -1438,13 +1438,13 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .cm-row p { margin: 0; font-size: 15px; line-height: 20px; }
 .cm-del { min-height: 0; font-size: 13px; padding: 0; color: var(--text2) !important; }
 .cm-in { align-items: center; }
-.ring.sm { padding: 2px; flex: none; } .ring.sm .av { width: 40px; height: 40px; font-size: 16px; display: grid; }
+.fring.sm { padding: 2px; flex: none; } .fring.sm .av { width: 40px; height: 40px; font-size: 16px; display: grid; }
 /* Rings (6 Nov fix): every ring is the same size and drawn the same way, only colour and dash change, so the faces line up. */
-.ring, .ring.gym, .ring.done, .ring.rest, .ring.none { box-shadow: none; outline: 0; padding: 2.5px; border: 2.5px solid color-mix(in srgb, var(--text2) 30%, transparent); border-radius: 50%; display: inline-grid; place-items: center; box-sizing: content-box; }
-.ring.gym { border-color: #2FBF71; } .ring.done { border-color: var(--accent); } .ring.rest { border-style: dashed; border-color: var(--text2); }
-.ring.sm { padding: 2px; border-width: 2px; }
+.fring, .fring.gym, .fring.done, .fring.rest, .fring.none { box-shadow: none; outline: 0; padding: 2.5px; border: 2.5px solid color-mix(in srgb, var(--text2) 30%, transparent); border-radius: 50%; display: inline-grid; place-items: center; box-sizing: content-box; }
+.fring.gym { border-color: #2FBF71; } .fring.done { border-color: var(--accent); } .fring.rest { border-style: dashed; border-color: var(--text2); }
+.fring.sm { padding: 2px; border-width: 2px; }
 .fr-faces { align-items: flex-start; }
-.fr-face .ring { margin-bottom: 2px; }
+.fr-face .fring { margin-bottom: 2px; }
 .fr-face { width: 76px; } .fr-face b { max-width: 76px; } .fr-faces { gap: 8px; }
 
 /* Share to your feed (6 Nov) */
@@ -1465,14 +1465,14 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 @media (prefers-reduced-motion: reduce) { .fr-rf.spin svg { animation: none; } }
 /* Status dot (Job, 6 Nov: rings were unclear): no ring, a small dot on the top right of the photo.
    Green at the gym, theme colour trained, hollow resting, nothing when they haven't trained yet. */
-.ring, .ring.gym, .ring.done, .ring.rest, .ring.none, .ring.sm { border: 0 !important; outline: 0 !important; box-shadow: none !important; padding: 0 !important; position: relative; }
-.ring::after { content: ''; position: absolute; top: 0; right: 0; width: 15px; height: 15px; border-radius: 50%; box-shadow: 0 0 0 2.5px var(--bg, #000); display: none; }
-.ring.sm::after { width: 12px; height: 12px; top: -1px; right: -1px; }
-.ring.gym::after { display: block; background: #2FBF71; }
-.ring.done::after { display: block; background: var(--accent); }
-.ring.rest::after { display: block; background: var(--bg, #000); box-shadow: inset 0 0 0 2.5px var(--text2), 0 0 0 2.5px var(--bg, #000); }
-.ring .av { width: 60px; height: 60px; } .ring.sm .av { width: 40px; height: 40px; }
-.ring, .ring.sm { display: inline-block !important; width: fit-content; height: fit-content; line-height: 0; flex: none; }
+.fring, .fring.gym, .fring.done, .fring.rest, .fring.none, .fring.sm { border: 0 !important; outline: 0 !important; box-shadow: none !important; padding: 0 !important; position: relative; }
+.fring::after { content: ''; position: absolute; top: 0; right: 0; width: 15px; height: 15px; border-radius: 50%; box-shadow: 0 0 0 2.5px var(--bg, #000); display: none; }
+.fring.sm::after { width: 12px; height: 12px; top: -1px; right: -1px; }
+.fring.gym::after { display: block; background: #2FBF71; }
+.fring.done::after { display: block; background: var(--accent); }
+.fring.rest::after { display: block; background: var(--bg, #000); box-shadow: inset 0 0 0 2.5px var(--text2), 0 0 0 2.5px var(--bg, #000); }
+.fring .av { width: 60px; height: 60px; } .fring.sm .av { width: 40px; height: 40px; }
+.fring, .fring.sm { display: inline-block !important; width: fit-content; height: fit-content; line-height: 0; flex: none; }
 .fr-pull { visibility: hidden; }
 /* Next up header stays on one line (6 Nov: long theme names like "Next assignment" plus a 4-split rotation wrapped). */
 .card.nextup .card-h { flex-wrap: nowrap; gap: 10px; }

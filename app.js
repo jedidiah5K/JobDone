@@ -1465,7 +1465,7 @@ const postHidden = () => { try { return JSON.parse(localStorage.getItem('jd-hide
 function frRow(f) {
   const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono', st = frStatus(f), k = frStreak(f);
   const sub = [st.t || ((c.lv != null ? ID_LEVELS[t][Math.max(0, Math.min(2, Math.floor(+c.lv) || 0))] + ' · ' : '') + plural(Math.floor(+c.wk) || 0, 'workout')), k ? plural(k, 'week') + ' together' : '', f.nudged_me ? 'Nudged you' : ''].filter(Boolean);
-  return `<div class="li fr-row"><button class="fr-open" data-a="friendOpen" data-k="${esc(f.id)}"><span class="ring sm ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><span class="grow"><span class="t">${esc(c.n || 'Friend')}</span><span class="s">${st.c === 'gym' ? '<span class="live-txt">' + esc(sub[0]) + '</span>' + (sub.length > 1 ? ' · ' + esc(sub.slice(1).join(' · ')) : '') : esc(sub.join(' · '))}</span></span></button>${st.nudge && soOn() ? `<button class="btn sm ghost" data-a="nudge" data-k="${esc(f.id)}" ${NUDGED[f.id] ? 'disabled' : ''}>${NUDGED[f.id] ? 'Nudged' : 'Nudge'}</button>` : I.right}</div>`;
+  return `<div class="li fr-row"><button class="fr-open" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring sm ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><span class="grow"><span class="t">${esc(c.n || 'Friend')}</span><span class="s">${st.c === 'gym' ? '<span class="live-txt">' + esc(sub[0]) + '</span>' + (sub.length > 1 ? ' · ' + esc(sub.slice(1).join(' · ')) : '') : esc(sub.join(' · '))}</span></span></button>${st.nudge && soOn() ? `<button class="btn sm ghost" data-a="nudge" data-k="${esc(f.id)}" ${NUDGED[f.id] ? 'disabled' : ''}>${NUDGED[f.id] ? 'Nudged' : 'Nudge'}</button>` : I.right}</div>`;
 }
 // Friends page v2 (Job, 6 Nov: "looks like HTML", "separate things"): two tabs, Feed and Friends, laid out like a social app.
 // Feed: a row of friends' faces with today's status rings, a "Share a snap" bar, then posts with a header (face, name, time),
@@ -1506,7 +1506,7 @@ function postHTML(p) {
 // Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
 function frFaces(list) {
   return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
-    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="ring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
+    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
 }
 // Refresh (Job, 6 Nov): the button, or pull down at the top of Friends. Friends, requests and the feed load side by side,
 // and what's on screen stays until the new data arrives (no blank flash).
