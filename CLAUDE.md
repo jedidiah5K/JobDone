@@ -52,7 +52,7 @@ Always build with esbuild set: web/index.html is minified, and building without 
 Four themes, same layout and identical heights across all of them, uppercase labels:
 - Agent (default, listed first; key mono): obsidian wallpaper, red glow at top, sniper-scope day dots, Bond-style lines. No suit-and-tie art, no laser/gun barrel/blinds/casino/silk.
 - Summit (key cliffs): whole-screen sky that follows the clock (day/dusk/night), ridges with pines, rock day dots; labels have no chip.
-- Boulder (key climb): the classic pre-v7 look Job loves. Cream panels, boxed kg/reps cells, floating tab bar with big purple +, purple rope, chalk wall. Don't iOS-ify it.
+- Boulder (key climb): the classic pre-v7 look Job loves. Cream panels, boxed kg/reps cells, purple rope, chalk wall. (Since v133 every theme has the same flat tab bar and the same big + in its own colour; no floating bar.) Don't iOS-ify it.
 - Skyline (key spidey): night city, uniform yet asymmetrical, taller on the right, every third building lit, one web line, cobwebs at bottom corners only, no Spider-Man figure, all split colours red.
 
 Signed-out screens always use Agent. Detailed, not busy. Keep the solid status bar at the top (a translucent one triggers an iOS 26 Home Screen bug).

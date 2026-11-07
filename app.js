@@ -1097,6 +1097,7 @@ function tourAuto() {
 // To announce the next update: change NEWS_ID and the NEWS lines.
 const NEWS_ID = '2026-11-tabs';
 const NEWS = [
+  ['Posts in their own theme', 'A post looks like the theme its author had when they posted, so a friend on Agent shows up in Agent even if you use Skyline.'],
   ['New-look posts', 'Each post has its own box for the workout. Share a post with the share button. In Friends → ⚙ pick which splits post on their own, and whether friends see your weights.'],
   ['Friends at the bottom', 'Friends now has its own tab. Your splits live in the + button: pick one to start, or tap Edit splits and rotation.'],
   ['Front-and-back stories', 'Share a story takes a back photo, counts down 3 seconds, then takes a selfie. Swap which one is big, or save it to your phone.'],
@@ -1511,7 +1512,8 @@ function postHTML(p) {
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
   const last = cm.slice(-2).map(c => `<p class="po-cm"><b>${esc(USER && c.u === USER.id ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p>`).join('');
   const ph2 = new Date(p.at); const tod = todOf(ph2.getHours() + ph2.getMinutes() / 60); // Summit cards take the sky of when it was posted
-  return `<article class="card po po2 po-${tod}${p.kind === 'stamp' ? ' po-stamp' : ''}">
+  const pth = THEMES.some(x => x.k === b.th) ? b.th : mine ? theme() : (THEMES.some(x => x.k === t) ? t : theme());
+  return `<article class="card po po2 po-t-${pth} po-${tod}${p.kind === 'stamp' ? ' po-stamp' : ''}">
     <header class="po-h">${mine ? myFace() : face(p.n, p.ph, t)}<div class="grow"><b>${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
     <div class="po-b">${cap}${wk}${ph}</div>
     <footer class="po-f"><div class="po-acts"><button class="po-act${p.mine ? ' on' : ''}" data-a="postRxOpen" data-k="${p.id}" aria-label="React" title="React">${p.mine ? `<span class="po-mine">${p.mine}</span>` : IC.smile}</button><button class="po-act" data-a="postComments" data-k="${p.id}" aria-label="Comments" title="Comments">${IC.chat}${cm.length ? `<b class="num">${cm.length}</b>` : ''}</button><button class="po-act" data-a="postShare" data-k="${p.id}" aria-label="Share" title="Share">${IC.share}</button><span class="grow"></span>${sum}</div>
@@ -1680,7 +1682,7 @@ function snapStart() {
   if (!soOn()) return toast('Turn on Share my training in Friends first.');
   dualShot(d => { const sh = openSheet(`<div class="stack"><h2>Story</h2><img class="po-ph" src="${d}" alt="Your story"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Post story</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Story', mount: b => {
     const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
-      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Story posted'); FEED = null; rerender(); }
+      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { th: theme(), c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Story posted'); FEED = null; rerender(); }
       catch (e) { ok.disabled = false; postErr(e); } }; } }); });
 }
 // Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
@@ -1698,7 +1700,7 @@ const STAMP = {};
 async function stampPost(id, o = {}) {
   statSync(); if (!soOn()) return false;
   const d = recapData(id); if (!d.w) return false;
-  const body = { sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
+  const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
   if (o.c) body.c = String(o.c).slice(0, 80);
   const noW = !!SO().noW; if (noW) { delete body.v; delete body.h; } // Show my weights off: just the workout
   if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t && !noW ? setStr(t) : '']; });
