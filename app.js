@@ -186,8 +186,12 @@ function freshState() {
 const invalidate = () => { IX = null; };
 
 // ---------- storage ----------
-function lsLoad() { try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-function lsSave() { if (DEMO) return; try { localStorage.setItem(LS_KEY, JSON.stringify({ S, A: A && A.practice ? null : A, UI })); } catch (e) {} }
+// The workout in progress has its own key, so a set tap writes a few KB instead of the whole history.
+function lsLoad() { try { const s = localStorage.getItem(LS_KEY), o = s ? JSON.parse(s) : null, a = localStorage.getItem(LS_KEY + ':a'); if (o && a) o.A = JSON.parse(a).A; return o; } catch (e) { return null; } }
+function lsSave(onlyA) {
+  if (DEMO) return; const a = A && A.practice ? null : A;
+  try { if (onlyA) { localStorage.setItem(LS_KEY + ':a', JSON.stringify({ A: a })); return; } localStorage.setItem(LS_KEY, JSON.stringify({ S, A: a, UI })); localStorage.removeItem(LS_KEY + ':a'); } catch (e) {}
+}
 const dirty = new Set(), inflight = new Set();
 let flushT = null, retryT = null;
 // Paths saved on this phone but not yet in the account. Kept in localStorage so they survive closing the app.
@@ -200,7 +204,7 @@ function persist(...paths) {
   if (DEMO) return;
   if (A && A.practice) { paths = paths.filter(p => p !== 'jd/active'); if (!paths.length) return; }
   paths.forEach(p => pend().add(p)); pendSave();
-  lsSave();
+  lsSave(paths.every(p => p === 'jd/active'));
   if (!DB || !S) return;
   paths.forEach(p => dirty.add(p));
   clearTimeout(flushT); flushT = setTimeout(flush, 450);
@@ -2727,7 +2731,7 @@ function renderWorkout() {
   UPNEXT = upNext();
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
-  el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
+  el.innerHTML = resolveVars(`<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
       <div class="tc grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num">Started ${hm(A.start)} · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
       <button class="btn sm primary" data-a="finish">Finish</button></div>
     <div class="mt2 f13 row between"><span class="sec"><b class="c-text num">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="c-text num">${doneSets}</b> / ${plural(totalSets, 'set')}</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}</div>
@@ -2737,8 +2741,7 @@ function renderWorkout() {
     <button class="btn block" data-a="wkAddEx">Add exercise</button>
     <button class="self-c c-neg link" data-a="wkDiscard">Discard workout</button>
   </div>
-  ${REST ? restHTML() : ''}`;
-  el.innerHTML = resolveVars(el.innerHTML);
+  ${REST ? restHTML() : ''}`);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
   const rp = hadPop && el.querySelector('.restpop'); if (rp) rp.style.animation = 'none';
 }
@@ -4807,7 +4810,7 @@ async function doExport(kind) {
 async function eraseAll() {
   const paths = allPaths();
   S = null; A = null; REST = null; invalidate();
-  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  try { for (const k of [LS_KEY, LS_KEY + ':a', LS_KEY + ':rest']) localStorage.removeItem(k); } catch (e) {}
   if (DB) for (const p of paths) { try { await DB.doc(p).delete(); } catch (e) {} }
   welcomeOv = {}; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
   $('#app').innerHTML = ''; renderWelcome();
