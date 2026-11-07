@@ -1533,8 +1533,8 @@ function postHTML(p) {
   const ph2 = new Date(p.at); const tod = todOf(ph2.getHours() + ph2.getMinutes() / 60); // Summit cards take the sky of when it was posted
   const pth = THEMES.some(x => x.k === b.th) ? b.th : mine ? theme() : (THEMES.some(x => x.k === t) ? t : theme());
   return `<article class="card po po2 po-t-${pth} po-${tod}${p.kind === 'stamp' ? ' po-stamp' : ''}">
-    <header class="po-h">${mine ? myFace() : face(p.n, p.ph, t)}<div class="grow"><b>${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
-    <div class="po-b">${cap}${wk}${ph}</div>
+    <header class="po-h">${mine ? myFace() : face(p.n, p.ph, t)}<div class="grow"><b class="ell">${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
+    ${ph}<div class="po-b">${wk}${cap}</div>
     <footer class="po-f"><div class="po-acts"><button class="po-act${p.mine ? ' on' : ''}" data-a="postRxOpen" data-k="${p.id}" aria-label="React" title="React">${p.mine ? `<span class="po-mine">${p.mine}</span>` : IC.smile}</button><button class="po-act" data-a="postComments" data-k="${p.id}" aria-label="Comments" title="Comments">${IC.chat}${cm.length ? `<b class="num">${cm.length}</b>` : ''}</button><button class="po-act" data-a="postShare" data-k="${p.id}" aria-label="Share" title="Share">${IC.share}</button><span class="grow"></span>${sum}</div>
     ${UI.rxOpen === p.id ? `<div class="po-pick" role="group" aria-label="Pick a reaction">${REACTS.map(e => `<button class="${p.mine === e ? 'on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>` : ''}
     ${mine && p.who && p.who.length ? `<p class="po-who">${esc(p.who.map(w => w[1] + ' ' + (w[0] || 'Friend')).join(' · '))}</p>` : ''}
@@ -1569,8 +1569,11 @@ function viewFriends() {
   statSync();
   const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
   const tab = UI.frTab || (list.length ? 'feed' : 'friends');
-  const req = (r, btns) => `<div class="li"><span class="av av-l" style="--avc:var(--raised)">${esc((r.n || '?').charAt(0).toUpperCase())}</span><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
-  const head = `<div class="stack"><i class="fr-pull" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn fr-rf${FR_BUSY ? ' spin' : ''}" data-a="frRefresh" aria-label="Refresh" title="Refresh">${IC.rf}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
+  // Request rows (review 2): the letter sits on a theme colour like friends' faces (it was white on cream in Boulder),
+  // the name is one line, and the buttons go on their own row so long names don't break mid-word.
+  const req = (r, btns) => `<div class="li fr-req">${face(r.n || '?', null, 'mono')}<div class="grow"><div class="t ell">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div>${btns}</div></div>`;
+  // Refresh is the pull-down at the top (review 2), so the header keeps two buttons on a plate that reads on any wallpaper.
+  const head = `<div class="stack"><i class="fr-pull${FR_BUSY ? ' spin' : ''}" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
@@ -1578,7 +1581,7 @@ function viewFriends() {
     ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : `<div class="empty fr-empty">${list.length ? 'Nothing from the last 24 hours yet. Finish a workout and your Done Stamp shows up here.' : 'Add a friend to see their workouts here.'}${list.length ? '' : '<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button>'}</div>`}
   </div>`;
   return `${head}
-    ${rin.length ? `<div class="card"><div class="eyebrow">Requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
+    ${rin.length ? `<div class="card"><div class="eyebrow">Requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2 mt2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
     ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
       : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
     ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : `<div class="empty fr-empty">No friends yet.<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`}

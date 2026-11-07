@@ -1698,3 +1698,46 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .last-row > svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 :root[data-theme="mono"] .lr-go { color: var(--text); }
 :root[data-theme="spidey"] .lr-go { color: #FF5A50; }
+/* Friends feed (review 2): one container per post. The photo runs edge to edge under the header, then the title and PR pill,
+   three stats split by hairlines, lifts as plain rows. Posts still wear their author's theme. */
+.po2 .po-h b.ell { display: block; }
+.po2 > .po-media { border-radius: 0 !important; border: 0 !important; margin: 0; }
+.po2 .po-b { padding: 12px 14px; }
+.po2 .po-b:empty { display: none; }
+.po2 .po-wk, .po-t-climb .po-wk, .po2.po-t-spidey .po-wk { padding: 0; border: 0; border-radius: 0; background: none; }
+.po2 .po-wk-h { margin-bottom: 8px; }
+.po2 .po-wk-h b { font-size: 17px; line-height: 22px; min-width: 0; }
+.po2 .po-wk-h .pill { flex: none; white-space: nowrap; }
+.po2 .po-stats, .po2 .po-stats.po-st2 { display: flex; gap: 0; padding: 0; }
+.po2 .po-stats > div, .po2.po-t-climb .po-stats > div { flex: 1 1 0; min-width: 0; background: none; border: 0; border-radius: 0; padding: 0 0 0 12px; }
+.po2 .po-stats > div:first-child { padding-left: 0; flex-grow: 1.35; }
+.po2 .po-stats > div + div { border-left: 1px solid var(--border); }
+.po2 .po-stats span { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text2); }
+.po2 .po-stats b { font-size: 17px; line-height: 22px; }
+.po2 .po-lifts, .po2.po-t-climb .po-lifts { margin-top: 10px; padding: 0; border-radius: 0; background: none; }
+.po2 .po-lifts div, .po2.po-t-climb .po-lifts div { padding: 7px 0; border: 0; border-top: 1px solid var(--border); }
+.po2 .po-lifts span { color: var(--text2); }
+.po2 .po-wk + .po-cap { margin-top: 12px; }
+/* Skyline keeps a red stripe, Boulder its rope: a thin rule over the workout instead of a box */
+.po2.po-t-spidey .po-wk { box-shadow: inset 0 3px 0 #E2231A; padding-top: 12px; }
+.po2.po-t-climb .po-wk { box-shadow: inset 0 3px 0 #6C3FD6; padding-top: 12px; }
+/* PR pills keep the author's theme whatever the viewer's theme (V1: Summit day turned them brown on red) */
+:root[data-theme] .po2.po-t-climb .pill.pr, :root:not([data-theme]) .po2.po-t-climb .pill.pr { background: #6C3FD6; color: #fff; }
+:root[data-theme] .po2.po-t-mono .pill.pr, :root:not([data-theme]) .po2.po-t-mono .pill.pr { background: #C8102E; color: #fff; }
+:root[data-theme] .po2.po-t-cliffs .pill.pr, :root:not([data-theme]) .po2.po-t-cliffs .pill.pr { background: #F2A93B; color: #2A1A05; }
+:root[data-theme] .po2.po-t-spidey .pill.pr, :root:not([data-theme]) .po2.po-t-spidey .pill.pr { background: #E2231A; color: #fff; }
+/* faces: 13/12 px labels */
+.fr-face > span:last-child { font-size: 12px; }
+/* Header buttons on a plate that reads on any wallpaper (V6: Skyline's were red on the red glow) */
+:root .fr-top .icon-btn, :root[data-theme] .fr-top .icon-btn, :root:not([data-theme]) .fr-top .icon-btn { background: color-mix(in srgb, var(--surface-solid, var(--surface)) 82%, transparent); color: var(--text); box-shadow: 0 0 0 .5px var(--edge); }
+:root[data-theme="spidey"] .fr-top .icon-btn, :root[data-theme="mono"] .fr-top .icon-btn { background: rgba(10,18,48,.55); color: #fff; }
+/* pull-to-refresh shows while it loads */
+.fr-pull.spin { visibility: visible; opacity: 1; }
+.fr-pull.spin svg { animation: frSpin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .fr-pull.spin svg { animation: none; } }
+/* Requests: one-line name, buttons under it */
+.fr-req { align-items: flex-start; }
+.fr-req .grow { min-width: 0; }
+.fr-req .t.ell { display: block; overflow-wrap: normal; }
+/* "At the gym" green reads on light themes (V13) */
+:root:not([data-theme]) .live-txt, :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .live-txt { color: #1F7A40; }
