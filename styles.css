@@ -1496,3 +1496,66 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 body:has(#wk:not([hidden])) .cele { top: calc(env(safe-area-inset-top, 0px) + 124px); }
 .plate-tray { gap: 4px; } .plate-chip { min-width: 40px; }
 #screen.ob { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--s4)); } /* no tab bar in the intro, so the button sits at the bottom */
+/* Friends tab: red dot when someone sent a request */
+.tab.has-dot { position: relative; } .tab.has-dot::after { content: ''; position: absolute; top: 4px; left: calc(50% + 6px); width: 9px; height: 9px; border-radius: 50%; background: #E5484D; box-shadow: 0 0 0 2px var(--surface, #000); }
+/* Feed posts v2 (Job, 7 Nov): caption on top, the workout in its own box, photo as a rounded attachment, actions in a footer */
+.po2 { padding: 0; overflow: hidden; }
+.po2 .po-b { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.po2 .po-cap { margin: 0; font-size: 15px; line-height: 21px; }
+.po-wk { border-radius: 14px; background: color-mix(in srgb, var(--text) 5%, transparent); border: .5px solid color-mix(in srgb, var(--text2) 22%, transparent); padding: 12px; }
+.po-wk-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.po-wk-h b { font-size: 18px; line-height: 22px; font-weight: 700; }
+.po2 .po-stats { gap: 6px; padding: 0; }
+.po2 .po-stats > div { border-radius: 10px; background: color-mix(in srgb, var(--text) 6%, transparent); padding: 8px 10px; min-width: 0; }
+.po2 .po-stats span { font-size: 11px; }
+.po2 .po-stats b { font-size: 17px; line-height: 22px; }
+.po2 .po-lifts { margin-top: 10px; border-top: 0; border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); padding: 2px 10px; }
+.po2 .po-lifts div { padding: 8px 0; }
+.po2 .po-lifts span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.po2 .po-line { margin: 10px 0 0; font-size: 13px; }
+.po2 .po-media { border-radius: 14px; overflow: hidden; }
+.po-badge { position: absolute; top: 10px; right: 10px; padding: 4px 9px; border-radius: 12px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.po-f { padding: 2px 14px 12px; border-top: .5px solid color-mix(in srgb, var(--text2) 22%, transparent); }
+.po2 .po-acts { margin-top: 4px; }
+/* Story camera: countdown and review */
+.cam-count { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font: 800 96px/1 var(--font-display, system-ui); color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.6); pointer-events: none; }
+.cam.rv { justify-content: center; }
+.cam-rv { width: calc(100% - 32px); max-height: calc(100% - 220px); aspect-ratio: 4 / 5; object-fit: contain; margin: calc(env(safe-area-inset-top) + 24px) auto 0; border-radius: 16px; }
+.cam-tools { display: flex; justify-content: center; gap: 10px; padding: 14px 16px 0; }
+.cam-tools .btn { background: rgba(255,255,255,.14); color: #fff; border: 0; }
+.cam.rv .cam-bar { margin-top: auto; }
+.cam.rv .cam-ok { justify-self: center; min-width: 140px; }
+.cam.rv .cam-x { justify-self: end; }
+.srow-x { padding: 10px 16px 12px; border-top: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); }
+.po2 .po-stats { grid-template-columns: 1.35fr 1fr .8fr; } .po2 .po-stats b { font-size: 16px; }
+.po2 .po-stats.po-st2 { grid-template-columns: 1fr 1fr; }
+/* Boulder posts (Job, 7 Nov: "just looks like white"): cream card, holds in the header, rope stripe, boxed cells like the kg/reps boxes */
+:root:not([data-theme]) .po2 { background: #FBF6EE; border: 1px solid rgba(60, 50, 70, .10); box-shadow: 0 3px 0 rgba(60, 50, 70, .07); }
+:root:not([data-theme]) .po2 { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 600'%3E%3Cg opacity='.32'%3E%3Cg transform='translate(210 6) rotate(-10) scale(1.0)'%3E%3Cpath d='M0 10 C0 0 14 -6 24 0 C32 5 31 16 24 19 C20 12 10 11 6 18 C2 18 0 14 0 10 Z' fill='%23E2453C'/%3E%3Ccircle cx='14' cy='7' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(338 92) rotate(30) scale(0.9)'%3E%3Cpath d='M0 6 C0 1 4 -2 8 -1 C12 0 13 4 12 9 C11 14 7 16 4 15 C1 14 0 10 0 6 Z' fill='%232F7FD8'/%3E%3Ccircle cx='6' cy='7' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(14 118) rotate(-21) scale(0.9)'%3E%3Cpath d='M0 3 C0 0 3 -1 8 -1 L22 0 C26 0 27 3 26 6 C25 8 22 8 18 8 L5 8 C2 8 0 6 0 3 Z' fill='%232E8B4E'/%3E%3Ccircle cx='13' cy='3.5' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(330 170) rotate(-5) scale(0.85)'%3E%3Cpath d='M0 8 C0 1 9 -3 17 -1 C25 1 28 8 25 14 C22 19 10 21 4 17 C1 15 0 12 0 8 Z' fill='%23F4B728'/%3E%3Ccircle cx='13' cy='8' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(8 268) rotate(11) scale(0.8)'%3E%3Cpath d='M0 6 C0 1 4 -2 8 -1 C12 0 13 4 12 9 C11 14 7 16 4 15 C1 14 0 10 0 6 Z' fill='%236C3FD6'/%3E%3Ccircle cx='6' cy='7' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(322 330) rotate(-27) scale(0.9)'%3E%3Cpath d='M0 3 C0 0 3 -1 8 -1 L22 0 C26 0 27 3 26 6 C25 8 22 8 18 8 L5 8 C2 8 0 6 0 3 Z' fill='%23F07A2B'/%3E%3Ccircle cx='13' cy='3.5' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(18 420) rotate(-26) scale(0.8)'%3E%3Cpath d='M0 8 C0 1 9 -3 17 -1 C25 1 28 8 25 14 C22 19 10 21 4 17 C1 15 0 12 0 8 Z' fill='%23E2453C'/%3E%3Ccircle cx='13' cy='8' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(300 470) rotate(22) scale(0.85)'%3E%3Cpath d='M0 10 C0 0 14 -6 24 0 C32 5 31 16 24 19 C20 12 10 11 6 18 C2 18 0 14 0 10 Z' fill='%232F7FD8'/%3E%3Ccircle cx='14' cy='7' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(150 560) rotate(4) scale(0.8)'%3E%3Cpath d='M0 3 C0 0 3 -1 8 -1 L22 0 C26 0 27 3 26 6 C25 8 22 8 18 8 L5 8 C2 8 0 6 0 3 Z' fill='%232E8B4E'/%3E%3Ccircle cx='13' cy='3.5' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(40 560) rotate(-24) scale(0.75)'%3E%3Cpath d='M0 6 C0 1 4 -2 8 -1 C12 0 13 4 12 9 C11 14 7 16 4 15 C1 14 0 10 0 6 Z' fill='%23F4B728'/%3E%3Ccircle cx='6' cy='7' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(250 250) rotate(-7) scale(0.6)'%3E%3Cpath d='M0 6 C0 1 4 -2 8 -1 C12 0 13 4 12 9 C11 14 7 16 4 15 C1 14 0 10 0 6 Z' fill='%236C3FD6'/%3E%3Ccircle cx='6' cy='7' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(120 30) rotate(7) scale(0.6)'%3E%3Cpath d='M0 3 C0 0 3 -1 8 -1 L22 0 C26 0 27 3 26 6 C25 8 22 8 18 8 L5 8 C2 8 0 6 0 3 Z' fill='%23F07A2B'/%3E%3Ccircle cx='13' cy='3.5' r='2.2' fill='%232B213A' opacity='.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat-y center top / 100% auto, #FBF6EE !important; }
+:root:not([data-theme]) .po-wk { background: #FFFDFA; border: 1.5px solid #E7DFD3; border-left: 5px solid #6C3FD6; }
+:root:not([data-theme]) .po2 .po-stats > div { background: #fff; border: 1.5px solid #E7DFD3; }
+:root:not([data-theme]) .po2 .po-stats span { color: #6C3FD6; }
+:root:not([data-theme]) .po2 .po-lifts { background: #F6F0E6; }
+:root:not([data-theme]) .po2 .po-lifts div { border-bottom: 1px dashed rgba(60, 50, 70, .16); }
+:root:not([data-theme]) .po2 .po-lifts div:last-child { border-bottom: 0; }
+:root:not([data-theme]) .po2 .pill.pr { background: #6C3FD6; color: #fff; }
+:root:not([data-theme]) .po2 .po-media { border: 1.5px solid #E7DFD3; }
+:root:not([data-theme]) .po-f { border-top: 1px dashed rgba(60, 50, 70, .16); }
+:root:not([data-theme]) .po2 .po-rx { background: #fff; border: 1px solid #E7DFD3; }
+
+/* Post cards carry a bit of their theme (Job, 7 Nov) */
+/* Agent: red glow at the top, a thin red rule, typewriter titles */
+:root[data-theme="mono"] .po2 { background: radial-gradient(120% 70px at 50% 0, rgba(200,16,46,.22), transparent 70%), var(--surface) !important; }
+:root[data-theme="mono"] .po2 .po-h { box-shadow: inset 0 -1px 0 rgba(200,16,46,.35); margin-bottom: 10px; }
+:root[data-theme="mono"] .po2 .po-wk-h b { font-family: ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .08em; font-size: 16px; }
+:root[data-theme="mono"] .po2 .pill.pr { background: #C8102E; color: #fff; }
+/* Summit: the card takes the sky of the hour it was posted, with ridges along the bottom */
+:root[data-theme="cliffs"] .po2 { padding-bottom: 26px; }
+:root[data-theme="cliffs"] .po2.po-day { --surface: #EAF3FA; --raised: #DCEAF4; --text: #16151A; --text2: rgba(52,48,62,.76); --border: rgba(91,155,207,.22); color: var(--text); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60 L0 38 L40 22 L70 34 L110 12 L150 30 L190 18 L230 36 L270 14 L310 30 L360 20 L360 60 Z' fill='%233E6E8E' opacity='0.16'/%3E%3Cpath d='M0 60 L0 48 L50 36 L90 46 L140 32 L200 44 L250 34 L300 46 L360 38 L360 60 Z' fill='%233E6E8E' opacity='0.256'/%3E%3C/svg%3E") no-repeat left bottom / 100% 44px, linear-gradient(180deg, #D3E7F6, #EEF5FA 160px) !important; }
+:root[data-theme="cliffs"] .po2.po-dusk { --surface: #2C2944; --raised: rgba(255,240,230,.12); --text: #F7F2EE; --text2: rgba(247,240,235,.76); --border: rgba(255,255,255,.1); color: var(--text); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60 L0 38 L40 22 L70 34 L110 12 L150 30 L190 18 L230 36 L270 14 L310 30 L360 20 L360 60 Z' fill='%23140F26' opacity='0.35'/%3E%3Cpath d='M0 60 L0 48 L50 36 L90 46 L140 32 L200 44 L250 34 L300 46 L360 38 L360 60 Z' fill='%23140F26' opacity='0.5599999999999999'/%3E%3C/svg%3E") no-repeat left bottom / 100% 44px, linear-gradient(180deg, #8C5A7A, #3A3352 120px, #2C2944) !important; }
+:root[data-theme="cliffs"] .po2.po-night { --surface: #161B2B; --raised: rgba(150,160,200,.14); --text: #F2F3F7; --text2: rgba(235,236,245,.72); --border: rgba(255,255,255,.08); color: var(--text); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60 L0 38 L40 22 L70 34 L110 12 L150 30 L190 18 L230 36 L270 14 L310 30 L360 20 L360 60 Z' fill='%2305070F' opacity='0.45'/%3E%3Cpath d='M0 60 L0 48 L50 36 L90 46 L140 32 L200 44 L250 34 L300 46 L360 38 L360 60 Z' fill='%2305070F' opacity='0.7200000000000001'/%3E%3C/svg%3E") no-repeat left bottom / 100% 44px, radial-gradient(1.2px 1.2px at 80% 18px, #fff, transparent), radial-gradient(1px 1px at 62% 30px, #fff, transparent), radial-gradient(1.4px 1.4px at 90% 42px, #fff, transparent), linear-gradient(180deg, #0E1426, #161B2B 140px) !important; }
+:root[data-theme="cliffs"] .po2 .pill.pr { background: #F2A93B; color: #2A1A05; }
+/* Skyline: a web in the top corner, the city along the bottom, red stripe on the workout */
+:root[data-theme="spidey"] .po2 { padding-bottom: 30px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 70' preserveAspectRatio='none'%3E%3Cpath d='M0 70 V44 H18 V30 H34 V48 H52 V22 H72 V40 H86 V34 H104 V52 H122 V26 H140 V44 H158 V36 H176 V50 H194 V18 H214 V38 H230 V30 H250 V46 H266 V14 H288 V34 H304 V24 H324 V40 H340 V8 H360 V70 Z' fill='%230A1230' opacity='.55'/%3E%3Cg fill='%23FFD27A' opacity='.5'%3E%3Crect x='58' y='28' width='3' height='3'/%3E%3Crect x='200' y='24' width='3' height='3'/%3E%3Crect x='272' y='20' width='3' height='3'/%3E%3Crect x='346' y='16' width='3' height='3'/%3E%3Crect x='128' y='32' width='3' height='3'/%3E%3C/g%3E%3C/svg%3E") no-repeat left bottom / 100% 46px, var(--surface) !important; }
+:root[data-theme="spidey"] .po2 .po-wk { border-left: 4px solid #E2231A; }
+:root[data-theme="spidey"] .po2 .pill.pr { background: #E2231A; color: #fff; }

@@ -1,5 +1,5 @@
 // Offline support: the app shell is cached; pages load from the network first so updates arrive.
-const CACHE = 'jobdone-v130';
+const CACHE = 'jobdone-v131';
 const MP = 'jobdone-mediapipe-1'; // face-blur files (~15 MB), kept across updates
 // Pages come from the network so updates arrive, but a slow gym signal falls back to the saved copy after 2.5 s.
 function pageFirst(e) {
