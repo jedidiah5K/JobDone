@@ -3858,11 +3858,12 @@ const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 1
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, machine: ['machine', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 function openPlates(target, onUse, o = {}) {
   const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
   let bar = S.profile.barW != null ? S.profile.barW : (U() === 'lb' ? 45 : 20); if (U() === 'lb' && S.profile.barW === 0) bar = 0;
+  if (o.machine) bar = 0; // machines and cables have no bar: plates only
   let side = [], fresh = -1;
   const total = () => Math.round((bar + 2 * side.reduce((a, b) => a + b, 0)) * 1000) / 1000;
   const auto = t => { side = []; let r = Math.max(0, (t - bar) / 2); for (const p of den) while (r >= p - 1e-9) { side.push(p); r = Math.round((r - p) * 1000) / 1000; } return r; };
@@ -3900,7 +3901,7 @@ function openPlates(target, onUse, o = {}) {
     draw();
     b.querySelector('#pl-bar').onclick = ev => { const g = ev.target.closest('.pl'); if (!g) return; side.splice(+g.dataset.i, 1); left = 0; buzz(5); draw(); };
     b.querySelector('#pl-clear').onclick = () => { side = []; left = 0; draw(); };
-    b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; S.profile.barW = bar; persist('jd/meta'); b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
+    b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; if (!o.machine) { S.profile.barW = bar; persist('jd/meta'); } b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
     b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); side.forEach((p, i) => clank(p / 25, i * .09)); };
     b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
     const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { closeSheet(sh); onUse(total()); };
