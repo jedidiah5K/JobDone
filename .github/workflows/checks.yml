@@ -1,0 +1,12 @@
+# Runs the app's self-checks on every push and pull request (free on GitHub).
+name: checks
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node --check app.js
+      - run: for t in tests/*.js; do node "$t" || exit 1; done
