@@ -3132,6 +3132,18 @@ function recapData(id) {
   return { w, num, prev, vol, sets, reps, prs, musL, dur, heavy: heavyLine(vol), dv: prev ? (vol - wVol(prev)) / Math.max(1, wVol(prev)) : null };
 }
 const RC_LINE = {};
+// Finish page PR rows say what the record is and what it beat (review 2), from the workouts before this one.
+const PR_SAY = { e1RM: 'Best estimated max', Heaviest: 'Heaviest set', Reps: 'Most reps at this weight' };
+function prWas(p, w) {
+  let hw = null, he = null, rw = null;
+  for (const x of ix().ws) if (!x.skipped && x.id !== w.id && sortW(x, w) < 0) for (const e of x.ex) if (e.name === p.ex) for (const s of e.sets) if (validSet(s)) {
+    if (!hw || s.w > hw.w || (s.w === hw.w && s.r > hw.r)) hw = s;
+    if (!he || e1(s) > e1(he)) he = s;
+    if (p.set && s.w === p.set.w && (!rw || s.r > rw.r)) rw = s;
+  }
+  const t = p.types[0], o = t === 'Heaviest' ? hw : t === 'Reps' ? rw : he;
+  return o ? 'was ' + setStr(o) : '';
+}
 // The top of the finish page, dressed for each theme (Job, 16 Oct: "more interesting", smaller title).
 // Small touches per theme (Job, 6 Nov): what "Next up" is called, and the seal stamped on the finish page.
 const NEXT_LBL = { mono: 'Next assignment', cliffs: 'Next ascent', climb: 'Next route', spidey: 'Next patrol' };
@@ -3141,7 +3153,8 @@ const finSeal = k => FIN_SEAL[k] ? `<div class="fin-seal seal-${k} fin-press" ar
 function finHero(d) {
   const k = theme(), num = String(d.num).padStart(3, '0'), when = esc(fmtDate(d.w.date, { wd: true }));
   const line = esc(d.line || (d.line = doneLine(d.w)));
-  const tags = `<div class="rc-tags"><span class="rc-tag"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span>${d.prs.length ? `<span class="rc-tag pr">${d.prs.length} PR${d.prs.length > 1 ? 's' : ''}</span>` : ''}</div>`;
+  // PRs moved to the numbers card below (review 2), so the split pill has the row to itself and stays one line.
+  const tags = `<div class="rc-tags"><span class="rc-tag ell"><i class="sdot"></i>${esc(d.w.splitName || 'Workout')}</span></div>`;
   const check = `<div class="rc-check"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>`;
   if (k === 'mono') return `<div class="rc-hero fin fin-agent"><svg class="fin-scope" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="56"/><path d="M100 0v70M100 130v70M0 100h70M130 100h70"/><circle class="dot" cx="100" cy="100" r="4"/></svg>
     <div class="fin-eb">Debrief · File ${num}</div><h1>Job’s done!</h1><div class="fin-stamp fin-press">Mission complete</div><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`;
@@ -3220,17 +3233,16 @@ function showRecap(id, fresh) {
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
     ${finHero(d)}
+    <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
-      <div class="rc-big num"><span data-roll>${dvol(d.vol)}</span><span class="unit">${U()}</span></div>
-      <div class="cap">${esc(d.heavy)}</div>
+      <div class="rc-heavy">${esc(d.heavy)}</div>
       ${d.prev ? `<div class="rc-cmp">
         <div class="rc-bar"><span>Today</span><i><b style="width:${Math.round(d.vol / top * 100)}%"></b></i><em class="num">${dvol(d.vol)}</em></div>
         <div class="rc-bar was"><span>Last ${esc(fmtDate(d.prev.date))}</span><i><b style="width:${Math.round(pv / top * 100)}%"></b></i><em class="num">${dvol(pv)}</em></div>
         <div class="cap ${d.dv >= 0 ? 'c-pos' : ''}">${d.dv >= 0 ? `${Math.round(d.dv * 100)}% more volume than your last ${esc(d.w.splitName || 'workout')}` : d.w.planned && d.sets < d.w.planned ? `A shorter session: ${d.sets} of ${d.w.planned} planned sets done.` : `${Math.abs(Math.round(d.dv * 100))}% less volume than your last ${esc(d.w.splitName || 'workout')}`}</div></div>` : ''}
     </div>
-    <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b data-roll>${d.w.ex.length}</b><span>exercises</span></div><div class="kpi"><b data-roll>${d.sets}</b><span>sets</span></div><div class="kpi"><b data-roll>${d.reps}</b><span>reps</span></div></div></div>
-    ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 2l3 7M16 2l-3 7" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="6" fill="#F4B728"/></svg></span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc(p.types.join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
+    ${d.prs.length ? `<div class="card"><div class="mb2 eyebrow">Personal records</div>${d.prs.map(p => `<div class="rc-pr"><span class="rc-medal" aria-hidden="true">PR</span><div class="grow"><div class="t">${esc(p.ex)}</div><div class="cap">${esc([p.types.map(t => PR_SAY[t] || t).join(' · '), prWas(p, d.w)].filter(Boolean).join(' · '))}</div></div><b class="num">${setStr(p.set)}</b></div>`).join('')}</div>` : ''}
     <button class="card row between rc-fold" aria-expanded="false" data-fold><span><span class="eyebrow">Every lift</span><span class="mt1 rc-fold-s">${plural(h.length, 'exercise')} · muscles worked</span></span>${I.down}</button>
     <div class="rc-folded" hidden><div class="card"><div class="mb1 eyebrow">Exercises</div><div class="list">${h.map(({ e, t, dl }) => `<div class="li"><div class="grow"><div class="t">${esc(e.name)} ${pr.has(e.name) ? '<span class="pill pr">PR</span>' : ''}</div><div class="s num">${e.sets.map(setStr).join('  ·  ')}</div></div><div class="rc-right"><b class="num">${t ? setStr(t) : '—'}</b>${dl}</div></div>`).join('')}</div></div>
     <div class="card"><div class="mb3 eyebrow">Muscles worked</div>${d.musL.map(([m, n]) => `<div class="rc-mu"><span>${esc(m)}</span><i><b style="width:${Math.round(n / mx * 100)}%"></b></i><em class="num">${n1(n)}</em></div>`).join('')}</div></div>
@@ -3251,7 +3263,8 @@ function showRecap(id, fresh) {
   el.querySelector('#rc-share').onclick = () => openShareSheet(d);
   stampWire(el, id);
   if (fresh) rollNums(el); else el.querySelectorAll('.fin-press').forEach(x => x.classList.remove('fin-press'));
-  if (fresh) { const w0 = S.workouts[id]; if (!(w0 && w0.planned && wSets(w0) < w0.planned)) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
+  // Confetti is for a PR finish only (review 2, V23), so a record feels bigger than a normal day.
+  if (fresh) { if (d.prs.length) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
 }
 // Draw the recap as a 1080x1350 share card. Each theme has its own card (Job, 16 Oct):
 // Agent = mission debrief, Skyline = night patrol comic, Summit = summit log with an elevation profile, Boulder = route tag on the wall.

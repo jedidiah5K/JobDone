@@ -1741,3 +1741,23 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .fr-req .t.ell { display: block; overflow-wrap: normal; }
 /* "At the gym" green reads on light themes (V13) */
 :root:not([data-theme]) .live-txt, :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .live-txt { color: #1F7A40; }
+/* Finish page (review 2): every hero is the same height, the stamp sits in the corner, the split pill is one line,
+   numbers first (time, kg, sets, PRs), volume bars in the theme colour, PR rows say what they beat */
+.rc-hero.fin { height: calc(220px + env(safe-area-inset-top, 0px)); box-sizing: border-box; justify-content: flex-end; }
+.rc-hero.fin .rc-tags { max-width: 100%; min-width: 0; }
+.rc-tag.ell { display: inline-flex; max-width: 100%; }
+.rc-tag.ell .sdot { flex: none; }
+.rc-hero.fin.fin-agent > .fin-stamp { position: absolute; z-index: 3; top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; margin: 0; font-size: 12px; line-height: 18px; padding: 2px 8px; }
+.fin-sky .fin-cap { background: none; border: 0; box-shadow: none; transform: none; padding: 0; margin: 0; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.fin-sky .fin-cap .rc-line { font-weight: 700; }
+.fin-sky .fin-cap .fin-sub { opacity: .85; }
+.rc-heavy { margin-top: 4px; font-size: 15px; line-height: 21px; color: var(--text); }
+.rc-bar i b { background: var(--accent); }
+:root[data-theme="mono"] .rc-bar i b { background: #E0303C; }
+:root[data-theme="spidey"] .rc-bar i b { background: #E2231A; }
+.rc-bar.was i b { background: var(--muted); }
+.rc-k .kpi b.num { font-variant-numeric: tabular-nums; }
+.rc-medal { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #F4B728; color: #2A1A05; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.rc-pr .t { overflow-wrap: anywhere; }
+:root[data-theme] .rc-bar.was i b, :root:not([data-theme]) .rc-bar.was i b { background: var(--muted); }
+.rc-hero.fin > .fin-seal, .rc-hero.fin.fin-agent > .fin-stamp { top: calc(8px + env(safe-area-inset-top, 0px)); font-size: 11px; line-height: 16px; padding: 2px 8px; }
