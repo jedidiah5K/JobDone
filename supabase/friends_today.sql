@@ -49,13 +49,16 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 create or replace function public.jobdone_post(p_kind text, p_body jsonb, p_photo text) returns bigint language plpgsql security definer set search_path = '' as $$
-declare me uuid := auth.uid(); nid bigint;
+declare me uuid := auth.uid(); nid bigint; b jsonb := coalesce(p_body, '{}'::jsonb);
 begin
   if me is null then raise exception 'Sign in first'; end if;
   if (select count(*) from public.jobdone_posts where user_id = me and created_at > now() - interval '24 hours') >= 12 then raise exception 'Too many posts today' using errcode = '54000'; end if;
-  insert into public.jobdone_posts (user_id, kind, body, photo) values (me, p_kind, coalesce(p_body, '{}'::jsonb), p_photo) returning id into nid;
+  -- Older app versions don't send the theme: take it from the author's card so the post keeps the theme it was made in.
+  if not (b ? 'th') then b := b || jsonb_build_object('th', coalesce((select c.card->>'t' from public.jobdone_cards c where c.user_id = me), 'mono')); end if;
+  insert into public.jobdone_posts (user_id, kind, body, photo) values (me, p_kind, b, p_photo) returning id into nid;
   return nid;
 end $$;
+-- Posts from before v133 had no theme: see post_theme_fix.sql (one-off).
 
 create or replace function public.jobdone_post_photo(p_id bigint, p_photo text) returns void language sql security definer set search_path = '' as $$
   update public.jobdone_posts set photo = p_photo where id = p_id and user_id = auth.uid();
