@@ -2713,8 +2713,10 @@ function livePR(e) {
   for (const s of e.sets) { if (!s.done) { out.push([]); continue; } out.push(prTypes(s, b)); applyBest(s, b); }
   return out;
 }
+const restSave = () => { try { localStorage.setItem(LS_KEY + ':rest', JSON.stringify(A ? REST : null)); } catch (e) {} };
+const restLoad = () => { try { const r = JSON.parse(localStorage.getItem(LS_KEY + ':rest')); return A && r && (r.paused || r.end > Date.now()) ? r : null; } catch (e) { return null; } };
 function renderWorkout() {
-  syncRestPush();
+  syncRestPush(); restSave();
   const el = $('#wk'); if (!el) return;
   if (!A || !A.open) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
@@ -5397,7 +5399,7 @@ async function openData() {
   LS_KEY = 'jobdone.v1:' + USER.id;
   const cached = lsLoad();
   ready = false; S = null; A = null; invalidate();
-  if (cached && cached.S) { S = cached.S; A = cached.A || null; renameLifts(S, A); UI = cached.UI || UI; ready = true; $('#app').innerHTML = ''; render(); maybePrompt(); }
+  if (cached && cached.S) { S = cached.S; A = cached.A || null; REST = restLoad(); renameLifts(S, A); UI = cached.UI || UI; ready = true; $('#app').innerHTML = ''; render(); maybePrompt(); }
   else $('#app').innerHTML = skeleton();
   await connect(supaDB());
 }
@@ -5447,7 +5449,7 @@ async function boot() {
     if ('serviceWorker' in navigator && location.protocol === 'https:') swRegister();
   }
   const cached = lsLoad();
-  if (cached && cached.S) { S = cached.S; A = cached.A || null; renameLifts(S, A); UI = cached.UI || UI; ready = true; render(); maybePrompt(); }
+  if (cached && cached.S) { S = cached.S; A = cached.A || null; REST = restLoad(); renameLifts(S, A); UI = cached.UI || UI; ready = true; render(); maybePrompt(); }
   else $('#app').innerHTML = skeleton();
   let db = null;
   try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
