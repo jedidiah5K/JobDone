@@ -137,6 +137,16 @@ async function pushOn() {
     const r = await restFn({ action: 'sub', sub: sub.toJSON() }); return !!(r && r.ok);
   } catch (e) { toast('Could not turn on notifications on this phone.'); return false; }
 }
+// Sign-out and account delete: this phone stops getting the old account's pushes (rest alerts, reminders, friends' nudges).
+async function pushForget(tellServer) { try { const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration(); const sub = reg && reg.pushManager && await reg.pushManager.getSubscription(); if (sub) { if (tellServer) await restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
+// What this phone keeps for whoever is signed in, outside LS_KEY. The next account on the phone must see none of it.
+function forgetShared() {
+  try { for (const k of ['jd-idphoto', 'jd-idcode', 'jd-gym', 'jd-hidepost', 'jd-nav', 'jd-owner-icon', 'jobdone-theme']) localStorage.removeItem(k); } catch (e) {}
+  ID_PHOTO = null; ID_CODE = ''; ID_SENT = ''; idFetched = false; STAT_SENT = ''; FRIENDS = null; REQS = null; FEED = null; PHOTOS = null; GYM = {}; VIEWDAY = null;
+  for (const k in NUDGED) delete NUDGED[k];
+  NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
+}
+const forgetAccount = () => { try { for (const k of [LS_KEY, LS_KEY + ':a', LS_KEY + ':rest', LS_KEY + ':pending']) localStorage.removeItem(k); } catch (e) {} forgetShared(); };
 async function pushOff() { if (S && S.profile && (S.profile.restPush || (S.profile.remind && S.profile.remind.on))) return; try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
 // Clear delivered rest alerts when the app comes back, so the lock screen doesn't fill up (each alert has its own tag now).
 document.addEventListener('visibilitychange', () => { if (!document.hidden && 'serviceWorker' in navigator) navigator.serviceWorker.ready.then(r => r.getNotifications()).then(ns => ns.forEach(n => /^rest/.test(n.tag) && n.close())).catch(() => {}); });
@@ -4876,7 +4886,14 @@ const ACT = {
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
   reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, key: false, onOk: eraseAll }),
-  signOut: () => DEMO ? (location.hash = '', location.reload()) : confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => { await flushNow(); try { localStorage.removeItem(LS_KEY); } catch (e) {} await SB.auth.signOut(); } }),
+  signOut: () => DEMO ? (location.hash = '', location.reload()) : confirmSheet({ title: 'Sign out?', body: 'Your data stays in your account. Sign in again to see it.', ok: 'Sign out', onOk: async () => {
+    // Never drop sets that haven't reached the account: try once more, and stay signed in if anything is left.
+    pend().forEach(p => dirty.add(p)); await flushNow();
+    if (pend().size) return toast('Some of your training hasn’t synced yet. Get signal, then sign out.', 4500);
+    await pushForget(true);
+    const { error } = await SB.auth.signOut(); if (error) return toast('Couldn’t sign out. Check your signal and try again.');
+    forgetAccount(); location.reload(); // also drops the last account's friends, feed and ID card from memory
+  } }),
   doImport: () => doImport(true),
   skipImport: () => doImport(false),
   // workout
@@ -5111,7 +5128,7 @@ function openDeleteAccount() {
         const { data } = await SB.auth.getSession(); const tok = data && data.session && data.session.access_token;
         const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/delete-account', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, apikey: CFG.supabaseAnonKey } });
         if (!r.ok) throw new Error('failed');
-        try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + ':pending'); } catch (e) {}
+        forgetAccount(); await pushForget(false); // the server already dropped this account's push rows
         closeSheet(sh); await SB.auth.signOut().catch(() => {}); toast('Your account and data were deleted.', 4000);
       } catch (e) { go.disabled = false; go.textContent = 'Delete my account'; toast('Couldn’t delete it. Check your signal and try again.'); }
     };
@@ -5392,7 +5409,7 @@ async function startHosted() {
     if (ev === 'SIGNED_IN' && session && (!USER || USER.id !== session.user.id)) { USER = session.user; openData(); }
     if (ev === 'TOKEN_REFRESHED') { reconnect(); if (pend().size) retrySoon(300); }
     if (ev === 'PASSWORD_RECOVERY') setTimeout(() => openSetPassword(true), 600);
-    if (ev === 'SIGNED_OUT') { USER = null; openedFor = null; DB = null; mode = 'local'; renderSignIn(); }
+    if (ev === 'SIGNED_OUT') { USER = null; openedFor = null; DB = null; mode = 'local'; forgetShared(); renderSignIn(); } // LS_KEY stays: unsynced sets come back on the next sign-in
   });
   const { data, error } = await SB.auth.getSession();
   if (data && data.session) { USER = data.session.user; await openData(); }
