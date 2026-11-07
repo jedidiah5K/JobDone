@@ -1,5 +1,5 @@
 // Offline support: the app shell is cached; pages load from the network first so updates arrive.
-const CACHE = 'jobdone-v134';
+const CACHE = 'jobdone-v135';
 const MP = 'jobdone-mediapipe-1'; // face-blur files (~15 MB), kept across updates
 // Pages come from the network so updates arrive, but a slow gym signal falls back to the saved copy after 2.5 s.
 function pageFirst(e) {
@@ -21,7 +21,7 @@ self.addEventListener('fetch', e => {
   const isPage = e.request.mode === 'navigate' || u.pathname.endsWith('.html') || u.pathname.endsWith('config.js');
   e.respondWith(isPage
     ? pageFirst(e)
-    : caches.match(e.request).then(r => r || fetch(e.request).then(res => { const c = res.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return res; })));
+    : caches.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) { const c = res.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); } return res; })));
 });
 
 // Rest-done notifications: the server pushes when a rest timer ends.
