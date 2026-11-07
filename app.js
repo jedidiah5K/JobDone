@@ -2083,7 +2083,7 @@ function viewToday() {
   }).join('');
   const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">
-  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div class="grow"><div class="eyebrow">${esc(longDay(t))}</div><h1 class="hi-h">${greeting()},${esc(p.name)}</h1></div></div>`}
+  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div class="grow"><div class="eyebrow">${esc(longDay(t))}</div><h1 class="hi-h">${greeting()}, ${esc(p.name)}</h1></div></div>`}
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
   ${past ? `<div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
     <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">week of ${esc(fmtDate(ws))}</span></div>`

@@ -1662,7 +1662,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 :root[data-theme="spidey"] .mi svg { stroke: #FF5A50; }
 /* Today (review 2): a one-line greeting, the week's count beside its label, lifts in one line, a rotation strip,
    "Start workout", weight and steps side by side, last session as one row */
-.hi-h { overflow-wrap: anywhere; }
+.hi-h { overflow-wrap: break-word; }
 .wk-card .card-h { flex-wrap: nowrap; gap: 10px; }
 .wk-sum { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card.nextup .card-h > .cap { flex: none; }
@@ -1777,3 +1777,5 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .seg button, .daychip { position: relative; }
 .datepick input { top: 50%; bottom: auto; height: 44px; transform: translateY(-50%); }
 .seg button::after, .daychip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+/* V21: one primary look per theme; Agent keypad Done is the red primary, not white */
+:root[data-theme="mono"] .keys button.done { background: linear-gradient(180deg, #D0142F, #A50C24); color: #fff; }
