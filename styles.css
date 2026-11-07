@@ -1647,3 +1647,17 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 body:has(#wk:not([hidden])) .cele { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
 body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bottom, 0px) + 136px); }
 .restbar .hg-sand { fill: var(--line); } .restbar .hg-stream { stroke: var(--line); }
+/* Exercise ⋯ menu: two grouped lists with icons, Remove on its own (review 2) */
+.exm-h { margin: 0; font-size: 20px; line-height: 25px; overflow-wrap: anywhere; }
+:root .exm .sgh.exm-l { margin: 16px 4px 6px; }
+.mgrp { border-radius: 14px; background: var(--raised); overflow: hidden; }
+.mi { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 50px; padding: 0 14px; background: none; border: 0; color: var(--text); font-size: 16px; text-align: left; position: relative; }
+.mgrp .mi + .mi::before { content: ''; position: absolute; left: 50px; right: 0; top: 0; border-top: 1px solid var(--border); }
+.mi svg { width: 22px; height: 22px; flex: none; fill: none; stroke: var(--text2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mi-v { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.mi:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.mi.mi-rm { margin-top: 16px; justify-content: center; border-radius: 14px; background: var(--raised); color: var(--neg); font-weight: 600; }
+:root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .mgrp, :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .mi.mi-rm { background: #fff; }
+:root:not([data-theme]) .mgrp, :root:not([data-theme]) .mi.mi-rm { background: #fff; box-shadow: inset 0 0 0 1.5px #E7DFD3; }
+:root:not([data-theme]) .mi svg { stroke: #6C3FD6; }
+:root[data-theme="spidey"] .mi svg { stroke: #FF5A50; }

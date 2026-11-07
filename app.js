@@ -4357,16 +4357,25 @@ function toggleSides(ei) {
 }
 function exMenu(ei) {
   const e = A.ex[ei];
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(e.name)}</div>
-    <button class="btn block" data-m="note">${e.note ? 'Edit note' : 'Add note'}</button>
-    <button class="btn block" data-m="order">${I.grip} Reorder exercises</button>
-    <button class="btn block" data-m="setup">Machine setup notes</button>
-    <button class="btn block" data-m="warm">${e.sets.some(x => x.t === 'warm') ? 'Remove warm-up sets' : 'Add warm-up sets'}</button>
-    ${ei < A.ex.length - 1 ? `<button class="btn block" data-m="ss">${e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))}</button>` : ''}
-    <button class="btn block" data-m="rest">Rest for this exercise: ${fmtRest(restFor(e.name))}${(S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'}</button>
-    <button class="btn block" data-m="sides">${sideOf(e.name) ? 'Log both sides together' : 'Split into left and right'}</button>
-    ${gymOn() && gymCur() ? '<button class="btn block" data-m="taken">Machine taken</button>' : ''}<button class="btn block" data-m="swap">Swap exercise</button><button class="btn block" data-m="hist">See history</button>${howtoFor(e.name) ? '<button class="btn block" data-m="howto">How to do it</button>' : ''}
-    <button class="btn block danger" data-m="rm">Remove from this workout</button></div>`, {
+  // Grouped list with icons (review 2): "This workout" and "Change", Remove on its own. Same items as before.
+  const sv = d => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const ic = { note: sv('<path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/>'), warm: sv('<path d="M5 12h14M12 5v14"/>'), rest: sv('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>'), ss: sv('<path d="M7 4v16M17 4v16M7 12h10"/>'),
+    swap: sv('<path d="M4 8h13l-3-3M20 16H7l3 3"/>'), sides: sv('<path d="M12 3v18M5 8l-2 4 2 4M19 8l2 4-2 4"/>'), order: sv('<path d="M4 7h16M4 12h16M4 17h16"/>'), setup: sv('<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>'),
+    hist: sv('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'), taken: sv('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>'), howto: sv('<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/>') };
+  const row = (m, label, v = '') => `<button class="mi" data-m="${m}">${ic[m]}<span class="grow">${label}</span>${v ? `<span class="mi-v">${v}</span>` : ''}</button>`;
+  const inf = exInfo(e.name), work = e.sets.filter(x => x.t !== 'warm').length;
+  const sub = [inf.equip && inf.equip !== 'other' ? inf.equip.charAt(0).toUpperCase() + inf.equip.slice(1) : '', inf.muscle && inf.muscle !== 'Other' ? inf.muscle : '', plural(work, 'set')].filter(Boolean).join(' · ');
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(e.name)}</h2><div class="cap">${esc(sub)}</div>
+    <div class="sgh exm-l">This workout</div><div class="mgrp">
+    ${row('note', e.note ? 'Edit note' : 'Add note')}
+    ${row('warm', e.sets.some(x => x.t === 'warm') ? 'Remove warm-up sets' : 'Add warm-up sets')}
+    ${row('rest', 'Rest time', fmtRest(restFor(e.name)) + ((S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'))}
+    ${ei < A.ex.length - 1 ? row('ss', e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))) : ''}</div>
+    <div class="sgh exm-l">Change</div><div class="mgrp">
+    ${row('swap', 'Swap exercise')}${gymOn() && gymCur() ? row('taken', 'Machine taken') : ''}
+    ${row('sides', sideOf(e.name) ? 'Log both sides together' : 'Split into left and right')}
+    ${row('order', 'Reorder exercises')}${row('setup', 'Machine setup notes')}${row('hist', 'See history')}${howtoFor(e.name) ? row('howto', 'How to do it') : ''}</div>
+    <button class="mi mi-rm" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
     onClose: () => { },
     mount: b => {
