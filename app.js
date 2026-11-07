@@ -738,7 +738,7 @@ function gymTaken(name, rows, types, sameMuscle = []) {
 }
 // gym-builder:end
 
-const GYM_SCAN_READY = true; // Gemini key + on-phone face blur are in (Job, 4 Nov)
+const GYM_SCAN_READY = false; // off (7 Nov): Gemini's free tier isn't allowed for EU/UK users and gym photos have other people in them. Pick from the list instead.
 const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
 let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
