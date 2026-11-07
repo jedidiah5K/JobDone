@@ -1041,7 +1041,7 @@ const TOUR_STEPS = [
   { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight', d: 'Tap kg to load plates onto the bar, or switch to the keypad.' },
   { wk: true, el: () => tq('#row-0-0 [data-f="r"]'), t: 'Reps', d: 'Tap reps to set them. Next on the keypad moves you to the next box.' },
   { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Tap Next and this one gets ticked for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
-  { wk: true, el: () => tq('#wk .restpop'), t: 'Rest timer', d: 'It starts by itself. −30s, +30s and Pause change it, and a sound plays when it’s time to go.' },
+  { wk: true, el: () => tq('#wk .restbar'), t: 'Rest timer', d: 'It starts by itself. −30 and +30 change it, tap the time to pause, and a sound plays when it’s time to go.' },
   { wk: true, el: () => tq('#row-0-1') || tq('#row-0-0'), t: 'Shortcuts', d: 'Swipe a set left to delete it. Hold a set to copy its kg and reps to the sets below.' },
   { wk: true, el: () => tq('#ex-0 [data-a="exMenu"]'), t: 'More for each lift', d: 'Swap it, reorder, add warm-ups, change its rest or split it into left and right.' },
   { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: () => A && A.practice ? 'On a real workout, Finish saves it and shows what you beat. This was practice, so nothing is saved.' : 'Finish saves it, shows what you beat and makes a recap card to share.', last: true },
@@ -2721,15 +2721,16 @@ function renderWorkout() {
   el.hidden = false;
   if (A.view === 'summary') { el.innerHTML = summaryHTML(); return; }
   const body = el.querySelector('.wk-body'); const keep = body ? body.scrollTop : 0;
-  const hadPop = !!el.querySelector('.restpop') && el._rest === REST; // −30s, +30s, Pause redraw the timer; only a new rest slides up
+  const hadPop = !!el.querySelector('.restbar') && el._rest === REST; // −30, +30, Pause redraw the timer; only a new rest slides up
   el._rest = REST;
   UPNEXT = upNext();
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
-  el.innerHTML = `<div class="wk-head"><div class="row between"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div class="tc grow"><div class="wkname">${esc(A.splitName)}</div>${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button>` : `<div class="cap num">Started ${hm(A.start)} · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · <button class="cap daychip" data-a="wkDay">Today ▾</button></div>`}</div>
-      <button class="btn sm primary" data-a="finish">Finish</button></div>
-    <div class="mt2 f13 row between"><span class="sec"><b class="c-text num">${dvol(dv)}</b> ${U()} lifted</span><span class="sec"><b class="c-text num">${doneSets}</b> / ${plural(totalSets, 'set')}</span>${gv ? `<span class="${dv >= gv ? 'pos' : 'sec'}">${dv >= gv ? 'Past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}</div>
+  // One-line header (review 2): title with an ellipsis, then sets · kg · time, and a quiet Finish until every set is ticked.
+  const allIn = totalSets && doneSets === totalSets;
+  el.innerHTML = `<div class="wk-head"><div class="row wk-top"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
+      <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · ${dvol(dv)} ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
+      <button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
   </div>
   <div class="wk-body">${A.ex.map(exCardHTML).join('')}
@@ -2739,7 +2740,7 @@ function renderWorkout() {
   ${REST ? restHTML() : ''}`;
   el.innerHTML = resolveVars(el.innerHTML);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
-  const rp = hadPop && el.querySelector('.restpop'); if (rp) rp.style.animation = 'none';
+  const rp = hadPop && el.querySelector('.restbar'); if (rp) rp.style.animation = 'none';
 }
 // The set to do next gets a ring on its tick (Job, 4 Nov): the next one in the lift you just ticked, else the next lift with sets left.
 let UPNEXT = null;
@@ -2765,9 +2766,10 @@ function exCardHTML(e, ei) {
   // Fold a finished exercise down to one line (Job, 19 Oct); the chevron opens it again
   const allDone = e.sets.length && e.sets.every(x => x.done), asking = A.rpeAsk && A.rpeAsk[0] === ei;
   const fold = e.fold === true || (allDone && e.fold !== false);
-  const foldBtn = `<button class="icon-btn fold-btn ${fold ? 'shut' : ''}" data-a="foldEx" data-e="${ei}" aria-label="${fold ? 'Show sets' : 'Hide sets'}" aria-expanded="${!fold}">${I.down}</button>`;
+  // One ⋯ per card (review 2) so long names get the width; swap lives in the menu. The fold chevron shows once every set is in.
+  const foldBtn = allDone || e.fold === true ? `<button class="icon-btn fold-btn ${fold ? 'shut' : ''}" data-a="foldEx" data-e="${ei}" aria-label="${fold ? 'Show sets' : 'Hide sets'}" aria-expanded="${!fold}">${I.down}</button>` : '';
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
-    ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="swapEx" data-e="${ei}" aria-label="Swap ${esc(e.name)}">${I.swap}</button><button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+    ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
     ${setupHTML(e.name)}${(() => { const pl = plateaus().find(x => baseName(x.name) === baseName(e.name)); return pl ? `<div class="pl-line">No new best in ${plural(pl.weeks, 'week')}. ${esc(plateauTip(pl))}</div>` : ''; })()}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
@@ -2779,21 +2781,22 @@ function exCardHTML(e, ei) {
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1">Delete</button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
-    <div class="mt2 row between"><button class="btn sm" data-a="addSet" data-e="${ei}">Add set</button>${e.sets.length > 1 ? `<button class="link sec rm-set" data-a="rmSet" data-e="${ei}">Remove set</button>` : ''}</div>
+    <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
     ${cmp}`}
   </section>`;
 }
+const restMsg = m => m ? `<b>${esc(m.title)}${/[.!?…]$/.test(m.title) ? '' : '.'}</b> ${esc(m.sub)}` : '';
 function restLeft() { return REST ? Math.max(0, REST.paused ? REST.left : (REST.end - Date.now()) / 1000) : 0; }
 function restHTML() {
   const left = restLeft(), p = 1 - left / REST.total;
-  if (REST.min) return `<button class="restpill" data-a="restOpen" aria-label="Show rest timer"><span class="hg-mini">${hourglass(p, REST.paused)}</span><span class="t" data-rest>${clock(left)}</span><span class="rp-end" data-rest-end2>${REST.paused ? '' : hm(Date.now() + left * 1000)}</span></button>`;
-  return `<div class="restpop ${REST.paused ? 'paused' : ''}" role="timer" aria-label="Rest timer">
-    <div class="row between"><span class="eyebrow">${REST.paused ? 'Paused' : 'Rest'}</span><button class="icon-btn" data-a="restMin" aria-label="Shrink rest timer">${I.down}</button></div>
-    <div class="hg" data-hg style="--p:${p.toFixed(4)}">${hourglass(p, REST.paused)}</div>
-    <div class="t" data-rest>${clock(left)}</div>
-    <div class="tc cap rest-end" data-rest-end>${REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000)}</div>
-    <div class="g2 row" style="justify-content:center"><button class="btn sm" data-a="rest" data-d="-30">−30s</button><button class="btn sm primary" data-a="restPause">${REST.paused ? 'Resume' : 'Pause'}</button><button class="btn sm" data-a="rest" data-d="30">+30s</button></div>
-    <button class="self-c link" data-a="rest" data-d="0">Skip rest</button>
+  // Slim rest bar (review 2, Job approved): the set's verdict, then REST, the time with the hourglass beside it, −30 / +30 / Skip
+  // and a line that runs down. Tap the time or the hourglass to pause.
+  const m = REST.msg;
+  return `<div class="restbar ${REST.paused ? 'paused' : ''}" role="timer" aria-label="Rest timer">
+    <div class="rb-msg ell" data-rest-msg>${restMsg(m)}</div>
+    <div class="rb-row"><button class="rb-time grow" data-a="restPause" aria-label="${REST.paused ? 'Resume rest' : 'Pause rest'}"><span class="eyebrow">${REST.paused ? 'Paused' : 'Rest'}</span><span class="rb-clock"><span class="t num" data-rest>${clock(left)}</span><span class="hg-mini">${hourglass(p, REST.paused)}</span></span></button>
+      <button class="rb-b" data-a="rest" data-d="-30" aria-label="30 seconds less">−30</button><button class="rb-b" data-a="rest" data-d="30" aria-label="30 seconds more">+30</button><button class="rb-b rb-skip" data-a="rest" data-d="0">Skip</button></div>
+    <div class="rb-line"><i data-rest-line style="transform:scaleX(${(1 - p).toFixed(4)})"></i></div>
   </div>`;
 }
 // Sand drains from the top bulb into the bottom one as the rest runs out.
@@ -2996,6 +2999,9 @@ function doneLine(w) {
 }
 function celebrate(v, delay = 0) {
   setTimeout(() => {
+    // A set verdict goes into the rest bar's first line instead of a banner over the card (review 2).
+    const bar = !v.note && v.k !== 'next' && REST && $('#wk [data-rest-msg]');
+    if (bar) { REST.msg = { title: v.title, sub: v.sub }; bar.innerHTML = restMsg(REST.msg); (SOUNDS[v.k] || (() => {}))(); return; }
     document.querySelectorAll('.cele').forEach(c => c.remove());
     const c = document.createElement('div'); c.className = 'cele cele-' + v.k; c.setAttribute('role', 'status'); if (v.ms) c.style.setProperty('--out', (v.ms - 600) + 'ms');
     c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>${v.note ? `<i>${esc(v.note)}</i>` : ''}`;
@@ -3014,7 +3020,8 @@ function tick() {
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
     const re = $('[data-rest-end]'); if (re) re.textContent = REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000);
     const re2 = $('[data-rest-end2]'); if (re2) re2.textContent = REST.paused ? '' : hm(Date.now() + left * 1000);
-    const hg = $('.restpop .hg, .restpill .hg-mini'); if (hg && !REST.paused) { const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); }
+    const ln = $('[data-rest-line]'); if (ln && !REST.paused) ln.style.transform = `scaleX(${(left / REST.total).toFixed(4)})`;
+    const hg = $('.restbar .hg-mini'); if (hg && !REST.paused) { const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); }
   }
 }
 function logSet(ei, si) {
@@ -4895,8 +4902,6 @@ const ACT = {
   wkDiscard: () => { const was = A; if (A && A.atGym) atGymSet(false); A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
   rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
   restPause: () => { if (!REST) return; if (REST.paused) { REST.end = Date.now() + REST.left * 1000; REST.paused = false; } else { REST.left = restLeft(); REST.paused = true; } renderWorkout(); },
-  restMin: () => { if (REST) { REST.min = true; renderWorkout(); } },
-  restOpen: () => { if (REST) { REST.min = false; renderWorkout(); } },
   soundSilent: el => { S.profile.soundSilent = !!el.dataset.k; persist('jd/meta'); if (!S.profile.soundSilent) { if (navigator.audioSession) try { navigator.audioSession.type = 'auto'; } catch (e) {} if (Sound.media) { try { Sound.media.pause(); } catch (e) {} Sound.media = null; } } Sound.unlock(); rerender(); },
   soundTest: () => { const was = S.profile.sound; S.profile.sound = true; sfxLast = null; const p = SOUNDS.amazing(); S.profile.sound = was; Promise.resolve(p).then(() => toast(sfxLast ? `Sound blocked (${esc(sfxLast.name || String(sfxLast))}). Tap again.` : 'Played a test sound. Heard nothing? Your phone is on silent.', 4200)); },
   restPush: async () => {
