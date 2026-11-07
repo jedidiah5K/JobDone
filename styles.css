@@ -1519,20 +1519,25 @@ body:has(#wk:not([hidden])) .cele { top: calc(env(safe-area-inset-top, 0px) + 12
 .po2 .po-acts { margin-top: 4px; }
 /* Story camera: countdown and review */
 .cam-count { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font: 800 96px/1 var(--font-display, system-ui); color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.6); pointer-events: none; }
-/* Story review: close at the top, the photo as big as fits, three round tools, then one main button */
-.cam-top { display: flex; padding: calc(env(safe-area-inset-top) + 6px) 10px 6px; }
-.cam-ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(255,255,255,.12); }
+/* Story review, laid out like a phone camera: photo edge to edge, small controls on it, Retake and Next below */
+.cam.rv { padding-top: env(safe-area-inset-top); }
+.cam-pic { position: relative; width: min(100%, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 96px) * .8)); margin: 0 auto; }
+.cam-rv { display: block; width: 100%; aspect-ratio: 4 / 5; }
+.cam-ic { position: absolute; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(0,0,0,.42); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: transform .15s; }
 .cam-ic svg { width: 20px; height: 20px; }
-.cam-pic { flex: 1; min-height: 0; display: grid; place-items: center; padding: 0 12px; }
-.cam-rv { display: block; max-width: 100%; max-height: 100%; border-radius: 22px; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
-.cam-msg { margin: 10px 24px 0; text-align: center; color: rgba(255,255,255,.8); font-size: 14px; }
-.cam-tools { display: flex; justify-content: center; gap: 28px; padding: 16px 16px 4px; }
-.cam-t { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 64px; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; transition: transform .15s; }
-.cam-t i { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.14); }
-.cam-t svg { width: 24px; height: 24px; }
-.cam-t:active, .cam-ic:active { transform: scale(.94); }
-.cam-foot { padding: 14px 16px calc(env(safe-area-inset-bottom) + 14px); }
-.cam-foot .cam-ok { min-height: 54px; font-size: 17px; }
+.cam-ic:active { transform: scale(.92); }
+.cam-x { top: 12px; right: 12px; }
+.cam-sv { bottom: 12px; right: 12px; }
+/* sits on the corner of the small photo (it covers 3–33 % across and 3–33 % down) */
+.cam-sw { left: 33.3%; top: 32.7%; width: 32px; height: 32px; transform: translate(-70%, -70%); background: #fff; color: #000; }
+.cam-sw svg { width: 16px; height: 16px; }
+.cam-sw:active { transform: translate(-70%, -70%) scale(.92); }
+.cam-msg { margin: 12px 24px 0; text-align: center; color: rgba(255,255,255,.8); font-size: 14px; }
+.cam-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px calc(env(safe-area-inset-bottom) + 16px); }
+.cam-re { color: #fff; font-size: 17px; font-weight: 500; min-height: 44px; padding: 0 4px; }
+.cam-ok { display: inline-flex; align-items: center; gap: 2px; height: 48px; padding: 0 16px 0 24px; border-radius: 24px; background: #fff; color: #000; font-size: 17px; font-weight: 600; transition: transform .15s; }
+.cam-ok .chev { width: 20px; height: 20px; }
+.cam-ok:active, .cam-re:active { transform: scale(.96); }
 /* ⋯ menu on a post */
 .po-mi { gap: 14px; }
 .po-mi i { width: 24px; height: 24px; display: grid; place-items: center; color: var(--text); }

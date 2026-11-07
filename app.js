@@ -1666,12 +1666,13 @@ async function dualShot(cb) {
     stop(); let swap = false, d = null;
     const draw = () => { const c = front ? compose(swap ? front : back, swap ? back : front) : back; d = jpegFit(c); ov.querySelector('.cam-rv').src = d || ''; };
     ov.classList.remove('front'); ov.classList.add('rv');
-    const tool = (cls, ic, t) => `<button class="cam-t ${cls}" type="button"><i>${ic}</i>${t}</button>`;
-    ov.innerHTML = `<div class="cam-top"><button class="cam-ic cam-x" type="button" aria-label="Cancel" title="Cancel">${I.x}</button></div>
-      <div class="cam-pic"><img class="cam-rv" alt="Your story photo"></div>
+    // Laid out like a phone camera: the photo edge to edge with close and save on it, Retake and Next underneath.
+    ov.innerHTML = `<div class="cam-pic"><img class="cam-rv" alt="Your story photo">
+        <button class="cam-ic cam-x" type="button" aria-label="Cancel" title="Cancel">${I.x}</button>
+        <button class="cam-ic cam-sv" type="button" aria-label="Save to your phone" title="Save to your phone">${IC.dl}</button>
+        ${front ? `<button class="cam-ic cam-sw" type="button" aria-label="Swap the photos" title="Swap the photos">${I.swap}</button>` : ''}</div>
       <p class="cam-msg" hidden>Press and hold the photo, then tap Save to Photos.</p>
-      <div class="cam-tools">${tool('cam-re', IC.rf, 'Retake')}${front ? tool('cam-sw', I.swap, 'Swap') : ''}${tool('cam-sv', IC.dl, 'Save')}</div>
-      <div class="cam-foot"><button class="btn primary block cam-ok" type="button">Use photo</button></div>`;
+      <div class="cam-foot"><button class="cam-re" type="button">Retake</button><button class="cam-ok" type="button">Next${I.right || ''}</button></div>`;
     draw();
     const q = c => ov.querySelector(c), flip = () => { swap = !swap; draw(); };
     if (front) {
