@@ -21,7 +21,7 @@ self.addEventListener('fetch', e => {
   const isPage = e.request.mode === 'navigate' || u.pathname.endsWith('.html') || u.pathname.endsWith('config.js');
   e.respondWith(isPage
     ? pageFirst(e)
-    : caches.match(e.request).then(r => r || fetch(e.request).then(res => { const c = res.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return res; })));
+    : caches.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) { const c = res.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); } return res; })));
 });
 
 // Rest-done notifications: the server pushes when a rest timer ends.
