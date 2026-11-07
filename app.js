@@ -262,8 +262,21 @@ async function loadCloud() {
   ns.workouts = {};
   for (const d of months.docs) Object.assign(ns.workouts, clone(d.data().w || {}));
   const ca = a.exists ? clone(a.data().a || null) : null;
-  // keep whichever in-progress workout was touched last
-  if (!A || (ca && (ca.touched || 0) > (A.touched || 0))) A = ca;
+  // Anything saved on this phone but not yet in the account wins over the cloud copy (offline sets, edits made while this load ran).
+  const mine = new Set([...pend(), ...dirty, ...inflight]);
+  if (S) for (const p of mine) {
+    if (p === 'jd/meta') for (const k of ['v', 'profile', 'splits', 'rotation', 'customEx', 'setup', 'meas', 'imported', 'created']) ns[k] = S[k];
+    else if (p === 'jd/weights') ns.weights = S.weights;
+    else if (p === 'jd/steps') ns.steps = S.steps;
+    else if (p.startsWith('months/')) {
+      const m = p.slice(7);
+      for (const [id, w] of Object.entries(ns.workouts)) if (w.date.slice(0, 7) === m) delete ns.workouts[id];
+      for (const w of Object.values(S.workouts)) if (w.date.slice(0, 7) === m) ns.workouts[w.id] = w;
+    }
+  }
+  // keep whichever in-progress workout was touched last (and never replace one that hasn't synced yet)
+  if (mine.has('jd/active')) { /* local A wins */ }
+  else if (!A || (ca && (ca.touched || 0) > (A.touched || 0))) A = ca;
   else if (A && !ca && a.exists && (a.data().t || 0) > (A.touched || 0)) A = null;
   S = ns; if (renameLifts(S, A)) { invalidate(); persist(...allPaths()); }
   invalidate();
@@ -4991,7 +5004,7 @@ document.addEventListener('pointerout', ev => { if (ev.pointerType === 'mouse') 
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && SHEETS.length) closeSheet(); });
 let rsT = null; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (ready && S && $('#screen') && !SHEETS.length) rerender(); }, 200); });
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState !== 'visible' || !DB || !S || dirty.size || inflight.size || SHEETS.length) return;
+  if (document.visibilityState !== 'visible' || !DB || !S || dirty.size || inflight.size || pend().size || SHEETS.length) return;
   try { if (await loadCloud()) { lsSave(); rerender(); } } catch (e) {}
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ready) setTimeout(maybeStale, 400); });
