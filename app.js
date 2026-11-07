@@ -2796,7 +2796,7 @@ function restHTML() {
     <div class="rb-msg ell" data-rest-msg>${restMsg(m)}</div>
     <div class="rb-row"><button class="rb-time grow" data-a="restPause" aria-label="${REST.paused ? 'Resume rest' : 'Pause rest'}"><span class="eyebrow">${REST.paused ? 'Paused' : 'Rest'}</span><span class="rb-clock"><span class="t num" data-rest>${clock(left)}</span><span class="hg-mini">${hourglass(p, REST.paused)}</span></span></button>
       <button class="rb-b" data-a="rest" data-d="-30" aria-label="30 seconds less">−30</button><button class="rb-b" data-a="rest" data-d="30" aria-label="30 seconds more">+30</button><button class="rb-b rb-skip" data-a="rest" data-d="0">Skip</button></div>
-    <div class="rb-line"><i data-rest-line style="transform:scaleX(${(1 - p).toFixed(4)})"></i></div>
+    <div class="rb-line"><i data-rest-line style="transform:scale(${(1 - p).toFixed(4)}, 1)"></i></div>
   </div>`;
 }
 // Sand drains from the top bulb into the bottom one as the rest runs out.
@@ -3020,7 +3020,7 @@ function tick() {
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
     const re = $('[data-rest-end]'); if (re) re.textContent = REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000);
     const re2 = $('[data-rest-end2]'); if (re2) re2.textContent = REST.paused ? '' : hm(Date.now() + left * 1000);
-    const ln = $('[data-rest-line]'); if (ln && !REST.paused) ln.style.transform = `scaleX(${(left / REST.total).toFixed(4)})`;
+    const ln = $('[data-rest-line]'); if (ln && !REST.paused) ln.style.transform = `scale(${(left / REST.total).toFixed(4)}, 1)`;
     const hg = $('.restbar .hg-mini'); if (hg && !REST.paused) { const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); }
   }
 }
