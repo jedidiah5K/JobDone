@@ -131,11 +131,11 @@ async function pushOn() {
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') { toast('Notifications are off for Job’s Done. Turn them on in Settings, Notifications, Job’s Done.'); return false; }
     const reg = await navigator.serviceWorker.ready;
-    const k = await restFn({ action: 'key' }); if (!k || !k.key) { toast('Could not reach the server. Try again.'); return false; }
+    const k = await restFn({ action: 'key' }); if (!k || !k.key) { toast('Couldn’t reach the server. Try again.'); return false; }
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k.key) });
     const r = await restFn({ action: 'sub', sub: sub.toJSON() }); return !!(r && r.ok);
-  } catch (e) { toast('Could not turn on notifications on this phone.'); return false; }
+  } catch (e) { toast('Couldn’t turn on notifications on this phone.'); return false; }
 }
 // Sign-out and account delete: this phone stops getting the old account's pushes (rest alerts, reminders, friends' nudges).
 async function pushForget(tellServer) { try { const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration(); const sub = reg && reg.pushManager && await reg.pushManager.getSubscription(); if (sub) { if (tellServer) await restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
@@ -772,7 +772,7 @@ function gymTaken(name, rows, types, sameMuscle = []) {
 }
 // gym-builder:end
 
-const GYM_SCAN_READY = true; // Gemini key + on-phone face blur are in (Job, 4 Nov)
+const GYM_SCAN_READY = false; // off (7 Nov): Gemini's free tier isn't allowed for EU/UK users and gym photos have other people in them. Pick from the list instead.
 const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
 let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
@@ -780,7 +780,7 @@ const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymB
 const gymType = k => (GYM.types || []).find(t => t.key === k);
 const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id === S.profile.gymAt) || m[0] || null; };
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
-const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your signal and try again.' : m; };
+const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your connection and try again.' : m; };
 const gymErr = e => toast(esc(gymMsg(e)));
 async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {}); if (error) throw new Error(error.message); return data; }
 let gymBusy = null;
@@ -868,7 +868,7 @@ function gymFind() {
       t = setTimeout(async () => { const my = ++n; out.innerHTML = '<div class="gym-sk" style="height:120px"></div>'; try { let rows = await gymRpc('jobdone_gym_search', { q: v }) || [], guess = false;
           // No hit? Typo (Job, 5 Nov): "anytme fitnes" → search by the first letters, keep the close matches
           if (!rows.length && v.length >= 4) { const w = fzWords(v).sort((a, b) => b.length - a.length)[0] || ''; if (w.length >= 3) { rows = (await gymRpc('jobdone_gym_search', { q: w.slice(0, 3) }) || []).filter(r => fuzzy(r.brand + ' ' + (r.branch || ''), v)); guess = rows.length > 0; } }
-          if (my === n) { draw(rows, v); if (guess) out.insertAdjacentHTML('afterbegin', '<div class="grp">Did you mean</div>'); } } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your signal.'; } }, 250); };
+          if (my === n) { draw(rows, v); if (guess) out.insertAdjacentHTML('afterbegin', '<div class="grp">Did you mean</div>'); } } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your connection.'; } }, 250); };
     const joined = async g => { S.profile.gymAt = g; persist('jd/meta'); closeSheet(sh); await gymRefresh(true); NAV.stack = [{ v: 'gym' }]; render(); };
     out.onclick = async ev => {
       const j = ev.target.closest('[data-join]'), nb = ev.target.closest('[data-nb]'), nw = ev.target.closest('[data-new]');
@@ -1047,23 +1047,14 @@ async function gymFaces(cv) {
 let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
 const TOUR_STEPS = [
-  { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
-  { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
-  { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
-  { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
-  { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
-  { tab: 'me', el: () => tq('#screen .idc-prev'), t: 'Your ID card', d: 'Friends see it. Edit card picks what goes on it, and you can share a picture of it.' },
-  { tab: 'me', el: () => [...document.querySelectorAll('#screen section .sgh')].find(e => e.textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
+  { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
   { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
-  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight', d: 'Tap kg to load plates onto the bar, or switch to the keypad.' },
-  { wk: true, el: () => tq('#row-0-0 [data-f="r"]'), t: 'Reps', d: 'Tap reps to set them. Next on the keypad moves you to the next box.' },
-  { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Tap Next and this one gets ticked for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
+  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight and reps', d: 'Tap kg to load plates onto the bar, or switch to the keypad. Then tap reps.' },
+  { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Next set on the keypad ticks it for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
   { wk: true, el: () => tq('#wk .restpop'), t: 'Rest timer', d: 'It starts by itself. −30s, +30s and Pause change it, and a sound plays when it’s time to go.' },
-  { wk: true, el: () => tq('#row-0-1') || tq('#row-0-0'), t: 'Shortcuts', d: 'Swipe a set left to delete it. Hold a set to copy its kg and reps to the sets below.' },
-  { wk: true, el: () => tq('#ex-0 [data-a="exMenu"]'), t: 'More for each lift', d: 'Swap it, reorder, add warm-ups, change its rest or split it into left and right.' },
   { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: () => A && A.practice ? 'On a real workout, Finish saves it and shows what you beat. This was practice, so nothing is saved.' : 'Finish saves it, shows what you beat and makes a recap card to share.', last: true },
 ];
 function tourGo() {
@@ -1153,12 +1144,13 @@ function whatsNew() {
   if (!p || !p.onboarded || p.news === NEWS_ID || DEMO || TOUR || A || SHEETS.length) return;
   p.news = NEWS_ID; persist('jd/meta');
   if (!ix().ws.length) return;
-  setTimeout(() => { if (TOUR || A || SHEETS.length) return;
-    const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Updated</div><h2>What’s new</h2></div>
-      <ul class="news">${NEWS.map(([t, d]) => `<li><b>${esc(t)}</b><span class="sec">${esc(d)}</span></li>`).join('')}</ul>
-      <button class="btn block primary" id="news-ok">Got it</button></div>`, { label: 'What’s new' });
-    sh.el.querySelector('#news-ok').onclick = () => closeSheet(sh);
-  }, 700);
+  setTimeout(() => { if (!TOUR && !A && !SHEETS.length) newsSheet(); }, 700);
+}
+function newsSheet() { // also opened from Me → Help
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Updated</div><h2>What’s new</h2></div>
+    <ul class="news">${NEWS.map(([t, d]) => `<li><b>${esc(t)}</b><span class="sec">${esc(d)}</span></li>`).join('')}</ul>
+    <button class="btn block primary" id="news-ok">Got it</button></div>`, { label: 'What’s new' });
+  sh.el.querySelector('#news-ok').onclick = () => closeSheet(sh);
 }
 // ---------- ID card and friends (Job, 5 Nov) ----------
 // A landscape ID card like a real one: photo, name, level in the theme's words and stats on the front; lifts, split, gym and body on the back.
@@ -1333,7 +1325,7 @@ function idBack(c, code, unit = 'kg') {
     ry += h;
   }
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
-  s += `<rect y="470" width="856" height="70" fill="${L.acc}" opacity=".14"/>` + T(40, 515, idCode(code), 26, 800, L.acc, 'letter-spacing="3"') + T(816, 514, 'Add me: Me → Friends', 18, 600, L.dim, 'text-anchor="end"');
+  s += `<rect y="470" width="856" height="70" fill="${L.acc}" opacity=".14"/>` + T(40, 515, idCode(code), 26, 800, L.acc, 'letter-spacing="3"') + T(816, 514, 'Add me: Friends → Add a friend', 18, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // idcard:end
@@ -1390,7 +1382,7 @@ function idView(c, code, photo, o = {}) {
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+    <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1401,7 +1393,7 @@ function idView(c, code, photo, o = {}) {
   card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
-  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
   addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
   setTimeout(() => card.focus(), 50);
 }
@@ -1449,7 +1441,7 @@ function viewIdCard() {
   </div><div class="sgf">The front fits ${ID_FRONT_MAX} of these and the back fits ${idBackMax(idWhere('prs') === 'b')}.</div></section>
   <section><div class="sgh">Sharing</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
-    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends to send you a request. There are no invite links.')}
+    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Friends → Add a friend to send you a request. There are no invite links.')}
     ${srow('Friend code on shared picture', swi(!o.shareNoCode, 'idShareCode'), o.shareNoCode ? 'Left off when you share your card' : 'Turn off to share your card without it')}
     ${slink('Friends', 'friends')}
   </div><div class="sgf">Only friends you’ve added by code see your card. Sharing makes a picture of the front only.</div></section></div>`;
@@ -1531,6 +1523,7 @@ const IC = {
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>',
   hide: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3 3.8M6.6 6.6A17 17 0 0 0 2.5 12s3.5 7 9.5 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
+  block: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
 };
 // A round face: their card photo, or their first letter on their theme colour.
 function face(name, photo, t, cls = '') {
@@ -1566,7 +1559,7 @@ function postHTML(p) {
 // Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
 function frFaces(list) {
   return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
-    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
+    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'No workout yet'}</span></button>`; }).join('')}</div>`;
 }
 // Refresh (Job, 6 Nov): the button, or pull down at the top of Friends. Friends, requests and the feed load side by side,
 // and what's on screen stays until the new data arrives (no blank flash).
@@ -1591,19 +1584,20 @@ function viewFriends() {
   statSync();
   const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
   const tab = UI.frTab || (list.length ? 'feed' : 'friends');
+  const frSwap = () => `<div class="empty fr-empty">Swap codes with a friend to see each other’s workouts.${ID_CODE ? `<br>Your code: <b class="num">${esc(idCode(ID_CODE))}</b> <button class="btn sm" data-a="idCopy">Copy</button>` : ''}<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`;
   const req = (r, btns) => `<div class="li"><span class="av av-l" style="--avc:var(--raised)">${esc((r.n || '?').charAt(0).toUpperCase())}</span><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
   const head = `<div class="stack"><i class="fr-pull" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn fr-rf${FR_BUSY ? ' spin' : ''}" data-a="frRefresh" aria-label="Refresh" title="Refresh">${IC.rf}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
     ${soOn() ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
-    ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : `<div class="empty fr-empty">${list.length ? 'Nothing from the last 24 hours yet. Finish a workout and your Done Stamp shows up here.' : 'Add a friend to see their workouts here.'}${list.length ? '' : '<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button>'}</div>`}
+    ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : list.length ? '<div class="empty fr-empty">Nothing from the last 24 hours yet. Finish a workout and it shows up here.</div>' : frSwap()}
   </div>`;
   return `${head}
     ${rin.length ? `<div class="card"><div class="eyebrow">Requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
-    ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
+    ${A && !A.practice && list.length ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
       : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
-    ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : `<div class="empty fr-empty">No friends yet.<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`}
+    ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : frSwap()}
     ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
   </div>`;
 }
@@ -1624,7 +1618,7 @@ function frSettings() {
 function postComments(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
   const row = c => { const own = USER && c.u === USER.id, can = own || (USER && p.user_id === USER.id), fr = (FRIENDS || []).find(f => f.id === c.u);
-    return `<div class="cm-row">${own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm')}<div class="grow"><p><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}</span></div></div>`; };
+    return `<div class="cm-row">${own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm')}<div class="grow"><p><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}${own ? '' : ` · <button class="link cm-rep" data-cid="${c.id}">Report</button>`}</span></div></div>`; };
   const html = () => `<div class="stack"><h2>Comments</h2><div class="cm-list">${(p.comments || []).length ? p.comments.map(row).join('') : '<p class="cap m0">No comments yet. Say something nice.</p>'}</div>
     <div class="row g2 cm-in">${myFace('sm')}<input class="input grow" id="cm-t" maxlength="200" placeholder="Add a comment" autocomplete="off" enterkeyhint="send"><button class="btn primary" id="cm-go">Post</button></div></div>`;
   const sh = openSheet(html(), { label: 'Comments', mount: b => {
@@ -1634,6 +1628,9 @@ function postComments(id) {
         try { const cid = await gymRpc('jobdone_comment', { p_id: p.id, p_body: v }); p.comments = [...(p.comments || []), { id: cid, u: USER.id, n: S.profile.name, b: v, at: new Date().toISOString() }]; b.innerHTML = html(); wire(); rerender(); }
         catch (e) { go.disabled = false; toast(/Too many/.test(e.message) ? 'That’s enough comments for today.' : 'Couldn’t post it. Check your connection.'); } };
       go.onclick = send; t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); send(); } };
+      b.querySelectorAll('.cm-rep').forEach(x => x.onclick = () => { const c = (p.comments || []).find(y => y.id === +x.dataset.cid); if (!c) return;
+        confirmSheet({ title: 'Report this comment?', body: 'A copy goes to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
+          onOk: () => sendReport(`comment ${c.id} on ${p.kind} post ${p.id}`, c.u, c.n, c.b) }); });
       b.querySelectorAll('.cm-del').forEach(x => x.onclick = async () => { const cid = +x.dataset.cid; x.disabled = true;
         try { await gymRpc('jobdone_comment_delete', { p_cid: cid }); p.comments = p.comments.filter(c => c.id !== cid); b.innerHTML = html(); wire(); rerender(); } catch (e) { x.disabled = false; toast('Couldn’t delete it. Try again.'); } });
     }; wire(); } });
@@ -1758,7 +1755,7 @@ const STAMP = {};
 async function stampPost(id, o = {}) {
   statSync(); if (!soOn()) return false;
   const d = recapData(id); if (!d.w) return false;
-  const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
+  const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? (m => m >= 60 ? Math.floor(m / 60) + ':' + pad2(m % 60) : fmtDur(d.dur))(Math.floor(d.dur / 6e4)) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
   if (o.c) body.c = String(o.c).slice(0, 80);
   const noW = !!SO().noW; if (noW) { delete body.v; delete body.h; } // Show my weights off: just the workout
   if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t && !noW ? setStr(t) : '']; });
@@ -1825,7 +1822,7 @@ function postMenu(id) {
   const mine = USER && p.user_id === USER.id;
   const row = (m, ic, t, bad) => `<button class="li po-mi${bad ? ' bad' : ''}" data-m="${m}" type="button"><i>${ic}</i><span class="t">${t}</span></button>`;
   const hide = () => { try { localStorage.setItem('jd-hidepost', JSON.stringify([...postHidden(), p.id].slice(-200))); } catch (e) {} rerender(); };
-  const sh = openSheet(`<div class="stack"><div class="list">${postPhotoOk(p) ? row('save', IC.dl, 'Save photo') : ''}${row('share', IC.share, 'Share')}${mine ? row('rm', IC.trash, 'Take it down', 1) : row('hide', IC.hide, 'Hide this post') + row('report', IC.flag, 'Report it', 1)}</div><button class="btn block" data-a="closeSheet">Cancel</button></div>`, {
+  const sh = openSheet(`<div class="stack"><div class="list">${postPhotoOk(p) ? row('save', IC.dl, 'Save photo') : ''}${row('share', IC.share, 'Share')}${mine ? row('rm', IC.trash, 'Take it down', 1) : row('hide', IC.hide, 'Hide this post') + row('report', IC.flag, 'Report it', 1) + row('block', IC.block, 'Block ' + esc((p.n || 'them').split(' ')[0]), 1)}</div><button class="btn block" data-a="closeSheet">Cancel</button></div>`, {
     label: 'Post options',
     mount: b => { b.onclick = ev => {
       const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m;
@@ -1836,7 +1833,8 @@ function postMenu(id) {
         onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
       if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
       if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-        onOk: async () => { hide(); try { const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); if (error) throw error; toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
+        onOk: () => { hide(); const b = p.body || {}; sendReport(`${p.kind} post ${p.id} from ${p.at}`, p.user_id, p.n, [b.sp, b.c, b.h].filter(Boolean).join(' · ') || '(no text)'); } });
+      if (m === 'block') blockUser(p.user_id, p.n);
     }; },
   });
 }
@@ -1844,7 +1842,7 @@ function postMenu(id) {
 // Share picture (Job, 5 Nov): only the front of the card, centred on the theme colour. The friend code can be left off.
 async function idShare() {
   const c = idCard(), code = (S.profile.id || {}).shareNoCode ? false : ID_CODE;
-  const f = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(idFront(c, code, U(), ID_PHOTO, code === false ? '' : 'Add me: Me → Friends')); });
+  const f = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(idFront(c, code, U(), ID_PHOTO, code === false ? '' : 'Add me: Friends → Add a friend')); });
   if (!f) return toast('Couldn’t make the picture. Try again.');
   // just the card, no backdrop (Job, 6 Nov); corners stay see-through
   const w = 1712, h = 1080, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d');
@@ -1935,7 +1933,21 @@ async function friendCancel(id) {
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
   if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
-  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f) });
+  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
+}
+// Reports land in the feedback inbox with a copy of the text, since posts and comments delete themselves within 48 hours. Photos aren't copied.
+async function sendReport(what, uid, n, text) {
+  try {
+    const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${what} by ${n || '?'} (${uid})
+${String(text || '')}`.slice(0, 2000) });
+    if (error) throw error; toast('Reported. Thanks.');
+  } catch (e) { toast('Couldn’t send the report. Try again.'); }
+}
+// Block (supabase/block.sql): ends the friendship both ways and stops their requests. They aren't told.
+function blockUser(uid, n) {
+  const who = n || 'this person';
+  confirmSheet({ title: 'Block ' + who + '?', body: 'You won’t be friends any more, and they can’t send you a request again. They aren’t told.', ok: 'Block', danger: true, key: false,
+    onOk: async () => { try { await gymRpc('jobdone_block', { p_user: uid }); FRIENDS = (FRIENDS || []).filter(x => x.id !== uid); if (FEED) FEED = FEED.filter(y => y.user_id !== uid); rerender(); toast('Blocked ' + esc(who) + '.'); } catch (e) { toast('Couldn’t block. Try again later.'); } } });
 }
 function friendOpenRemove(id, f) {
   confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
@@ -2247,7 +2259,7 @@ function progBody() {
     <button class="link" data-a="weights">All weight entries</button></div>
   ${measCard()}
   <div class="card"><div class="card-h"><span class="eyebrow">Steps · last 30 days</span><button class="mh32 cap" data-a="steps">Add</button></div>
-    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Apple Health).</div>'}
+    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Steps).</div>'}
   </div>`;
 }
 function steps30() {
@@ -2523,13 +2535,13 @@ function repPick(lo, hi, where) {
 function fixRR(o, a, b) { if (o[a] && o[b] && o[a] > o[b]) [o[a], o[b]] = [o[b], o[a]]; if (o[a] && o[a] === o[b]) o[b] = o[a] + 1; }
 function repRangeRow() {
   const r = S.profile.repRange || [], set = r[0] && r[1];
-  return `<div class="xr rr-row"><span class="grow">Rep range<span class="s">${set ? `Move up a weight once you hit ${r[1]} reps, then start again at ${r[0]}` : 'Optional. Your desired rep range before moving up a weight. Skipped means 6 to 9'}</span></span>${repPick(r[0], r[1], 'me')}</div>`;
+  return `<div class="xr rr-row"><span class="grow">Rep range<span class="s">${set ? `Move up a weight once you hit ${r[1]} reps, then start again at ${r[0]}` : 'Optional. Leave it on Auto to use each plan’s range.'}</span></span>${repPick(r[0], r[1], 'me')}</div>`;
 }
 // Me is a short hub (Job, 5 Nov: organise the settings): your ID card, then one row per group. Each group is its own page.
 const ME_GROUPS = [
   ['profile', 'Profile and goals', 'Name, height, goal weight, units, weekly target'],
   ['workouts', 'Workouts', 'Rest, targets, rep range, your exercises'],
-  ['alerts', 'Reminders and sounds', 'Daily reminder, weigh-in pop-up, sounds'],
+  ['alerts', 'Reminders and sounds', 'Daily weigh-in, sounds'],
   ['look', 'Theme and app', 'Wallpaper and colours, Home Screen app'],
   ['steps', 'Steps', 'Apple Health and the evening Shortcut'],
   ['account', 'Account and data', 'Sign-in, backups, import and export'],
@@ -2557,7 +2569,7 @@ function meParts() {
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
     ${repRangeRow()}
     ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
-    ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
+    ${srow('Start rest automatically', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
     ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Job’s Done to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
     ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
@@ -2568,7 +2580,7 @@ function meParts() {
     alerts: `
   <section><div class="sgh">Reminders</div><div class="sgrp">
     ${HOSTED ? remindRows(p) : ''}
-    ${srow('Morning weigh-in pop-up', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
+    ${srow('Daily weigh-in', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
   </div></section>
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
@@ -2614,14 +2626,15 @@ function meParts() {
     ${slink('Export backup (JSON)', 'export', '', 'data-k="json"')}
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'danger')}
-  </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+  </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your account. Sign in on any device and your log is there.' : 'Saved on this phone only. Sign in to keep it in your account.'}</div></section>
 `,
     help: `
   ${HOSTED && USER ? `<section><div class="sgh">Beta</div><div class="sgrp">
     ${srow('My Gym', swi(gymOn(), 'gymToggle'), 'Workouts built from your gym’s machines. Gym lists are shared with others at that gym')}
   </div></section>` : ''}
   <section><div class="sgh">Help</div><div class="sgrp">
-    ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through every tab and a practice workout')}
+    ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through the app and a practice workout')}
+    ${srow('What’s new', '<button class="btn sm" data-a="newsSheet">Show</button>', 'What changed in the latest update')}
   </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
@@ -2654,22 +2667,30 @@ ${(h => (h.match(/class="sgh"/g) || []).length === 1 ? h.replace(/<div class="sg
 // ---------- active workout ----------
 // Today's target for a set, from the same set last time, using the rep tiers:
 // Reaching the top of your rep range means add weight (aim for the bottom), anything less means same weight, one more rep.
-// Rep range is optional (Job, 16 Oct): without one it's 6 to 9, the original tiers.
-const repRange = () => { const r = S.profile.repRange; return r && r[0] && r[1] > r[0] ? r : [6, 9]; };
+// Rep range (Job, 16 Oct; fixed 7 Nov): the one set in Me wins, then the plan's range for that lift,
+// then the range for the experience picked in the intro, then 6 to 9 (the original tiers).
+// sp: the split to look in; leave it out to use the workout in progress.
+function repRange(name, sp) {
+  const r = S.profile.repRange; if (r && r[0] && r[1] > r[0]) return r;
+  if (sp === undefined) sp = A && A.splitId && splitById(A.splitId);
+  const e = sp && name && sp.ex.find(x => x.name === name);
+  if (e && e.repMin > 0 && e.repMax >= e.repMin) return [e.repMin, e.repMax];
+  const x = OB_EXP[S.profile.exp]; return x ? [x[2], x[3]] : [6, 9];
+}
 const TGT_UP = () => U() === 'lb' ? 5 / LB : 2.5;
-function targetOf(p) {
+function targetOf(p, rr = repRange()) {
   if (!p || p.w == null || p.r == null || p.t === 'warm' || S.profile.noTargets) return p ? { w: p.w, r: p.r } : null;
-  const [lo, hi] = repRange();
+  const [lo, hi] = rr;
   if (p.r >= hi) return { w: Math.round((p.w + TGT_UP()) * 1000) / 1000, r: lo, up: true };
   return { w: p.w, r: p.r + 1 };
 }
-function newExEntry(name, nSets, rest, tip) {
-  const last = lastSession(name);
+function newExEntry(name, nSets, rest, tip, sp) {
+  const last = lastSession(name), rr = repRange(name, sp);
   const src = last ? last.sets : [];
   const n = Math.max(nSets || 0, src.length) || 2;
   const sets = [];
   for (let i = 0; i < n; i++) {
-    const p = src[i] || src[src.length - 1], t = targetOf(p);
+    const p = src[i] || src[src.length - 1], t = targetOf(p, rr);
     sets.push({ w: t ? t.w : null, r: t ? t.r : null, t: p && p.t === 'warm' ? 'warm' : 'work', done: false, ...(t && (t.up || t.r !== p.r) ? { tg: 1 } : {}) });
   }
   return { name, rest: rest || S.profile.defaultRest, tip: tip || '', note: '', sets, key: uid() };
@@ -2677,7 +2698,7 @@ function newExEntry(name, nSets, rest, tip) {
 function startWorkout(splitId, date, practice) {
   if (A) { openWk(); return; }
   const sp = splitId ? splitById(splitId) : null;
-  A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
+  A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
@@ -2778,7 +2799,7 @@ function exCardHTML(e, ei) {
   const sp = A.splitId && splitById(A.splitId); const tgt = sp && sp.ex.find(x => x.name === e.name);
   let sugg = '';
   if (last && !S.profile.noTargets) {
-    const hi = repRange()[1], ws = last.sets.filter(validSet), up = ws.filter(x => x.r >= hi).length;
+    const hi = repRange(e.name, sp || null)[1], ws = last.sets.filter(validSet), up = ws.filter(x => x.r >= hi).length;
     if (ws.length) sugg = up ? `Target: +${dw(TGT_UP())} ${U()} on ${up === ws.length ? 'every set' : up + ' set' + (up > 1 ? 's' : '')} (you hit ${hi}+ reps last time).` : 'Target: same weight, one more rep.';
   }
   const dsets = e.sets.filter(s => s.done);
@@ -3000,11 +3021,11 @@ const TIDY = {
 };
 const tidyLine = name => { const t = TIDY[theme()] || TIDY.cliffs; return pick(['barbell', 'dumbbell', 'smith', 'kettlebell'].includes(exInfo(name).equip) ? t.rack : t.wipe); };
 const themeMsg = () => THEME_MSG[theme()] || THEME_MSG.cliffs;
-function setVerdict(r) {
+function setVerdict(r, rr = repRange()) {
   const m = themeMsg();
-  const [lo, hi] = repRange();
-  if (r <= lo - 2) return { k: 'low', title: pick(m.low), sub: 'Below your rep range.', bits: 0 };
-  if (r <= lo) return { k: 'nice', title: pick(m.nice), sub: 'Right in the range.', bits: 0 };
+  const [lo, hi] = rr;
+  if (r < lo) return { k: 'low', title: pick(m.low), sub: 'Below your rep range.', bits: 0 };
+  if (r === lo && lo < hi) return { k: 'nice', title: pick(m.nice), sub: 'Right in the range.', bits: 0 };
   if (r < hi) return { k: 'great', title: pick(m.great), sub: 'Near the top of your range.', bits: 0 };
   return { k: 'amazing', title: pick(m.amazing), sub: 'Top of your range.', bits: 40 };
 }
@@ -3055,7 +3076,7 @@ function logSet(ei, si) {
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
-      if (!pr.length) celebrate(setVerdict(s.r));
+      if (!pr.length) celebrate(setVerdict(s.r, repRange(e.name)));
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
@@ -3064,12 +3085,6 @@ function logSet(ei, si) {
       }
     }
     if (pr.length) { buzz([20, 40, 60]); celebrate({ k: 'amazing', title: 'New PR', sub: `${e.name}: ${setStr(s)}`, note: pr.join(', ') === 'e1RM' ? 'Best estimated 1-rep max' : pr.join(', '), bits: 40 }); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
-    // Job (4 Nov): PR on the first working set → offer that weight for the sets still to do.
-    const work1 = e.sets.filter(x => x.t !== 'warm');
-    if (pr.length && work1[0] === s && s.w > 0 && !TOUR) {
-      const rest = work1.filter(x => !x.done && x.w < s.w);
-      if (rest.length) setTimeout(() => confirmSheet({ title: `Use ${dw(s.w)} ${U()} for your next sets?`, body: `${plural(rest.length, 'set')} of ${esc(e.name)} ${rest.length === 1 ? 'is' : 'are'} set lighter.`, ok: 'Yes, change them', no: 'Keep as is', key: 'prNext', noToo: true, onOk: () => { if (!A) return; rest.forEach(x => { if (!x.done) x.w = s.w; }); touchA(); } }), 900);
-    }
   } else touchA();
 }
 function summaryData() {
@@ -3088,7 +3103,7 @@ function summaryHTML() {
     <button class="back" data-a="sumBack">${I.left}Back to workout</button>
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
-    <div class="card"><div class="mb1 eyebrow">Compared with last time</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div><div class="tr f13 num"><div>top ${r.last ? delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v)) : '<span class="sec">first time</span>'}</div><div>vol ${r.last ? delta(r.vol, r.last.vol, v => dvol(v)) : ''}</div></div></div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
+    <div class="card"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
     <div class="field"><span class="lbl">Energy <span class="cap">1 drained · 5 strong</span></span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${A.energy === n ? 'on' : ''}" data-a="energy" data-k="${n}">${n}</button>`).join('')}</div></div>
     ${changed ? `<label class="card tight row between" for="sum-upd"><span>Update the ${esc(sp.name)} split with today’s exercises</span><input type="checkbox" id="sum-upd" data-in="sumUpd" ${A.updSplit ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)"></label>` : ''}
@@ -3382,7 +3397,7 @@ async function drawShare(d, o = shareOpts(d)) {
       g.fillStyle = hot ? RED : '#fff'; g.textAlign = 'right'; g.fillText(b, W - 72, y + 2); g.textAlign = 'left'; y += 54; };
     row('OPERATION', fit(split, 22)); stats.forEach(s => row(s[1].toUpperCase().replace(' LIFTED', ' MOVED'), s[0], hotStat(s)));
     g.letterSpacing = '0px'; g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `italic 600 32px ${SANS}`; y += 4 + (wrap(heavy, 72, y, W - 144, 42) - 1) * 42 + 30;
-    if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('TARGETS', 4), 72, y + 8); y += 64;
+    if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('LIFTS', 4), 72, y + 8); y += 64;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 5)) {
       if (y > CH - 120) break;
       g.fillStyle = '#fff'; g.font = F(700, 36); g.fillText(sp(fit(r.name, 22), 0), 72, y);
@@ -3546,18 +3561,18 @@ async function drawShare(d, o = shareOpts(d)) {
   return c;
 }
 // The person picks what goes on their card (Job, 19 Oct). Hidden stats and lifts on/off are remembered; which lifts is per workout.
-const SHARE_MAX = { spidey: 3, cliffs: 3 };
+const SHARE_MAX = { spidey: 3, cliffs: 3, 'mono-post': 3 }; // what each card really draws ('-post' = Post size only)
 function shareOpts(d) { const p = S.profile.share || {}; return { hide: p.hide || [], lifts: p.lifts !== false, story: !!p.story, pick: d.pick || null }; }
 function shareLiftNames(d) {
   const prn = new Set(d.prs.map(p => baseName(p.ex)));
   return mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), () => '').map(r => ({ name: r.name, pr: prn.has(baseName(r.name)) })).sort((a, b) => b.pr - a.pr);
 }
 function openShareSheet(d) {
-  const max = SHARE_MAX[theme()] || 5, all = shareLiftNames(d);
-  if (!d.pick) d.pick = all.slice(0, max).map(r => r.name);
-  const o = () => shareOpts(d);
+  const all = shareLiftNames(d), o = () => shareOpts(d);
+  const maxOf = () => SHARE_MAX[theme() + (o().story ? '' : '-post')] || SHARE_MAX[theme()] || 5;
+  if (!d.pick) d.pick = all.slice(0, maxOf()).map(r => r.name);
   const STATS = [['time', d.dur ? 'Time' : 'Reps'], ['vol', U() + ' lifted'], ['sets', 'Sets'], ['prs', 'PRs']];
-  const body = () => { const x = o(); return `<div class="stack"><div><div class="eyebrow">Share your card</div><div class="mt1 cap">Pick what goes on it. The picture shows what your friends will see.</div></div>
+  const body = () => { const x = o(), max = maxOf(); d.pick = d.pick.slice(0, max); return `<div class="stack"><div><div class="eyebrow">Share your card</div><div class="mt1 cap">Pick what goes on it. The picture shows what your friends will see.</div></div>
     <div class="seg sh-seg">${[['', 'Post'], ['1', 'Story']].map(([v, t]) => `<button class="${!!v === x.story ? 'on' : ''}" data-sf="${v}">${t}</button>`).join('')}</div>
     <img class="sh-prev ${x.story ? 'story' : ''}" id="sh-prev" alt="Your share card">
     <div><div class="mb2 eyebrow">Stats</div><div class="chips sh-chips">${STATS.map(([k, t]) => `<button class="chip ${x.hide.includes(k) ? '' : 'on'}" data-sx="${k}">${esc(t)}</button>`).join('')}</div></div>
@@ -3844,14 +3859,14 @@ async function openPhotos() {
       const ks = Object.keys(PHOTOS).sort(), first = ks[0], last = ks[ks.length - 1];
       b.querySelector('#ph-body').innerHTML = !ks.length ? 'No photos yet.' : `${ks.length > 1 ? `<div class="ph-cmp"><figure><img src="${PHOTOS[first].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[first].d, { y: true }))}${PHOTOS[first].w ? ' · ' + bw(PHOTOS[first].w) + ' ' + U() : ''}</figcaption></figure><figure><img src="${PHOTOS[last].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[last].d, { y: true }))}${PHOTOS[last].w ? ' · ' + bw(PHOTOS[last].w) + ' ' + U() : ''}</figcaption></figure></div>` : ''}
         <div class="ph-grid">${ks.slice().reverse().map(k => `<button class="ph" data-ph="${k}"><img src="${PHOTOS[k].img}" alt="Photo from ${esc(fmtDate(PHOTOS[k].d))}"><span>${esc(fmtDate(PHOTOS[k].d))}</span></button>`).join('')}</div>`;
-      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, key: false, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your signal and try again.'); } } }); });
+      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, key: false, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your connection and try again.'); } } }); });
     };
-    try { await loadPhotos(); draw(); } catch (e) { b.querySelector('#ph-body').textContent = 'Couldn’t load photos. Check your signal.'; }
+    try { await loadPhotos(); draw(); } catch (e) { b.querySelector('#ph-body').textContent = 'Couldn’t load photos. Check your connection.'; }
     b.querySelector('#ph-in').onchange = async ev => {
       const f = ev.target.files && ev.target.files[0]; if (!f) return;
       try { const img = await shrink(f), d = today(), lw = weightOn(d); let k = d, i = 1; while (PHOTOS && PHOTOS[k]) k = d + '-' + (++i);
         const body = { img, d, w: lw ? lw.w : null }; await DB.doc('photos/' + k).set(body); PHOTOS = PHOTOS || {}; PHOTOS[k] = body; draw(); toast('Photo saved'); }
-      catch (e) { toast('Couldn’t save the photo. Check your signal and try again.'); }
+      catch (e) { toast('Couldn’t save the photo. Check your connection and try again.'); }
       ev.target.value = '';
     };
   } });
@@ -3867,11 +3882,12 @@ const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 1
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, machine: ['machine', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 function openPlates(target, onUse, o = {}) {
   const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
   let bar = S.profile.barW != null ? S.profile.barW : (U() === 'lb' ? 45 : 20); if (U() === 'lb' && S.profile.barW === 0) bar = 0;
+  if (o.machine) bar = 0; // machines and cables have no bar: plates only
   let side = [], fresh = -1;
   const total = () => Math.round((bar + 2 * side.reduce((a, b) => a + b, 0)) * 1000) / 1000;
   const auto = t => { side = []; let r = Math.max(0, (t - bar) / 2); for (const p of den) while (r >= p - 1e-9) { side.push(p); r = Math.round((r - p) * 1000) / 1000; } return r; };
@@ -3909,7 +3925,7 @@ function openPlates(target, onUse, o = {}) {
     draw();
     b.querySelector('#pl-bar').onclick = ev => { const g = ev.target.closest('.pl'); if (!g) return; side.splice(+g.dataset.i, 1); left = 0; buzz(5); draw(); };
     b.querySelector('#pl-clear').onclick = () => { side = []; left = 0; draw(); };
-    b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; S.profile.barW = bar; persist('jd/meta'); b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
+    b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; if (!o.machine) { S.profile.barW = bar; persist('jd/meta'); } b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
     b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); side.forEach((p, i) => clank(p / 25, i * .09)); };
     b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
     const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { closeSheet(sh); onUse(total()); };
@@ -4077,7 +4093,7 @@ function openSyncKey() {
         <div class="field"><label>Shortcut address</label><textarea class="input num" readonly rows="2" style="min-height:0">${esc(url)}</textarea></div>
         <button class="btn block" data-copy="${esc(url)}">Copy address</button></div>`;
       for (const c of el.querySelectorAll('[data-copy]')) c.onclick = async () => { try { await navigator.clipboard.writeText(c.dataset.copy); toast('Copied'); } catch (e) { toast('Press and hold the text to copy it'); } };
-    } catch (e) { b.disabled = false; toast('Could not create the key. Check your connection and try again.'); }
+    } catch (e) { b.disabled = false; toast('Couldn’t create the key. Check your connection and try again.'); }
   };
   } });
 }
@@ -4528,7 +4544,7 @@ function restoreFile(file, replacing) {
     const txt = String(rd.result); let st = null, what = '';
     if (/\.json$/i.test(file.name) || /^\s*\{/.test(txt)) {
       try { st = stateFromBackup(JSON.parse(txt)); } catch (e) { st = null; }
-      if (!st) { toast('That file isn’t a Job’s Done backup. In the Claude version, use Me → Export JSON.', 4500); return; }
+      if (!st) { toast('That file isn’t a Job’s Done backup. Use Me → Account and data → Export backup (JSON).', 4500); return; }
       what = 'Restored your backup';
     } else {
       const res = csvToWorkouts(txt); if (res.err) { toast(esc(res.err), 4500); return; }
@@ -4559,7 +4575,7 @@ const TEMPLATES = {
   phul: { n: 'PHUL', d: 'Power upper and lower, then muscle upper and lower; 4 days a week', s: [['Upper Power', ['Incline Press', 'Wide-Grip Row', 'Shoulder Press', 'Lat Pulldown', 'Preacher Curl', 'Tricep Pushdown']], ['Lower Power', ['Leg Press', 'Stiff-Leg Deadlift', 'Leg Curl', 'Calf Raise']], ['Upper Muscle', ['Chest Fly', 'Lat Pulldown', 'Close-Grip Row', 'Lateral Raise', 'Preacher Curl', 'Overhead Tricep Extension']], ['Lower Muscle', ['Leg Extension', 'Leg Curl', 'Leg Press', 'Adductor', 'Abductor', 'Calf Raise']]] },
   pplul: { n: 'Push / Pull / Legs + Upper / Lower', d: '5 workouts in a row; fits 5 days a week', s: [] },
   arnold: { n: 'Arnold split', d: 'Chest and back, shoulders and arms, legs; run twice for 6 days a week', s: [['Chest & Back', ['Chest Fly', 'Incline Press', 'Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders & Arms', ['Shoulder Press', 'Lateral Raise', 'Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Legs', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
-  bro: { n: 'Bro split', d: 'One muscle group a day; fits 5 days a week', s: [['Chest', ['Chest Fly', 'Incline Press', 'Chest Press']], ['Back', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders', ['Shoulder Press', 'Lateral Raise', 'Reverse Pec Deck']], ['Arms', ['Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Leg Day', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
+  bro: { n: 'Bro split', d: 'One muscle group a day; fits 5 days a week', s: [['Chest', ['Chest Fly', 'Incline Press']], ['Back', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders', ['Shoulder Press', 'Lateral Raise']], ['Arms', ['Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Leg Day', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
   none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
 };
 TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
@@ -4567,7 +4583,7 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
 const OB_NAMES = { safe: 'Account safety', move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
-const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'move', 'plan'];
+const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan']; // 9 steps; moving from another app is part of the plan step
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
@@ -4578,12 +4594,12 @@ function obTour() {
     ['Log a set in two taps', 'Last time’s numbers sit next to every set. Tap kg and load plates onto a bar instead of doing maths.',
       mock('m-log', `<div class="m-h">Bench Press</div><div class="m-row m-hd"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div><div class="m-row done"><span>1</span><span class="mu">60×8</span><b>62.5</b><b>8</b><i class="m-ck">${I.check}</i></div><div class="m-row"><span>2</span><span class="mu">60×7</span><b>62.5</b><b class="mu">–</b><i class="m-ck off">${I.check}</i></div><div class="m-plates"><i style="background:#D9342B;height:46px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#F2B632;height:32px"></i><span></span><i style="background:#F2B632;height:32px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#D9342B;height:46px"></i></div>`)],
     ['Beat last time, every time', 'A target for each lift, a bar that races your last session, and a message after every set.',
-      mock('m-beat', `<div class="m-toast"><b>Strong set</b><span>Nearly time to add weight.</span></div><div class="m-tgt">Target: same weight, one more rep than last time.</div><div class="m-race"><i class="g" style="width:82%"></i><i class="me" style="width:64%"></i></div><div class="m-cap">240 kg to match last time</div>`)],
+      mock('m-beat', `<div class="m-toast"><b>Strong set</b><span>Top of your range.</span></div><div class="m-tgt">Target: same weight, one more rep than last time.</div><div class="m-race"><i class="g" style="width:82%"></i><i class="me" style="width:64%"></i></div><div class="m-cap">240 kg to match last time</div>`)],
     ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.',
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
       mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job’s done!</div>`)],
-    ['Train with friends', 'Add friends by code and see who trained today. Your Done Stamp goes to them when you finish. Photos are optional.',
+    ['Train with friends', 'Add friends by code and see who trained today. Your workout shows up in their feed when you finish. Photos are optional.',
       mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Sam · at the gym</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">2 weeks in a row together</div>`)],
     ['No signal? Keep lifting', 'Gym basement or flight mode, it still logs. Your sets sync when you’re back online, and your account is backed up every day.',
       mock('m-off', `<div class="m-pill"><i class="m-dot off"></i>Offline · 3 sets saved on this phone</div><div class="m-pill"><i class="m-dot"></i>Back online · All synced</div><div class="m-cap">Daily backup · kept for 14 days</div>`)],
@@ -4599,7 +4615,7 @@ function obBody(k) {
   if (k === 'you') return `<h1 class="ob-t">About you</h1><p class="sec ob-s">Used for your progress charts. Only you can see it.</p>
     <div class="field"><label for="ob-name">First name</label><input class="input" id="ob-name" maxlength="40" value="${esc(OB.name)}" placeholder="What should we call you?" autocomplete="given-name"></div>
     <div class="field"><span class="lbl">Units</span><div class="seg"><button data-unit="kg" class="${OB.unit === 'kg' ? 'on' : ''}">kg</button><button data-unit="lb" class="${OB.unit === 'lb' ? 'on' : ''}">lb</button></div></div>
-    <div class="grid2"><div class="field"><label for="ob-w">Weight today (${OB.unit})</label><input class="input num" id="ob-w" inputmode="decimal" value="${esc(OB.w)}" placeholder="For example 72.5"></div>
+    <div class="grid2"><div class="field"><label for="ob-w">Weight today (${OB.unit})</label><input class="input num" id="ob-w" inputmode="decimal" value="${esc(OB.w)}" placeholder="Optional"></div>
     <div class="field"><label for="ob-gw">Goal weight (${OB.unit})</label><input class="input num" id="ob-gw" inputmode="decimal" value="${esc(OB.gw)}" placeholder="Optional"></div></div>
     <div class="field"><label for="ob-h">Height (cm)</label><input class="input num" id="ob-h" inputmode="decimal" value="${esc(OB.h)}" placeholder="Optional"></div>`;
   if (k === 'goal') return `<h1 class="ob-t">What’s your goal?</h1><p class="sec ob-s">It sets your rep ranges and the plan we suggest.</p>
@@ -4613,9 +4629,9 @@ function obBody(k) {
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
-    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}
-    <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Job’s Done is on your Home Screen. Turn it on later in Me') : ''}
-    ${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
+    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}</div></section>
+    ${HOSTED ? `<section><div class="sgh">Notifications</div><div class="sgrp">${row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Job’s Done is on your Home Screen. Turn it on later in Me')}</div></section>` : ''}
+    <section><div class="sgh">Reminders</div><div class="sgrp">${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
     <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
     ${row('wake', 'Keep screen awake', 'While a workout is open')}
     ${row('confetti', 'Celebrations', 'Confetti for PRs and finished workouts')}</div></section>`;
@@ -4624,8 +4640,8 @@ function obBody(k) {
     const P = OB.prefs, seg = (f, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-pv="${f}" data-v="${v}" class="${String(P[f]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     return `<h1 class="ob-t">How you train</h1><p class="sec ob-s">A few defaults for your workouts. All of them live in Me if you change your mind.</p>
     <div class="field"><span class="lbl">Rest between sets</span>${seg('rest', [[90, '1:30'], [120, '2:00'], [180, '3:00'], [240, '4:00'], [300, '5:00']])}</div>
-    <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
-    <div class="field"><span class="lbl">Rep range <span class="cap">(optional)</span></span><p class="m0 cap">Your desired rep range before you move up to a heavier weight. Not sure? Leave it on Auto and we’ll use 6 to 9.</p>${repPick(P.repLo, P.repHi, 'ob')}</div>
+    <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${OB.unit === 'lb' ? (P.bar ? 'Two 45 lb plates on a 45 lb bar logs as 135 lb.' : 'Two 45 lb plates logs as 90 lb, whatever the bar.') : P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
+    <div class="field"><span class="lbl">Rep range <span class="cap">(optional)</span></span><p class="m0 cap">Not sure? Leave it on Auto and we’ll use your plan’s range.</p>${repPick(P.repLo, P.repHi, 'ob')}</div>
     <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div></div>`;
   }
@@ -4633,20 +4649,15 @@ function obBody(k) {
     <div class="ob-code" aria-hidden="true"><span>4</span><span>8</span><span>2</span><i></i><span>9</span><span>1</span><span>7</span></div>
     <div class="seg"><button data-mfa="1" class="${OB.mfa ? 'on' : ''}">Set it up after this</button><button data-mfa="0" class="${OB.mfa ? '' : 'on'}">Not now</button></div>
     <p class="m0 cap">It takes about a minute with Apple Passwords or Google Authenticator. You can turn it on or off any time in Me → Account.</p>`;
-  if (k === 'move') {
-    const f = OB.importFile;
-    return `<h1 class="ob-t">Coming from another app?</h1><p class="sec ob-s">If you logged workouts in Strong, Hevy or another app, bring them with you so your history, PRs and charts start where you left off.</p>
-    <div class="seg"><button data-mv="1" class="${OB.move === true ? 'on' : ''}">Yes, I have a log</button><button data-mv="0" class="${OB.move === false ? 'on' : ''}">No, starting fresh</button></div>
-    ${OB.move ? `<div class="card stack"><p class="m0">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here.</p>
-      <label class="btn block ${f ? '' : 'primary'}" for="ob-file">${f ? 'Chosen: ' + esc(f.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
-      <p class="m0 cap">${f ? 'It will be added when you tap Start training.' : 'No file yet? Skip it for now.'}</p></div>` : ''}
-    <p class="m0 cap">You can import any time later in Me → Import workouts from CSV.</p>
-    <details><summary class="link">Have a Job’s Done backup? Restore it</summary><div class="mt3 stack"><p class="m0 cap">A JSON file from Me → Export.</p>
-      <label class="btn block" for="wl-file">Choose backup file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
-  }
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
-    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>`;
+    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
+    <details ${OB.importFile ? 'open' : ''}><summary class="link">Coming from Strong, Hevy or another app? Bring your history</summary><div class="mt3 stack">
+      <p class="m0 cap">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here. Your history, PRs and charts start where you left off.</p>
+      <label class="btn block" for="ob-file">${OB.importFile ? 'Chosen: ' + esc(OB.importFile.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
+      <p class="m0 cap">${OB.importFile ? 'It will be added when you tap Start training.' : 'You can also import later in Me → Import workouts from CSV.'}</p>
+      <p class="m0 cap">Have a Job’s Done backup (a JSON file from Me → Export)?</p>
+      <label class="btn block" for="wl-file">Restore a backup</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
 }
 function renderWelcomePublic() {
   if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true } };
@@ -4675,9 +4686,8 @@ function renderWelcomePublic() {
     if (f === 'push' && on) { if (!pushReady()) { toast('Add Job’s Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
     OB.prefs[f] = on; renderWelcomePublic();
   });
-  qa('[data-mv]').forEach(b => b.onclick = () => { OB.move = b.dataset.mv === '1'; renderWelcomePublic(); });
   qa('[data-mfa]').forEach(b => b.onclick = () => { OB.mfa = b.dataset.mfa === '1'; renderWelcomePublic(); });
-  const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; renderWelcomePublic(); } };
+  const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; OB.move = true; renderWelcomePublic(); } };
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
   const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Set me up' : 'Next'; };
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
@@ -4686,7 +4696,7 @@ function renderWelcomePublic() {
     if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: 'smooth' }); return; }
     if (k === 'days' && !OB.days) return err('Pick how often you plan to train.');
     if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { pushOn().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
-    if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (!(w > 20 && w < 700)) return err('Add your weight today so your charts have a starting point.'); }
+    if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (OB.w && !(w > 20 && w < 700)) return err('That weight looks off. Fix it or leave it empty.'); }
     if (!last) return go(1);
     obFinish();
   };
@@ -4701,7 +4711,7 @@ function obFinish() {
   const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
   if (w) S.weights[today()] = { w, src: 'manual' };
   if (gw) p.goalW = gw; if (h && h > 90 && h < 250) p.heightCm = Math.round(h);
-  const [, , lo, hi] = OB_EXP[OB.exp]; const lo2 = OB.goal === 'strength' ? lo - 1 : lo, hi2 = OB.goal === 'strength' ? hi - 2 : hi;
+  const [, , lo, hi] = OB_EXP[OB.exp]; const [lo2, hi2] = p.repRange || (OB.goal === 'strength' ? [lo - 1, hi - 2] : [lo, hi]); // the plan follows a range picked here
   for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
   if (UI) UI.lastPrompt = today();
   const imp = OB.move && OB.importFile, mfa = OB.mfa && HOSTED;
@@ -4848,7 +4858,7 @@ const ACT = {
   repeatWk: () => { const w = S.workouts[NAV.stack[NAV.stack.length - 1].id]; if (!w) return;
     if (A) return toast('Finish or discard the workout in progress first.');
     const sp = w.splitId && splitById(w.splitId);
-    A = { id: uid(), splitId: sp ? sp.id : null, splitName: w.splitName || 'Workout', start: Date.now(), touched: Date.now(), ex: w.ex.map(e => { const se = sp && sp.ex.find(x => x.name === e.name) || {}; return newExEntry(e.name, e.sets.length, se.rest, se.note); }), orig: w.ex.map(e => e.name), view: 'log' };
+    A = { id: uid(), splitId: sp ? sp.id : null, splitName: w.splitName || 'Workout', start: Date.now(), touched: Date.now(), ex: w.ex.map(e => { const se = sp && sp.ex.find(x => x.name === e.name) || {}; return newExEntry(e.name, e.sets.length, se.rest, se.note, sp || null); }), orig: w.ex.map(e => e.name), view: 'log' };
     persist('jd/active'); NAV.stack = []; NAV.tab = 'today'; render(); openWk(); },
   recap: el => showRecap(el.dataset.id || NAV.stack[NAV.stack.length - 1].id),
   exCat: el => openExForm(el.dataset.k),
@@ -4925,7 +4935,7 @@ const ACT = {
     if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
-  tourGo: () => tourGo(),
+  tourGo: () => tourGo(), newsSheet: () => newsSheet(),
   // My Gym (beta)
   gymToggle: () => { S.profile.gymBeta = !gymOn(); persist('jd/meta'); if (S.profile.gymBeta) gymRefresh(true); rerender(); },
   gymFind: () => { while (SHEETS.length) closeSheet(); gymFind(); },
@@ -5090,7 +5100,7 @@ function openFeedback() {
       if (!(HOSTED && USER && SB)) { toast('Sign in to send feedback.'); return; }
       ev.currentTarget.disabled = true;
       const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: t.slice(0, 2000) });
-      if (error) { ev.currentTarget.disabled = false; toast('Couldn’t send it. Check your signal and try again.'); return; }
+      if (error) { ev.currentTarget.disabled = false; toast('Couldn’t send it. Check your connection and try again.'); return; }
       closeSheet(sh); toast('Thanks! Feedback sent.');
     };
   } });
@@ -5117,7 +5127,7 @@ function openDeleteAccount() {
         if (!r.ok) throw new Error('failed');
         forgetAccount(); await pushForget(false); // the server already dropped this account's push rows
         closeSheet(sh); await SB.auth.signOut().catch(() => {}); toast('Your account and data were deleted.', 4000);
-      } catch (e) { go.disabled = false; go.textContent = 'Delete my account'; toast('Couldn’t delete it. Check your signal and try again.'); }
+      } catch (e) { go.disabled = false; go.textContent = 'Delete my account'; toast('Couldn’t delete it. Check your connection and try again.'); }
     };
   } });
 }
@@ -5263,8 +5273,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
       try {
         const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em, password: pw, name: $('#si-name').value.trim(), age: true, website: $('#si-web').value, ms: Date.now() - shownAt }) });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) { b.disabled = false; b.textContent = 'Create account'; return m(j.error || 'Could not create the account. Try again.'); }
-      } catch (e) { b.disabled = false; b.textContent = 'Create account'; return m('No connection. Check your signal and try again.'); }
+        if (!r.ok) { b.disabled = false; b.textContent = 'Create account'; return m(j.error || 'Couldn’t create the account. Try again.'); }
+      } catch (e) { b.disabled = false; b.textContent = 'Create account'; return m('No connection. Check your connection and try again.'); }
     }
     const { data, error } = await SB.auth.signInWithPassword({ email: em, password: pw });
     if (error) {
@@ -5360,7 +5370,7 @@ async function openMfa() {
   }
   try { const { data } = await SB.auth.mfa.listFactors(); for (const x of (data && data.all || []).filter(x => x.status !== 'verified')) await SB.auth.mfa.unenroll({ factorId: x.id }); } catch (e) {}
   const { data, error } = await SB.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Job’s Done' });
-  if (error || !data) { toast('Couldn’t start setup. Check your signal and try again.'); return; }
+  if (error || !data) { toast('Couldn’t start setup. Check your connection and try again.'); return; }
   openSheet(`<div class="stack"><div class="eyebrow">Two-step sign-in</div>
     <p class="m0 f15 sec">After your password, Job’s Done will also ask for a 6-digit code from an authenticator app, so a stolen password isn’t enough.</p>
     <ol class="m0 f15 sec mfa-steps"><li>Add Job’s Done to an authenticator app: tap the button on this phone, or scan the code from another device.</li><li>Type the 6-digit code it shows.</li></ol>
@@ -5443,7 +5453,7 @@ async function connect(db) {
     mode = 'local';
     reportError('load: ' + (e && (e.message || String(e))), e && e.stack ? String(e.stack).split('\n')[1] : '');
     // Never show the new-account intro to someone whose log failed to load: finishing it would overwrite their account.
-    if (!ready) { $('#app').innerHTML = `<div class="ob"><div class="stack" style="margin:auto 0;text-align:center"><h1>Couldn’t load your log</h1><p class="sec">Your workouts are safe in your account. Check your signal and try again.</p><button class="btn primary block" id="ld-retry">Try again</button></div></div>`; $('#ld-retry').onclick = () => location.reload(); return; }
+    if (!ready) { $('#app').innerHTML = `<div class="ob"><div class="stack" style="margin:auto 0;text-align:center"><h1>Couldn’t load your log</h1><p class="sec">Your workouts are safe in your account. Check your connection and try again.</p><button class="btn primary block" id="ld-retry">Try again</button></div></div>`; $('#ld-retry').onclick = () => location.reload(); return; }
     toast('Couldn’t reach your account. Working offline on this device for now.', 4000);
   }
 }
