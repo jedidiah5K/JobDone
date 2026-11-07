@@ -1,4 +1,4 @@
--- back-02: daily caps on the two tables any signed-in account can insert into directly
+-- back-02 (applied 7 Nov 2026 without the feedback-trim cron at the bottom; that one needs the privacy page to say 12 months first): daily caps on the two tables any signed-in account can insert into directly
 -- (feedback/reports and error notes). Today a script can loop inserts and fill the 500 MB free database.
 -- The app sends at most 5 error notes per session and feedback by hand, so these caps never touch real use.
 create index if not exists jobdone_feedback_user_at on public.jobdone_feedback (user_id, created_at);
