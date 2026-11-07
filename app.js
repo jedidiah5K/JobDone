@@ -146,7 +146,7 @@ function forgetShared() {
   for (const k in NUDGED) delete NUDGED[k];
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
 }
-const forgetAccount = () => { try { for (const k of [LS_KEY, LS_KEY + ':a', LS_KEY + ':rest', LS_KEY + ':pending']) localStorage.removeItem(k); } catch (e) {} forgetShared(); };
+const forgetAccount = () => { try { for (const k of [LS_KEY, LS_KEY + ':a', LS_KEY + ':rest', LS_KEY + ':pending', LS_KEY + ':tomb', LS_KEY + ':nomerge']) localStorage.removeItem(k); } catch (e) {} forgetShared(); };
 async function pushOff() { if (S && S.profile && (S.profile.restPush || (S.profile.remind && S.profile.remind.on))) return; try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
 // Clear delivered rest alerts when the app comes back, so the lock screen doesn't fill up (each alert has its own tag now).
 document.addEventListener('visibilitychange', () => { if (!document.hidden && 'serviceWorker' in navigator) navigator.serviceWorker.ready.then(r => r.getNotifications()).then(ns => ns.forEach(n => /^rest/.test(n.tag) && n.close())).catch(() => {}); });
@@ -217,6 +217,32 @@ function pend() {
   return pend.s;
 }
 function pendSave() { try { localStorage.setItem(LS_KEY + ':pending', JSON.stringify([...pend()])); } catch (e) {} }
+// Two phones on one account (7 Nov): months, weights and steps are merged with the server copy before each save, so a
+// phone with an old copy can't wipe what another phone logged. Deletes are remembered as tombstones (per path, id → time)
+// and saved in the doc as "x" so the other phone drops them too. A replace-everything import skips the merge once.
+// ponytail: read-then-write, so two saves of the same month in the same second can still lose one; add a version check if that ever happens.
+const MERGED = p => p.startsWith('months/') || p === 'jd/weights' || p === 'jd/steps';
+function lsSet(k, o) { try { localStorage.setItem(LS_KEY + k, JSON.stringify(o)); } catch (e) {} }
+function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(LS_KEY + k)) || d; } catch (e) { return d; } }
+function tombs() { if (tombs.k !== LS_KEY) { tombs.k = LS_KEY; tombs.o = lsGet(':tomb', {}); } return tombs.o; }
+function tomb(p, id) { const t = tombs(); (t[p] = t[p] || {})[id] = Date.now(); lsSet(':tomb', t); }
+function noMerge() { if (noMerge.k !== LS_KEY) { noMerge.k = LS_KEY; noMerge.s = new Set(lsGet(':nomerge', [])); } return noMerge.s; }
+function replaceAll(paths) { paths.forEach(p => noMerge().add(p)); lsSet(':nomerge', [...noMerge()]); }
+async function mergeServer(p, body) {
+  const snap = await DB.doc(p).get(); if (!snap.exists) return body;
+  const sd = snap.data() || {}, key = p.startsWith('months/') ? 'w' : 'e', srv = sd[key] || {}, loc = (body && body[key]) || {};
+  const lt = tombs()[p] || {}, st = sd.x && typeof sd.x === 'object' ? sd.x : {}, out = {};
+  for (const [k, v] of Object.entries(srv)) if (!(k in lt) && !(k in st)) out[k] = v;
+  // This phone's copy wins, except a workout another phone deleted (workout ids are never reused; a date's weight can be).
+  for (const [k, v] of Object.entries(loc)) if (key !== 'w' || !(k in st)) out[k] = v;
+  const old = Date.now() - 60 * 864e5, x = {}; for (const [k, t] of Object.entries({ ...st, ...lt })) if (t > old) x[k] = t;
+  // Bring the other phone's changes into this one.
+  let ch = 0;
+  if (key === 'w') { for (const [k, v] of Object.entries(out)) if (!S.workouts[k]) { S.workouts[k] = v; ch++; } for (const k in st) if (S.workouts[k]) { delete S.workouts[k]; ch++; } }
+  else { const tgt = p === 'jd/weights' ? S.weights : S.steps; for (const [k, v] of Object.entries(out)) if (!(k in tgt)) { tgt[k] = v; ch++; } }
+  if (ch) { invalidate(); lsSave(); if (typeof rerender === 'function') rerender(); }
+  return Object.keys(out).length || Object.keys(x).length ? { [key]: out, ...(Object.keys(x).length ? { x } : {}) } : null;
+}
 function persist(...paths) {
   if (DEMO) return;
   if (A && A.practice) { paths = paths.filter(p => p !== 'jd/active'); if (!paths.length) return; }
@@ -252,8 +278,11 @@ function docBody(p) {
 }
 async function writeDoc(p, attempt = 0) {
   try {
-    const body = docBody(p);
+    let body = docBody(p); const nm = noMerge().has(p);
+    if (MERGED(p) && !nm) body = await mergeServer(p, body);
     if (body) await DB.doc(p).set(body); else await DB.doc(p).delete();
+    if (nm) { noMerge().delete(p); lsSet(':nomerge', [...noMerge()]); }
+    if (MERGED(p) && tombs()[p]) { delete tombs()[p]; lsSet(':tomb', tombs()); } // the server has them in x now
     if (!dirty.has(p)) { pend().delete(p); pendSave(); }
     if (!dirty.size) setSync('ok');
   } catch (e) {
@@ -287,11 +316,12 @@ async function loadCloud() {
   const mine = new Set([...pend(), ...dirty, ...inflight]);
   if (S) for (const p of mine) {
     if (p === 'jd/meta') for (const k of ['v', 'profile', 'splits', 'rotation', 'customEx', 'setup', 'meas', 'imported', 'created']) ns[k] = S[k];
-    else if (p === 'jd/weights') ns.weights = S.weights;
-    else if (p === 'jd/steps') ns.steps = S.steps;
+    // Merged like a save (two phones): the cloud's other entries stay unless this phone deleted them or a replace is pending.
+    else if (p === 'jd/weights' || p === 'jd/steps') { const k = p === 'jd/weights' ? 'weights' : 'steps', lt = tombs()[p] || {};
+      if (noMerge().has(p)) ns[k] = S[k]; else { for (const d in lt) delete ns[k][d]; Object.assign(ns[k], S[k]); } }
     else if (p.startsWith('months/')) {
-      const m = p.slice(7);
-      for (const [id, w] of Object.entries(ns.workouts)) if (w.date.slice(0, 7) === m) delete ns.workouts[id];
+      const m = p.slice(7), lt = tombs()[p] || {}, nm = noMerge().has(p);
+      for (const [id, w] of Object.entries(ns.workouts)) if (w.date.slice(0, 7) === m && (nm || id in lt)) delete ns.workouts[id];
       for (const w of Object.values(S.workouts)) if (w.date.slice(0, 7) === m) ns.workouts[w.id] = w;
     }
   }
@@ -4050,7 +4080,7 @@ function openWeighIn(date, prompt) {
         toast(`<b class="num">${bw(kg)} ${U()}</b> · ${prev ? wdelta(kg, prev.w) + ' vs last' : 'logged'} · 7-day avg <span class="num">${a7 ? bw(a7) : '—'}</span>`, 3200);
       };
       const sk = b.querySelector('#wi-skip'); if (sk) sk.onclick = () => { closeSheet(sh); };
-      const dl = b.querySelector('#wi-del'); if (dl) dl.onclick = () => { delete S.weights[date]; persist('jd/weights'); closeSheet(sh); rerender(); toast('Entry deleted'); };
+      const dl = b.querySelector('#wi-del'); if (dl) dl.onclick = () => { delete S.weights[date]; tomb('jd/weights', date); persist('jd/weights'); closeSheet(sh); rerender(); toast('Entry deleted'); };
     },
   });
 }
@@ -4565,7 +4595,7 @@ function restoreFile(file, replacing) {
         st.imported = true;
       }
     }
-    const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
+    const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (replacing) replaceAll([...new Set([...old, ...allPaths()])].filter(p => p.startsWith('months/') || (what === 'Restored your backup' && (p === 'jd/weights' || p === 'jd/steps')))); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
     if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: what === 'Restored your backup' ? 'Your current workouts, weights and splits are replaced by the ones in the file.' : 'Your current workouts are replaced by the ones in the file. Your settings, body weights and steps stay.', ok: 'Replace', danger: true, key: false, onOk: go }); else go();
   };
   rd.readAsText(file);
@@ -4883,7 +4913,7 @@ const ACT = {
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
-  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
+  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; tomb(monthPath(w.date), w.id); invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
@@ -5017,7 +5047,7 @@ const IN = {
   repR: el => { const r = (S.profile.repRange || [null, null]).slice(); r[+el.dataset.rr] = +el.value || null; const o = { lo: r[0], hi: r[1] }; fixRR(o, 'lo', 'hi'); S.profile.repRange = o.lo && o.hi ? [o.lo, o.hi] : o.lo || o.hi ? [o.lo, o.hi] : null; persist('jd/meta'); rerender(); },
   remindAt: el => { if (!/^\d\d:\d\d$/.test(el.value) || !S.profile.remind) return; S.profile.remind.at = el.value; S.profile.remind.tz = myTz(); persist('jd/meta'); toast('Reminder moved to ' + hm12(el.value) + '.'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
-  wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; invalidate(); persist(old, monthPath(w.date)); rerender(); },
+  wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; if (old !== monthPath(w.date)) tomb(old, w.id); invalidate(); persist(old, monthPath(w.date)); rerender(); },
   wkSplit: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const sp = splitById(el.value); w.splitId = sp.id; w.splitName = sp.name; invalidate(); persist(monthPath(w.date)); rerender(); },
   wkNote: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; w.note = el.value; persist(monthPath(w.date)); },
   wsSet: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const s = w.ex[+el.dataset.e].sets[+el.dataset.s]; const v = parseFloat(el.value); if (el.dataset.f === 'w') s.w = isNaN(v) ? null : Math.round(toKg(v) * 1000) / 1000; else s.r = isNaN(v) ? null : Math.round(v); invalidate(); persist(monthPath(w.date)); },
