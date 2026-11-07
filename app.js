@@ -275,7 +275,8 @@ async function loadCloud() {
 // 2 Nov: Job folded Single-Arm Tricep into Tricep Pushdown (one arm = Tricep Pushdown split into Left and Right), history and all.
 const RENAMED = { 'Tricep Vulken': 'Tricep Pushdown', 'Single-Arm Tricep': 'Tricep Pushdown' };
 function renameLifts(st, act) {
-  if (!st || !(st.profile && st.profile.owner)) return false; // Job's own lifts only let n = 0;
+  if (!st || !(st.profile && st.profile.owner)) return false; // Job's own lifts only
+  let n = 0;
   const fix = e => { if (!e || !e.name) return; const b = baseName(e.name), to = RENAMED[b]; if (!to) return; e.was = e.was || b; e.name = to + e.name.slice(b.length); n++; };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(fix);
   for (const sp of st.splits || []) { const c = n; (sp.ex || []).forEach(fix); if (n > c) { const seen = new Set(); sp.ex = sp.ex.filter(e => !seen.has(e.name) && seen.add(e.name)); } }
@@ -5307,7 +5308,9 @@ async function connect(db) {
     else { ready = true; S = null; renderWelcome(); }
   } catch (e) {
     mode = 'local';
-    if (!ready) { ready = true; S = null; renderWelcome(); }
+    reportError('load: ' + (e && (e.message || String(e))), e && e.stack ? String(e.stack).split('\n')[1] : '');
+    // Never show the new-account intro to someone whose log failed to load: finishing it would overwrite their account.
+    if (!ready) { $('#app').innerHTML = `<div class="ob"><div class="stack" style="margin:auto 0;text-align:center"><h1>Couldn’t load your log</h1><p class="sec">Your workouts are safe in your account. Check your signal and try again.</p><button class="btn primary block" id="ld-retry">Try again</button></div></div>`; $('#ld-retry').onclick = () => location.reload(); return; }
     toast('Couldn’t reach your account. Working offline on this device for now.', 4000);
   }
 }
