@@ -63,6 +63,11 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   const f = csv({ workouts: { a: w } }, 2.20462, d => d.toISOString().slice(0, 10), () => 0);
   assert.deepStrictEqual(f.csvToWorkouts(f.exportCSV()).list[0].ex[0].sets.map(s => s.t), ['warm', 'work', 'drop'], 'set types survive CSV export and import');
 
+  // Hevy and Strong dates parse by hand (Safari's Date.parse rejects some), and two same-name workouts on a day stay two
+  const cd = new Function('pad2', 'ymd', pick('const MON3', 'function csvToWorkouts') + '; return csvDate;')(n => String(n).padStart(2, '0'), d => d.toISOString().slice(0, 10));
+  assert.deepStrictEqual([cd('4 Jan 2024, 18:13'), cd('Jan 4, 2024 6:13 PM'), cd('2024-01-04 18:13:00'), cd('nonsense')], ['2024-01-04', '2024-01-04', '2024-01-04', null], 'Hevy and Strong dates');
+  const two = f.csvToWorkouts(['date,split,exercise,weight_kg,reps', '2024-01-04 07:00:00,Push,Chest Fly,40,10', '2024-01-04 18:00:00,Push,Chest Fly,45,10'].join(String.fromCharCode(10))).list;
+  assert.strictEqual(two.length, 2, 'two Push sessions on one day stay two workouts');
   // "Replace everything" with a CSV keeps set types and the file's own split order (no Push/Pull forced on an Upper/Lower log)
   const bl = new Function('freshState', 'SPLIT_COLORS', 'PALETTE', pick('function buildFromLog', 'function renderWelcome') + pick('function logFromCsvList', 'function restoreFile') + '; return { buildFromLog, logFromCsvList };')(() => ({ profile: {}, splits: [], rotation: [], workouts: {} }), {}, ['#111']);
   const ul = f.csvToWorkouts('date,split,exercise,weight_kg,reps,set_type\n2026-11-03,Upper,Lat Pulldown,40,12,warmup\n2026-11-03,Upper,Lat Pulldown,60,8,\n2026-11-04,Lower,Leg Press,100,8,\n').list;

@@ -1461,7 +1461,7 @@ function myStat() {
   const per = {}; ws.forEach(w => { const k = mondayOf(w.date); per[k] = (per[k] || 0) + 1; }); const rw = new Set(S.profile.restWeeks || []);
   let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
   while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
-  const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k };
+  const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k, o: -new Date().getTimezoneOffset() };
   if (SO().nn) s.nn = true; return s;
 }
 let STAT_SENT = '';
@@ -1470,9 +1470,12 @@ function statSync() {
   const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
   gymRpc('jobdone_stat', { p: JSON.parse(s) }).catch(() => { STAT_SENT = ''; });
 }
-const frWeek = s => s && s.w === mondayOf(today()) ? `${s.wd} of ${s.wg} this week` : '';
+// A friend's today and week by their own clock (stat.o = their minutes ahead of UTC), so someone abroad who trained
+// this morning doesn't show "Nothing yet today". Old stats without o use this phone's date.
+const frToday = s => s && Number.isFinite(+s.o) && Math.abs(+s.o) <= 900 ? new Date(Date.now() + s.o * 6e4).toISOString().slice(0, 10) : today();
+const frWeek = s => s && s.w === mondayOf(frToday(s)) ? `${s.wd} of ${s.wg} this week` : '';
 function frStatus(f) {
-  const s = f.stat, T = today(), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
+  const s = f.stat, T = frToday(s), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
   if (f.at_gym) return { c: 'gym', t: `At ${f.at_gym} · ${atGymAgo(f.at_since)}` };
   if (!s) return { c: '', t: '' };
   if (s.d === T && Array.isArray(s.tr) && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.map(String).join(', ')) };
@@ -1481,7 +1484,7 @@ function frStatus(f) {
   return { c: 'none', t: plus('Nothing yet today'), nudge: !s.nn };
 }
 // Weeks in a row you've both hit your own number. Their count is only trusted if they've opened the app since last week.
-const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(today()), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
+const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(frToday(s)), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
 let FEED = null, FR_AT = 0; const NUDGED = {};
 // Tab taps reuse friends and feed for 2 minutes (each load is every friend's photo); pull-down and Refresh always reload.
 const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FRIENDS = null; FEED = null; } };
@@ -4771,29 +4774,40 @@ function parseCSV(text) {
   if (f || row.length) { row.push(f); rows.push(row); }
   return rows.filter(r => r.some(x => x.trim()));
 }
+// Dates the way Hevy ("4 Jan 2024, 18:13") and Strong ("Jan 4, 2024 6:13 PM") write them. Safari's Date.parse rejects some of these.
+const MON3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+function csvDate(raw) {
+  const iso = (raw.match(/\d{4}-\d{2}-\d{2}/) || [])[0]; if (iso) return iso;
+  const ok = (y, m, d) => m >= 0 && d >= 1 && d <= 31 ? `${y}-${pad2(m + 1)}-${pad2(d)}` : null;
+  let x = raw.match(/^\s*(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); if (x) return ok(x[3], MON3.indexOf(x[2].toLowerCase()), +x[1]);
+  x = raw.match(/^\s*([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/); if (x) return ok(x[3], MON3.indexOf(x[1].toLowerCase()), +x[2]);
+  const p = Date.parse(raw); return isNaN(p) ? null : ymd(new Date(p));
+}
 function csvToWorkouts(text) {
   const rows = parseCSV(text); if (rows.length < 2) return { err: 'That file has no rows.' };
   const h = rows[0].map(x => x.trim().toLowerCase());
   const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
-  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), rpe: col('rpe'), note: col('notes', 'note', 'exercise_notes') };
+  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight (kg)', 'weight'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), rpe: col('rpe'), note: col('notes', 'note', 'exercise_notes') };
   if (c.date < 0 || c.ex < 0) return { err: 'Couldn’t find date and exercise columns. Expected Job’s Done, Strong or Hevy CSV headers.' };
+  // Strong's plain "Weight" column is in the exporter's own unit. A pounds account reads it as pounds.
+  const plainLb = c.w >= 0 && h[c.w] === 'weight' && !!(S && S.profile && S.profile.unit === 'lb');
   const map = {};
   for (const r of rows.slice(1)) {
-    const raw = (r[c.date] || '').trim(); let d = (raw.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
-    if (!d) { const p = Date.parse(raw); if (!isNaN(p)) d = ymd(new Date(p)); }
+    const raw = (r[c.date] || '').trim(), d = csvDate(raw);
     if (!d) continue;
     const sp = c.split >= 0 ? (r[c.split] || '').trim() || 'Workout' : 'Workout';
-    const key = d + '|' + sp; const w = map[key] || (map[key] = { date: d, splitName: sp, ex: [], skipped: false });
+    // Strong and Hevy give each workout's start time, so two "Push" sessions on one day stay two workouts.
+    const key = d + '|' + sp + '|' + ((raw.match(/\d{1,2}:\d{2}(\s*[AP]M)?/i) || [''])[0]); const w = map[key] || (map[key] = { date: d, splitName: sp, ex: [], skipped: false });
     const ex = (r[c.ex] || '').trim();
     if (!ex) { if (/skip/i.test(r[c.note] || '')) w.skipped = true; continue; }
     let e = w.ex[w.ex.length - 1]; if (!e || e.name !== ex) { e = { name: ex, note: '', sets: [] }; w.ex.push(e); }
     // Strong and Hevy export pounds in a separate column; set types come as warmup/dropset/failure (Hevy) or W/D/F (Strong).
-    const wkg = parseFloat(r[c.w]), wlb = parseFloat(r[c.lb]), wt = !isNaN(wkg) ? wkg : isNaN(wlb) ? NaN : Math.round(wlb / LB * 4) / 4, rp = parseInt(r[c.r], 10);
+    const wkg = plainLb ? NaN : parseFloat(r[c.w]), wlb = parseFloat(r[plainLb ? c.w : c.lb]), wt = !isNaN(wkg) ? wkg : isNaN(wlb) ? NaN : Math.round(wlb / LB * 4) / 4, rp = parseInt(r[c.r], 10);
     const ty = (r[c.t] || '').trim().toLowerCase(), t = /^(w|warm)/.test(ty) ? 'warm' : /^(d|drop)/.test(ty) ? 'drop' : /^(f|fail)/.test(ty) ? 'fail' : 'work';
     const rpe = parseFloat(r[c.rpe]); e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t, ...(rpe >= 6 && rpe <= 10 ? { rpe } : {}) });
     const nt = c.note >= 0 ? (r[c.note] || '').trim() : ''; if (nt && !e.note) e.note = nt;
   }
-  return { list: Object.values(map), lb: c.w < 0 && c.lb >= 0 };
+  return { list: Object.values(map), lb: plainLb || (c.w < 0 && c.lb >= 0) };
 }
 function importCSVFile(file) {
   const rd = new FileReader();
@@ -4807,7 +4821,7 @@ function importCSVFile(file) {
     const dates = fresh.map(w => w.date).sort();
     const sh = openSheet(`<div class="stack"><div class="eyebrow">Import preview</div>
       <div class="kpis"><div class="kpi"><b>${fresh.length}</b><span>new workouts</span></div><div class="kpi"><b>${fresh.reduce((a, w) => a + wSets(w), 0)}</b><span>sets</span></div><div class="kpi"><b>${res.list.length - fresh.length}</b><span>already here</span></div></div>
-      ${dates.length ? `<div class="cap">${fmtDate(dates[0], { y: true })} to ${fmtDate(dates[dates.length - 1], { y: true })}. ${res.lb ? 'Pounds are converted to kg.' : 'Weights are read as kg.'}</div>` : ''}
+      ${dates.length ? `<div class="cap">${fmtDate(dates[0], { y: true })} to ${fmtDate(dates[dates.length - 1], { y: true })}. ${res.lb ? 'Weights are read as pounds.' : 'Weights are read as kg.'} If that’s wrong, change your unit in Me first.</div>` : ''}
       ${unknown.length ? `<div class="note">New exercise names (added as custom): ${esc(unknown.join(', '))}</div>` : ''}
       <button class="btn primary block" id="ci-go" ${fresh.length ? '' : 'disabled'}>Import ${plural(fresh.length, 'workout')}</button><button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, {
       label: 'Import preview',
