@@ -1013,23 +1013,14 @@ async function gymFaces(cv) {
 let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
 const TOUR_STEPS = [
-  { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
-  { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
-  { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
-  { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
-  { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
-  { tab: 'me', el: () => tq('#screen .idc-prev'), t: 'Your ID card', d: 'Friends see it. Edit card picks what goes on it, and you can share a picture of it.' },
   { tab: 'me', el: () => [...document.querySelectorAll('#screen section .sgh')].find(e => e.textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
   { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
-  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight', d: 'Tap kg to load plates onto the bar, or switch to the keypad.' },
-  { wk: true, el: () => tq('#row-0-0 [data-f="r"]'), t: 'Reps', d: 'Tap reps to set them. Next on the keypad moves you to the next box.' },
-  { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Tap Next and this one gets ticked for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
+  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight and reps', d: 'Tap kg to load plates onto the bar, or switch to the keypad. Then tap reps.' },
+  { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Next set on the keypad ticks it for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
   { wk: true, el: () => tq('#wk .restpop'), t: 'Rest timer', d: 'It starts by itself. −30s, +30s and Pause change it, and a sound plays when it’s time to go.' },
-  { wk: true, el: () => tq('#row-0-1') || tq('#row-0-0'), t: 'Shortcuts', d: 'Swipe a set left to delete it. Hold a set to copy its kg and reps to the sets below.' },
-  { wk: true, el: () => tq('#ex-0 [data-a="exMenu"]'), t: 'More for each lift', d: 'Swap it, reorder, add warm-ups, change its rest or split it into left and right.' },
   { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: () => A && A.practice ? 'On a real workout, Finish saves it and shows what you beat. This was practice, so nothing is saved.' : 'Finish saves it, shows what you beat and makes a recap card to share.', last: true },
 ];
 function tourGo() {
@@ -4542,7 +4533,7 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
 const OB_NAMES = { safe: 'Account safety', move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
-const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'move', 'plan'];
+const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan']; // 9 steps; moving from another app is part of the plan step
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
@@ -4558,7 +4549,7 @@ function obTour() {
       mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
     ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
       mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job’s done!</div>`)],
-    ['Train with friends', 'Add friends by code and see who trained today. Your Done Stamp goes to them when you finish. Photos are optional.',
+    ['Train with friends', 'Add friends by code and see who trained today. Your workout shows up in their feed when you finish. Photos are optional.',
       mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Sam · at the gym</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">2 weeks in a row together</div>`)],
     ['No signal? Keep lifting', 'Gym basement or flight mode, it still logs. Your sets sync when you’re back online, and your account is backed up every day.',
       mock('m-off', `<div class="m-pill"><i class="m-dot off"></i>Offline · 3 sets saved on this phone</div><div class="m-pill"><i class="m-dot"></i>Back online · All synced</div><div class="m-cap">Daily backup · kept for 14 days</div>`)],
@@ -4574,7 +4565,7 @@ function obBody(k) {
   if (k === 'you') return `<h1 class="ob-t">About you</h1><p class="sec ob-s">Used for your progress charts. Only you can see it.</p>
     <div class="field"><label for="ob-name">First name</label><input class="input" id="ob-name" maxlength="40" value="${esc(OB.name)}" placeholder="What should we call you?" autocomplete="given-name"></div>
     <div class="field"><span class="lbl">Units</span><div class="seg"><button data-unit="kg" class="${OB.unit === 'kg' ? 'on' : ''}">kg</button><button data-unit="lb" class="${OB.unit === 'lb' ? 'on' : ''}">lb</button></div></div>
-    <div class="grid2"><div class="field"><label for="ob-w">Weight today (${OB.unit})</label><input class="input num" id="ob-w" inputmode="decimal" value="${esc(OB.w)}" placeholder="For example 72.5"></div>
+    <div class="grid2"><div class="field"><label for="ob-w">Weight today (${OB.unit})</label><input class="input num" id="ob-w" inputmode="decimal" value="${esc(OB.w)}" placeholder="Optional"></div>
     <div class="field"><label for="ob-gw">Goal weight (${OB.unit})</label><input class="input num" id="ob-gw" inputmode="decimal" value="${esc(OB.gw)}" placeholder="Optional"></div></div>
     <div class="field"><label for="ob-h">Height (cm)</label><input class="input num" id="ob-h" inputmode="decimal" value="${esc(OB.h)}" placeholder="Optional"></div>`;
   if (k === 'goal') return `<h1 class="ob-t">What’s your goal?</h1><p class="sec ob-s">It sets your rep ranges and the plan we suggest.</p>
@@ -4588,9 +4579,9 @@ function obBody(k) {
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
-    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}
-    <section><div class="sgh">Notifications</div><div class="sgrp">${HOSTED ? row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Job’s Done is on your Home Screen. Turn it on later in Me') : ''}
-    ${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
+    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}</div></section>
+    ${HOSTED ? `<section><div class="sgh">Notifications</div><div class="sgrp">${row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Job’s Done is on your Home Screen. Turn it on later in Me')}</div></section>` : ''}
+    <section><div class="sgh">Reminders</div><div class="sgrp">${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
     <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
     ${row('wake', 'Keep screen awake', 'While a workout is open')}
     ${row('confetti', 'Celebrations', 'Confetti for PRs and finished workouts')}</div></section>`;
@@ -4599,7 +4590,7 @@ function obBody(k) {
     const P = OB.prefs, seg = (f, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-pv="${f}" data-v="${v}" class="${String(P[f]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     return `<h1 class="ob-t">How you train</h1><p class="sec ob-s">A few defaults for your workouts. All of them live in Me if you change your mind.</p>
     <div class="field"><span class="lbl">Rest between sets</span>${seg('rest', [[90, '1:30'], [120, '2:00'], [180, '3:00'], [240, '4:00'], [300, '5:00']])}</div>
-    <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
+    <div class="field"><span class="lbl">How you count weight on a barbell</span>${seg('bar', [[0, 'Plates only'], [1, 'Include the bar']])}<p class="m0 mt1 cap">${OB.unit === 'lb' ? (P.bar ? 'Two 45 lb plates on a 45 lb bar logs as 135 lb.' : 'Two 45 lb plates logs as 90 lb, whatever the bar.') : P.bar ? 'Two 20 kg plates on a 20 kg bar logs as 60 kg.' : 'Two 20 kg plates logs as 40 kg, whatever the bar.'}</p></div>
     <div class="field"><span class="lbl">Rep range <span class="cap">(optional)</span></span><p class="m0 cap">Not sure? Leave it on Auto and we’ll use your plan’s range.</p>${repPick(P.repLo, P.repHi, 'ob')}</div>
     <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div></div>`;
@@ -4608,20 +4599,15 @@ function obBody(k) {
     <div class="ob-code" aria-hidden="true"><span>4</span><span>8</span><span>2</span><i></i><span>9</span><span>1</span><span>7</span></div>
     <div class="seg"><button data-mfa="1" class="${OB.mfa ? 'on' : ''}">Set it up after this</button><button data-mfa="0" class="${OB.mfa ? '' : 'on'}">Not now</button></div>
     <p class="m0 cap">It takes about a minute with Apple Passwords or Google Authenticator. You can turn it on or off any time in Me → Account.</p>`;
-  if (k === 'move') {
-    const f = OB.importFile;
-    return `<h1 class="ob-t">Coming from another app?</h1><p class="sec ob-s">If you logged workouts in Strong, Hevy or another app, bring them with you so your history, PRs and charts start where you left off.</p>
-    <div class="seg"><button data-mv="1" class="${OB.move === true ? 'on' : ''}">Yes, I have a log</button><button data-mv="0" class="${OB.move === false ? 'on' : ''}">No, starting fresh</button></div>
-    ${OB.move ? `<div class="card stack"><p class="m0">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here.</p>
-      <label class="btn block ${f ? '' : 'primary'}" for="ob-file">${f ? 'Chosen: ' + esc(f.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
-      <p class="m0 cap">${f ? 'It will be added when you tap Start training.' : 'No file yet? Skip it for now.'}</p></div>` : ''}
-    <p class="m0 cap">You can import any time later in Me → Import workouts from CSV.</p>
-    <details><summary class="link">Have a Job’s Done backup? Restore it</summary><div class="mt3 stack"><p class="m0 cap">A JSON file from Me → Export.</p>
-      <label class="btn block" for="wl-file">Choose backup file</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
-  }
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
-    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>`;
+    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
+    <details ${OB.importFile ? 'open' : ''}><summary class="link">Coming from Strong, Hevy or another app? Bring your history</summary><div class="mt3 stack">
+      <p class="m0 cap">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here. Your history, PRs and charts start where you left off.</p>
+      <label class="btn block" for="ob-file">${OB.importFile ? 'Chosen: ' + esc(OB.importFile.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
+      <p class="m0 cap">${OB.importFile ? 'It will be added when you tap Start training.' : 'You can also import later in Me → Import workouts from CSV.'}</p>
+      <p class="m0 cap">Have a Job’s Done backup (a JSON file from Me → Export)?</p>
+      <label class="btn block" for="wl-file">Restore a backup</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
 }
 function renderWelcomePublic() {
   if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true, plateau: true } };
@@ -4650,9 +4636,8 @@ function renderWelcomePublic() {
     if (f === 'push' && on) { if (!pushReady()) { toast('Add Job’s Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
     OB.prefs[f] = on; renderWelcomePublic();
   });
-  qa('[data-mv]').forEach(b => b.onclick = () => { OB.move = b.dataset.mv === '1'; renderWelcomePublic(); });
   qa('[data-mfa]').forEach(b => b.onclick = () => { OB.mfa = b.dataset.mfa === '1'; renderWelcomePublic(); });
-  const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; renderWelcomePublic(); } };
+  const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; OB.move = true; renderWelcomePublic(); } };
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
   const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Set me up' : 'Next'; };
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
@@ -4661,7 +4646,7 @@ function renderWelcomePublic() {
     if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: 'smooth' }); return; }
     if (k === 'days' && !OB.days) return err('Pick how often you plan to train.');
     if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { pushOn().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
-    if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (!(w > 20 && w < 700)) return err('Add your weight today so your charts have a starting point.'); }
+    if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (OB.w && !(w > 20 && w < 700)) return err('That weight looks off. Fix it or leave it empty.'); }
     if (!last) return go(1);
     obFinish();
   };
