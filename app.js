@@ -545,7 +545,9 @@ let toastT = null;
 let SCR_KEY = '';
 function screenChanged() { const top = NAV.stack[NAV.stack.length - 1], k = (top ? top.v : NAV.tab) + '|' + (A && A.open ? (A.view || 'log') : ''); if (k !== SCR_KEY) { SCR_KEY = k; document.querySelectorAll('.toast').forEach(t => t.remove()); } }
 // undo: optional function; adds an Undo button and keeps the toast up longer (deleting is forgiving, like Mail and Photos)
+let TOAST_HOLD = 0; // a message that must not be covered by the caller's generic error right after it
 function toast(html, ms = 2600, undo) {
+  if (Date.now() < TOAST_HOLD) return;
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast' + (undo ? ' has-undo' : ''); t.setAttribute('role', 'status'); t.innerHTML = html;
   if (undo) { ms = Math.max(ms, 6000); const b = document.createElement('button'); b.className = 'toast-undo'; b.textContent = 'Undo'; b.onclick = () => { t.remove(); undo(); }; t.appendChild(b); }
@@ -790,7 +792,9 @@ const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id ===
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
 const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your connection and try again.' : m; };
 const gymErr = e => toast(esc(gymMsg(e)));
-async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {}); if (error) throw new Error(error.message); return data; }
+async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {});
+  if (error && error.message === 'Suspended') { toast('Your account can’t post or comment for now.', 4000); TOAST_HOLD = Date.now() + 4000; }
+  if (error) throw new Error(error.message); return data; }
 let gymBusy = null;
 function gymRefresh(force) {
   if (!gymOn()) return Promise.resolve();
@@ -1596,7 +1600,7 @@ function postComments(id) {
       go.onclick = send; t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); send(); } };
       b.querySelectorAll('.cm-rep').forEach(x => x.onclick = () => { const c = (p.comments || []).find(y => y.id === +x.dataset.cid); if (!c) return;
         confirmSheet({ title: 'Report this comment?', body: 'A copy goes to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-          onOk: () => sendReport(`comment ${c.id} on ${p.kind} post ${p.id}`, c.u, c.n, c.b) }); });
+          onOk: () => sendReport({ p_post: null, p_comment: c.id }, `comment ${c.id} on ${p.kind} post ${p.id}`, c.u, c.n, c.b) }); });
       b.querySelectorAll('.cm-del').forEach(x => x.onclick = async () => { const cid = +x.dataset.cid; x.disabled = true;
         try { await gymRpc('jobdone_comment_delete', { p_cid: cid }); p.comments = p.comments.filter(c => c.id !== cid); b.innerHTML = html(); wire(); rerender(); } catch (e) { x.disabled = false; toast('Couldn’t delete it. Try again.'); } });
     }; wire(); } });
@@ -1799,7 +1803,7 @@ function postMenu(id) {
         onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
       if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
       if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-        onOk: () => { hide(); const b = p.body || {}; sendReport(`${p.kind} post ${p.id} from ${p.at}`, p.user_id, p.n, [b.sp, b.c, b.h].filter(Boolean).join(' · ') || '(no text)'); } });
+        onOk: () => { hide(); const b = p.body || {}; sendReport({ p_post: p.id, p_comment: null }, `${p.kind} post ${p.id} from ${p.at}`, p.user_id, p.n, [b.sp, b.c, b.h].filter(Boolean).join(' · ') || '(no text)'); } });
       if (m === 'block') blockUser(p.user_id, p.n);
     }; },
   });
@@ -1901,8 +1905,12 @@ function friendOpen(id) {
   if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
   idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
 }
-// Reports land in the feedback inbox with a copy of the text, since posts and comments delete themselves within 48 hours. Photos aren't copied.
-async function sendReport(what, uid, n, text) {
+// Reports go to the reports inbox (supabase/reports.sql): the server keeps a copy of the text, since posts and
+// comments delete themselves within 48 hours, and hides it for everyone once two people report it. Photos aren't copied.
+// If that isn't set up yet, the report goes to the feedback inbox as before.
+async function sendReport(ids, what, uid, n, text) {
+  try { await gymRpc('jobdone_report', ids); toast('Reported. Thanks.'); return; }
+  catch (e) { if (/Too many/.test(e.message)) return toast('That’s enough reports for today.'); }
   try {
     const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${what} by ${n || '?'} (${uid})
 ${String(text || '')}`.slice(0, 2000) });
@@ -2608,7 +2616,7 @@ function meParts() {
   </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
-    ${p.owner && HOSTED && USER ? slink('Feedback inbox', 'fbInbox') : ''}
+    ${p.owner && HOSTED && USER ? slink('Inbox', 'fbInbox') : ''}
     <a class="xr" href="privacy.html" target="_blank" rel="noopener"><span class="grow">Privacy Policy</span>${I.right}</a>
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED && USER ? slink('Delete account', 'delAccount', 'danger') : ''}
@@ -5102,7 +5110,22 @@ function openFeedback() {
   } });
 }
 async function openInbox() {
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Feedback inbox</div><div id="ib" class="cap">Loading…</div></div>`, { label: 'Feedback inbox', mount: async b => {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Inbox</div><div id="ib-r"></div><div><div class="eyebrow mb1">Feedback</div><div id="ib" class="cap">Loading…</div></div></div>`, { label: 'Inbox', mount: async b => {
+    // Reports (supabase/reports.sql). Missing until that SQL runs; then this section just stays empty.
+    const reps = async () => {
+      let r; try { r = await gymRpc('jobdone_reports_inbox', {}); } catch (e) { return; }
+      const el = b.querySelector('#ib-r'); if (!el) return;
+      el.innerHTML = !r || !r.length ? '' : `<div class="eyebrow mb1">Reports</div><div class="list">${r.map(x => `<div class="li"><div class="grow">
+        <div class="t f15 pre">${esc(x.copy)}</div>
+        <div class="s">${esc(x.what)} by ${esc(x.target_n || 'someone')} · ${plural(+x.reports, 'report')}${x.hidden ? ' · hidden' : ''}${x.gone ? ' · already gone' : ''}${x.suspended ? ' · suspended' : ''} · ${esc(fmtDate(String(x.at).slice(0, 10)))}</div>
+        <div class="row g2 mt2 wrap"><button class="btn sm" data-mod="remove" data-k="${x.id}">Remove</button><button class="btn sm" data-mod="suspend" data-k="${x.id}">Remove + suspend 7 days</button><button class="btn sm ghost" data-mod="dismiss" data-k="${x.id}">Dismiss</button></div>
+      </div></div>`).join('')}</div>`;
+      el.querySelectorAll('[data-mod]').forEach(x => x.onclick = async () => { el.querySelectorAll('[data-mod]').forEach(y => y.disabled = true);
+        try { await gymRpc('jobdone_moderate', { p_report: +x.dataset.k, p_action: x.dataset.mod, p_days: 7 }); toast(x.dataset.mod === 'dismiss' ? 'Dismissed' : x.dataset.mod === 'suspend' ? 'Removed and suspended for 7 days' : 'Removed'); FEED = null; }
+        catch (e) { toast('Couldn’t do that. Try again.'); }
+        reps(); });
+    };
+    reps();
     const { data, error } = await SB.from('jobdone_feedback').select('email,body,created_at').order('created_at', { ascending: false }).limit(100);
     b.querySelector('#ib').innerHTML = error ? 'Couldn’t load feedback.' : !data.length ? 'No feedback yet.' : `<div class="list">${data.map(f => `<div class="li"><div class="grow"><div class="t f15 pre">${esc(f.body)}</div><div class="s">${esc(f.email || 'unknown')} · ${esc(fmtDate(f.created_at.slice(0, 10)))}</div></div></div>`).join('')}</div>`;
   } });
