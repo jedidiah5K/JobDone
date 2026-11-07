@@ -781,7 +781,6 @@ function gymTaken(name, rows, types, sameMuscle = []) {
 }
 // gym-builder:end
 
-const GYM_SCAN_READY = false; // off (7 Nov): Gemini's free tier isn't allowed for EU/UK users and gym photos have other people in them. Pick from the list instead.
 const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
 let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
@@ -841,7 +840,6 @@ function viewGym() {
   return `<div class="stack">${backBtn()}
     <div class="top pt0"><div class="gym-top"><div class="eyebrow">My Gym ${gymBeta}</div><h1 class="gym-h1" title="${esc(c.brand)}">${esc(c.brand)}</h1>${c.independent ? `<div class="cap gym-1l">${esc(c.branch)}</div>` : `<button class="cap daychip gym-1l" data-a="gymSwitch" title="${esc(c.branch)}">Training at: ${esc(c.branch)} ▾</button>`}</div></div>
     <button class="btn block primary" data-a="gymBuild" ${usable ? '' : 'disabled'}>Build today’s workout</button>
-    ${GYM_SCAN_READY ? '<button class="btn block" data-a="gymScan">Scan a corner</button>' : ''}
     ${rows.length ? '' : gymStarterHTML(c)}
     <div class="card"><div class="card-h"><span class="eyebrow">Equipment · ${usable}</span><button class="cap link" data-a="gymPick">+ Add</button></div>
       ${live.length ? `<div class="list">${live.map(row).join('')}</div>` : '<div class="empty">Nothing added yet.</div>'}</div>
@@ -1004,52 +1002,6 @@ function gymStart(c, focus, lifts) {
   gymRpc('jobdone_gym_use', { g: c.gym_id }).catch(() => {});
 }
 
-// AI scan of a gym corner. Off until GYM_SCAN_READY (needs the Gemini key and the face blur files).
-function gymScan() {
-  const c = gymCur(); if (!c || !GYM_SCAN_READY) return gymPick();
-  const sh = openSheet(`<div class="stack"><div><h2>Scan a corner</h2><div class="cap">Get as many machines in as you can. Faces are blurred on your phone first and the photo isn’t kept.</div></div>
-    <label class="btn block primary" for="gs-in">Take a photo</label><input type="file" id="gs-in" accept="image/*" capture="environment" hidden>
-    <div id="gs-out"></div></div>`, { label: 'Scan a corner', mount: b => {
-    b.querySelector('#gs-in').onchange = async ev => {
-      const f = ev.target.files && ev.target.files[0]; if (!f) return; const out = b.querySelector('#gs-out');
-      out.innerHTML = '<div class="gym-sk" style="height:180px"></div><div class="cap tc mt1">Looking for machines…</div>';
-      try {
-        const img = await gymPhoto(f);
-        const { data: { session } } = await SB.auth.getSession();
-        const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/gym-scan', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session && session.access_token), apikey: CFG.supabaseAnonKey }, body: JSON.stringify({ g: c.gym_id, img }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error === 'limit' ? 'That’s today’s scans used up. Pick machines from the list instead.' : j.error === 'not_set_up' ? 'Scanning isn’t switched on yet. Pick from the list.' : j.error || 'The scan failed.');
-        const keys = j.keys || [];
-        if (!keys.length) { out.innerHTML = '<div class="empty">No machines spotted. Try another angle, or pick from the list.</div><button class="btn block" data-a="gymPick">Pick from the list</button>'; return; }
-        out.innerHTML = `<div class="card"><div class="eyebrow mb1">Found ${plural(keys.length, 'machine')}</div><div class="cap mb1">Untick anything that’s wrong.</div><div class="list">${keys.map(k => `<label class="li"><div class="grow"><div class="t">${esc((gymType(k) || { name: k }).name)}</div></div><input type="checkbox" class="cbox" value="${k}" checked></label>`).join('')}</div>
-          <button class="link mt2" data-a="gymPick">Missed one? Pick it from the list</button></div><button class="btn block primary" id="gs-add">Add ticked machines</button><div class="cap tc">${j.left} scans left today</div>`;
-        out.querySelector('#gs-add').onclick = () => { const ks = [...out.querySelectorAll('.cbox:checked')].map(x => x.value); closeSheet(sh); gymAdd(ks, 'scan'); };
-      } catch (e) { out.innerHTML = `<div class="empty">${esc(gymMsg(e))}</div><button class="btn block" data-a="gymPick">Pick from the list</button>`; }
-    };
-  } });
-}
-// Shrink to 1024 px and blur faces before anything leaves the phone. No blur available → no upload.
-async function gymPhoto(file) {
-  const bmp = await createImageBitmap(file), k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
-  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-  const g = cv.getContext('2d'); g.drawImage(bmp, 0, 0, cv.width, cv.height);
-  const faces = await gymFaces(cv); if (faces == null) throw new Error('Face blur isn’t ready on this phone, so the photo wasn’t sent.');
-  for (const f of faces) { // pixelate each face with some margin
-    const p = Math.max(f.width, f.height) * .25, x = Math.max(0, f.originX - p), y = Math.max(0, f.originY - p), w = Math.min(cv.width - x, f.width + 2 * p), h = Math.min(cv.height - y, f.height + 2 * p);
-    const t = document.createElement('canvas'); t.width = 8; t.height = Math.max(1, Math.round(8 * h / w)); t.getContext('2d').drawImage(cv, x, y, w, h, 0, 0, t.width, t.height);
-    g.imageSmoothingEnabled = false; g.drawImage(t, 0, 0, t.width, t.height, x, y, w, h); g.imageSmoothingEnabled = true;
-  }
-  return cv.toDataURL('image/jpeg', .8).split(',')[1];
-}
-let gymFD = null;
-async function gymFaces(cv) {
-  try {
-    if (!gymFD) { const mp = await import('./vendor/mediapipe/vision_bundle.mjs'); const base = new URL('vendor/mediapipe/', location.href).href, fs = await mp.FilesetResolver.forVisionTasks(base + 'wasm');
-      gymFD = await mp.FaceDetector.createFromOptions(fs, { baseOptions: { modelAssetPath: base + 'blaze_face_short_range.tflite' }, runningMode: 'IMAGE', minDetectionConfidence: .35 }); }
-    return gymFD.detect(cv).detections.map(d => d.boundingBox);
-  } catch (e) { return null; }
-}
-
 // ---------- Tour of the whole app (Job, 4 Nov) ----------
 // New accounts get it once after setup; Me → Help → Take the tour replays it. The workout part runs on a practice
 // workout (nothing saved, no rest alerts) unless a workout is already open or they pick Start for real.
@@ -1129,24 +1081,14 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-tabs';
+const NEWS_ID = '2026-11-v136';
 const NEWS = [
-  ['More in the ⋯ menu', 'Tap ⋯ on a post to save its photo, share it, or take it down. Save on a new story works now too.'],
-  ['Posts in their own theme', 'A post looks like the theme its author had when they posted, so a friend on Agent shows up in Agent even if you use Skyline.'],
-  ['New-look posts', 'Each post has its own box for the workout. Share a post with the share button. In Friends → ⚙ pick which splits post on their own, and whether friends see your weights.'],
-  ['Friends at the bottom', 'Friends now has its own tab. Your splits live in the + button: pick one to start, or tap Edit splits and rotation.'],
-  ['Front-and-back stories', 'Share a story takes a back photo, counts down 3 seconds, then takes a selfie. Swap which one is big, or save it to your phone.'],
-  ['Fairer PRs', 'A heavier weight now counts as a PR only when you match the reps of your old heaviest set. A better estimated max still counts.'],
-  ['A proper feed', 'Friends now has a Feed: faces with today’s status, then posts with photos, stats, emoji reactions and comments. Double-tap a photo for a 🔥.'],
-  ['Share your workout', 'After a workout, post it to your feed with a line, every lift and a photo if you like. Or turn on Post every workout.'],
-  ['Every theme, its own touches', 'Next up has a new name in each theme, the finish page stamps a seal, and the numbers count up. Agent has a new look.'],
-  ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap Friends at the bottom.'],
-  ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
-  ['Stories and nudges', 'Post a front-and-back photo story that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
-  ['Streaks together', 'Weeks in a row you and a friend both hit your own number, even if you train on different days.'],
-  ['Your ID card', 'Level, top lifts, badges and more. Flip it, share a picture of it, or hide it. Me → Edit card.'],
-  ['Badges and monthly report', 'Earn badges as you train, and get a report card at the start of each month.'],
-  ['Rest days', 'Not training today? Mark it on Today so friends know.'],
+  ['A slimmer rest timer', 'Rest now sits in a thin bar at the bottom with a small hourglass by the time. Tap the time to pause. How the set went shows in the same bar.'],
+  ['Targets follow your plan', 'Next time’s weight and reps use the rep range in your split, so 12 reps on an 8 to 12 plan means add weight. A range set in Me still wins.'],
+  ['Cleaner Today and finish page', 'Today has one Start workout button and weight next to steps. The finish page leads with your numbers and says which old set each PR beat.'],
+  ['Block and report', 'Block someone from ⋯ on their post or from their card. Report a post or a comment. Unblock in Friends → ⚙ → Blocked people.'],
+  ['Safer syncing', 'A workout finished with no signal stays put, the rest timer survives the app closing, and sign-out waits until your sets are saved.'],
+  ['Machines start empty', 'The plate loader on machines and cables starts at 0 with no bar.'],
 ];
 function whatsNew() {
   const p = S && S.profile;
@@ -1624,8 +1566,20 @@ function frSettings() {
   const body = () => { const o = SO(); return `<div class="stack"><h2>What friends see</h2><div class="sgrp">
     ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
     ${o.off ? '' : srow('Post every workout', swi(!!o.autoPost, 'soAuto'), o.autoPost ? 'Your Done Stamp goes up as soon as you finish' : 'Off: you choose on the finish page') + (o.autoPost ? `<div class="srow-x"><div class="cap">Post these splits on their own</div><div class="chips wrap mt2">${S.splits.filter(x => !x.archived).map(x => `<button class="chip${(o.noAutoSp || []).includes(x.id) ? '' : ' on'}" data-a="soAutoSp" data-k="${x.id}">${esc(x.name)}</button>`).join('')}</div></div>` : '') + srow('Show my weights', swi(!o.noW, 'soW'), o.noW ? 'Off: friends see your lifts and time, no numbers' : 'Volume and your top set for each lift') + srow('Ask for a story during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
-    </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="btn block" data-a="closeSheet">Done</button></div>`; };
+    </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="link" data-a="blockedList">Blocked people</button><button class="btn block" data-a="closeSheet">Done</button></div>`; };
   const sh = openSheet(body(), { label: 'What friends see', mount: b => { b.addEventListener('click', () => setTimeout(() => { if (b.isConnected) b.innerHTML = body(); }, 0)); } });
+}
+// Blocked people, with Unblock. Unblocking doesn't make you friends again; they'd need your code.
+async function blockedList() {
+  let list = null;
+  const html = () => `<div class="stack"><h2>Blocked people</h2>${list === null ? '<div class="gym-sk" style="height:88px"></div>' : list.length ? `<div class="list">${list.map(x => `<div class="li"><div class="grow"><div class="t ell">${esc(x.n || 'Someone')}</div><div class="s">Blocked ${esc(fmtDate(String(x.at).slice(0, 10)))}</div></div><button class="btn sm" data-ub="${esc(x.id)}">Unblock</button></div>`).join('')}</div>` : '<p class="cap m0">You haven’t blocked anyone.</p>'}
+    <p class="cap m0">Unblocking doesn’t add them back. They’d need your code again.</p><button class="btn block" data-a="closeSheet">Done</button></div>`;
+  const sh = openSheet(html(), { label: 'Blocked people', mount: b => {
+    const wire = () => b.querySelectorAll('[data-ub]').forEach(x => x.onclick = async () => { x.disabled = true;
+      try { await gymRpc('jobdone_unblock', { p_user: x.dataset.ub }); list = list.filter(y => y.id !== x.dataset.ub); b.innerHTML = html(); wire(); toast('Unblocked'); }
+      catch (e) { x.disabled = false; toast('Couldn’t unblock. Try again later.'); } });
+    gymRpc('jobdone_blocks_list', {}).then(r => { list = r || []; }, () => { list = []; toast('Couldn’t load the list. Check your connection.'); }).then(() => { if (b.isConnected) { b.innerHTML = html(); wire(); } });
+  } });
 }
 function postComments(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
@@ -2981,7 +2935,7 @@ const GLOSSARY = [
   ['e1rm', 'e1RM (estimated one-rep max)', 'The most you could likely lift for a single rep, worked out from a set you did. 80 kg for 8 reps works out to about 100 kg. It lets sets with different reps be compared fairly.'],
   ['volume', 'Volume', 'Weight × reps, added up across sets. 3 sets of 10 at 50 kg is 1,500 kg. Warm-up sets don’t count.'],
   ['pr', 'PRs (personal records)', 'You get at most one PR per exercise per workout, and left and right sides count as one lift. Heaviest: more weight than ever before. e1RM: your strongest set ever once reps are taken into account. Reps: more reps than ever at a weight you’ve lifted before.'],
-  ['target', 'Today’s target', 'If you reached the top of your rep range last time, the target adds a small weight jump and aims for the bottom of the range. Otherwise it keeps the weight and asks for one more rep. Without a rep range set in Me, that’s 6 to 9 reps. You can turn targets off in Me too.'],
+  ['target', 'Today’s target', 'If you reached the top of your rep range last time, the target adds a small weight jump and aims for the bottom of the range. Otherwise it keeps the weight and asks for one more rep. The range comes from Me if you set one, otherwise from the split’s range for that lift. You can turn targets off in Me too.'],
   ['muscle', 'Sets per muscle', 'Working sets this week for each muscle, with the grey marker showing your 4-week average. Left and right sides of one exercise count as half a set each, which is why you can see 3.5.'],
   ['strength', 'Weight vs strength', 'Both lines start at 100% in the same week. Strength is the middle value of your e1RMs across lifts. If weight falls while strength holds, you are losing fat and keeping muscle.'],
   ['rotation', 'Rotation and Next up', 'Your splits in the order you train them. Next up is the split after the last one you did, so if you skip a day nothing gets out of order. Change the order in Splits → Rotation.'],
@@ -3096,7 +3050,7 @@ function logSet(ei, si) {
     if (!left) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA(); snapMaybe();
-    if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
+    if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
       if (!pr.length) celebrate(setVerdict(s.r, repRange(e.name)));
@@ -3104,7 +3058,7 @@ function logSet(ei, si) {
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
         celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 7000 }, 1200);
-        if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
+        if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 1700);
       }
     }
     if (pr.length) { buzz([20, 40, 60]); celebrate({ k: 'amazing', title: 'New PR', sub: `${e.name}: ${setStr(s)}`, note: pr.join(', ') === 'e1RM' ? 'Best estimated 1-rep max' : pr.join(', '), bits: 40 }); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
@@ -4738,7 +4692,7 @@ function renderWelcomePublic() {
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
   q('#ob-next').onclick = () => {
     keep(); const err = m => { q('#ob-err').textContent = m; };
-    if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: 'smooth' }); return; }
+    if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: smooth() }); return; }
     if (k === 'days' && !OB.days) return err('Pick how often you plan to train.');
     if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { pushOn().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
     if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (OB.w && !(w > 20 && w < 700)) return err('That weight looks off. Fix it or leave it empty.'); }
@@ -4987,7 +4941,6 @@ const ACT = {
   gymSwitch: () => gymSwitch(),
   gymUse: el => gymUse(el.dataset.g),
   gymPick: () => { while (SHEETS.length) closeSheet(); gymPick(); },
-  gymScan: () => gymScan(),
   gymRetry: () => { GYM.failAt = 0; gymRefresh(true); rerender(); },
   gymMachine: el => gymMachine(el.dataset.e),
   gymVote: el => gymVote(el.dataset.e, +el.dataset.v),
@@ -5015,7 +4968,7 @@ const ACT = {
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
   frRefresh: () => frRefresh(),
-  frTab: el => { UI.frTab = el.dataset.k; UI.rxOpen = null; rerender(); }, frAddSheet: () => frAddSheet(), frSettings: () => frSettings(),
+  frTab: el => { UI.frTab = el.dataset.k; UI.rxOpen = null; rerender(); }, frAddSheet: () => frAddSheet(), frSettings: () => frSettings(), blockedList: () => blockedList(),
   postRxOpen: el => { UI.rxOpen = UI.rxOpen === +el.dataset.k ? null : +el.dataset.k; rerender(); }, postComments: el => postComments(el.dataset.k),
   snap: () => snapStart(), nudge: el => nudge(el.dataset.k), postReact: el => postReact(el.dataset.k, el.dataset.v), postMenu: el => postMenu(el.dataset.k), postShare: el => postShare(el.dataset.k),
   restDay: () => { S.profile.restDay = S.profile.restDay === today() ? null : today(); persist('jd/meta'); statSync(); rerender(); },
