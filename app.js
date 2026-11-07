@@ -2880,10 +2880,10 @@ const themeMsg = () => THEME_MSG[theme()] || THEME_MSG.cliffs;
 function setVerdict(r) {
   const m = themeMsg();
   const [lo, hi] = repRange();
-  if (r <= lo - 2) return { k: 'low', title: pick(m.low), sub: 'Drop the weight a little. Form first.', bits: 0 };
+  if (r <= lo - 2) return { k: 'low', title: pick(m.low), sub: 'Below your rep range.', bits: 0 };
   if (r <= lo) return { k: 'nice', title: pick(m.nice), sub: 'Right in the range.', bits: 0 };
-  if (r < hi) return { k: 'great', title: pick(m.great), sub: 'Nearly time to add weight.', bits: 0 };
-  return { k: 'amazing', title: pick(m.amazing), sub: 'Add weight next time. You hit the top of your range.', bits: 40 };
+  if (r < hi) return { k: 'great', title: pick(m.great), sub: 'Near the top of your range.', bits: 0 };
+  return { k: 'amazing', title: pick(m.amazing), sub: 'Top of your range.', bits: 40 };
 }
 // One line under "Job’s done!" in the theme's voice. Cliffs follows the time of day like its sky.
 function doneLine(w) {
