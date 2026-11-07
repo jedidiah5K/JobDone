@@ -1099,7 +1099,7 @@ const NEWS = [
   ['Every theme, its own touches', 'Next up has a new name in each theme, the finish page stamps a seal, and the numbers count up. Agent has a new look.'],
   ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap the people button on Today.'],
   ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
-  ['Stories and nudges', 'Post a quick photo story that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
+  ['Stories and nudges', 'Post a front-and-back photo story that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
   ['Streaks together', 'Weeks in a row you and a friend both hit your own number, even if you train on different days.'],
   ['Your ID card', 'Level, top lifts, badges and more. Flip it, share a picture of it, or hide it. Me → Edit card.'],
   ['Badges and monthly report', 'Earn badges as you train, and get a report card at the start of each month.'],
@@ -1598,15 +1598,45 @@ async function postPhoto(file) {
   if (!im) { toast('Couldn’t open that photo'); return null; }
   const W = 720, H = 900, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   cv.getContext('2d').drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
+  return jpegFit(cv);
+}
+function jpegFit(cv) {
   let q = .8, d = cv.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .25) { q -= .1; d = cv.toDataURL('image/jpeg', q); }
   if (d.length >= 110000) { toast('That photo is too big. Try another.'); return null; }
   return d;
+}
+// Story camera: back photo, then the front one a moment later (an iPhone website can't run both cameras at once).
+// The front shot sits small in the top-left corner. Falls back to the photo picker if the camera is blocked.
+async function dualShot(cb) {
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return pickPhoto(cb);
+  const ov = document.createElement('div'); ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Story camera');
+  ov.innerHTML = `<video playsinline muted autoplay></video><img class="cam-in" alt="" hidden><p class="cam-hint">Back camera</p><div class="cam-bar"><button class="link cam-x" type="button">Cancel</button><button class="cam-go" type="button" aria-label="Take photo"></button><button class="link cam-lib" type="button">Photos</button></div>`;
+  document.body.append(ov);
+  const v = ov.querySelector('video'), go = ov.querySelector('.cam-go'), hint = ov.querySelector('.cam-hint'), inset = ov.querySelector('.cam-in');
+  let st = null;
+  const stop = () => { if (st) st.getTracks().forEach(t => t.stop()); st = null; };
+  const close = () => { stop(); ov.remove(); };
+  const open = async face => { stop(); st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face, width: { ideal: 1440 }, height: { ideal: 1800 } }, audio: false }); v.srcObject = st; await v.play(); ov.classList.toggle('front', face === 'user'); };
+  const grab = (W, H, mirror) => { const c = document.createElement('canvas'), x = c.getContext('2d'), vw = v.videoWidth, vh = v.videoHeight, k = Math.max(W / vw, H / vh); c.width = W; c.height = H;
+    if (mirror) { x.translate(W, 0); x.scale(-1, 1); } x.drawImage(v, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k); return c; };
+  ov.querySelector('.cam-x').onclick = close;
+  ov.querySelector('.cam-lib').onclick = () => { close(); pickPhoto(cb); };
+  try { await open('environment'); } catch (e) { close(); toast('No camera access, so pick a photo instead.'); return pickPhoto(cb); }
+  go.onclick = async () => {
+    go.disabled = true; const back = grab(720, 900, false);
+    inset.src = back.toDataURL('image/jpeg', .6); inset.hidden = false; hint.textContent = 'Now you';
+    try { await open('user'); await new Promise(r => setTimeout(r, 900)); } catch (e) { close(); const d = jpegFit(back); if (d) cb(d); return; }
+    const front = grab(216, 270, true), x = back.getContext('2d');
+    x.save(); x.beginPath(); x.roundRect(24, 24, 216, 270, 18); x.clip(); x.drawImage(front, 24, 24); x.restore();
+    x.lineWidth = 4; x.strokeStyle = '#000'; x.beginPath(); x.roundRect(24, 24, 216, 270, 18); x.stroke();
+    close(); const d = jpegFit(back); if (d) cb(d);
+  };
 }
 function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const d = await postPhoto(i.files && i.files[0]); if (d) cb(d); }; i.click(); }
 const postErr = e => toast(/Too many/.test(e.message) ? 'That’s enough posts for today.' : 'Couldn’t send it. Check your connection.');
 function snapStart() {
   if (!soOn()) return toast('Turn on Share my training in Friends first.');
-  pickPhoto(d => { const sh = openSheet(`<div class="stack"><h2>Story</h2><img class="po-ph" src="${d}" alt="Your story"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Post story</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Story', mount: b => {
+  dualShot(d => { const sh = openSheet(`<div class="stack"><h2>Story</h2><img class="po-ph" src="${d}" alt="Your story"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Post story</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Story', mount: b => {
     const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
       try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Story posted'); FEED = null; rerender(); }
       catch (e) { ok.disabled = false; postErr(e); } }; } }); });
