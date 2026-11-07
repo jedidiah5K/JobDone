@@ -1498,7 +1498,9 @@ function frStatus(f) {
 }
 // Weeks in a row you've both hit your own number. Their count is only trusted if they've opened the app since last week.
 const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(today()), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
-let FEED = null; const NUDGED = {};
+let FEED = null, FR_AT = 0; const NUDGED = {};
+// Tab taps reuse friends and feed for 2 minutes (each load is every friend's photo); pull-down and Refresh always reload.
+const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FRIENDS = null; FEED = null; } };
 async function feedLoad() { FEED = undefined; try { FEED = await gymRpc('jobdone_feed') || []; } catch (e) { FEED = []; } rerender(); }
 const postHidden = () => { try { return JSON.parse(localStorage.getItem('jd-hidepost') || '[]'); } catch (e) { return []; } };
 function frRow(f) {
@@ -1546,7 +1548,7 @@ function postHTML(p) {
   const ph2 = new Date(p.at); const tod = todOf(ph2.getHours() + ph2.getMinutes() / 60); // Summit cards take the sky of when it was posted
   const pth = THEMES.some(x => x.k === b.th) ? b.th : mine ? theme() : (THEMES.some(x => x.k === t) ? t : theme());
   return `<article class="card po po2 po-t-${pth} po-${tod}${p.kind === 'stamp' ? ' po-stamp' : ''}">
-    <header class="po-h">${mine ? myFace() : face(p.n, p.ph, t)}<div class="grow"><b>${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
+    <header class="po-h">${mine ? myFace() : face(p.n, p.ph || (fr && !(fr.card || {}).hidden ? fr.photo : null), t)}<div class="grow"><b>${esc(who)}</b><span>${sub}</span></div><button class="icon-btn po-more" data-a="postMenu" data-k="${p.id}" aria-label="More" title="More">${I.more || '···'}</button></header>
     <div class="po-b">${cap}${wk}${ph}</div>
     <footer class="po-f"><div class="po-acts"><button class="po-act${p.mine ? ' on' : ''}" data-a="postRxOpen" data-k="${p.id}" aria-label="React" title="React">${p.mine ? `<span class="po-mine">${p.mine}</span>` : IC.smile}</button><button class="po-act" data-a="postComments" data-k="${p.id}" aria-label="Comments" title="Comments">${IC.chat}${cm.length ? `<b class="num">${cm.length}</b>` : ''}</button><button class="po-act" data-a="postShare" data-k="${p.id}" aria-label="Share" title="Share">${IC.share}</button><span class="grow"></span>${sum}</div>
     ${UI.rxOpen === p.id ? `<div class="po-pick" role="group" aria-label="Pick a reaction">${REACTS.map(e => `<button class="${p.mine === e ? 'on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>` : ''}
@@ -4830,7 +4832,7 @@ async function eraseAll() {
 const ACT = {
   closeSheet: () => closeSheet(),
   glossary: el => openGlossary(el.dataset.k),
-  tab: el => { if (el.dataset.k === 'today' && NAV.tab === 'today' && !NAV.stack.length) VIEWDAY = null; if (el.dataset.k === 'friends') { idTurnOn(); FRIENDS = null; FEED = null; } NAV.tab = el.dataset.k; NAV.stack = []; render(); },
+  tab: el => { if (el.dataset.k === 'today' && NAV.tab === 'today' && !NAV.stack.length) VIEWDAY = null; if (el.dataset.k === 'friends') { idTurnOn(); frExpire(); } NAV.tab = el.dataset.k; NAV.stack = []; render(); },
   back: () => back(),
   start: () => { if (S && S.profile && !S.profile.hint1 && S.profile.onboarded) { S.profile.hint1 = true; persist('jd/meta'); const c = document.getElementById('coach'); if (c) c.remove(); } openStart(); },
   resume: () => openWk(),
@@ -4957,7 +4959,7 @@ const ACT = {
   gymStarterSave: () => { const ks = [...document.querySelectorAll('#gym-st .cbox:checked')].map(x => x.value); if (!ks.length) return toast('Tick the machines you can see first.'); gymAdd(ks, 'starter'); },
   gymLeave: () => { const c = gymCur(); if (c) confirmSheet({ title: 'Leave ' + gymTitle(c) + '?', body: 'Machines you added stay for everyone else.', ok: 'Leave', key: false, onOk: async () => { try { await gymRpc('jobdone_gym_leave', { g: c.gym_id }); if (S.profile.gymAt === c.gym_id) { delete S.profile.gymAt; persist('jd/meta'); } await gymRefresh(true); if (!(GYM.mine || []).length) { NAV.stack = []; render(); } } catch (e) { gymErr(e); } } }); },
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
-  friends: () => { idTurnOn(); NAV.tab = 'friends'; NAV.stack = []; FRIENDS = null; FEED = null; render(); },
+  friends: () => { idTurnOn(); NAV.tab = 'friends'; NAV.stack = []; frExpire(); render(); },
   idShare: () => idShare(),
   meGroup: el => { NAV.stack = [{ v: 'set', k: el.dataset.k }]; render(); },
   idOpen: () => { idTurnOn(); idView(idCard(), ID_CODE, ID_PHOTO, { share: true }); },
