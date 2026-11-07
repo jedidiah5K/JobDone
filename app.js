@@ -548,11 +548,20 @@ function openSheet(html, opts = {}) {
   const wrap = document.createElement('div'); wrap.className = 'sheet-wrap';
   wrap.innerHTML = `<div class="scrim" data-a="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(opts.label || 'Sheet')}"><div class="grab"></div><div class="sheet-body">${html}</div></div>`;
   root.appendChild(wrap);
-  const sh = { el: wrap, opts }; SHEETS.push(sh);
+  const sh = { el: wrap, opts, from: document.activeElement }; SHEETS.push(sh);
   dragToDismiss(sh);
   if (opts.mount) opts.mount(wrap.querySelector('.sheet-body'), sh);
   labelIcons(wrap);
+  sheetInert();
+  const box = wrap.querySelector('.sheet'); box.tabIndex = -1;
+  if (!wrap.contains(document.activeElement)) box.focus({ preventScroll: true }); // a mount that focuses its own input keeps it
   return sh;
+}
+// Only the top sheet is reachable: the page, the workout and sheets under it go inert (VoiceOver and Tab stay inside).
+function sheetInert() {
+  const top = SHEETS[SHEETS.length - 1];
+  for (const id of ['app', 'wk']) { const n = document.getElementById(id); if (n) n.inert = !!top; }
+  for (const s of SHEETS) s.el.inert = s !== top;
 }
 // Pull a sheet down to close it, like iOS sheets.
 function dragToDismiss(sh) {
@@ -572,7 +581,12 @@ function dragToDismiss(sh) {
 }
 function closeSheet(sh) {
   sh = sh || SHEETS[SHEETS.length - 1]; if (!sh) return;
-  SHEETS.splice(SHEETS.indexOf(sh), 1); sh.el.remove();
+  const i = SHEETS.indexOf(sh); if (i < 0) return;
+  SHEETS.splice(i, 1); sheetInert();
+  // Slide down for .15 s, then go (Reduce Motion: at once). The closing sheet takes no taps meanwhile.
+  const el = sh.el; el.inert = true; el.classList.add('out');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) el.remove(); else setTimeout(() => el.remove(), 150);
+  const f = sh.from; if (!SHEETS.length && f && f.isConnected && f.focus) f.focus({ preventScroll: true });
   if (sh.opts.onClose) sh.opts.onClose();
 }
 function setSheet(sh, html) { const b = sh.el.querySelector('.sheet-body'); b.innerHTML = html; if (sh.opts.mount) sh.opts.mount(b, sh); }

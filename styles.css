@@ -332,6 +332,11 @@ tr.pop .check { animation: pop .3s var(--ease); }
 .sheet .card { background: var(--raised); box-shadow: none; }
 .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--edge); margin: 0 auto var(--s3); }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+.sheet:focus { outline: none; }
+.sheet-wrap.out .sheet { animation: sheetDown .15s cubic-bezier(.4, 0, 1, 1) forwards; }
+.sheet-wrap.out .scrim { animation: fadeOut .15s ease forwards; }
+@keyframes sheetDown { to { transform: translateY(100%); } }
+@keyframes fadeOut { to { opacity: 0; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); }
 .keys button { min-height: 52px; border-radius: var(--r1); background: var(--raised); font-size: 24px; font-weight: 400; font-variant-numeric: tabular-nums; }
