@@ -1027,7 +1027,7 @@ async function gymFaces(cv) {
 let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
 const TOUR_STEPS = [
-  { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
+  { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap a day to look back at it.' },
   { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
@@ -2040,7 +2040,7 @@ function back() { NAV.stack.pop(); render(); }
 const backBtn = (label = 'Back') => `<button class="back" data-a="back">${I.left}${esc(label)}</button>`;
 
 // ---------- Today ----------
-function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
+function greeting() { const h = new Date().getHours(); return h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'; }
 // The Today screen can show any past day (Job: tap a day and see it like a normal day). null = today.
 let VIEWDAY = null;
 function setViewDay(d) {
@@ -2071,7 +2071,6 @@ function viewToday() {
   const p = S.profile, fw = firstWeight(), since = lw && fw ? lw.w - fw.w : null;
   const loggedToday = S.weights[t];
   const recent = weightList().filter(e => e.d <= t && daysBetween(e.d, t) <= 120);
-  const wchart = recent.length > 1 ? lineChart({ series: [{ pts: recent.map(e => ({ x: ts(e.d), y: e.w, hollow: e.src === 'estimated' })), color: 'var(--accent)', dots: true, width: 2.4 }], h: 96, yfmt: v => bw(v), area: true }) : '';
   const nx = nextSplit();
   const lastNx = nx && lastOfSplit(nx);
   const steps = S.steps[t] || 0, goal = p.stepGoal || 10000, frac = Math.min(1, steps / goal);
@@ -2086,33 +2085,39 @@ function viewToday() {
   }).join('');
   const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">
-  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div><div class="eyebrow">${esc(longDay(t))}</div><h1>${greeting()}, ${esc(p.name)}</h1></div></div>`}
+  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div class="grow"><div class="eyebrow">${esc(longDay(t))}</div><h1 class="hi-h">${greeting()},${esc(p.name)}</h1></div></div>`}
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
-  <div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
-    <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">${past ? 'week of ' + esc(fmtDate(ws)) : esc(streakText())}</span></div>
+  ${past ? `<div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
+    <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">week of ${esc(fmtDate(ws))}</span></div>`
+    : `<div class="card wk-card"><div class="card-h"><span class="eyebrow">This week</span><span class="cap wk-sum"><b class="c-text num">${done} of ${p.weeklyTarget}</b> · ${esc(streakText())}</span></div>`}
     <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
   ${past ? '' : frStrip()}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
-    <div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span><button class="mh32 cap nx-rot" data-a="tab" data-k="splits">Rotation: ${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'not set')}</button></div>
-    ${nx ? `<div class="hero"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt3 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      ${A && A.splitId === nx.id ? `<button class="mt5 btn primary block" data-a="resume">Resume ${esc(nx.name)}</button>` : `<button class="mt5 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start ${esc(nx.name)}</button>`}
-      ${(() => { const m = mergeLR(nx.ex, e => { const l = lastSession(e.name); return l ? l.sets.map(setStr).join(', ') : '—'; }); return foldList(m.length, m.map(r => `<div class="row between"><span class="sec">${esc(r.name)}</span><span class="num muted">${esc(r.txt)}</span></div>`).join('')); })()}`
-      : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}
+    ${(() => { const rot = S.rotation.map(splitById).filter(Boolean), ri = nx ? rot.indexOf(nx) : -1; // review 2: lifts in one line, a rotation strip, "Start workout"
+      return `<div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span>${ri >= 0 && rot.length > 1 ? `<span class="cap num">${ri + 1} of ${rot.length}</span>` : ''}</div>
+    ${nx ? `<div class="hero nx-name"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt1 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+      ${nx.ex.length ? `<div class="nx-lifts ell">${esc(mergeLR(nx.ex, () => '').map(r => r.name).join(' · '))}</div>` : ''}
+      ${rot.length > 1 ? `<button class="nx-strip" data-a="tab" data-k="splits" aria-label="Rotation: ${esc(rot.map(s => s.name).join(', '))}. Open splits">${rot.map((s, i) => `<span class="ell${i < ri ? ' done' : i === ri ? ' cur' : ''}"><b></b>${esc(s.name)}</span>`).join('')}</button>` : ''}
+      ${A && A.splitId === nx.id ? `<button class="mt4 btn primary block" data-a="resume">Resume workout</button>` : `<button class="mt4 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start workout</button>`}`
+      : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}`; })()}
   </div>`}
   ${past ? '' : gymCardHTML()}
-  <div class="card grp"><button class="tl full grp-a" data-a="weigh" data-k="${t}">
-    <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${past ? (loggedToday ? 'Weighed in that day' : lw ? 'Last ' + esc(fmtDate(lw.d)) + ' · tap to add' : 'Tap to add') : loggedToday ? 'Logged today' : lw ? 'Last ' + relDay(lw.d) + ' · tap to weigh in' : 'Tap to weigh in'}</span></div>
-    <div class="row between" style="align-items:flex-end"><div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
-    <div class="tr cap">${loggedToday && weightOn(addDays(t, -1)) && lw ? 'vs last ' + wdelta(lw.w, weightOn(addDays(t, -1)).w) : ''}</div></div>
-    <div class="mt4 kpis"><div class="kpi"><b>${a7 ? bw(a7) : '—'}</b><span>7-day avg</span></div><div class="kpi"><b>${since == null ? '—' : bw(since, true)}</b><span>since ${fw ? esc(fmtDate(fw.d)) + (fw.src === 'estimated' ? ' (est.)' : '') : 'start'}</span></div><div class="kpi"><b>${(() => { const r = ratePerMonth(); return r == null ? '—' : bw(r, true); })()}</b><span>per month</span></div></div>
-    <div class="mt3">${wchart}</div>
-  </button>
-  <button class="tl row g4 steps-row grp-b" data-a="steps" data-k="${t}">
+  <div class="card grp bw2"><button class="tl grp-a" data-a="weigh" data-k="${t}" aria-label="Body weight${lw ? ' ' + bw(lw.w) + ' ' + U() : ''}. ${past ? 'Tap to add' : loggedToday ? 'Logged today' : 'Tap to weigh in'}">
+    <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${loggedToday ? (past ? 'that day' : 'today') : lw ? (past ? esc(fmtDate(lw.d)) : relDay(lw.d)) : 'tap to add'}</span></div>
+    <div class="big">${lw ? bw(lw.w) : '—'}<span class="unit">${U()}</span></div>
+    <div class="cap num ell">${[a7 ? 'Avg ' + bw(a7) : '', since == null ? '' : bw(since, true) + ' since ' + (fw ? esc(fmtDate(fw.d).replace(/^\d+\s/, '')) : 'start')].filter(Boolean).join(' · ') || 'Weigh in to see your trend'}</div>
+    ${(() => { const v = recent.slice(-30).map(e => e.w); if (v.length < 2) return ''; const mx = Math.max(...v), mn = Math.min(...v); // tiny trend line, no axes (review 2)
+      return `<svg class="bw-spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><path d="${v.map((y, i) => (i ? 'L' : 'M') + (i / (v.length - 1) * 200).toFixed(1) + ' ' + (4 + (1 - (y - mn) / ((mx - mn) || 1)) * 26).toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`; })()}
+  </button><button class="tl grp-b" data-a="steps" data-k="${t}" aria-label="Steps ${n0(steps)} of ${n0(goal)}. Tap to ${steps ? 'edit' : 'add'}">
+    <span class="eyebrow">Steps</span>
     <div class="ring sm"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--raised)" stroke-width="9"/>${frac > 0 ? `<circle cx="42" cy="42" r="36" fill="none" stroke="${frac >= 1 ? 'var(--pos)' : 'var(--text)'}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 36 * frac).toFixed(1)} 999"/>` : ''}</svg><div class="c">${Math.round(frac * 100)}%</div></div>
-    <div class="grow"><div class="eyebrow">Steps</div><div class="mt1 f22 mid">${n0(steps)}</div><div class="cap">of ${n0(goal)} · tap to ${steps ? 'edit' : 'add'}</div></div>
+    <b class="num st-n">${n0(steps)}</b><span class="cap">of ${n0(goal)}</span>
   </button>
   </div>
-  ${past ? '' : (() => { const tw = Object.values(S.workouts).some(w => w.date === T && !w.skipped); if (tw) return dayWorkoutCard(T, 'Today\'s session'); const lw2 = Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); return lw2 ? dayWorkoutCard(lw2.date, 'Last session · ' + relDay(lw2.date)) : ''; })()}
+  ${past ? '' : (() => { const tw = Object.values(S.workouts).filter(w => w.date === T && !w.skipped).sort(sortW).pop(), lw2 = tw || Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); if (!lw2) return '';
+    // Last session as one row (review 2): tap for the recap. Editing it lives on that day (tap its mark in the week).
+    const sp = wSplit(lw2), sets = lw2.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
+    return `<button class="card last-row" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button>`; })()}
   ${past ? '' : goalsCard() + reportCard() + plateauCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
