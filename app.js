@@ -1015,7 +1015,7 @@ const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.tex
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
-  { tab: 'me', el: () => [...document.querySelectorAll('#screen section .sgh')].find(e => e.textContent === 'Workouts'), t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. You can replay this tour from Help, near the bottom.' },
+  { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
   { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
   { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight and reps', d: 'Tap kg to load plates onto the bar, or switch to the keypad. Then tap reps.' },
