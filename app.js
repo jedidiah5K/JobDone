@@ -1097,6 +1097,7 @@ function tourAuto() {
 // To announce the next update: change NEWS_ID and the NEWS lines.
 const NEWS_ID = '2026-11-tabs';
 const NEWS = [
+  ['More in the ⋯ menu', 'Tap ⋯ on a post to save its photo, share it, or take it down. Save on a new story works now too.'],
   ['Posts in their own theme', 'A post looks like the theme its author had when they posted, so a friend on Agent shows up in Agent even if you use Skyline.'],
   ['New-look posts', 'Each post has its own box for the workout. Share a post with the share button. In Friends → ⚙ pick which splits post on their own, and whether friends see your weights.'],
   ['Friends at the bottom', 'Friends now has its own tab. Your splits live in the + button: pick one to start, or tap Edit splits and rotation.'],
@@ -1490,6 +1491,10 @@ const IC = {
   smile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>',
   rf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.6 4.5L20 16"/><path d="M20 21v-5h-5"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg>',
+  dl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 19h14"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>',
+  hide: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3 3.8M6.6 6.6A17 17 0 0 0 2.5 12s3.5 7 9.5 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+  flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
 };
 // A round face: their card photo, or their first letter on their theme colour.
 function face(name, photo, t, cls = '') {
@@ -1626,14 +1631,21 @@ function jpegFit(cv) {
 }
 // Story camera: back photo, then a 3-second countdown and the selfie (an iPhone website can't run both cameras at once).
 // Then a review: swap which photo is big, save it to the phone, retake, or use it. Falls back to the photo picker if the camera is blocked.
-function savePhoto(d) {
-  const name = 'jobs-done-story.jpg';
-  fetch(d).then(r => r.blob()).then(async bl => {
-    const f = new File([bl], name, { type: 'image/jpeg' });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f] }); } catch (e) {} return; }
-    const a = document.createElement('a'); a.href = d; a.download = name; document.body.append(a); a.click(); a.remove();
-  }).catch(() => toast('Couldn’t save the photo.'));
+// The page's security rules block fetch() on data: images, so the photo becomes a file directly (and the share sheet opens inside the tap, as iPhone needs).
+function dataFile(d, name) { const [h, b] = d.split(','), s = atob(b); return new File([Uint8Array.from(s, c => c.charCodeAt(0))], name, { type: h.slice(5, h.indexOf(';')) }); }
+let SHARING = false;
+function shareFiles(o, onFail) {
+  if (SHARING) return; SHARING = true;
+  navigator.share(o).catch(e => { if (e.name !== 'AbortError' && onFail) onFail(); }).finally(() => { SHARING = false; });
 }
+// Save to the phone: iPhone's share sheet has Save Image. Where files can't be shared, press and hold the photo instead.
+function savePhoto(d, name = 'jobs-done-story.jpg', onFail = () => holdToSave(d)) {
+  const f = dataFile(d, name);
+  if (navigator.canShare && navigator.canShare({ files: [f] })) return shareFiles({ files: [f] }, onFail);
+  if (/iP(hone|ad|od)/.test(navigator.userAgent)) return onFail();
+  const a = document.createElement('a'); a.href = d; a.download = name; document.body.append(a); a.click(); a.remove();
+}
+function holdToSave(d) { openSheet(`<div class="stack"><h2>Save photo</h2><img class="po-ph" src="${d}" alt="Your photo"><p class="cap m0">Press and hold the photo, then tap Save to Photos.</p><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Save photo' }); }
 async function dualShot(cb) {
   if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return pickPhoto(cb);
   const ov = document.createElement('div'); ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Story camera');
@@ -1654,11 +1666,20 @@ async function dualShot(cb) {
     stop(); let swap = false, d = null;
     const draw = () => { const c = front ? compose(swap ? front : back, swap ? back : front) : back; d = jpegFit(c); ov.querySelector('.cam-rv').src = d || ''; };
     ov.classList.remove('front'); ov.classList.add('rv');
-    ov.innerHTML = `<img class="cam-rv" alt="Your story photo"><div class="cam-tools">${front ? '<button class="btn sm cam-sw" type="button">Swap big photo</button>' : ''}<button class="btn sm cam-sv" type="button">Save</button></div><div class="cam-bar"><button class="link cam-re" type="button">Retake</button><button class="btn primary cam-ok" type="button">Use photo</button><button class="link cam-x" type="button">Cancel</button></div>`;
+    const tool = (cls, ic, t) => `<button class="cam-t ${cls}" type="button"><i>${ic}</i>${t}</button>`;
+    ov.innerHTML = `<div class="cam-top"><button class="cam-ic cam-x" type="button" aria-label="Cancel" title="Cancel">${I.x}</button></div>
+      <div class="cam-pic"><img class="cam-rv" alt="Your story photo"></div>
+      <p class="cam-msg" hidden>Press and hold the photo, then tap Save to Photos.</p>
+      <div class="cam-tools">${tool('cam-re', IC.rf, 'Retake')}${front ? tool('cam-sw', I.swap, 'Swap') : ''}${tool('cam-sv', IC.dl, 'Save')}</div>
+      <div class="cam-foot"><button class="btn primary block cam-ok" type="button">Use photo</button></div>`;
     draw();
-    const q = c => ov.querySelector(c);
-    if (front) q('.cam-sw').onclick = () => { swap = !swap; draw(); };
-    q('.cam-sv').onclick = () => { if (d) savePhoto(d); };
+    const q = c => ov.querySelector(c), flip = () => { swap = !swap; draw(); };
+    if (front) {
+      q('.cam-sw').onclick = flip;
+      // tapping the small photo swaps too (it sits in the top-left 240 × 294 of the 720 × 900 picture)
+      q('.cam-rv').onclick = ev => { const r = ev.currentTarget.getBoundingClientRect(); if ((ev.clientX - r.left) / r.width * 720 < 250 && (ev.clientY - r.top) / r.height * 900 < 305) flip(); };
+    }
+    q('.cam-sv').onclick = () => { if (d) savePhoto(d, undefined, () => { q('.cam-msg').hidden = false; }); };
     q('.cam-x').onclick = close;
     q('.cam-re').onclick = () => { close(); dualShot(cb); };
     q('.cam-ok').onclick = () => { close(); if (d) cb(d); };
@@ -1755,16 +1776,32 @@ function postShare(id) {
   const p = (FEED || []).find(x => x.id === +id || x.id === id); if (!p) return;
   const b = p.body || {}, who = USER && p.user_id === USER.id ? 'Me' : p.n || 'A friend';
   const text = p.kind === 'stamp' ? `${who} finished ${b.sp || 'a workout'}${b.v ? ' · ' + b.v : ''}${b.t ? ' · ' + b.t : ''}${b.pr ? ' · ' + b.pr + ' PR' + (b.pr > 1 ? 's' : '') : ''}${b.c ? '\n' + b.c : ''}` : `${who} on Job’s Done${b.c ? ': ' + b.c : ''}`;
-  const send = async files => { try { if (files && navigator.canShare && navigator.canShare({ files })) await navigator.share({ files, text }); else if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast('Copied'); } } catch (e) {} };
-  if (p.photo) fetch(p.photo).then(r => r.blob()).then(bl => send([new File([bl], 'jobs-done-post.jpg', { type: 'image/jpeg' })])).catch(() => send()); else send();
+  const files = postPhotoOk(p) ? [dataFile(p.photo, 'jobs-done-post.jpg')] : null;
+  if (files && navigator.canShare && navigator.canShare({ files })) shareFiles({ files, text });
+  else if (navigator.share) shareFiles({ text });
+  else if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('Copied'), () => {});
 }
+const postPhotoOk = p => !!p.photo && /^data:image\/jpeg;base64,/.test(p.photo);
+// ⋯ on a post: your own posts can be saved, shared or taken down; friends' posts can be saved, shared, hidden or reported.
 function postMenu(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
-  if (USER && p.user_id === USER.id) return confirmSheet({ title: 'Take this down?', body: 'Friends won’t see it any more.', ok: 'Take it down', danger: true, key: false,
-    onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(x => x !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
+  const mine = USER && p.user_id === USER.id;
+  const row = (m, ic, t, bad) => `<button class="li po-mi${bad ? ' bad' : ''}" data-m="${m}" type="button"><i>${ic}</i><span class="t">${t}</span></button>`;
   const hide = () => { try { localStorage.setItem('jd-hidepost', JSON.stringify([...postHidden(), p.id].slice(-200))); } catch (e) {} rerender(); };
-  confirmSheet({ title: 'Hide this post?', body: 'Only you stop seeing it. Report it if it shouldn’t be here.', ok: 'Hide it', no: 'Report it', key: false, onOk: hide,
-    onNo: async () => { hide(); try { await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
+  const sh = openSheet(`<div class="stack"><div class="list">${postPhotoOk(p) ? row('save', IC.dl, 'Save photo') : ''}${row('share', IC.share, 'Share')}${mine ? row('rm', IC.trash, 'Take it down', 1) : row('hide', IC.hide, 'Hide this post') + row('report', IC.flag, 'Report it', 1)}</div><button class="btn block" data-a="closeSheet">Cancel</button></div>`, {
+    label: 'Post options',
+    mount: b => { b.onclick = ev => {
+      const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m;
+      if (m === 'save') savePhoto(p.photo, 'jobs-done-post.jpg'); // before closing: the share sheet has to open inside the tap
+      if (m === 'share') postShare(p.id);
+      closeSheet(sh);
+      if (m === 'rm') confirmSheet({ title: 'Take this down?', body: 'Friends won’t see it any more.', ok: 'Take it down', danger: true, key: false,
+        onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
+      if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
+      if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
+        onOk: async () => { hide(); try { await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
+    }; },
+  });
 }
 // Share picture: both sides of the card on one Post-size image (1080 × 1350).
 // Share picture (Job, 5 Nov): only the front of the card, centred on the theme colour. The friend code can be left off.

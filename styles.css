@@ -1519,13 +1519,25 @@ body:has(#wk:not([hidden])) .cele { top: calc(env(safe-area-inset-top, 0px) + 12
 .po2 .po-acts { margin-top: 4px; }
 /* Story camera: countdown and review */
 .cam-count { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font: 800 96px/1 var(--font-display, system-ui); color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.6); pointer-events: none; }
-.cam.rv { justify-content: center; }
-.cam-rv { width: calc(100% - 32px); max-height: calc(100% - 220px); aspect-ratio: 4 / 5; object-fit: contain; margin: calc(env(safe-area-inset-top) + 24px) auto 0; border-radius: 16px; }
-.cam-tools { display: flex; justify-content: center; gap: 10px; padding: 14px 16px 0; }
-.cam-tools .btn { background: rgba(255,255,255,.14); color: #fff; border: 0; }
-.cam.rv .cam-bar { margin-top: auto; }
-.cam.rv .cam-ok { justify-self: center; min-width: 140px; }
-.cam.rv .cam-x { justify-self: end; }
+/* Story review: close at the top, the photo as big as fits, three round tools, then one main button */
+.cam-top { display: flex; padding: calc(env(safe-area-inset-top) + 6px) 10px 6px; }
+.cam-ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(255,255,255,.12); }
+.cam-ic svg { width: 20px; height: 20px; }
+.cam-pic { flex: 1; min-height: 0; display: grid; place-items: center; padding: 0 12px; }
+.cam-rv { display: block; max-width: 100%; max-height: 100%; border-radius: 22px; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+.cam-msg { margin: 10px 24px 0; text-align: center; color: rgba(255,255,255,.8); font-size: 14px; }
+.cam-tools { display: flex; justify-content: center; gap: 28px; padding: 16px 16px 4px; }
+.cam-t { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 64px; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; transition: transform .15s; }
+.cam-t i { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.14); }
+.cam-t svg { width: 24px; height: 24px; }
+.cam-t:active, .cam-ic:active { transform: scale(.94); }
+.cam-foot { padding: 14px 16px calc(env(safe-area-inset-bottom) + 14px); }
+.cam-foot .cam-ok { min-height: 54px; font-size: 17px; }
+/* ⋯ menu on a post */
+.po-mi { gap: 14px; }
+.po-mi i { width: 24px; height: 24px; display: grid; place-items: center; color: var(--text); }
+.po-mi i svg { width: 22px; height: 22px; }
+.po-mi.bad, .po-mi.bad i { color: var(--danger, var(--neg)); }
 .srow-x { padding: 10px 16px 12px; border-top: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); }
 .po2 .po-stats { grid-template-columns: 1.35fr 1fr .8fr; } .po2 .po-stats b { font-size: 16px; }
 .po2 .po-stats.po-st2 { grid-template-columns: 1fr 1fr; }
