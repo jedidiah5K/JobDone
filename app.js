@@ -1572,13 +1572,13 @@ function frSettings() {
 // Blocked people, with Unblock. Unblocking doesn't make you friends again; they'd need your code.
 async function blockedList() {
   let list = null;
-  const html = () => `<div class="stack"><h2>Blocked people</h2>${list === null ? '<div class="gym-sk" style="height:88px"></div>' : list.length ? `<div class="list">${list.map(x => `<div class="li"><div class="grow"><div class="t ell">${esc(x.n || 'Someone')}</div><div class="s">Blocked ${esc(fmtDate(String(x.at).slice(0, 10)))}</div></div><button class="btn sm" data-ub="${esc(x.id)}">Unblock</button></div>`).join('')}</div>` : '<p class="cap m0">You haven’t blocked anyone.</p>'}
+  const html = () => `<div class="stack"><h2>Blocked people</h2>${list === null ? '<div class="gym-sk" style="height:88px"></div>' : list === false ? '<p class="cap m0">Couldn’t load the list. Check your connection.</p>' : list.length ? `<div class="list">${list.map(x => `<div class="li"><div class="grow"><div class="t ell">${esc(x.n || 'Someone')}</div><div class="s">Blocked ${esc(fmtDate(String(x.at).slice(0, 10)))}</div></div><button class="btn sm" data-ub="${esc(x.id)}">Unblock</button></div>`).join('')}</div>` : '<p class="cap m0">You haven’t blocked anyone.</p>'}
     <p class="cap m0">Unblocking doesn’t add them back. They’d need your code again.</p><button class="btn block" data-a="closeSheet">Done</button></div>`;
   const sh = openSheet(html(), { label: 'Blocked people', mount: b => {
     const wire = () => b.querySelectorAll('[data-ub]').forEach(x => x.onclick = async () => { x.disabled = true;
       try { await gymRpc('jobdone_unblock', { p_user: x.dataset.ub }); list = list.filter(y => y.id !== x.dataset.ub); b.innerHTML = html(); wire(); toast('Unblocked'); }
       catch (e) { x.disabled = false; toast('Couldn’t unblock. Try again later.'); } });
-    gymRpc('jobdone_blocks_list', {}).then(r => { list = r || []; }, () => { list = []; toast('Couldn’t load the list. Check your connection.'); }).then(() => { if (b.isConnected) { b.innerHTML = html(); wire(); } });
+    gymRpc('jobdone_blocks_list', {}).then(r => { list = r || []; }, () => { list = false; }).then(() => { if (b.isConnected) { b.innerHTML = html(); wire(); } });
   } });
 }
 function postComments(id) {
