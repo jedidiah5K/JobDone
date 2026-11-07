@@ -4722,7 +4722,7 @@ function csvToWorkouts(text) {
   const rows = parseCSV(text); if (rows.length < 2) return { err: 'That file has no rows.' };
   const h = rows[0].map(x => x.trim().toLowerCase());
   const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
-  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), note: col('notes', 'note', 'exercise_notes') };
+  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), rpe: col('rpe'), note: col('notes', 'note', 'exercise_notes') };
   if (c.date < 0 || c.ex < 0) return { err: 'Couldn’t find date and exercise columns. Expected Job’s Done, Strong or Hevy CSV headers.' };
   const map = {};
   for (const r of rows.slice(1)) {
@@ -4737,7 +4737,7 @@ function csvToWorkouts(text) {
     // Strong and Hevy export pounds in a separate column; set types come as warmup/dropset/failure (Hevy) or W/D/F (Strong).
     const wkg = parseFloat(r[c.w]), wlb = parseFloat(r[c.lb]), wt = !isNaN(wkg) ? wkg : isNaN(wlb) ? NaN : Math.round(wlb / LB * 4) / 4, rp = parseInt(r[c.r], 10);
     const ty = (r[c.t] || '').trim().toLowerCase(), t = /^(w|warm)/.test(ty) ? 'warm' : /^(d|drop)/.test(ty) ? 'drop' : /^(f|fail)/.test(ty) ? 'fail' : 'work';
-    e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t });
+    const rpe = parseFloat(r[c.rpe]); e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t, ...(rpe >= 6 && rpe <= 10 ? { rpe } : {}) });
     const nt = c.note >= 0 ? (r[c.note] || '').trim() : ''; if (nt && !e.note) e.note = nt;
   }
   return { list: Object.values(map), lb: c.w < 0 && c.lb >= 0 };
@@ -4771,11 +4771,12 @@ function importCSVFile(file) {
   rd.readAsText(file);
 }
 function exportCSV() {
-  const lines = ['date,split,exercise,set_number,weight_kg,reps,notes'];
+  const lines = ['date,split,exercise,set_number,weight_kg,reps,notes,set_type,rpe'];
+  const TY = { warm: 'warmup', drop: 'dropset', fail: 'failure' }; // never write 'work': the importer reads anything starting with w as a warm-up
   const q = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
   for (const w of Object.values(S.workouts).sort(sortW)) {
     if (w.skipped) { lines.push([w.date, q(w.splitName), '', '', '', '', 'skipped'].join(',')); continue; }
-    for (const e of w.ex) e.sets.forEach((s, i) => lines.push([w.date, q(w.splitName), q(e.name), i + 1, s.w == null ? '' : s.w, s.r == null ? '' : s.r, q(e.note || '')].join(',')));
+    for (const e of w.ex) e.sets.forEach((s, i) => lines.push([w.date, q(w.splitName), q(e.name), i + 1, s.w == null ? '' : s.w, s.r == null ? '' : s.r, q(e.note || ''), TY[s.t] || '', s.rpe || ''].join(',')));
   }
   return lines.join('\n') + '\n';
 }
