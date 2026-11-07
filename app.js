@@ -1655,7 +1655,7 @@ async function dualShot(cb) {
   let st = null;
   const stop = () => { if (st) st.getTracks().forEach(t => t.stop()); st = null; };
   const close = () => { stop(); ov.remove(); };
-  const open = async face => { stop(); st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face, width: { ideal: 1440 }, height: { ideal: 1800 } }, audio: false }); v.srcObject = st; await v.play(); ov.classList.toggle('front', face === 'user'); };
+  const open = async face => { stop(); st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }); /* the sensor's own 4:3; asking for 4:5 made Safari crop the sensor, so it looked zoomed in */ v.srcObject = st; await v.play(); ov.classList.toggle('front', face === 'user'); };
   const grab = mirror => { const W = 720, H = 900, c = document.createElement('canvas'), x = c.getContext('2d'), vw = v.videoWidth, vh = v.videoHeight, k = Math.max(W / vw, H / vh); c.width = W; c.height = H;
     if (mirror) { x.translate(W, 0); x.scale(-1, 1); } x.drawImage(v, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k); return c; };
   // big photo full size, the other one small in the top-left corner

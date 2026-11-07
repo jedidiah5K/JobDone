@@ -1481,7 +1481,10 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 
 /* Story camera: full-screen preview, shutter in the middle, front shot inset top-left */
 .cam { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; flex-direction: column; }
-.cam video { flex: 1; width: 100%; min-height: 0; object-fit: cover; }
+/* the live view shows the same 4:5 frame the photo keeps, so nothing is cropped away after you tap */
+.cam:not(.rv) { padding-top: env(safe-area-inset-top); }
+.cam video { display: block; width: min(100%, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 120px) * .8)); aspect-ratio: 4 / 5; margin: 0 auto; object-fit: cover; }
+.cam:not(.rv) .cam-bar { margin-top: auto; }
 .cam.front video { transform: scaleX(-1); }
 .cam-in { position: absolute; top: calc(env(safe-area-inset-top) + 16px); left: 16px; width: 96px; aspect-ratio: 4/5; object-fit: cover; border-radius: 12px; border: 3px solid #000; }
 .cam-hint { position: absolute; top: calc(env(safe-area-inset-top) + 20px); left: 0; right: 0; margin: 0; text-align: center; color: #fff; font: 600 13px/1 var(--font, system-ui); letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 1px 3px #000; pointer-events: none; }
