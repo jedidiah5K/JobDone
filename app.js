@@ -1348,7 +1348,7 @@ function idView(c, code, photo, o = {}) {
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+    <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1359,7 +1359,7 @@ function idView(c, code, photo, o = {}) {
   card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
-  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
   addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
   setTimeout(() => card.focus(), 50);
 }
@@ -1487,6 +1487,7 @@ const IC = {
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>',
   hide: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3 3.8M6.6 6.6A17 17 0 0 0 2.5 12s3.5 7 9.5 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
+  block: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
 };
 // A round face: their card photo, or their first letter on their theme colour.
 function face(name, photo, t, cls = '') {
@@ -1581,7 +1582,7 @@ function frSettings() {
 function postComments(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
   const row = c => { const own = USER && c.u === USER.id, can = own || (USER && p.user_id === USER.id), fr = (FRIENDS || []).find(f => f.id === c.u);
-    return `<div class="cm-row">${own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm')}<div class="grow"><p><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}</span></div></div>`; };
+    return `<div class="cm-row">${own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm')}<div class="grow"><p><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}${own ? '' : ` · <button class="link cm-rep" data-cid="${c.id}">Report</button>`}</span></div></div>`; };
   const html = () => `<div class="stack"><h2>Comments</h2><div class="cm-list">${(p.comments || []).length ? p.comments.map(row).join('') : '<p class="cap m0">No comments yet. Say something nice.</p>'}</div>
     <div class="row g2 cm-in">${myFace('sm')}<input class="input grow" id="cm-t" maxlength="200" placeholder="Add a comment" autocomplete="off" enterkeyhint="send"><button class="btn primary" id="cm-go">Post</button></div></div>`;
   const sh = openSheet(html(), { label: 'Comments', mount: b => {
@@ -1591,6 +1592,9 @@ function postComments(id) {
         try { const cid = await gymRpc('jobdone_comment', { p_id: p.id, p_body: v }); p.comments = [...(p.comments || []), { id: cid, u: USER.id, n: S.profile.name, b: v, at: new Date().toISOString() }]; b.innerHTML = html(); wire(); rerender(); }
         catch (e) { go.disabled = false; toast(/Too many/.test(e.message) ? 'That’s enough comments for today.' : 'Couldn’t post it. Check your connection.'); } };
       go.onclick = send; t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); send(); } };
+      b.querySelectorAll('.cm-rep').forEach(x => x.onclick = () => { const c = (p.comments || []).find(y => y.id === +x.dataset.cid); if (!c) return;
+        confirmSheet({ title: 'Report this comment?', body: 'A copy goes to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
+          onOk: () => sendReport(`comment ${c.id} on ${p.kind} post ${p.id}`, c.u, c.n, c.b) }); });
       b.querySelectorAll('.cm-del').forEach(x => x.onclick = async () => { const cid = +x.dataset.cid; x.disabled = true;
         try { await gymRpc('jobdone_comment_delete', { p_cid: cid }); p.comments = p.comments.filter(c => c.id !== cid); b.innerHTML = html(); wire(); rerender(); } catch (e) { x.disabled = false; toast('Couldn’t delete it. Try again.'); } });
     }; wire(); } });
@@ -1782,7 +1786,7 @@ function postMenu(id) {
   const mine = USER && p.user_id === USER.id;
   const row = (m, ic, t, bad) => `<button class="li po-mi${bad ? ' bad' : ''}" data-m="${m}" type="button"><i>${ic}</i><span class="t">${t}</span></button>`;
   const hide = () => { try { localStorage.setItem('jd-hidepost', JSON.stringify([...postHidden(), p.id].slice(-200))); } catch (e) {} rerender(); };
-  const sh = openSheet(`<div class="stack"><div class="list">${postPhotoOk(p) ? row('save', IC.dl, 'Save photo') : ''}${row('share', IC.share, 'Share')}${mine ? row('rm', IC.trash, 'Take it down', 1) : row('hide', IC.hide, 'Hide this post') + row('report', IC.flag, 'Report it', 1)}</div><button class="btn block" data-a="closeSheet">Cancel</button></div>`, {
+  const sh = openSheet(`<div class="stack"><div class="list">${postPhotoOk(p) ? row('save', IC.dl, 'Save photo') : ''}${row('share', IC.share, 'Share')}${mine ? row('rm', IC.trash, 'Take it down', 1) : row('hide', IC.hide, 'Hide this post') + row('report', IC.flag, 'Report it', 1) + row('block', IC.block, 'Block ' + esc((p.n || 'them').split(' ')[0]), 1)}</div><button class="btn block" data-a="closeSheet">Cancel</button></div>`, {
     label: 'Post options',
     mount: b => { b.onclick = ev => {
       const x = ev.target.closest('[data-m]'); if (!x) return; const m = x.dataset.m;
@@ -1793,7 +1797,8 @@ function postMenu(id) {
         onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
       if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
       if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-        onOk: async () => { hide(); try { const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${p.kind} post ${p.id} by ${p.n || '?'} (${p.user_id})` }); if (error) throw error; toast('Reported. Thanks.'); } catch (e) { toast('Couldn’t send the report. Try again.'); } } });
+        onOk: () => { hide(); const b = p.body || {}; sendReport(`${p.kind} post ${p.id} from ${p.at}`, p.user_id, p.n, [b.sp, b.c, b.h].filter(Boolean).join(' · ') || '(no text)'); } });
+      if (m === 'block') blockUser(p.user_id, p.n);
     }; },
   });
 }
@@ -1892,7 +1897,21 @@ async function friendCancel(id) {
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
   if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
-  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f) });
+  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
+}
+// Reports land in the feedback inbox with a copy of the text, since posts and comments delete themselves within 48 hours. Photos aren't copied.
+async function sendReport(what, uid, n, text) {
+  try {
+    const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${what} by ${n || '?'} (${uid})
+${String(text || '')}`.slice(0, 2000) });
+    if (error) throw error; toast('Reported. Thanks.');
+  } catch (e) { toast('Couldn’t send the report. Try again.'); }
+}
+// Block (supabase/block.sql): ends the friendship both ways and stops their requests. They aren't told.
+function blockUser(uid, n) {
+  const who = n || 'this person';
+  confirmSheet({ title: 'Block ' + who + '?', body: 'You won’t be friends any more, and they can’t send you a request again. They aren’t told.', ok: 'Block', danger: true, key: false,
+    onOk: async () => { try { await gymRpc('jobdone_block', { p_user: uid }); FRIENDS = (FRIENDS || []).filter(x => x.id !== uid); if (FEED) FEED = FEED.filter(y => y.user_id !== uid); rerender(); toast('Blocked ' + esc(who) + '.'); } catch (e) { toast('Couldn’t block. Try again later.'); } } });
 }
 function friendOpenRemove(id, f) {
   confirmSheet({ title: 'Remove ' + ((f.card || {}).n || 'this friend') + '?', body: 'You’ll both drop off each other’s list.', ok: 'Remove', danger: true, key: false,
