@@ -142,7 +142,7 @@ async function pushForget(tellServer) { try { const reg = 'serviceWorker' in nav
 // What this phone keeps for whoever is signed in, outside LS_KEY. The next account on the phone must see none of it.
 function forgetShared() {
   try { for (const k of ['jd-idphoto', 'jd-idcode', 'jd-gym', 'jd-hidepost', 'jd-nav', 'jd-owner-icon', 'jobdone-theme']) localStorage.removeItem(k); } catch (e) {}
-  ID_PHOTO = null; ID_CODE = ''; ID_SENT = ''; idFetched = false; STAT_SENT = ''; FRIENDS = null; REQS = null; FEED = null; PHOTOS = null; GYM = {}; VIEWDAY = null;
+  ID_PHOTO = null; ID_CODE = ''; ID_SENT = ''; idFetched = false; STAT_SENT = ''; FRIENDS = null; REQS = null; FEED = null; PHOTOS = null; GYM = {}; VIEWDAY = null; CLOUD_AT = null; FR_AT = 0;
   for (const k in NUDGED) delete NUDGED[k];
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
 }
@@ -5043,9 +5043,12 @@ document.addEventListener('pointerup', () => { if (scrubEl) { const c = scrubEl;
 document.addEventListener('pointerout', ev => { if (ev.pointerType === 'mouse') { const c = ev.target.closest('.chart'); if (c && !c.contains(ev.relatedTarget)) endScrub(c); } });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && SHEETS.length) closeSheet(); });
 let rsT = null; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (ready && S && $('#screen') && !SHEETS.length) rerender(); }, 200); });
+// Coming back: one tiny query for the newest change; the full reload (every month of history) runs only when it moved.
+// ponytail: own writes move it too, so the first resume after logging still reloads once; a delete alone doesn't move it.
+let CLOUD_AT = null;
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !DB || !S || dirty.size || inflight.size || pend().size || SHEETS.length) return;
-  try { if (await loadCloud()) { lsSave(); rerender(); } } catch (e) {}
+  try { const at = DB.stamp ? await DB.stamp() : null; if (at && at === CLOUD_AT) return; if (await loadCloud()) { CLOUD_AT = at; lsSave(); rerender(); } } catch (e) {}
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ready) setTimeout(maybeStale, 400); });
 setInterval(tick, 500);
@@ -5233,6 +5236,7 @@ function supaDB() {
       set: async body => { const { error } = await SB.from(TABLE).upsert({ user_id: USER.id, path, body, updated_at: new Date().toISOString() }); if (error) throw fail(error); },
       delete: async () => { const { error } = await SB.from(TABLE).delete().eq('path', path); if (error) throw fail(error); },
     }),
+    stamp: async () => { const { data, error } = await SB.from(TABLE).select('updated_at').eq('user_id', USER.id).order('updated_at', { ascending: false }).limit(1).maybeSingle(); if (error) throw fail(error); return data ? data.updated_at : null; },
     collection: c => ({
       get: async () => { const { data, error } = await SB.from(TABLE).select('path,body').like('path', c + '/%'); if (error) throw fail(error); const docs = (data || []).map(r => ({ id: r.path.split('/').pop(), exists: true, data: () => r.body })); return { docs, size: docs.length, empty: !docs.length }; },
     }),
