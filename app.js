@@ -1013,7 +1013,7 @@ const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card', 'This week'), t: 'Your week', d: 'Each mark is a day, and days you train fill in. Tap the date to look back at any day.' },
   { tab: 'today', el: () => tq('#screen .card.grp .card-h') || tq('#screen .card.grp'), t: 'Weight and steps', d: 'Tap to weigh in or add steps. The 7-day average smooths out day-to-day swings.' },
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
-  { tab: 'today', el: () => tq('#screen .top-ic'), t: 'Friends', d: 'Your friends’ workouts and snaps. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
+  { tab: 'today', el: () => tq('#screen .top-ic'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
   { tab: 'splits', el: () => tq('#screen .swipe'), t: 'Your splits', d: 'Tap a split to change its lifts, sets, reps and rest. Swipe one left to delete it.' },
   { tab: 'splits', el: () => tq('#screen [data-a="newSplit"]'), t: 'New split', d: 'Start from blank or add a ready-made plan. Share a split by link from its page.' },
   { tab: 'progress', el: () => tq('#screen .seg'), t: 'Progress', d: 'Body weight, strength, volume and every past workout. PRs and monthly reports show up here too.' },
@@ -1099,7 +1099,7 @@ const NEWS = [
   ['Every theme, its own touches', 'Next up has a new name in each theme, the finish page stamps a seal, and the numbers count up. Agent has a new look.'],
   ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap the people button on Today.'],
   ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
-  ['Snaps and nudges', 'Send friends a quick photo that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
+  ['Stories and nudges', 'Post a quick photo story that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
   ['Streaks together', 'Weeks in a row you and a friend both hit your own number, even if you train on different days.'],
   ['Your ID card', 'Level, top lifts, badges and more. Flip it, share a picture of it, or hide it. Me → Edit card.'],
   ['Badges and monthly report', 'Earn badges as you train, and get a report card at the start of each month.'],
@@ -1487,8 +1487,8 @@ const myFace = (cls = '') => face(S.profile.name || 'You', ID_PHOTO, theme(), cl
 const agoShort = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h'; };
 function postHTML(p) {
   const b = p.body || {}, mine = USER && p.user_id === USER.id, rc = p.reacts || {}, cm = p.comments || [], fr = (FRIENDS || []).find(f => f.id === p.user_id), t = fr ? (fr.card || {}).t : theme();
-  const who = mine ? 'You' : p.n || 'Friend', sub = (p.kind === 'snap' ? 'Snap' : esc(b.sp || 'Workout')) + ' · ' + agoShort(p.at);
-  const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<div class="po-media" data-dbl="${p.id}"><img alt="${p.kind === 'snap' ? 'Snap' : 'Workout photo'} from ${esc(who)}" src="${p.photo}"><i class="po-burst" aria-hidden="true"></i></div>` : '';
+  const who = mine ? 'You' : p.n || 'Friend', sub = (p.kind === 'snap' ? 'Story' : esc(b.sp || 'Workout')) + ' · ' + agoShort(p.at);
+  const ph = p.photo && /^data:image\/jpeg;base64,/.test(p.photo) ? `<div class="po-media" data-dbl="${p.id}"><img alt="${p.kind === 'snap' ? 'Story' : 'Workout photo'} from ${esc(who)}" src="${p.photo}"><i class="po-burst" aria-hidden="true"></i></div>` : '';
   const stats = p.kind === 'stamp' ? `<div class="po-stats"><div><span>Volume</span><b class="num">${esc(b.v || '—')}</b></div><div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>${b.pr ? 'PRs' : 'Lifts'}</span><b class="num">${esc(b.pr ? String(b.pr) : String(b.l || '').replace(/\D/g, '') || '—')}</b></div></div>${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}` : '';
   const cap = b.c ? `<p class="po-cap"><b>${esc(who)}</b> ${esc(b.c)}</p>` : '';
   const lifts = p.kind === 'stamp' && Array.isArray(b.ex) && b.ex.length ? `<div class="po-lifts">${b.ex.slice(0, 10).map(x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`).join('')}</div>` : '';
@@ -1536,7 +1536,7 @@ function viewFriends() {
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
-    ${soOn() ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a snap</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
+    ${soOn() ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
     ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : `<div class="empty fr-empty">${list.length ? 'Nothing from the last 24 hours yet. Finish a workout and your Done Stamp shows up here.' : 'Add a friend to see their workouts here.'}${list.length ? '' : '<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button>'}</div>`}
   </div>`;
   return `${head}
@@ -1557,7 +1557,7 @@ function frAddSheet() {
 function frSettings() {
   const body = () => { const o = SO(); return `<div class="stack"><h2>What friends see</h2><div class="sgrp">
     ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
-    ${o.off ? '' : srow('Post every workout', swi(!!o.autoPost, 'soAuto'), o.autoPost ? 'Your Done Stamp goes up as soon as you finish' : 'Off: you choose on the finish page') + srow('Ask for a snap during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
+    ${o.off ? '' : srow('Post every workout', swi(!!o.autoPost, 'soAuto'), o.autoPost ? 'Your Done Stamp goes up as soon as you finish' : 'Off: you choose on the finish page') + srow('Ask for a story during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
     </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="btn block" data-a="closeSheet">Done</button></div>`; };
   const sh = openSheet(body(), { label: 'What friends see', mount: b => { b.addEventListener('click', () => setTimeout(() => { if (b.isConnected) b.innerHTML = body(); }, 0)); } });
 }
@@ -1606,9 +1606,9 @@ function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'fi
 const postErr = e => toast(/Too many/.test(e.message) ? 'That’s enough posts for today.' : 'Couldn’t send it. Check your connection.');
 function snapStart() {
   if (!soOn()) return toast('Turn on Share my training in Friends first.');
-  pickPhoto(d => { const sh = openSheet(`<div class="stack"><h2>Snap</h2><img class="po-ph" src="${d}" alt="Your snap"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Send to friends</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Snap', mount: b => {
+  pickPhoto(d => { const sh = openSheet(`<div class="stack"><h2>Story</h2><img class="po-ph" src="${d}" alt="Your story"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Post story</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Story', mount: b => {
     const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
-      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Snap sent'); FEED = null; rerender(); }
+      try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Story posted'); FEED = null; rerender(); }
       catch (e) { ok.disabled = false; postErr(e); } }; } }); });
 }
 // Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
@@ -1617,7 +1617,7 @@ function snapMaybe() {
   if (!A.snapAt) A.snapAt = 3 + Math.floor(Math.random() * 6);
   const n = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0); if (n < A.snapAt) return;
   A.snapAsked = true; persist('jd/active');
-  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick snap?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
+  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick story?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
 }
 // Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
 const STAMP = {};
