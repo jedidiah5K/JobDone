@@ -200,7 +200,14 @@ const invalidate = () => { IX = null; };
 function lsLoad() { try { const s = localStorage.getItem(LS_KEY), o = s ? JSON.parse(s) : null, a = localStorage.getItem(LS_KEY + ':a'); if (o && a) o.A = JSON.parse(a).A; return o; } catch (e) { return null; } }
 function lsSave(onlyA) {
   if (DEMO) return; const a = A && A.practice ? null : A;
-  try { if (onlyA) { localStorage.setItem(LS_KEY + ':a', JSON.stringify({ A: a })); return; } localStorage.setItem(LS_KEY, JSON.stringify({ S, A: a, UI })); localStorage.removeItem(LS_KEY + ':a'); } catch (e) {}
+  const put = () => { if (onlyA) { localStorage.setItem(LS_KEY + ':a', JSON.stringify({ A: a })); return; } localStorage.setItem(LS_KEY, JSON.stringify({ S, A: a, UI })); localStorage.removeItem(LS_KEY + ':a'); };
+  try { put(); } catch (e) {
+    if (!/quota/i.test(e && e.name || '') && !(e && (e.code === 22 || e.code === 1014))) return;
+    // Phone storage is full: drop the gym cache (the server has it) and try again, then at least keep the workout in progress.
+    try { localStorage.removeItem('jd-gym'); put(); return; } catch (e2) {}
+    try { localStorage.setItem(LS_KEY + ':a', JSON.stringify({ A: a })); } catch (e3) {}
+    if (!lsSave.warned) { lsSave.warned = true; toast('This phone is out of space for Job’s Done. Get signal so your sets reach your account.', 5000); reportError('localStorage full', LS_KEY); }
+  }
 }
 const dirty = new Set(), inflight = new Set();
 let flushT = null, retryT = null;

@@ -2,17 +2,19 @@
 // 1. A cloud load keeps changes that haven't reached the account yet (offline sets, a workout finished with no signal).
 // 2. CSV export then import gives back the same sets (warm-ups stay warm-ups).
 // 3. A JSON backup keeps setup notes and measurements, and a broken file can't blank the app.
-// 4. The double-tap guard doesn't compare DOM nodes (a re-render replaces them).
+// 4. A full phone storage warns once and keeps the workout in progress.
+// 5. The double-tap guard doesn't compare DOM nodes (a re-render replaces them).
 const fs = require('fs'), assert = require('assert');
 const src = fs.readFileSync(process.env.APP_JS || __dirname + '/../app.js', 'utf8');
 const pick = (a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i); assert(i >= 0 && j > i, 'missing ' + a); return src.slice(i, j); };
-const mem = {}; const localStorage = { getItem: k => k in mem ? mem[k] : null, setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
-const env = new Function('localStorage', 'navigator', 'addEventListener', 'document', `
-  const clone = o => JSON.parse(JSON.stringify(o)), sleep = () => Promise.resolve(), toast = () => {}, renameLifts = () => false, invalidate = () => {}, DEMO = false, UI = {};
+const mem = {}; let full = false; const localStorage = { getItem: k => k in mem ? mem[k] : null, setItem: (k, v) => { if (full && String(v).length > 200) throw Object.assign(new Error('full'), { name: 'QuotaExceededError' }); mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
+const toasts = [];
+const env = new Function('localStorage', 'navigator', 'addEventListener', 'document', 'toasts', `
+  const clone = o => JSON.parse(JSON.stringify(o)), sleep = () => Promise.resolve(), toast = m => toasts.push(m), reportError = () => {}, renameLifts = () => false, invalidate = () => {}, DEMO = false, UI = {};
   let S = null, A = null, DB = null, IX = null, syncState = 'ok', LS_KEY = 'jobdone.v1';
   const freshState = () => ({ v: 1, profile: {}, splits: [], rotation: [], customEx: [], setup: {}, weights: {}, steps: {}, workouts: {}, imported: true, created: 1 });
   ${pick('// ---------- storage ----------', '// Lifts that were renamed')}
-  return { set: (s, a, db) => { S = s; A = a; DB = db; }, get: () => ({ S, A }), persist, pend, loadCloud, dirty, inflight };`)(localStorage, { onLine: true }, () => {}, { addEventListener: () => {} });
+  return { set: (s, a, db) => { S = s; A = a; DB = db; }, get: () => ({ S, A }), persist, pend, loadCloud, lsSave, lsLoad, dirty, inflight };`)(localStorage, { onLine: true }, () => {}, { addEventListener: () => {} }, toasts);
 
 (async () => {
   // Cloud has last week's workout; this phone also finished today's with no signal (still pending).
@@ -28,7 +30,13 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   assert(S.workouts.today, 'a workout finished offline survives a cloud load');
   assert.strictEqual(A, null, 'a finished workout is not brought back from the stale cloud copy');
 
-  // CSV round trip
+  // Phone storage full: the save doesn't fail silently, and the workout in progress is still kept
+  env.set(local, { id: 'live', ex: [] }, null); env.lsSave(); full = true; local.workouts.big = { id: 'big', date: '2026-11-08', ex: [], note: 'x'.repeat(300) };
+  env.set(local, { id: 'live2', ex: [] }, null); env.lsSave(); env.lsSave(); full = false;
+  assert.strictEqual(toasts.filter(t => /out of space/.test(t)).length, 1, 'a full phone shows one toast, once');
+  assert.strictEqual(env.lsLoad().A.id, 'live2', 'the workout in progress is kept when the phone is full');
+
+  // CSV round trip
   const csv = new Function('S', 'LB', 'ymd', 'sortW', pick('function parseCSV', 'function importCSVFile') + pick('function exportCSV', 'async function doExport') + '; return { exportCSV, csvToWorkouts };');
   const w = { id: 'a', date: '2026-11-05', splitName: 'Legs', ex: [{ name: 'Leg Press', note: '', sets: [{ w: 40, r: 12, t: 'warm' }, { w: 100, r: 8, t: 'work' }, { w: 80, r: 10, t: 'drop' }] }] };
   const f = csv({ workouts: { a: w } }, 2.20462, d => d.toISOString().slice(0, 10), () => 0);
