@@ -4511,7 +4511,14 @@ function finishImport(msg) {
 function stateFromBackup(o) {
   if (!o || typeof o !== 'object' || !o.workouts || typeof o.workouts !== 'object') return null;
   const st = freshState();
-  for (const k of ['profile', 'splits', 'rotation', 'customEx', 'weights', 'steps', 'workouts']) if (o[k] != null) st[k] = k === 'profile' ? Object.assign(st.profile, o[k]) : o[k];
+  for (const k of ['profile', 'splits', 'rotation', 'customEx', 'setup', 'meas', 'weights', 'steps', 'workouts']) if (o[k] != null) st[k] = k === 'profile' ? Object.assign(st.profile, o[k]) : o[k];
+  // A file from another app (or a damaged one) must not reach the account: one bad workout blanks Today on every device.
+  const okW = w => w && /^\d{4}-\d{2}-\d{2}$/.test(w.date) && Array.isArray(w.ex) && w.ex.every(e => e && typeof e.name === 'string' && Array.isArray(e.sets));
+  const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (Array.isArray(st.workouts) || !Array.isArray(st.splits) || !Array.isArray(st.rotation) || !Array.isArray(st.customEx) || !obj(st.profile) || ['setup', 'weights', 'steps'].some(k => !obj(st[k])) || (st.meas != null && !obj(st.meas))) return null;
+  for (const [id, w] of Object.entries(st.workouts)) if (!okW(w)) delete st.workouts[id]; else if (!w.id) w.id = id;
+  // Owner-only extras (feedback inbox, lift renames, plates-only) stay with the owner's account, not whoever restores the file.
+  if (!(S && S.profile && S.profile.owner)) { delete st.profile.owner; delete st.profile.legacy; }
   st.imported = true; return st;
 }
 function logFromCsvList(list) {
