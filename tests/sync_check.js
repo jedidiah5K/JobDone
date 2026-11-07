@@ -36,7 +36,7 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   assert.strictEqual(toasts.filter(t => /out of space/.test(t)).length, 1, 'a full phone shows one toast, once');
   assert.strictEqual(env.lsLoad().A.id, 'live2', 'the workout in progress is kept when the phone is full');
 
-  // CSV round trip
+  // CSV round trip
   const csv = new Function('S', 'LB', 'ymd', 'sortW', pick('function parseCSV', 'function importCSVFile') + pick('function exportCSV', 'async function doExport') + '; return { exportCSV, csvToWorkouts };');
   const w = { id: 'a', date: '2026-11-05', splitName: 'Legs', ex: [{ name: 'Leg Press', note: '', sets: [{ w: 40, r: 12, t: 'warm' }, { w: 100, r: 8, t: 'work' }, { w: 80, r: 10, t: 'drop' }] }] };
   const f = csv({ workouts: { a: w } }, 2.20462, d => d.toISOString().slice(0, 10), () => 0);
@@ -55,7 +55,7 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   const st = sfb({ workouts: {}, setup: { 'Leg Press': 'seat 5' }, meas: { '2026-11-01': { waist: 80 } } });
   assert.deepStrictEqual([st.setup, st.meas], [{ 'Leg Press': 'seat 5' }, { '2026-11-01': { waist: 80 } }], 'setup notes and measurements are restored');
   const bad = sfb({ workouts: { x: { date: '2024-01-04', exercises: [] } } });
-  assert(!bad || !Object.keys(bad.workouts).length, 'a workout with no ex list is never restored (it blanks Today)');
+  assert.strictEqual(bad, null, 'a file whose workouts have no ex list is refused (it would blank Today or empty the log)');
   assert.strictEqual(sfb({ workouts: {}, weights: [1, 2] }), null, 'a backup with the wrong shape is refused');
   assert(!sfb({ workouts: {}, profile: { owner: true } }).profile.owner, 'a restored backup never turns on owner-only extras');
 

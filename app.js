@@ -4512,7 +4512,9 @@ function stateFromBackup(o) {
   const okW = w => w && /^\d{4}-\d{2}-\d{2}$/.test(w.date) && Array.isArray(w.ex) && w.ex.every(e => e && typeof e.name === 'string' && Array.isArray(e.sets));
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
   if (Array.isArray(st.workouts) || !Array.isArray(st.splits) || !Array.isArray(st.rotation) || !Array.isArray(st.customEx) || !obj(st.profile) || ['setup', 'weights', 'steps'].some(k => !obj(st[k])) || (st.meas != null && !obj(st.meas))) return null;
+  const had = Object.keys(st.workouts).length;
   for (const [id, w] of Object.entries(st.workouts)) if (!okW(w)) delete st.workouts[id]; else if (!w.id) w.id = id;
+  if (had && !Object.keys(st.workouts).length) return null; // another app's file: refuse it instead of replacing the log with nothing
   // Owner-only extras (feedback inbox, lift renames, plates-only) stay with the owner's account, not whoever restores the file.
   if (!(S && S.profile && S.profile.owner)) { delete st.profile.owner; delete st.profile.legacy; }
   st.imported = true; return st;
