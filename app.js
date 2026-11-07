@@ -131,11 +131,11 @@ async function pushOn() {
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') { toast('Notifications are off for Job’s Done. Turn them on in Settings, Notifications, Job’s Done.'); return false; }
     const reg = await navigator.serviceWorker.ready;
-    const k = await restFn({ action: 'key' }); if (!k || !k.key) { toast('Could not reach the server. Try again.'); return false; }
+    const k = await restFn({ action: 'key' }); if (!k || !k.key) { toast('Couldn’t reach the server. Try again.'); return false; }
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k.key) });
     const r = await restFn({ action: 'sub', sub: sub.toJSON() }); return !!(r && r.ok);
-  } catch (e) { toast('Could not turn on notifications on this phone.'); return false; }
+  } catch (e) { toast('Couldn’t turn on notifications on this phone.'); return false; }
 }
 async function pushOff() { if (S && S.profile && (S.profile.restPush || (S.profile.remind && S.profile.remind.on))) return; try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
 // Clear delivered rest alerts when the app comes back, so the lock screen doesn't fill up (each alert has its own tag now).
@@ -746,7 +746,7 @@ const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymB
 const gymType = k => (GYM.types || []).find(t => t.key === k);
 const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id === S.profile.gymAt) || m[0] || null; };
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
-const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your signal and try again.' : m; };
+const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your connection and try again.' : m; };
 const gymErr = e => toast(esc(gymMsg(e)));
 async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {}); if (error) throw new Error(error.message); return data; }
 let gymBusy = null;
@@ -834,7 +834,7 @@ function gymFind() {
       t = setTimeout(async () => { const my = ++n; out.innerHTML = '<div class="gym-sk" style="height:120px"></div>'; try { let rows = await gymRpc('jobdone_gym_search', { q: v }) || [], guess = false;
           // No hit? Typo (Job, 5 Nov): "anytme fitnes" → search by the first letters, keep the close matches
           if (!rows.length && v.length >= 4) { const w = fzWords(v).sort((a, b) => b.length - a.length)[0] || ''; if (w.length >= 3) { rows = (await gymRpc('jobdone_gym_search', { q: w.slice(0, 3) }) || []).filter(r => fuzzy(r.brand + ' ' + (r.branch || ''), v)); guess = rows.length > 0; } }
-          if (my === n) { draw(rows, v); if (guess) out.insertAdjacentHTML('afterbegin', '<div class="grp">Did you mean</div>'); } } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your signal.'; } }, 250); };
+          if (my === n) { draw(rows, v); if (guess) out.insertAdjacentHTML('afterbegin', '<div class="grp">Did you mean</div>'); } } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your connection.'; } }, 250); };
     const joined = async g => { S.profile.gymAt = g; persist('jd/meta'); closeSheet(sh); await gymRefresh(true); NAV.stack = [{ v: 'gym' }]; render(); };
     out.onclick = async ev => {
       const j = ev.target.closest('[data-join]'), nb = ev.target.closest('[data-nb]'), nw = ev.target.closest('[data-new]');
@@ -1110,12 +1110,13 @@ function whatsNew() {
   if (!p || !p.onboarded || p.news === NEWS_ID || DEMO || TOUR || A || SHEETS.length) return;
   p.news = NEWS_ID; persist('jd/meta');
   if (!ix().ws.length) return;
-  setTimeout(() => { if (TOUR || A || SHEETS.length) return;
-    const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Updated</div><h2>What’s new</h2></div>
-      <ul class="news">${NEWS.map(([t, d]) => `<li><b>${esc(t)}</b><span class="sec">${esc(d)}</span></li>`).join('')}</ul>
-      <button class="btn block primary" id="news-ok">Got it</button></div>`, { label: 'What’s new' });
-    sh.el.querySelector('#news-ok').onclick = () => closeSheet(sh);
-  }, 700);
+  setTimeout(() => { if (!TOUR && !A && !SHEETS.length) newsSheet(); }, 700);
+}
+function newsSheet() { // also opened from Me → Help
+  const sh = openSheet(`<div class="stack"><div><div class="eyebrow">Updated</div><h2>What’s new</h2></div>
+    <ul class="news">${NEWS.map(([t, d]) => `<li><b>${esc(t)}</b><span class="sec">${esc(d)}</span></li>`).join('')}</ul>
+    <button class="btn block primary" id="news-ok">Got it</button></div>`, { label: 'What’s new' });
+  sh.el.querySelector('#news-ok').onclick = () => closeSheet(sh);
 }
 // ---------- ID card and friends (Job, 5 Nov) ----------
 // A landscape ID card like a real one: photo, name, level in the theme's words and stats on the front; lifts, split, gym and body on the back.
@@ -1290,7 +1291,7 @@ function idBack(c, code, unit = 'kg') {
     ry += h;
   }
   if (!backLifts && !rows.length) s += T(40, y, 'Nothing on the back yet', 26, 500, L.dim);
-  s += `<rect y="470" width="856" height="70" fill="${L.acc}" opacity=".14"/>` + T(40, 515, idCode(code), 26, 800, L.acc, 'letter-spacing="3"') + T(816, 514, 'Add me: Me → Friends', 18, 600, L.dim, 'text-anchor="end"');
+  s += `<rect y="470" width="856" height="70" fill="${L.acc}" opacity=".14"/>` + T(40, 515, idCode(code), 26, 800, L.acc, 'letter-spacing="3"') + T(816, 514, 'Add me: Friends → Add a friend', 18, 600, L.dim, 'text-anchor="end"');
   return s + '</svg>';
 }
 // idcard:end
@@ -1406,7 +1407,7 @@ function viewIdCard() {
   </div><div class="sgf">The front fits ${ID_FRONT_MAX} of these and the back fits ${idBackMax(idWhere('prs') === 'b')}.</div></section>
   <section><div class="sgh">Sharing</div><div class="sgrp">
     ${srow('Show my card to friends', swi(!o.hidden, 'idHide'), o.hidden ? 'Hidden. Friends only see your name.' : 'Turn off to hide it. Friends will only see your name.')}
-    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Me → Friends to send you a request. There are no invite links.')}
+    ${srow(`<span class="num f22">${esc(idCode(ID_CODE))}</span>`, `<button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button>`, 'Friends type this in Friends → Add a friend to send you a request. There are no invite links.')}
     ${srow('Friend code on shared picture', swi(!o.shareNoCode, 'idShareCode'), o.shareNoCode ? 'Left off when you share your card' : 'Turn off to share your card without it')}
     ${slink('Friends', 'friends')}
   </div><div class="sgf">Only friends you’ve added by code see your card. Sharing makes a picture of the front only.</div></section></div>`;
@@ -1521,7 +1522,7 @@ function postHTML(p) {
 // Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
 function frFaces(list) {
   return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
-    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
+    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'No workout yet'}</span></button>`; }).join('')}</div>`;
 }
 // Refresh (Job, 6 Nov): the button, or pull down at the top of Friends. Friends, requests and the feed load side by side,
 // and what's on screen stays until the new data arrives (no blank flash).
@@ -1546,19 +1547,20 @@ function viewFriends() {
   statSync();
   const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
   const tab = UI.frTab || (list.length ? 'feed' : 'friends');
+  const frSwap = () => `<div class="empty fr-empty">Swap codes with a friend to see each other’s workouts.${ID_CODE ? `<br>Your code: <b class="num">${esc(idCode(ID_CODE))}</b> <button class="btn sm" data-a="idCopy">Copy</button>` : ''}<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`;
   const req = (r, btns) => `<div class="li"><span class="av av-l" style="--avc:var(--raised)">${esc((r.n || '?').charAt(0).toUpperCase())}</span><div class="grow"><div class="t">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div></div>${btns}</div>`;
   const head = `<div class="stack"><i class="fr-pull" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn fr-rf${FR_BUSY ? ' spin' : ''}" data-a="frRefresh" aria-label="Refresh" title="Refresh">${IC.rf}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
     ${soOn() ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
-    ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : `<div class="empty fr-empty">${list.length ? 'Nothing from the last 24 hours yet. Finish a workout and your Done Stamp shows up here.' : 'Add a friend to see their workouts here.'}${list.length ? '' : '<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button>'}</div>`}
+    ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : list.length ? '<div class="empty fr-empty">Nothing from the last 24 hours yet. Finish a workout and it shows up here.</div>' : frSwap()}
   </div>`;
   return `${head}
     ${rin.length ? `<div class="card"><div class="eyebrow">Requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
-    ${A && !A.practice ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
+    ${A && !A.practice && list.length ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
       : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
-    ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : `<div class="empty fr-empty">No friends yet.<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`}
+    ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : frSwap()}
     ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
   </div>`;
 }
@@ -1713,7 +1715,7 @@ const STAMP = {};
 async function stampPost(id, o = {}) {
   statSync(); if (!soOn()) return false;
   const d = recapData(id); if (!d.w) return false;
-  const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? fmtDur(d.dur) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
+  const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? (m => m >= 60 ? Math.floor(m / 60) + ':' + pad2(m % 60) : fmtDur(d.dur))(Math.floor(d.dur / 6e4)) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
   if (o.c) body.c = String(o.c).slice(0, 80);
   const noW = !!SO().noW; if (noW) { delete body.v; delete body.h; } // Show my weights off: just the workout
   if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t && !noW ? setStr(t) : '']; });
@@ -1799,7 +1801,7 @@ function postMenu(id) {
 // Share picture (Job, 5 Nov): only the front of the card, centred on the theme colour. The friend code can be left off.
 async function idShare() {
   const c = idCard(), code = (S.profile.id || {}).shareNoCode ? false : ID_CODE;
-  const f = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(idFront(c, code, U(), ID_PHOTO, code === false ? '' : 'Add me: Me → Friends')); });
+  const f = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = idSrc(idFront(c, code, U(), ID_PHOTO, code === false ? '' : 'Add me: Friends → Add a friend')); });
   if (!f) return toast('Couldn’t make the picture. Try again.');
   // just the card, no backdrop (Job, 6 Nov); corners stay see-through
   const w = 1712, h = 1080, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d');
@@ -2202,7 +2204,7 @@ function progBody() {
     <button class="link" data-a="weights">All weight entries</button></div>
   ${measCard()}
   <div class="card"><div class="card-h"><span class="eyebrow">Steps · last 30 days</span><button class="mh32 cap" data-a="steps">Add</button></div>
-    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Apple Health).</div>'}
+    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Steps).</div>'}
   </div>`;
 }
 function steps30() {
@@ -2484,7 +2486,7 @@ function repRangeRow() {
 const ME_GROUPS = [
   ['profile', 'Profile and goals', 'Name, height, goal weight, units, weekly target'],
   ['workouts', 'Workouts', 'Rest, targets, rep range, your exercises'],
-  ['alerts', 'Reminders and sounds', 'Daily reminder, weigh-in pop-up, sounds'],
+  ['alerts', 'Reminders and sounds', 'Daily weigh-in, sounds'],
   ['look', 'Theme and app', 'Wallpaper and colours, Home Screen app'],
   ['steps', 'Steps', 'Apple Health and the evening Shortcut'],
   ['account', 'Account and data', 'Sign-in, backups, import and export'],
@@ -2512,7 +2514,7 @@ function meParts() {
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
     ${repRangeRow()}
     ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
-    ${srow('Start rest after each set', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
+    ${srow('Start rest automatically', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
     ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush'), pushReady() ? 'A notification when the timer ends, even with your phone locked' : 'Add Job’s Done to your Home Screen first, then turn this on') : ''}
     ${srow('Keep screen awake', swi(on('noWake'), 'pset', 'data-f="noWake"'), 'While a workout is open')}
     ${srow('Confetti', swi(on('noConfetti'), 'pset', 'data-f="noConfetti"'), 'For PRs and finished workouts')}
@@ -2523,7 +2525,7 @@ function meParts() {
     alerts: `
   <section><div class="sgh">Reminders</div><div class="sgrp">
     ${HOSTED ? remindRows(p) : ''}
-    ${srow('Morning weigh-in pop-up', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
+    ${srow('Daily weigh-in', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
   </div></section>
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
@@ -2569,14 +2571,15 @@ function meParts() {
     ${slink('Export backup (JSON)', 'export', '', 'data-k="json"')}
     ${slink('Export spreadsheet (CSV)', 'export', '', 'data-k="csv"')}
     ${slink('Erase all data', 'reset', 'danger')}
-  </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your Claude account. Open this same link on any device signed in as you and your log is there.' : 'Saved in this browser only. Sign in to Claude and open the link there to keep it in your account.'}</div></section>
+  </div><div class="sgf">${pend().size && mode === 'cloud' && syncState === 'offline' ? `${pend().size} change${pend().size > 1 ? 's' : ''} saved on this phone, waiting for signal to sync. ` : ''}${HOSTED ? (mode === 'cloud' ? 'Saved to your Job’s Done account. Sign in on any device and your log is there.' : 'Not signed in. Changes are kept on this device until you sign in.') : mode === 'cloud' ? 'Saved to your account. Sign in on any device and your log is there.' : 'Saved on this phone only. Sign in to keep it in your account.'}</div></section>
 `,
     help: `
   ${HOSTED && USER ? `<section><div class="sgh">Beta</div><div class="sgrp">
     ${srow('My Gym', swi(gymOn(), 'gymToggle'), 'Workouts built from your gym’s machines. Gym lists are shared with others at that gym')}
   </div></section>` : ''}
   <section><div class="sgh">Help</div><div class="sgrp">
-    ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through every tab and a practice workout')}
+    ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through the app and a practice workout')}
+    ${srow('What’s new', '<button class="btn sm" data-a="newsSheet">Show</button>', 'What changed in the latest update')}
   </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
@@ -3339,7 +3342,7 @@ async function drawShare(d, o = shareOpts(d)) {
       g.fillStyle = hot ? RED : '#fff'; g.textAlign = 'right'; g.fillText(b, W - 72, y + 2); g.textAlign = 'left'; y += 54; };
     row('OPERATION', fit(split, 22)); stats.forEach(s => row(s[1].toUpperCase().replace(' LIFTED', ' MOVED'), s[0], hotStat(s)));
     g.letterSpacing = '0px'; g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `italic 600 32px ${SANS}`; y += 4 + (wrap(heavy, 72, y, W - 144, 42) - 1) * 42 + 30;
-    if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('TARGETS', 4), 72, y + 8); y += 64;
+    if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('LIFTS', 4), 72, y + 8); y += 64;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 5)) {
       if (y > CH - 120) break;
       g.fillStyle = '#fff'; g.font = F(700, 36); g.fillText(sp(fit(r.name, 22), 0), 72, y);
@@ -3503,18 +3506,18 @@ async function drawShare(d, o = shareOpts(d)) {
   return c;
 }
 // The person picks what goes on their card (Job, 19 Oct). Hidden stats and lifts on/off are remembered; which lifts is per workout.
-const SHARE_MAX = { spidey: 3, cliffs: 3 };
+const SHARE_MAX = { spidey: 3, cliffs: 3, 'mono-post': 3 }; // what each card really draws ('-post' = Post size only)
 function shareOpts(d) { const p = S.profile.share || {}; return { hide: p.hide || [], lifts: p.lifts !== false, story: !!p.story, pick: d.pick || null }; }
 function shareLiftNames(d) {
   const prn = new Set(d.prs.map(p => baseName(p.ex)));
   return mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), () => '').map(r => ({ name: r.name, pr: prn.has(baseName(r.name)) })).sort((a, b) => b.pr - a.pr);
 }
 function openShareSheet(d) {
-  const max = SHARE_MAX[theme()] || 5, all = shareLiftNames(d);
-  if (!d.pick) d.pick = all.slice(0, max).map(r => r.name);
-  const o = () => shareOpts(d);
+  const all = shareLiftNames(d), o = () => shareOpts(d);
+  const maxOf = () => SHARE_MAX[theme() + (o().story ? '' : '-post')] || SHARE_MAX[theme()] || 5;
+  if (!d.pick) d.pick = all.slice(0, maxOf()).map(r => r.name);
   const STATS = [['time', d.dur ? 'Time' : 'Reps'], ['vol', U() + ' lifted'], ['sets', 'Sets'], ['prs', 'PRs']];
-  const body = () => { const x = o(); return `<div class="stack"><div><div class="eyebrow">Share your card</div><div class="mt1 cap">Pick what goes on it. The picture shows what your friends will see.</div></div>
+  const body = () => { const x = o(), max = maxOf(); d.pick = d.pick.slice(0, max); return `<div class="stack"><div><div class="eyebrow">Share your card</div><div class="mt1 cap">Pick what goes on it. The picture shows what your friends will see.</div></div>
     <div class="seg sh-seg">${[['', 'Post'], ['1', 'Story']].map(([v, t]) => `<button class="${!!v === x.story ? 'on' : ''}" data-sf="${v}">${t}</button>`).join('')}</div>
     <img class="sh-prev ${x.story ? 'story' : ''}" id="sh-prev" alt="Your share card">
     <div><div class="mb2 eyebrow">Stats</div><div class="chips sh-chips">${STATS.map(([k, t]) => `<button class="chip ${x.hide.includes(k) ? '' : 'on'}" data-sx="${k}">${esc(t)}</button>`).join('')}</div></div>
@@ -3826,14 +3829,14 @@ async function openPhotos() {
       const ks = Object.keys(PHOTOS).sort(), first = ks[0], last = ks[ks.length - 1];
       b.querySelector('#ph-body').innerHTML = !ks.length ? 'No photos yet.' : `${ks.length > 1 ? `<div class="ph-cmp"><figure><img src="${PHOTOS[first].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[first].d, { y: true }))}${PHOTOS[first].w ? ' · ' + bw(PHOTOS[first].w) + ' ' + U() : ''}</figcaption></figure><figure><img src="${PHOTOS[last].img}" alt=""><figcaption>${esc(fmtDate(PHOTOS[last].d, { y: true }))}${PHOTOS[last].w ? ' · ' + bw(PHOTOS[last].w) + ' ' + U() : ''}</figcaption></figure></div>` : ''}
         <div class="ph-grid">${ks.slice().reverse().map(k => `<button class="ph" data-ph="${k}"><img src="${PHOTOS[k].img}" alt="Photo from ${esc(fmtDate(PHOTOS[k].d))}"><span>${esc(fmtDate(PHOTOS[k].d))}</span></button>`).join('')}</div>`;
-      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, key: false, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your signal and try again.'); } } }); });
+      b.querySelectorAll('[data-ph]').forEach(x => x.onclick = () => { const k = x.dataset.ph; confirmSheet({ title: 'Delete this photo?', body: fmtDate(PHOTOS[k].d, { y: true }), ok: 'Delete', danger: true, key: false, onOk: async () => { try { await DB.doc('photos/' + k).delete(); delete PHOTOS[k]; draw(); toast('Photo deleted'); } catch (e) { toast('Couldn’t delete it. Check your connection and try again.'); } } }); });
     };
-    try { await loadPhotos(); draw(); } catch (e) { b.querySelector('#ph-body').textContent = 'Couldn’t load photos. Check your signal.'; }
+    try { await loadPhotos(); draw(); } catch (e) { b.querySelector('#ph-body').textContent = 'Couldn’t load photos. Check your connection.'; }
     b.querySelector('#ph-in').onchange = async ev => {
       const f = ev.target.files && ev.target.files[0]; if (!f) return;
       try { const img = await shrink(f), d = today(), lw = weightOn(d); let k = d, i = 1; while (PHOTOS && PHOTOS[k]) k = d + '-' + (++i);
         const body = { img, d, w: lw ? lw.w : null }; await DB.doc('photos/' + k).set(body); PHOTOS = PHOTOS || {}; PHOTOS[k] = body; draw(); toast('Photo saved'); }
-      catch (e) { toast('Couldn’t save the photo. Check your signal and try again.'); }
+      catch (e) { toast('Couldn’t save the photo. Check your connection and try again.'); }
       ev.target.value = '';
     };
   } });
@@ -4060,7 +4063,7 @@ function openSyncKey() {
         <div class="field"><label>Shortcut address</label><textarea class="input num" readonly rows="2" style="min-height:0">${esc(url)}</textarea></div>
         <button class="btn block" data-copy="${esc(url)}">Copy address</button></div>`;
       for (const c of el.querySelectorAll('[data-copy]')) c.onclick = async () => { try { await navigator.clipboard.writeText(c.dataset.copy); toast('Copied'); } catch (e) { toast('Press and hold the text to copy it'); } };
-    } catch (e) { b.disabled = false; toast('Could not create the key. Check your connection and try again.'); }
+    } catch (e) { b.disabled = false; toast('Couldn’t create the key. Check your connection and try again.'); }
   };
   } });
 }
@@ -4502,7 +4505,7 @@ function restoreFile(file, replacing) {
     const txt = String(rd.result); let st = null, what = '';
     if (/\.json$/i.test(file.name) || /^\s*\{/.test(txt)) {
       try { st = stateFromBackup(JSON.parse(txt)); } catch (e) { st = null; }
-      if (!st) { toast('That file isn’t a Job’s Done backup. In the Claude version, use Me → Export JSON.', 4500); return; }
+      if (!st) { toast('That file isn’t a Job’s Done backup. Use Me → Account and data → Export backup (JSON).', 4500); return; }
       what = 'Restored your backup';
     } else {
       const res = csvToWorkouts(txt); if (res.err) { toast(esc(res.err), 4500); return; }
@@ -4525,7 +4528,7 @@ const TEMPLATES = {
   phul: { n: 'PHUL', d: 'Power upper and lower, then muscle upper and lower; 4 days a week', s: [['Upper Power', ['Incline Press', 'Wide-Grip Row', 'Shoulder Press', 'Lat Pulldown', 'Preacher Curl', 'Tricep Pushdown']], ['Lower Power', ['Leg Press', 'Stiff-Leg Deadlift', 'Leg Curl', 'Calf Raise']], ['Upper Muscle', ['Chest Fly', 'Lat Pulldown', 'Close-Grip Row', 'Lateral Raise', 'Preacher Curl', 'Overhead Tricep Extension']], ['Lower Muscle', ['Leg Extension', 'Leg Curl', 'Leg Press', 'Adductor', 'Abductor', 'Calf Raise']]] },
   pplul: { n: 'Push / Pull / Legs + Upper / Lower', d: '5 workouts in a row; fits 5 days a week', s: [] },
   arnold: { n: 'Arnold split', d: 'Chest and back, shoulders and arms, legs; run twice for 6 days a week', s: [['Chest & Back', ['Chest Fly', 'Incline Press', 'Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders & Arms', ['Shoulder Press', 'Lateral Raise', 'Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Legs', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
-  bro: { n: 'Bro split', d: 'One muscle group a day; fits 5 days a week', s: [['Chest', ['Chest Fly', 'Incline Press', 'Chest Press']], ['Back', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders', ['Shoulder Press', 'Lateral Raise', 'Reverse Pec Deck']], ['Arms', ['Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Leg Day', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
+  bro: { n: 'Bro split', d: 'One muscle group a day; fits 5 days a week', s: [['Chest', ['Chest Fly', 'Incline Press']], ['Back', ['Lat Pulldown', 'Wide-Grip Row', 'Close-Grip Row']], ['Shoulders', ['Shoulder Press', 'Lateral Raise']], ['Arms', ['Preacher Curl', 'Tricep Pushdown', 'Overhead Tricep Extension']], ['Leg Day', ['Leg Press', 'Leg Extension', 'Leg Curl', 'Stiff-Leg Deadlift', 'Adductor', 'Abductor', 'Calf Raise']]] },
   none: { n: 'I’ll build my own', d: 'Start empty and add splits yourself', s: [] },
 };
 TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
@@ -4878,7 +4881,7 @@ const ACT = {
     if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
-  tourGo: () => tourGo(),
+  tourGo: () => tourGo(), newsSheet: () => newsSheet(),
   // My Gym (beta)
   gymToggle: () => { S.profile.gymBeta = !gymOn(); persist('jd/meta'); if (S.profile.gymBeta) gymRefresh(true); rerender(); },
   gymFind: () => { while (SHEETS.length) closeSheet(); gymFind(); },
@@ -5040,7 +5043,7 @@ function openFeedback() {
       if (!(HOSTED && USER && SB)) { toast('Sign in to send feedback.'); return; }
       ev.currentTarget.disabled = true;
       const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: t.slice(0, 2000) });
-      if (error) { ev.currentTarget.disabled = false; toast('Couldn’t send it. Check your signal and try again.'); return; }
+      if (error) { ev.currentTarget.disabled = false; toast('Couldn’t send it. Check your connection and try again.'); return; }
       closeSheet(sh); toast('Thanks! Feedback sent.');
     };
   } });
@@ -5067,7 +5070,7 @@ function openDeleteAccount() {
         if (!r.ok) throw new Error('failed');
         try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + ':pending'); } catch (e) {}
         closeSheet(sh); await SB.auth.signOut().catch(() => {}); toast('Your account and data were deleted.', 4000);
-      } catch (e) { go.disabled = false; go.textContent = 'Delete my account'; toast('Couldn’t delete it. Check your signal and try again.'); }
+      } catch (e) { go.disabled = false; go.textContent = 'Delete my account'; toast('Couldn’t delete it. Check your connection and try again.'); }
     };
   } });
 }
@@ -5212,8 +5215,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
       try {
         const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em, password: pw, name: $('#si-name').value.trim(), age: true, website: $('#si-web').value, ms: Date.now() - shownAt }) });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) { b.disabled = false; b.textContent = 'Create account'; return m(j.error || 'Could not create the account. Try again.'); }
-      } catch (e) { b.disabled = false; b.textContent = 'Create account'; return m('No connection. Check your signal and try again.'); }
+        if (!r.ok) { b.disabled = false; b.textContent = 'Create account'; return m(j.error || 'Couldn’t create the account. Try again.'); }
+      } catch (e) { b.disabled = false; b.textContent = 'Create account'; return m('No connection. Check your connection and try again.'); }
     }
     const { data, error } = await SB.auth.signInWithPassword({ email: em, password: pw });
     if (error) {
@@ -5309,7 +5312,7 @@ async function openMfa() {
   }
   try { const { data } = await SB.auth.mfa.listFactors(); for (const x of (data && data.all || []).filter(x => x.status !== 'verified')) await SB.auth.mfa.unenroll({ factorId: x.id }); } catch (e) {}
   const { data, error } = await SB.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Job’s Done' });
-  if (error || !data) { toast('Couldn’t start setup. Check your signal and try again.'); return; }
+  if (error || !data) { toast('Couldn’t start setup. Check your connection and try again.'); return; }
   openSheet(`<div class="stack"><div class="eyebrow">Two-step sign-in</div>
     <p class="m0 f15 sec">After your password, Job’s Done will also ask for a 6-digit code from an authenticator app, so a stolen password isn’t enough.</p>
     <ol class="m0 f15 sec mfa-steps"><li>Add Job’s Done to an authenticator app: tap the button on this phone, or scan the code from another device.</li><li>Type the 6-digit code it shows.</li></ol>
@@ -5392,7 +5395,7 @@ async function connect(db) {
     mode = 'local';
     reportError('load: ' + (e && (e.message || String(e))), e && e.stack ? String(e.stack).split('\n')[1] : '');
     // Never show the new-account intro to someone whose log failed to load: finishing it would overwrite their account.
-    if (!ready) { $('#app').innerHTML = `<div class="ob"><div class="stack" style="margin:auto 0;text-align:center"><h1>Couldn’t load your log</h1><p class="sec">Your workouts are safe in your account. Check your signal and try again.</p><button class="btn primary block" id="ld-retry">Try again</button></div></div>`; $('#ld-retry').onclick = () => location.reload(); return; }
+    if (!ready) { $('#app').innerHTML = `<div class="ob"><div class="stack" style="margin:auto 0;text-align:center"><h1>Couldn’t load your log</h1><p class="sec">Your workouts are safe in your account. Check your connection and try again.</p><button class="btn primary block" id="ld-retry">Try again</button></div></div>`; $('#ld-retry').onclick = () => location.reload(); return; }
     toast('Couldn’t reach your account. Working offline on this device for now.', 4000);
   }
 }
