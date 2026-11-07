@@ -4451,21 +4451,21 @@ function buildFromSeed() {
   return st;
 }
 // log: [{d, s, skip, x: [[exercise, [[w, r], ...], note], ...]}] → state with splits built from each split's latest session
-function buildFromLog(log) {
+function buildFromLog(log, fromFile) {
   const st = freshState();
   const names = [...new Set(log.map(o => o.s))];
   const order = ['Push', 'Pull', 'Upper', 'Legs', 'Anterior', 'Posterior'];
-  names.sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+  if (!fromFile) names.sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99)); // Job's own order; a file keeps the order its splits first appear
   for (const n of names) {
     const sessions = log.filter(o => o.s === n && !o.skip).sort((a, b) => a.d < b.d ? -1 : 1);
     const last = sessions[sessions.length - 1];
     st.splits.push({ id: 'sp-' + n.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: n, color: SPLIT_COLORS[n] || PALETTE[st.splits.length % PALETTE.length], archived: false, ex: last ? last.x.map(([name, sets]) => ({ name, sets: Math.max(2, sets.length), repMin: 6, repMax: 10, rest: 120, note: '' })) : [] });
   }
   const byName = n => st.splits.find(s => s.name === n);
-  st.rotation = ['Push', 'Pull'].map(n => byName(n)).filter(Boolean).map(s => s.id);
+  st.rotation = fromFile ? st.splits.map(s => s.id) : ['Push', 'Pull'].map(n => byName(n)).filter(Boolean).map(s => s.id);
   log.forEach((o, i) => {
     const id = 'imp-' + String(i).padStart(3, '0');
-    st.workouts[id] = { id, date: o.d, splitId: byName(o.s) ? byName(o.s).id : null, splitName: o.s, start: null, end: null, note: '', energy: null, src: 'import', skipped: !!o.skip, ex: o.x.map(([name, sets, note]) => ({ name, note: note || '', sets: sets.map(([w, r]) => ({ w, r, t: 'work' })) })) };
+    st.workouts[id] = { id, date: o.d, splitId: byName(o.s) ? byName(o.s).id : null, splitName: o.s, start: null, end: null, note: '', energy: null, src: 'import', skipped: !!o.skip, ex: o.x.map(([name, sets, note]) => ({ name, note: note || '', sets: sets.map(([w, r, t, rpe]) => ({ w, r, t: t || 'work', ...(rpe ? { rpe } : {}) })) })) };
   });
   st.imported = true;
   return st;
@@ -4522,7 +4522,7 @@ function stateFromBackup(o) {
   st.imported = true; return st;
 }
 function logFromCsvList(list) {
-  return list.sort((a, b) => a.date < b.date ? -1 : 1).map(w => ({ d: w.date, s: w.splitName, skip: w.skipped ? 1 : 0, x: w.ex.map(e => [e.name, e.sets.map(x => [x.w, x.r]), e.note || '']) }));
+  return list.sort((a, b) => a.date < b.date ? -1 : 1).map(w => ({ d: w.date, s: w.splitName, skip: w.skipped ? 1 : 0, x: w.ex.map(e => [e.name, e.sets.map(x => [x.w, x.r, x.t, x.rpe]), e.note || '']) }));
 }
 function restoreFile(file, replacing) {
   const rd = new FileReader();
@@ -4534,10 +4534,18 @@ function restoreFile(file, replacing) {
       what = 'Restored your backup';
     } else {
       const res = csvToWorkouts(txt); if (res.err) { toast(esc(res.err), 4500); return; }
-      st = buildFromLog(logFromCsvList(res.list)); what = 'Imported your log';
+      st = buildFromLog(logFromCsvList(res.list), true); what = 'Imported your log';
+      // A CSV only holds workouts: keep this account's settings, body weights, steps and splits; add any split the file brings.
+      if (S) {
+        const b = st; st = clone(S); st.workouts = b.workouts;
+        for (const sp of b.splits) if (!st.splits.some(x => x.name === sp.name)) st.splits.push(sp);
+        for (const w of Object.values(st.workouts)) { const sp = st.splits.find(x => x.name === w.splitName); w.splitId = sp ? sp.id : null; }
+        if (!st.rotation.length) st.rotation = st.splits.filter(x => !x.archived).map(x => x.id);
+        st.imported = true;
+      }
     }
     const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
-    if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: 'Your current workouts, weights and splits are replaced by the ones in the file.', ok: 'Replace', danger: true, key: false, onOk: go }); else go();
+    if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: what === 'Restored your backup' ? 'Your current workouts, weights and splits are replaced by the ones in the file.' : 'Your current workouts are replaced by the ones in the file. Your settings, body weights and steps stay.', ok: 'Replace', danger: true, key: false, onOk: go }); else go();
   };
   rd.readAsText(file);
 }

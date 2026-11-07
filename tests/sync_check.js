@@ -34,6 +34,14 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   const f = csv({ workouts: { a: w } }, 2.20462, d => d.toISOString().slice(0, 10), () => 0);
   assert.deepStrictEqual(f.csvToWorkouts(f.exportCSV()).list[0].ex[0].sets.map(s => s.t), ['warm', 'work', 'drop'], 'set types survive CSV export and import');
 
+  // "Replace everything" with a CSV keeps set types and the file's own split order (no Push/Pull forced on an Upper/Lower log)
+  const bl = new Function('freshState', 'SPLIT_COLORS', 'PALETTE', pick('function buildFromLog', 'function renderWelcome') + pick('function logFromCsvList', 'function restoreFile') + '; return { buildFromLog, logFromCsvList };')(() => ({ profile: {}, splits: [], rotation: [], workouts: {} }), {}, ['#111']);
+  const ul = f.csvToWorkouts('date,split,exercise,weight_kg,reps,set_type\n2026-11-03,Upper,Lat Pulldown,40,12,warmup\n2026-11-03,Upper,Lat Pulldown,60,8,\n2026-11-04,Lower,Leg Press,100,8,\n').list;
+  const ulSt = bl.buildFromLog(bl.logFromCsvList(ul), true);
+  assert.deepStrictEqual(ulSt.splits.map(s => s.name), ['Upper', 'Lower'], 'a CSV keeps its own split order');
+  assert.strictEqual(ulSt.rotation.length, 2, 'a CSV of Upper/Lower gets a rotation');
+  assert.deepStrictEqual(Object.values(ulSt.workouts)[0].ex[0].sets.map(s => s.t), ['warm', 'work'], 'replacing from a CSV keeps warm-ups');
+
   // JSON backup
   const sfb = new Function('freshState', 'S', pick('function stateFromBackup', 'function logFromCsvList') + '; return stateFromBackup;')(() => ({ profile: {}, splits: [], rotation: [], customEx: [], setup: {}, weights: {}, steps: {}, workouts: {} }), null);
   const st = sfb({ workouts: {}, setup: { 'Leg Press': 'seat 5' }, meas: { '2026-11-01': { waist: 80 } } });
