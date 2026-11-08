@@ -1958,3 +1958,4 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* CSV import sits above the plans (Job, 8 Nov: it was too far down) */
 .ob-imp { padding: 12px 14px; margin-bottom: 4px; }
 .ob-imp > summary { font-weight: 600; }
+#screen .card { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 85%, transparent); } /* 15% see-through so the theme scenery shows (Job, 8 Nov) */
