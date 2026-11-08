@@ -1782,7 +1782,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 
 /* Rest timer on the big tab button (Job, 8 Nov): time only, same colour as the play button,
    a white ring runs down around it, and the last 10 s the button turns the theme's own colour */
-:root[data-theme] .tab-start.resting, :root:not([data-theme]) .tab-start.resting { padding: 3px; background: conic-gradient(rgba(255,255,255,.95) calc((1 - var(--p, 0)) * 1turn), rgba(255,255,255,.2) 0); }
+:root[data-theme] .tab-start.resting, :root:not([data-theme]) .tab-start.resting { padding: 3px; background: conic-gradient(var(--accent) calc((1 - var(--p, 0)) * 1turn), color-mix(in srgb, var(--accent) 22%, transparent) 0); } /* the theme's accent, so it shows on light and dark (Summit's follows the time of day) */
 .tab-start .ts-in { width: 100%; height: 100%; border-radius: inherit; background: #2E8B4E; display: grid; place-items: center; font-style: normal; transition: background .2s; }
 .tab-start.soon .ts-in { background: var(--startc); }
 .tab-start .ts-in b { font-size: 16px; line-height: 1; font-weight: 700; color: #fff; }
