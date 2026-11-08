@@ -1836,3 +1836,17 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Post to feed line centred under Share and Done (Job, 8 Nov) */
 .rc-foot .rc-feed > .row { justify-content: center; }
 .rc-foot .rc-feed .rc-share { flex: 0 0 auto; }
+
+/* Finish page top row with Home (Job, 8 Nov) */
+#recap .rc-top { display: flex; padding: 8px 0 2px; }
+#recap .rc-home { width: 40px; height: 40px; border-radius: 50%; background: var(--raised); color: var(--text); }
+/* New post screen (Job, 8 Nov): top bar, live feed-card preview, caption/photo/lifts box underneath */
+#composer { position: fixed; inset: 0; z-index: 80; overflow-y: auto; background: var(--bg); opacity: 0; transform: translateY(20px); transition: opacity .25s, transform .3s var(--ease); }
+#composer.in { opacity: 1; transform: none; }
+#composer .cp-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+#composer .cp-top b { font-size: 17px; }
+#composer .cp-body { padding: 4px 16px calc(32px + env(safe-area-inset-bottom)); }
+#composer #cp-prev { pointer-events: none; }
+#composer .cp-edit textarea { resize: none; }
+#composer #cp-ph { gap: 6px; white-space: nowrap; } #composer #cp-ph svg { width: 18px; height: 18px; flex: none; }
+#composer .cp-ex { margin-left: auto; }

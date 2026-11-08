@@ -1827,15 +1827,40 @@ function snapMaybe() {
 const STAMP = {};
 // Share to your feed (Job, 6 Nov): on the finish page you choose to post, add a line, show every lift, and add a photo.
 // "Post every workout" in What friends see skips the choice and posts the plain stamp straight away.
-async function stampPost(id, o = {}) {
-  statSync(); if (!soOn()) return false;
-  const d = recapData(id); if (!d.w) return false;
+function stampBody(id, o = {}) {
+  const d = recapData(id); if (!d.w) return null;
   const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? (m => m >= 60 ? Math.floor(m / 60) + ':' + pad2(m % 60) : fmtDur(d.dur))(Math.floor(d.dur / 6e4)) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
   if (o.c) body.c = String(o.c).slice(0, 80);
   const noW = !!SO().noW; if (noW) { delete body.v; delete body.h; } // Show my weights off: just the workout
   if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t && !noW ? setStr(t) : '']; });
+  return body;
+}
+async function stampPost(id, o = {}) {
+  statSync(); if (!soOn()) return false;
+  const body = stampBody(id, o); if (!body) return false;
   try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: o.photo || null }); FEED = null; const el = document.getElementById('rc-feed'); if (el) el.innerHTML = stampDone(!!o.photo); return true; }
   catch (e) { postErr(e); return false; }
+}
+// New post (Job, 8 Nov): Post on the finish page opens this. The live preview is the real feed card; the caption,
+// photo and "Show every lift" sit in one box underneath. Posting again replaces an earlier post of this workout.
+function openComposer(id, after) {
+  if (!soOn()) return toast('Turn on Share my training in Friends first.');
+  const st = { c: '', ex: true, photo: null }, el = document.createElement('div'); el.id = 'composer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'New post');
+  el.innerHTML = `<div class="cp-top"><button class="icon-btn" id="cp-x" aria-label="Close">${I.x}</button><b>New post</b><button class="btn sm primary" id="cp-go">Post</button></div>
+    <div class="stack cp-body"><div class="eyebrow">How friends will see it</div><div id="cp-prev" aria-hidden="true"></div>
+      <div class="card stack g2 cp-edit"><textarea class="input" id="cp-c" rows="2" maxlength="80" placeholder="Add a caption, if you like"></textarea>
+        <div class="row g2"><button class="btn sm" id="cp-ph">${IC.cam}<span>Add photo</span></button><label class="row g2 cap cp-ex">Show every lift <input type="checkbox" class="cbox" id="cp-ex" checked></label></div></div></div>`;
+  document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));
+  const q = s => el.querySelector(s), draw = () => { const body = stampBody(id, st) || {}; q('#cp-prev').innerHTML = postHTML({ id: 0, user_id: USER && USER.id, n: 'You', kind: 'stamp', at: new Date().toISOString(), reacts: {}, comments: [], photo: st.photo, body }); };
+  const close = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); };
+  draw();
+  q('#cp-x').onclick = close;
+  q('#cp-c').oninput = e => { st.c = e.target.value.trim(); draw(); };
+  q('#cp-ex').onchange = e => { st.ex = e.target.checked; draw(); };
+  q('#cp-ph').onclick = () => pickPhoto(d => { st.photo = d; q('#cp-ph span').textContent = 'Change photo'; draw(); });
+  q('#cp-go').onclick = async ev => { const b = ev.currentTarget; b.disabled = true;
+    if (STAMP[id]) { try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; } catch (e) { b.disabled = false; return toast('Couldn’t post. Try again.'); } }
+    if (await stampPost(id, st)) { toast('Posted to your feed'); close(); if (after) after(); } else b.disabled = false; };
 }
 // Finish page feed row (Job, 8 Nov): a "Share with friends" tick and a camera beside it. Ticked = on the feed.
 const stampDone = ph => stampRow(true, ph);
@@ -3358,6 +3383,7 @@ function showRecap(id, fresh) {
   const sp = wSplit(d.w), col = sp ? sp.color : 'var(--accent)', nx = nextSplit();
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
+    <div class="rc-top"><button class="icon-btn rc-home" id="rc-home" aria-label="Home">${I.today}</button></div>
     ${finHero(d)}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
@@ -3378,19 +3404,19 @@ function showRecap(id, fresh) {
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · ${nextLbl()}: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
     <button class="link cap rc-del" id="rc-del">Delete this workout</button>
-    <div class="rc-foot"><div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
-    ${fresh && soOn() ? `<div class="rc-feed" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}</div>
+    <div class="rc-foot"><div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">${STAMP[d.w.id] ? 'Edit post' : 'Post'}</button></div></div>
   </div>`;
   document.body.appendChild(el);
   const bc = el.querySelector('.fin-bamc'); if (bc) drawBam(bc.getContext('2d'), 330, 290);
   requestAnimationFrame(() => el.classList.add('in'));
   const close = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); if (fresh) setTimeout(maybeInstallGuide, 400); };
-  el.querySelector('#rc-done').onclick = close;
+  // Done is gone (the workout was saved on the screen before): Home closes, Post opens the new-post screen (Job, 8 Nov)
+  el.querySelector('#rc-done').onclick = () => openComposer(d.w.id, () => { close(); NAV.tab = 'friends'; NAV.stack = []; render(); });
+  el.querySelector('#rc-home').onclick = () => { close(); NAV.tab = 'today'; NAV.stack = []; render(); };
   el.querySelector('#rc-del').onclick = () => confirmSheet({ title: 'Delete this workout?', body: 'It comes off your history, PRs and streak. You can undo right after.', ok: 'Delete workout', danger: true, key: false,
     onOk: () => { const sid = STAMP[d.w.id]; if (sid) gymRpc('jobdone_post_delete', { p_id: sid }).then(() => { delete STAMP[d.w.id]; FEED = null; }).catch(() => {}); close(); ACT.wkDelete({ dataset: { id: d.w.id } }); } });
   { const f = el.querySelector('[data-fold]'), box = el.querySelector('.rc-folded'); if (f && box) f.onclick = () => { const open = box.hidden; box.hidden = !open; f.setAttribute('aria-expanded', open); f.classList.toggle('open', open); }; }
   el.querySelector('#rc-share').onclick = () => openShareSheet(d);
-  stampWire(el, id);
   if (fresh) rollNums(el); else el.querySelectorAll('.fin-press').forEach(x => x.classList.remove('fin-press'));
   // Confetti is for a PR finish only (review 2, V23), so a record feels bigger than a normal day.
   if (fresh) { if (d.prs.length) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
