@@ -1595,7 +1595,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 :root .tab-start:active { transform: scale(.94); opacity: 1; }
 :root .tab-start.live, :root[data-theme] .tab-start.live, :root:not([data-theme]) .tab-start.live { background: #2E8B4E; box-shadow: 0 0 0 4px var(--startring), 0 8px 18px -8px #2E8B4E; }
 :root:not([data-theme]) { --startc: #6C3FD6; --startring: #FFFFFF; }
-:root[data-theme="mono"] { --startc: #C8102E; --startring: var(--surface-solid, #141418); }
+:root[data-theme="mono"] { --startc: #8E1222; --startring: var(--surface-solid, #141418); }
 :root[data-theme="cliffs"] { --startc: var(--accent); --startring: var(--surface-solid, #FFFFFF); }
 :root[data-theme="spidey"] { --startc: #E2231A; --startring: var(--surface-solid, #131D45); }
 
@@ -1780,3 +1780,21 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .seg button::after, .daychip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
 /* V21: one primary look per theme; Agent keypad Done is the red primary, not white */
 :root[data-theme="mono"] .keys button.done { background: linear-gradient(180deg, #D0142F, #A50C24); color: #fff; }
+
+/* Rest timer on the big tab button (Job, 8 Nov): time only, same colour as the play button,
+   a white ring runs down around it, and the last 10 s the button turns the theme's own colour */
+:root[data-theme] .tab-start.resting, :root:not([data-theme]) .tab-start.resting { padding: 3px; background: conic-gradient(rgba(255,255,255,.95) calc((1 - var(--p, 0)) * 1turn), rgba(255,255,255,.2) 0); }
+.tab-start .ts-in { width: 100%; height: 100%; border-radius: inherit; background: #2E8B4E; display: grid; place-items: center; font-style: normal; transition: background .2s; }
+.tab-start.soon .ts-in { background: var(--startc); }
+.tab-start .ts-in b { font-size: 16px; line-height: 1; font-weight: 700; color: #fff; }
+/* Camera (Job, 8 Nov): the frame sits in the middle of the screen, not stuck to the top */
+.cam:not(.rv) video { margin: auto; }
+.cam:not(.rv) .cam-bar { margin-top: 0; }
+.cam.rv .cam-pic { margin-top: auto; }
+
+/* Agent (Job, 8 Nov): solid dark red, no glow */
+:root[data-theme="mono"] .btn.primary { background: #8E1222; box-shadow: 0 6px 18px -10px rgba(170,22,40,.75); }
+:root[data-theme="mono"] .btn.primary:active { background: #760E1C; }
+:root[data-theme="mono"] .tab-start { box-shadow: 0 0 0 4px var(--startring), 0 8px 18px -10px rgba(170,22,40,.8); }
+:root[data-theme="mono"] .tab-start.live { box-shadow: 0 0 0 4px var(--startring); }
+:root[data-theme="mono"] .keys button.done { background: #8E1222; }

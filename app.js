@@ -750,7 +750,7 @@ function render() {
   NAV.keepScroll = false;
   const tab = (k, label, ic) => `<button class="tab ${NAV.tab === k ? 'on' : ''}" data-a="tab" data-k="${k}" aria-label="${label}" ${NAV.tab === k ? 'aria-current="page"' : ''}>${ic}<span>${label}</span></button>`;
   $('#tabs').innerHTML = tab('today', 'Today', I.today) + frTab() +
-    `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>` +
+    tabStartHTML() +
     tab('progress', 'Progress', I.progress) + tab('me', 'Me', I.me);
   renderWorkout();
   screenChanged(); wireSwipe(); coach(); tourAuto(); whatsNew(); idSync(); labelIcons(document);
@@ -1115,8 +1115,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v136';
+const NEWS_ID = '2026-11-v137';
 const NEWS = [
+  ['Rest time on the big button', 'Leave the workout screen while resting and the big button shows the time left, with a ring that runs down. Tap it to go back.'],
+  ['Swipe to delete a set', 'Swipe a set left and it slides over to show Delete. Swipe all the way to delete it in one go.'],
   ['A slimmer rest timer', 'Rest now sits in a thin bar at the bottom with a small hourglass by the time. Tap the time to pause. How the set went shows in the same bar.'],
   ['Targets follow your plan', 'Next time’s weight and reps use the rep range in your split, so 12 reps on an 8 to 12 plan means add weight. A range set in Me still wins.'],
   ['Cleaner Today and finish page', 'Today has one Start workout button and weight next to steps. The finish page leads with your numbers and says which old set each PR beat.'],
@@ -2842,6 +2844,19 @@ function exCardHTML(e, ei) {
   </section>`;
 }
 const restMsg = m => m ? `<b>${esc(m.title)}${/[.!?…]$/.test(m.title) ? '' : '.'}</b> ${esc(m.sub)}` : '';
+// The big tab button: Start, Resume, or while resting the rest time with a ring that runs down (Job, 8 Nov, concept B: time only, the button keeps its colour, last 10 s turns the theme colour).
+function tabStartHTML() {
+  if (A && REST) { const left = restLeft(), p = 1 - left / REST.total;
+    return `<button class="tab-start live resting ${left <= 10 ? 'soon' : ''}" data-a="start" aria-label="Rest ${clock(left)}. Back to workout" style="--p:${p.toFixed(3)}"><i class="ts-in"><b class="num" data-rest-tab>${clock(left)}</b></i></button>`; }
+  return `<button class="tab-start ${A ? 'live' : ''}" data-a="start" aria-label="${A ? 'Resume workout' : 'Start workout'}">${A ? I.play : I.plus}<span>${A ? 'Resume' : 'Start'}</span></button>`;
+}
+function syncTabStart() {
+  const b = $('.tab-start'); if (!b) return;
+  if (b.classList.contains('resting') !== !!(A && REST)) { b.outerHTML = tabStartHTML(); return; }
+  if (!(A && REST)) return; const left = restLeft();
+  b.style.setProperty('--p', (1 - left / REST.total).toFixed(3)); b.classList.toggle('soon', left <= 10);
+  const t = b.querySelector('[data-rest-tab]'); if (t) t.textContent = clock(left); b.setAttribute('aria-label', `Rest ${clock(left)}. Back to workout`);
+}
 function restLeft() { return REST ? Math.max(0, REST.paused ? REST.left : (REST.end - Date.now()) / 1000) : 0; }
 function restHTML() {
   const left = restLeft(), p = 1 - left / REST.total;
@@ -3068,15 +3083,16 @@ function celebrate(v, delay = 0) {
 
 function beep() { SOUNDS.rest(); }
 function tick() {
+  syncTabStart();
   document.querySelectorAll('[data-elapsed]').forEach(n => { if (A) n.textContent = fmtDur(Date.now() - A.start); });
   if (REST) {
     const left = restLeft();
-    if (left <= 0) { REST = null; SOUNDS.rest(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); return; }
+    if (left <= 0) { REST = null; SOUNDS.rest(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); syncTabStart(); return; }
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
     const re = $('[data-rest-end]'); if (re) re.textContent = REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000);
     const re2 = $('[data-rest-end2]'); if (re2) re2.textContent = REST.paused ? '' : hm(Date.now() + left * 1000);
     const ln = $('[data-rest-line]'); if (ln && !REST.paused) ln.style.transform = `scale(${(left / REST.total).toFixed(4)}, 1)`;
-    const hg = $('.restbar .hg-mini'); if (hg && !REST.paused) { const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); }
+    document.querySelectorAll('.restbar .hg-mini').forEach(hg => { if (REST.paused) return; const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); });
   }
 }
 function logSet(ei, si) {
