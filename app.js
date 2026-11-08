@@ -2745,6 +2745,7 @@ function meParts() {
   </div></section>` : ''}
   <section><div class="sgh">Help</div><div class="sgrp">
     ${srow('Take the tour', '<button class="btn sm" data-a="tourGo">Start</button>', 'A quick walk through the app and a practice workout')}
+    ${S.profile.owner && !DEMO ? srow('Try as a new user', '<button class="btn sm" data-a="testerGo">Start</button>', 'Only you see this. A fresh account from the first screen. Nothing is saved, and your account comes back when you leave.') : ''}
     ${srow('What’s new', '<button class="btn sm" data-a="newsSheet">Show</button>', 'What changed in the latest update')}
   </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
@@ -4670,6 +4671,22 @@ function demoState() {
   }
   return st;
 }
+// Tester mode (Job, 8 Nov, owner only): a brand-new account in memory, starting at the first intro screen every time.
+// DEMO switches off every save (persist, cloud, posts), so the real account is untouched; leaving reloads the page.
+let TESTER = false;
+function startTester() {
+  confirmSheet({ title: 'Try as a new user?', body: 'You’ll go through everything a beginner sees, from the first screen. Nothing you do is saved. Tap Leave tester at the top to get your account back.', ok: 'Start', key: false, onOk: () => {
+    TESTER = true; DEMO = true; DB = null; mode = 'local'; A = null; REST = null; S = null; OB = null; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
+    while (SHEETS.length) closeSheet(SHEETS[SHEETS.length - 1]);
+    testerBar(); renderWelcome();
+  } });
+}
+function testerBar() {
+  if (!TESTER || document.getElementById('tester-bar')) return;
+  const b = document.createElement('button'); b.id = 'tester-bar'; b.textContent = 'Tester · nothing is saved · Leave tester';
+  b.onclick = () => { try { sessionStorage.removeItem('jd-tester'); } catch (e) {} location.reload(); };
+  document.body.appendChild(b);
+}
 function startDemo() {
   DEMO = true; DB = null; mode = 'local'; A = null; S = demoState(); UI = { lastPrompt: today() }; invalidate();
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
@@ -5172,6 +5189,7 @@ const ACT = {
     if (!pushReady()) { toast('Add Job’s Done to your Home Screen first, then open it from there.'); openInstallGuide(false); return; }
     const ok = await pushOn(); if (ok) { S.profile.restPush = true; persist('jd/meta'); toast('Rest alerts are on. Sending a test now.'); restFn({ action: 'test' }); } rerender();
   },
+  testerGo: () => startTester(),
   tourGo: () => tourGo(), newsSheet: () => newsSheet(),
   // My Gym (beta)
   gymToggle: () => { S.profile.gymBeta = !gymOn(); persist('jd/meta'); if (S.profile.gymBeta) gymRefresh(true); rerender(); },
@@ -5691,6 +5709,7 @@ async function openData() {
   await connect(supaDB());
 }
 async function connect(db) {
+  if (TESTER) return; // tester mode stays in memory; the real account loads again when the page reloads
   if (!db) { mode = 'local'; if (!ready) { ready = true; S = null; renderWelcome(); } else rerender(); return; }
   DB = db; mode = 'cloud';
   if (S && pend().size) {
