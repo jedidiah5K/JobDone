@@ -1096,15 +1096,15 @@ const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.tex
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
-  { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Post to feed', d: 'When you finish a workout, tap Post to put it in your friends’ feed. Add a caption or a photo if you like.' },
   { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
-  { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
-  { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
-  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Weight and reps', d: 'Tap kg to load plates onto the bar, or switch to the keypad. Then tap reps.' },
-  { wk: true, el: () => tq('#row-0-0 .check'), t: 'Log the set', d: 'Tap ✓ when the set is done, or swipe the row right. Next set on the keypad ticks it for you.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
-  { wk: true, el: () => tq('#wk .restbar'), t: 'Rest timer', d: 'It starts by itself. −30 and +30 change it, tap the time to pause, and a sound plays when it’s time to go.' },
-  { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: () => A && A.practice ? 'On a real workout, Finish saves it and shows what you beat. This was practice, so nothing is saved.' : 'Finish saves it, shows what you beat and makes a recap card to share.', last: true },
+  { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'Let’s try a sample workout. Nothing in it is saved.', pick: true },
+  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Load the plates', d: 'Tap kg to open the plate loader, then tap plates to put them on the bar. Or tap Next and we’ll open it for you.', plates: true },
+  { wk: true, el: () => tq('#row-0-0 [data-f="r"]'), t: 'Then reps', d: 'Tap reps and put in how many you did. Then tick the set off with ✓.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
+  { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: 'When you’re done, tap Finish.', go: () => { if (A) { A.view = 'summary'; touchA(); } } },
+  { el: () => tq('#wk [data-a="saveWk"]'), t: 'Save workout', d: 'Check your sets and tap Save workout. This one is practice, so nothing is kept.', go: () => saveWorkout() },
+  { el: () => tq('#recap #rc-done'), t: 'Post to feed', d: 'Tap Post to put your workout in your friends’ feed. You can even add a photo straight from your camera.', last: true },
 ];
+let PRACTICE_W = null; // the sample workout's finish page; kept in memory only, removed when the tour ends
 function tourGo() {
   while (SHEETS.length) closeSheet();
   const p = S && S.profile; if (p) { p.tour1 = true; p.hint1 = true; persist('jd/meta'); }
@@ -1112,14 +1112,15 @@ function tourGo() {
 }
 function tourEnd() {
   const pr = A && A.practice; TOUR = null; tourClear();
+  if (PRACTICE_W) { delete S.workouts[PRACTICE_W]; PRACTICE_W = null; document.getElementById('recap')?.remove(); invalidate(); }
   if (pr) { A = null; REST = null; persist('jd/active'); }
   if (A) A.open = true; else { NAV.tab = 'today'; NAV.stack = []; }
   render();
 }
 function tourClear() { document.getElementById('tour')?.remove(); document.querySelectorAll('.tour-hl').forEach(e => e.classList.remove('tour-hl')); }
-function tourPractice(real) {
-  const nx = nextSplit();
-  if (nx) startWorkout(nx.id, null, !real); else { startWorkout(null, null, !real); while (SHEETS.length) closeSheet(); A.ex.push(newExEntry('Chest Fly')); }
+function tourPractice() { // one plate-loaded lift, so the plate loader step always has plates to show
+  startWorkout(null, null, true); while (SHEETS.length) closeSheet();
+  A.splitName = 'Sample workout'; A.ex = [newExEntry('Incline Press', 2)];
   touchA(); TOUR.i++; tourShow();
 }
 function tourShow() {
@@ -1134,16 +1135,18 @@ function tourShow() {
   el.classList.add('tour-hl');
   const b = document.createElement('div'); b.id = 'tour'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', 'Tour');
   const n = TOUR_STEPS.length, d = typeof st.d === 'function' ? st.d() : st.d;
-  const btns = st.pick && !A ? `<button class="btn sm" data-tr="real">Start for real</button><button class="btn sm primary" data-tr="practice">Practice run</button>`
+  const btns = st.pick && !A ? `<button class="btn sm primary" data-tr="practice">Try a sample workout</button>`
     : `${TOUR.i ? '<button class="btn sm ghost" data-tr="back">Back</button>' : ''}<button class="btn sm primary" data-tr="next">${st.last ? 'Done' : 'Next'}</button>`;
   b.innerHTML = `<div class="tour-n">${TOUR.i + 1} of ${n}</div><b>${esc(st.t)}</b><span>${esc(d)}</span><div class="tour-btns"><button class="link" data-tr="skip">Skip tour</button><i class="grow"></i>${btns}</div>`;
   document.body.appendChild(b);
   b.onclick = ev => {
     const k = ev.target.closest('[data-tr]'); if (!k) return; const a = k.dataset.tr;
     if (a === 'skip') return tourEnd();
-    if (a === 'practice' || a === 'real') return tourPractice(a === 'real');
+    if (a === 'practice') return tourPractice();
     if (a === 'back') { TOUR.i--; TOUR.back = true; return tourShow(); }
     if (st.last) return tourEnd();
+    if (st.plates && A && A.ex[0] && A.ex[0].sets[0].w == null && !SHEETS.length) { // didn't try it: open it for them, move on once it's closed
+      openSetPlates(0, 0); const t = setInterval(() => { if (!TOUR) return clearInterval(t); if (!SHEETS.length) { clearInterval(t); TOUR.i++; tourShow(); } }, 300); return; }
     if (st.go) st.go();
     TOUR.i++; setTimeout(() => { while (SHEETS.length) closeSheet(); tourShow(); }, st.go ? 800 : 0);
   };
@@ -1525,6 +1528,8 @@ async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jo
 const SO = () => S.profile.so || {};
 const autoOn = w => !!SO().autoPost && !(w && (SO().noAutoSp || []).includes(w.splitId)); // Post every workout, minus the splits you left out
 const soOn = () => HOSTED && SB && USER && !DEMO && !!(S.profile.id || {}).on && !SO().off;
+// Posting turns the friend card on by itself; only the Share my training switch can stop it.
+const soReady = () => { if (!soOn() && HOSTED && SB && USER && !DEMO && !SO().off) idTurnOn(); return soOn(); };
 function myStat() {
   const T = today(), ws = ix().ws.filter(w => !w.skipped), m = mondayOf(T), goal = S.profile.weeklyTarget || 3;
   const per = {}; ws.forEach(w => { const k = mondayOf(w.date); per[k] = (per[k] || 0) + 1; }); const rw = new Set(S.profile.restWeeks || []);
@@ -1650,7 +1655,7 @@ function viewFriends() {
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
-    ${soOn() ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
+    ${HOSTED && USER && !DEMO && !SO().off ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
     ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : list.length ? '<div class="empty fr-empty">Nothing from the last 24 hours yet. Finish a workout and it shows up here.</div>' : frSwap()}
   </div>`;
   return `${head}
@@ -1814,7 +1819,7 @@ async function dualShot(cb) {
 function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const d = await postPhoto(i.files && i.files[0]); if (d) cb(d); }; i.click(); }
 const postErr = e => toast(/Too many/.test(e.message) ? 'That’s enough posts for today.' : 'Couldn’t send it. Check your connection.');
 function snapStart() {
-  if (!soOn()) return toast('Turn on Share my training in Friends first.');
+  if (!soReady()) return toast(DEMO ? 'Posting is off in this run.' : 'Turn on Share my training in Friends first.');
   dualShot(d => { const sh = openSheet(`<div class="stack"><h2>Story</h2><img class="po-ph" src="${d}" alt="Your story"><input class="input" id="sn-c" maxlength="60" placeholder="Say something (optional)" autocomplete="off"><button class="btn block primary" id="sn-ok">Post story</button><p class="cap m0">Friends see it for 24 hours.</p></div>`, { label: 'Story', mount: b => {
     const ok = b.querySelector('#sn-ok'); ok.onclick = async () => { ok.disabled = true;
       try { await gymRpc('jobdone_post', { p_kind: 'snap', p_body: { th: theme(), c: b.querySelector('#sn-c').value.trim().slice(0, 60) }, p_photo: d }); closeSheet(sh); toast('Story posted'); FEED = null; rerender(); }
@@ -1841,7 +1846,7 @@ function stampBody(id, o = {}) {
   return body;
 }
 async function stampPost(id, o = {}) {
-  statSync(); if (!soOn()) return false;
+  statSync(); if (!soReady()) return false;
   const body = stampBody(id, o); if (!body) return false;
   try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: o.photo || null }); FEED = null; const el = document.getElementById('rc-feed'); if (el) el.innerHTML = stampDone(!!o.photo); return true; }
   catch (e) { postErr(e); return false; }
@@ -1849,7 +1854,8 @@ async function stampPost(id, o = {}) {
 // New post (Job, 8 Nov): Post on the finish page opens this. The live preview is the real feed card; the caption,
 // photo and "Show every lift" sit in one box underneath. Posting again replaces an earlier post of this workout.
 function openComposer(id, after) {
-  if (!soOn()) return toast('Turn on Share my training in Friends first.');
+  if (id === PRACTICE_W) return toast('This was a sample workout, so nothing is posted.');
+  if (!soReady()) return toast(DEMO ? 'Posting is off in this run.' : 'Turn on Share my training in Friends first.');
   const st = { c: '', ex: true, photo: null }, el = document.createElement('div'); el.id = 'composer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'New post');
   el.innerHTML = `<div class="cp-top"><button class="icon-btn" id="cp-x" aria-label="Close">${I.x}</button><b>New post</b><button class="btn sm primary" id="cp-go">Post</button></div>
     <div class="stack cp-body"><div class="eyebrow">How friends will see it</div><div id="cp-prev" aria-hidden="true"></div>
@@ -3258,11 +3264,11 @@ function summaryHTML() {
   </div>`;
 }
 function saveWorkout() {
-  if (A && A.practice) { toast('That was a practice run, so nothing was saved.'); TOUR = { i: 0 }; return tourEnd(); }
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
   const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: A.endAt || Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
   S.workouts[w.id] = w;
+  if (A.practice) { PRACTICE_W = w.id; A = null; REST = null; invalidate(); NAV.tab = 'today'; NAV.stack = []; render(); return showRecap(w.id); }
   const sp = A.splitId && splitById(A.splitId);
   let metaChanged = false;
   if (sp && A.updSplit) {

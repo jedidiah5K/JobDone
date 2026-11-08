@@ -1216,6 +1216,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 :root:not([data-theme]) tr.upnext .check { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 /* App tour (Job, 4 Nov) */
 #tour { position: fixed; left: 16px; right: 16px; z-index: 96; padding: 14px 14px 10px 16px; border-radius: 14px; background: var(--accent); color: var(--accent-ink, #fff); box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: coachIn .25s var(--ease) both; max-width: 528px; margin: 0 auto; }
+body:has(.sheet-wrap) #tour { visibility: hidden; } /* the plate loader or keypad sits on top while you try it */
 #tour b { display: block; font-size: 16px; line-height: 21px; font-weight: 700; }
 #tour span { display: block; margin-top: 2px; font-size: 14px; line-height: 19px; opacity: .92; }
 #tour .tour-n { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; margin-bottom: 2px; }
