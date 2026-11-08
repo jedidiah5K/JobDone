@@ -492,7 +492,41 @@ function niceTicks(lo, hi, n = 3) {
   const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
   return out;
 }
-function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(ymd(new Date(t))), area = true, w }) {
+// Theme art in the gap between two lines (Job, 8 Nov): Skyline web, Agent scan lines, Summit ridges, Boulder wall with holds.
+// Seeded so it doesn't jump on every redraw. Faded from the top line down.
+function themeArt(W, h, cx, by) {
+  let n = 7; const R = (a, b) => { n = (n * 9301 + 49297) % 233280; return a + n / 233280 * (b - a); };
+  const t = theme(); let f = '';
+  if (t === 'spidey') {
+    const sp = [...Array(11)].map((_, i) => Math.PI + i * Math.PI / 10);
+    sp.forEach(a => { f += `<path d="M${cx},${by} L${(cx + 600 * Math.cos(a)).toFixed(1)},${(by + 600 * Math.sin(a)).toFixed(1)}"/>`; });
+    for (let k = 1; k <= 14; k++) { const r = k * 26; let d = ''; sp.forEach((a, i) => { const x = cx + r * Math.cos(a), y = by + r * Math.sin(a); if (!i) d = `M${x.toFixed(1)},${y.toFixed(1)}`; else { const m = (a + sp[i - 1]) / 2, q = r * .93; d += ` Q${(cx + q * Math.cos(m)).toFixed(1)},${(by + q * Math.sin(m)).toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}`; } }); f += `<path d="${d}"/>`; }
+    return [`<g stroke="#fff" stroke-width=".7" fill="none" opacity=".5">${f}</g>`, 0];
+  }
+  if (t === 'mono') { for (let y = 0; y < h; y += 4) f += `<rect x="0" y="${y}" width="${W}" height="1.6"/>`; return [`<rect width="${W}" height="${h}" fill="#8E1222" opacity=".28"/><g fill="#C42035" opacity=".45">${f}</g>`, 0]; }
+  if (t === 'cliffs') {
+    const ridge = (y0, amp, seed, c) => { let d = `M0,${h} L0,${y0}`; for (let x = 0; x <= W; x += 8) d += ` L${x},${(y0 - amp * Math.abs(Math.sin((x + seed) / 38)) - amp * .35 * Math.sin((x + seed) / 13)).toFixed(1)}`; return `<path d="${d} L${W},${h} Z" fill="${c}"/>`; };
+    return [`<g opacity=".7"><rect width="${W}" height="${h}" fill="#A9C6DA"/>${ridge(h * .45, 22, 0, '#8FA9BC')}${ridge(h * .62, 18, 60, '#7A8F9D')}${ridge(h * .8, 14, 20, '#8A5A40')}</g>`, 0];
+  }
+  // Boulder: an off-white wall with a grid of bolt holes, a few holds scattered unevenly
+  let holes = ''; for (let y = 6; y < h; y += 14) for (let x = 6 + (y / 14 % 2) * 7; x < W; x += 14) holes += `<circle cx="${x}" cy="${y}" r=".9"/>`;
+  const cols = ['#E8A23B', '#4BA3C7', '#D9534F', '#6C3FD6', '#3E9E6A', '#E84F8A'];
+  for (let gy = 22, r = 0; gy < h; gy += 32, r++) for (let gx = 16 + (r % 2) * 24; gx < W; gx += 48) {
+    if (R(0, 1) < .2) continue;
+    const x = gx + R(-20, 20), y = gy + R(-13, 13), c = cols[Math.floor(R(0, cols.length))], z = R(3, 5.5), rot = R(-35, 35).toFixed(0), kind = Math.floor(R(0, 6));
+    // jug, crimp, sloper, pinch, pocket, undercling
+    const shape = [
+      `<path d="M${-z},0 Q${-z},${-z * 1.1} 0,${-z * 1.1} Q${z},${-z * 1.1} ${z},0 Q${z * .4},${-z * .35} 0,${-z * .3} Q${-z * .4},${-z * .35} ${-z},0 Z"/>`,
+      `<path d="M${-z * 1.3},0 L${z * 1.3},${-z * .15} L${z * 1.1},${z * .35} L${-z * 1.2},${z * .4} Z"/>`,
+      `<ellipse rx="${z * 1.15}" ry="${z * .8}"/>`,
+      `<path d="M0,${-z * 1.3} Q${z * .7},0 0,${z * 1.3} Q${-z * .7},0 0,${-z * 1.3} Z"/>`,
+      `<circle r="${z * .85}"/><circle r="${z * .35}" fill="#3A332C" opacity=".55"/>`,
+      `<path d="M${-z},0 Q${-z},${z * 1.1} 0,${z * 1.1} Q${z},${z * 1.1} ${z},0 Q${z * .4},${z * .35} 0,${z * .3} Q${-z * .4},${z * .35} ${-z},0 Z"/>`][kind];
+    f += `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot})" fill="${c}" stroke="${c}" stroke-width="1.5" stroke-linejoin="round">${shape}${kind === 4 ? '' : '<circle r="1.2" fill="#3A332C" stroke="none" opacity=".6"/>'}</g>`;
+  }
+  return [`<rect width="${W}" height="${h}" fill="#E6E0D4"/><g fill="#6B6157" opacity=".55">${holes}</g><g opacity=".65">${f}</g>`, .55];
+}
+function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(ymd(new Date(t))), area = true, w, art }) {
   const W = w || chartW(), id = 'c' + (++chartSeq);
   const all = series.flatMap(s => s.pts);
   if (all.length === 0) return '<div class="empty">Nothing logged in this range yet.</div>';
@@ -521,6 +555,14 @@ function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(y
     if (!s.noEnd) body += `<circle cx="${L.px}" cy="${L.py}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`;
     return { ...s, pts };
   });
+  // art: fill the gap below the last series and above the first one, nothing outside it
+  if (art && mapped.length > 1 && mapped[0].pts.length > 1 && mapped[mapped.length - 1].pts.length > 1) {
+    const top = mapped[mapped.length - 1].pts, bot = mapped[0].pts, pd = a => a.map((p, i) => (i ? 'L' : 'M') + p.px.toFixed(1) + ' ' + p.py.toFixed(1)).join(' ');
+    const mid = bot[Math.floor(bot.length / 2)], [fill, end] = themeArt(W, h, mid.px, mid.py), ty = Math.min(...top.map(p => p.py)), byy = Math.max(...bot.map(p => p.py));
+    defs += `<clipPath id="${id}u"><path d="${pd(top)} L${top[top.length - 1].px} ${h} L${top[0].px} ${h} Z"/></clipPath><clipPath id="${id}o"><path d="${pd(bot)} L${bot[bot.length - 1].px} 0 L${bot[0].px} 0 Z"/></clipPath>
+      <linearGradient id="${id}f" gradientUnits="userSpaceOnUse" x1="0" y1="${ty}" x2="0" y2="${byy}"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="${end}"/></linearGradient><mask id="${id}m"><rect width="${W}" height="${h}" fill="url(#${id}f)"/></mask>`;
+    body = `<g clip-path="url(#${id}u)"><g clip-path="url(#${id}o)"><g mask="url(#${id}m)">${fill}</g></g></g>` + body;
+  }
   CH[id] = { W, h, pt, pb, series: mapped, yfmt, xfmt };
   return `<div class="chart" data-chart="${id}"><svg viewBox="0 0 ${W} ${h}" height="${h}" role="img" aria-label="Chart"><defs>${defs}</defs>${g}${body}<line class="scrub" x1="0" x2="0" y1="${pt}" y2="${h - pb}" stroke="var(--text2)" stroke-width="1" opacity="0"/></svg><div class="tip" hidden></div></div>`;
 }
@@ -1115,8 +1157,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v137';
+const NEWS_ID = '2026-11-v141';
 const NEWS = [
+  ['Your theme on the strength chart', 'Progress → Strength fills the gap between your two lines with your theme: a web, scan lines, ridges or a climbing wall.'],
+  ['Save stays in reach', 'On long lists the Save or Done button stays at the bottom of the screen.'],
   ['Rest time on the big button', 'Leave the workout screen while resting and the big button shows the time left, with a ring that runs down. Tap it to go back.'],
   ['Swipe to delete a set', 'Swipe a set left and it slides over to show Delete. Swipe all the way to delete it in one go.'],
   ['A slimmer rest timer', 'Rest now sits in a thin bar at the bottom with a small hourglass by the time. Tap the time to pause. How the set went shows in the same bar.'],
@@ -2339,7 +2383,7 @@ function cutCard() {
   const ds = c.sNow - 100, dwt = c.wNow - 100;
   return `<div class="card"><div class="card-h"><span class="eyebrow">Weight vs strength ${infoBtn('strength')}</span><span class="cap">since ${esc(fmtDate(c.from))} = 100%</span></div>
     <div class="mb3 kpis"><div class="kpi"><b class="${dwt < 0 ? '' : ''}">${dwt > 0 ? '+' : ''}${dwt.toFixed(1)}%</b><span>body weight</span></div><div class="kpi"><b class="${ds >= -1 ? 'c-pos' : 'c-neg'}">${ds > 0 ? '+' : ''}${ds.toFixed(1)}%</b><span>strength</span></div></div>
-    ${lineChart({ series: [{ pts: c.wt, color: 'var(--text2)', noArea: true }, { pts: c.str, color: 'var(--accent)', width: 2.6, noArea: true }], h: 180, yfmt: v => Math.round(v) + '%' })}
+    ${lineChart({ series: [{ pts: c.wt, color: 'var(--text2)', noArea: true }, { pts: c.str, color: 'var(--accent)', width: 2.6, noArea: true }], h: 180, yfmt: v => Math.round(v) + '%', art: true })}
     <div class="mt2 legend"><span><i style="background:var(--accent)"></i>Strength (median e1RM)</span><span><i style="background:var(--text2)"></i>Body weight</span></div>
     <div class="mt3 cap">${ds >= -1 ? `Since ${esc(fmtDate(c.from))} you've ${dwt <= 0 ? 'lost' : 'gained'} ${Math.abs(dwt).toFixed(0)}% body weight and kept your strength${ds > 1 ? `, even gaining ${ds.toFixed(0)}%` : ''}. The cut is taking fat, not muscle.` : `Strength is down ${Math.abs(ds).toFixed(0)}% while weight is down ${Math.abs(dwt).toFixed(0)}%. Check sleep and recovery, and keep lifting heavy.`}</div></div>`;
 }

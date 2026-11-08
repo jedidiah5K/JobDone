@@ -1805,3 +1805,6 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .sheet-foot { position: sticky; bottom: 0; z-index: 2; margin: 0 calc(-1 * var(--s4)); padding: var(--s3) var(--s4) var(--s2); background: linear-gradient(180deg, transparent, var(--surface-solid, var(--surface)) 30%); }
 
 .cam-hint { position: absolute; top: calc(env(safe-area-inset-top) + 20px); left: 0; right: 0; margin: 0; text-align: center; color: #fff; font: 600 13px/1 var(--font, system-ui); letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,.6); pointer-events: none; }
+
+/* Every sheet: when its last item is the main button, it stays pinned at the bottom while the sheet scrolls (Job, 8 Nov) */
+.sheet-body > .stack > .btn.block.primary:last-child, .sheet-body > .stack > .btn.primary.block:last-child { position: sticky; bottom: 10px; z-index: 2; box-shadow: 0 -14px 18px -4px var(--surface-solid, var(--surface)); }
