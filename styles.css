@@ -1764,7 +1764,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* V5: grey labels on Boulder and Summit-by-day cards reach 4.5:1 */
 :root:not([data-theme]), :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) { --text2: rgba(40,38,50,.84); --muted: rgba(40,38,50,.8); }
 /* V5: Summit's white titles get a soft shadow so they read on a pale sky; the beta footer too */
-:root[data-theme="cliffs"] .top, :root[data-theme="cliffs"] .top .eyebrow, :root[data-theme="cliffs"] .fr-face > b, :root[data-theme="cliffs"] .fr-face > span:last-child, :root[data-theme="cliffs"] #screen > .stack > .back { text-shadow: 0 1px 2px rgba(10,30,50,.55), 0 0 18px rgba(10,30,50,.35); }
+:root[data-theme="cliffs"] .top, :root[data-theme="cliffs"] .top .eyebrow, :root[data-theme="cliffs"] #screen > .stack > .back { text-shadow: 0 1px 2px rgba(10,30,50,.55), 0 0 18px rgba(10,30,50,.35); }
 :root[data-theme="cliffs"] .beta-foot { color: #fff; text-shadow: 0 1px 2px rgba(10,30,50,.7); }
 /* V10: the + on Summit at dusk and night sits on a deep teal, not light cyan (white on #155A73 is 7.4:1) */
 :root[data-theme="cliffs"][data-tod="dusk"], :root[data-theme="cliffs"][data-tod="night"] { --startc: #155A73; }
@@ -1809,13 +1809,21 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Every sheet: when its last item is the main button, it stays pinned at the bottom while the sheet scrolls (Job, 8 Nov) */
 .sheet-body > .stack > .btn.block.primary:last-child, .sheet-body > .stack > .btn.primary.block:last-child { position: sticky; bottom: 10px; z-index: 2; box-shadow: 0 -14px 18px -4px var(--surface-solid, var(--surface)); }
 
-/* Finish page: feed card sits under the hero; camera badge makes the photo prompt easy to spot (Job, 8 Nov) */
-.rc-feed .rc-cam { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); color: var(--accent); }
-.rc-feed .rc-cam svg { width: 20px; height: 20px; }
-.rc-feed .rc-unst { align-self: flex-start; color: var(--muted); }
+/* Finish page: a quiet one-line feed card under the hero; visible, not the main thing (Job, 8 Nov) */
+.rc-feed .rc-cam { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); color: var(--text2); }
+.rc-feed .rc-cam svg { width: 14px; height: 14px; }
+.rc-feed .link { min-height: 32px; }
+.rc-feed .rc-unst { color: var(--muted); }
 
 /* Today's session card: main area opens the recap, ⋯ deletes (Job, 8 Nov) */
 .last-row .lr-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; color: inherit; }
 .last-row .lr-main > svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .last-row .lr-more { flex: none; margin-right: -8px; }
 .rc-body .rc-del { align-self: center; color: var(--muted); margin-top: var(--s2); }
+
+/* Friends row (Job, 8 Nov): grey dot top-right when they haven't done anything today; labels on one line,
+   and on Summit a soft frosted chip instead of a muddy shadow over the mountains */
+.fring { position: relative; }
+.fr-off { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #9AA0A6; box-shadow: 0 0 0 2.5px var(--surface-solid, var(--bg)); }
+.fr-face > span:last-child { white-space: nowrap; }
+:root[data-theme="cliffs"] .fr-face > b, :root[data-theme="cliffs"] .fr-face > span:last-child { padding: 1px 7px; border-radius: 9px; background: color-mix(in srgb, var(--surface-solid, #EAF3FA) 72%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }

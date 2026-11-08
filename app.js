@@ -1611,7 +1611,7 @@ function postHTML(p) {
 // Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
 function frFaces(list) {
   return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
-    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'No workout yet'}</span></button>`; }).join('')}</div>`;
+    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}${st.c ? '' : '<i class="fr-off" aria-hidden="true"></i>'}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
 }
 // Refresh (Job, 6 Nov): the button, or pull down at the top of Friends. Friends, requests and the feed load side by side,
 // and what's on screen stays until the new data arrives (no blank flash).
@@ -1714,18 +1714,22 @@ function restDayLine(T, trained) {
   return S.profile.restDay === T ? `<div class="row between mt2 cap rest-line"><span>Rest day. Friends can see it.</span><button class="link" data-a="restDay">Undo</button></div>`
     : `<div class="row between mt2 cap rest-line"><span>Not training today?</span><button class="link" data-a="restDay">Mark a rest day</button></div>`;
 }
-// Photos for stamps and snaps: cropped to 4:5, 720 × 900 JPEG, under 110 KB, made on the phone.
+// Photos for stamps and snaps: cropped to 4:5, 864 × 1080 JPEG, under 110 KB (server cap 120 KB), made on the phone.
+const PW = 864, PH = 1080, PK = PW / 720;
 // ponytail: photos live in the database row; move to a Storage bucket if posts ever get busy.
 async function postPhoto(file) {
   if (!file || !/^image\//.test(file.type)) { toast('Pick a photo'); return null; }
   const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
   if (!im) { toast('Couldn’t open that photo'); return null; }
-  const W = 720, H = 900, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const W = PW, H = PH, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   cv.getContext('2d').drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
   return jpegFit(cv);
 }
 function jpegFit(cv) {
-  let q = .8, d = cv.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .25) { q -= .1; d = cv.toDataURL('image/jpeg', q); }
+  // best quality that fits: start high, step down gently (Job, 8 Nov: photos looked soft)
+  const fit = c => { let q = .92, d = c.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .3) { q -= .04; d = c.toDataURL('image/jpeg', q); } return d; };
+  let d = fit(cv);
+  if (d.length >= 110000) { const s = document.createElement('canvas'); s.width = 720; s.height = 900; s.getContext('2d').drawImage(cv, 0, 0, 720, 900); d = fit(s); } // very grainy photo: fall back to the old size
   if (d.length >= 110000) { toast('That photo is too big. Try another.'); return null; }
   return d;
 }
@@ -1758,11 +1762,11 @@ async function dualShot(cb) {
   const stop = () => { if (st) st.getTracks().forEach(t => t.stop()); st = null; };
   const close = () => { stop(); ov.remove(); };
   const open = async face => { stop(); st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }); /* the sensor's own 4:3; asking for 4:5 made Safari crop the sensor, so it looked zoomed in */ v.srcObject = st; await v.play(); ov.classList.toggle('front', face === 'user'); };
-  const grab = mirror => { const W = 720, H = 900, c = document.createElement('canvas'), x = c.getContext('2d'), vw = v.videoWidth, vh = v.videoHeight, k = Math.max(W / vw, H / vh); c.width = W; c.height = H;
+  const grab = mirror => { const W = PW, H = PH, c = document.createElement('canvas'), x = c.getContext('2d'), vw = v.videoWidth, vh = v.videoHeight, k = Math.max(W / vw, H / vh); c.width = W; c.height = H;
     if (mirror) { x.translate(W, 0); x.scale(-1, 1); } x.drawImage(v, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k); return c; };
   // big photo full size, the other one small in the top-left corner
-  const compose = (big, small) => { const c = document.createElement('canvas'); c.width = 720; c.height = 900; const x = c.getContext('2d'); x.drawImage(big, 0, 0);
-    if (small) { x.save(); x.beginPath(); x.roundRect(24, 24, 216, 270, 18); x.clip(); x.drawImage(small, 24, 24, 216, 270); x.restore(); x.lineWidth = 4; x.strokeStyle = '#000'; x.beginPath(); x.roundRect(24, 24, 216, 270, 18); x.stroke(); }
+  const compose = (big, small) => { const c = document.createElement('canvas'); c.width = PW; c.height = PH; const x = c.getContext('2d'); x.drawImage(big, 0, 0);
+    if (small) { x.save(); x.beginPath(); x.roundRect(24 * PK, 24 * PK, 216 * PK, 270 * PK, 18 * PK); x.clip(); x.drawImage(small, 24 * PK, 24 * PK, 216 * PK, 270 * PK); x.restore(); x.lineWidth = 4 * PK; x.strokeStyle = '#000'; x.beginPath(); x.roundRect(24 * PK, 24 * PK, 216 * PK, 270 * PK, 18 * PK); x.stroke(); }
     return c; };
   const review = (back, front) => {
     stop(); let swap = false, d = null;
@@ -1834,7 +1838,7 @@ async function stampPost(id, o = {}) {
   catch (e) { postErr(e); return false; }
 }
 // Posted: a photo prompt right under the hero, so nobody has to scroll for it (Job, 8 Nov)
-const stampDone = ph => `<div class="row g3"><span class="rc-cam" aria-hidden="true">${IC.cam}</span><div class="grow"><b>${ph ? 'On your feed with a photo' : 'On your feed'}</b><div class="cap">${ph ? 'Friends see it for 24 hours.' : 'Add a photo so friends see you trained. Up for 24 hours.'}</div></div><button class="btn sm" id="rc-ph">${ph ? 'Change' : 'Add photo'}</button></div><button class="link cap rc-unst" id="rc-unst">Take it down</button>`;
+const stampDone = ph => `<div class="row g2"><span class="rc-cam" aria-hidden="true">${IC.cam}</span><span class="grow cap">${ph ? 'On your feed, with photo' : 'On your feed'}</span><button class="link cap" id="rc-ph">${ph ? 'Change photo' : 'Add photo'}</button><button class="link cap rc-unst" id="rc-unst">Take down</button></div>`;
 const stampAsk = () => `<div class="eyebrow">Share to your feed</div><input class="input" id="rc-cap" maxlength="80" placeholder="Say something (optional)" autocomplete="off">
   <label class="row between rc-opt"><span>${SO().noW ? 'Show every lift' : 'Show every lift and top set'}</span><input type="checkbox" class="cbox" id="rc-ex" checked></label>
   <div class="rc-ph-prev" id="rc-prev" hidden></div>
@@ -3358,7 +3362,7 @@ function showRecap(id, fresh) {
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
     ${finHero(d)}
-    ${fresh && soOn() ? `<div class="card stack g2 rc-feed" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}
+    ${fresh && soOn() ? `<div class="card tight rc-feed" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
