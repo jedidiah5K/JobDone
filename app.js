@@ -3383,7 +3383,7 @@ function showRecap(id, fresh) {
   const sp = wSplit(d.w), col = sp ? sp.color : 'var(--accent)', nx = nextSplit();
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
-    <div class="rc-top"><button class="icon-btn rc-home" id="rc-home" aria-label="Home">${I.today}</button></div>
+    <button class="rc-home" id="rc-home" aria-label="Back to Today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     ${finHero(d)}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
