@@ -1889,3 +1889,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .fin-boulder .fin-tape-l { top: 4px; left: -96px; width: 230px; height: 32px; transform: rotate(-14deg); }
 .fin-boulder .fin-tape-l span { padding-left: 92px; font-size: 12px; }
 .fin-boulder .fin-tag .tape.r { width: 190px; height: 32px; right: -110px; top: -16px; transform: rotate(14deg); }
+/* Boulder tapes like the story card (Job, 8 Nov): short tapes sitting on the note's top corners */
+.fin-boulder .fin-tape-l { top: -16px; left: -20px; width: 140px; height: 32px; transform: rotate(-15deg); }
+.fin-boulder .fin-tape-l span { padding-left: 0; font-size: 14px; }
+.fin-boulder .fin-tag .tape.r { width: 112px; height: 30px; right: -18px; top: -14px; transform: rotate(26deg); }
