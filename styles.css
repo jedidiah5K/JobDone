@@ -1941,3 +1941,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pk-sc svg { width: 14px; height: 14px; }
 .pk-sc.on { background: var(--accent); color: var(--accent-ink, #fff); }
 .pk-sc-l { font-size: 12px; color: var(--muted); }
+
+/* Split section title with a hide arrow (Job, 8 Nov) */
+.pk-sec { display: flex; align-items: center; gap: 6px; width: 100%; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.pk-sec .pk-chev { width: 16px; height: 16px; margin-left: 2px; transition: transform .2s; }
+.pk-sec .pk-chev.shut { transform: rotate(-90deg); }
+.pk-more { display: block; width: 100%; min-height: 44px; margin-top: 6px; border-radius: 12px; background: var(--raised); color: var(--text2); font: inherit; font-size: 14px; font-weight: 600; }

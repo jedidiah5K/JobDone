@@ -4353,7 +4353,7 @@ function presetMuscles(name) {
   return null;
 }
 function pickExercise(onPick, opts = {}) {
-  let q = '', mf = null, ef = null; const pm = opts.split ? presetMuscles(opts.split) : null; let scoped = !!pm; howtoFor('Bench Press'); // loads the body map
+  let q = '', mf = null, ef = null; const pm = opts.split ? presetMuscles(opts.split) : null; let scoped = false; // scoped: the arrow hid everything outside the split howtoFor('Bench Press'); // loads the body map
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
   const score0 = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
@@ -4363,7 +4363,7 @@ function pickExercise(onPick, opts = {}) {
   const score = e => exact0(e) || Math.min(9, fuzzy([e.name, ...(NICK[e.name] || []), e.muscle].join(' '), q)) / 10;
   const list = () => {
     let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || e.equip === ef) && (!scoped || pm.has(e.muscle))).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
-    l.sort((a, b) => b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
+    l.sort((a, b) => (pm ? pm.has(b.e.muscle) - pm.has(a.e.muscle) : 0) || b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
     return l.map(x => x.e);
   };
   const rows = () => {
@@ -4371,9 +4371,13 @@ function pickExercise(onPick, opts = {}) {
     const info = e => `<span class="pk-info" role="button" tabindex="0" data-info="${esc(e.name)}" aria-label="About ${esc(e.name)}">i</span>`;
     const row = (e, extra = '') => pkRow(e, e.muscle + extra, info(e));
     if (!q.trim() && !mf && !ef) {
-      const all2 = all().filter(e => !scoped || pm.has(e.muscle)), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
-      return (rec.length ? `<div class="grp">Recent</div>` + rec.map(e => row(e)).join('') : '')
-        + `<div class="grp">${scoped ? esc(opts.split) + ' exercises' : 'All exercises'} <span>${all2.length}</span></div>` + all2.sort((a, b) => a.name.localeCompare(b.name)).map(e => row(e)).join('');
+      const az = (a, b) => a.name.localeCompare(b.name), all2 = all().filter(e => !scoped || pm.has(e.muscle)), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
+      const head = (rec.length ? `<div class="grp">Recent</div>` + rec.map(e => row(e)).join('') : '');
+      if (!pm) return head + `<div class="grp">All exercises <span>${all2.length}</span></div>` + all2.sort(az).map(e => row(e)).join('');
+      // the split's exercises first, everything else below; the arrow by the title hides everything else (Job, 8 Nov)
+      const mine = all2.filter(e => pm.has(e.muscle)).sort(az), rest = all2.filter(e => !pm.has(e.muscle)).sort(az);
+      return head + `<button class="grp pk-sec" data-only aria-expanded="${!scoped}">${esc(opts.split)} exercises <span>${mine.length}</span><svg class="pk-chev${scoped ? ' shut' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` + mine.map(e => row(e)).join('')
+        + (scoped ? `<button class="pk-more" data-only>Show every other exercise</button>` : `<div class="grp">Everything else <span>${rest.length}</span></div>` + rest.map(e => row(e)).join(''));
     }
     const create = q.trim() && !exact ? `<button class="li pk-row" data-pick-new="1"><span class="pk-av pk-plus">${I.plus}</span><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Your own exercise${mf ? ' · ' + esc(mf) : ''}</div></div></button>` : '';
     const typo = l.length && !l.some(e => exact0(e) > 0); // only typo matches: suggest them first, Create last
@@ -4383,7 +4387,7 @@ function pickExercise(onPick, opts = {}) {
   const sh = openSheet(`<div class="stack pk"><div class="pk-top"><button class="pk-pill" id="pk-x">Cancel</button><b>${esc(opts.title || 'Add exercise')}</b><button class="pk-pill" id="pk-new">Create</button></div>
     <label class="pk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pk-q" placeholder="Search exercises" autocomplete="off"></label>
     <div class="pk-f"><button class="pk-fb" id="pk-fe">All equipment</button><button class="pk-fb" id="pk-fm">All muscles</button></div>
-    ${pm ? `<div class="pk-scope"><button class="pk-sc on" id="pk-sc" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filter</button><span class="pk-sc-l" id="pk-sc-l">${esc(opts.split)} only</span></div>` : ''}
+
     <label class="g2 row cap"><input type="checkbox" id="pk-side" style="accent-color:var(--accent)"> Log left and right sides separately</label>
     <div class="list" id="pk-list">${rows()}</div></div>`, {
     label: 'Exercise picker',
@@ -4409,10 +4413,10 @@ function pickExercise(onPick, opts = {}) {
           fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; closeSheet(fs); redraw(); };
         } });
       };
-      const sc = b.querySelector('#pk-sc'); if (sc) sc.onclick = () => { scoped = !scoped; sc.classList.toggle('on', scoped); sc.setAttribute('aria-pressed', scoped); b.querySelector('#pk-sc-l').textContent = scoped ? opts.split + ' only' : 'All exercises'; redraw(); };
       b.querySelector('#pk-fe').onclick = () => filt('eq');
       b.querySelector('#pk-fm').onclick = () => filt('mus');
       L.onclick = ev => {
+        if (ev.target.closest('[data-only]')) { scoped = !scoped; redraw(); return; }
         const inf = ev.target.closest('[data-info]');
         if (inf) { ev.stopPropagation(); const nm = inf.dataset.info, h = howtoHTML(nm, true); openSheet(`<div class="stack"><h2>${esc(nm)}</h2><div class="cap">${esc(exInfo(nm).muscle)} · ${esc(PK_EQ[exInfo(nm).equip] || exInfo(nm).equip)}</div>${h || '<div class="cap">No how-to for this one yet.</div>'}</div>`, { label: nm }); return; }
         const p = ev.target.closest('[data-pick]'), nw = ev.target.closest('[data-pick-new]');
