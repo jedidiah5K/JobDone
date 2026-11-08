@@ -4346,8 +4346,14 @@ function pkBody(m) {
   return `<svg viewBox="${side === 'f' ? 0 : 724} ${y0} 724 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path class="bm-o" d="${side === 'f' ? BODY.of : BODY.ob}"/>${parts.map(x => ['l', 'r'].map(sd => x[sd].map(d => `<path class="${lit.includes(x.s) ? 'bm-p' : 'bm-n'}" d="${d}"/>`).join('')).join('')).join('')}</svg>`;
 }
 const pkRow = (e, sub, extra = '') => `<button class="li pk-row" data-pick="${esc(e.name)}"><span class="pk-av">${pkBody(e.muscle)}</span><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(sub)}</div></div>${extra}</button>`;
+// Pre-made splits only (Job, 8 Nov): adding to "Anterior" first shows the muscle groups its preset trains, with a toggle
+// for every exercise. Splits you made yourself (any name that isn't a preset's) always show everything.
+function presetMuscles(name) {
+  for (const t of Object.values(TEMPLATES)) for (const [n, ex] of t.s) if (n === name) return new Set(ex.map(x => exInfo(x).muscle));
+  return null;
+}
 function pickExercise(onPick, opts = {}) {
-  let q = '', mf = null, ef = null; howtoFor('Bench Press'); // loads the body map
+  let q = '', mf = null, ef = null; const pm = opts.split ? presetMuscles(opts.split) : null; let scoped = !!pm; howtoFor('Bench Press'); // loads the body map
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
   const score0 = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
@@ -4356,7 +4362,7 @@ function pickExercise(onPick, opts = {}) {
   // typos: below every real match, so "pec" still lists exact hits first
   const score = e => exact0(e) || Math.min(9, fuzzy([e.name, ...(NICK[e.name] || []), e.muscle].join(' '), q)) / 10;
   const list = () => {
-    let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || e.equip === ef)).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
+    let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || e.equip === ef) && (!scoped || pm.has(e.muscle))).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
     l.sort((a, b) => b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
     return l.map(x => x.e);
   };
@@ -4365,9 +4371,9 @@ function pickExercise(onPick, opts = {}) {
     const info = e => `<span class="pk-info" role="button" tabindex="0" data-info="${esc(e.name)}" aria-label="About ${esc(e.name)}">i</span>`;
     const row = (e, extra = '') => pkRow(e, e.muscle + extra, info(e));
     if (!q.trim() && !mf && !ef) {
-      const all2 = all(), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
+      const all2 = all().filter(e => !scoped || pm.has(e.muscle)), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
       return (rec.length ? `<div class="grp">Recent</div>` + rec.map(e => row(e)).join('') : '')
-        + `<div class="grp">All exercises <span>${all2.length}</span></div>` + all2.sort((a, b) => a.name.localeCompare(b.name)).map(e => row(e)).join('');
+        + `<div class="grp">${scoped ? esc(opts.split) + ' exercises' : 'All exercises'} <span>${all2.length}</span></div>` + all2.sort((a, b) => a.name.localeCompare(b.name)).map(e => row(e)).join('');
     }
     const create = q.trim() && !exact ? `<button class="li pk-row" data-pick-new="1"><span class="pk-av pk-plus">${I.plus}</span><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Your own exercise${mf ? ' · ' + esc(mf) : ''}</div></div></button>` : '';
     const typo = l.length && !l.some(e => exact0(e) > 0); // only typo matches: suggest them first, Create last
@@ -4376,6 +4382,7 @@ function pickExercise(onPick, opts = {}) {
   };
   const sh = openSheet(`<div class="stack pk"><div class="pk-top"><button class="pk-pill" id="pk-x">Cancel</button><b>${esc(opts.title || 'Add exercise')}</b><button class="pk-pill" id="pk-new">Create</button></div>
     <label class="pk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pk-q" placeholder="Search exercises" autocomplete="off"></label>
+    ${pm ? `<div class="seg pk-scope"><button class="on" data-sc="1">${esc(opts.split)}</button><button data-sc="0">All exercises</button></div>` : ''}
     <div class="pk-f"><button class="pk-fb" id="pk-fe">All equipment</button><button class="pk-fb" id="pk-fm">All muscles</button></div>
     <label class="g2 row cap"><input type="checkbox" id="pk-side" style="accent-color:var(--accent)"> Log left and right sides separately</label>
     <div class="list" id="pk-list">${rows()}</div></div>`, {
@@ -4391,7 +4398,7 @@ function pickExercise(onPick, opts = {}) {
       const filt = kind => {
         const isEq = kind === 'eq', keys = isEq ? Object.keys(PK_EQ) : [...PK_UPPER, ...PK_LOWER, 'Other'];
         let pick = isEq ? ef : mf;
-        const count = v => all().filter(e => (isEq ? (!v || e.equip === v) && (!mf || e.muscle === mf) : (!v || e.muscle === v) && (!ef || e.equip === ef))).length;
+        const count = v => all().filter(e => (!scoped || pm.has(e.muscle)) && (isEq ? (!v || e.equip === v) && (!mf || e.muscle === mf) : (!v || e.muscle === v) && (!ef || e.equip === ef))).length;
         const tile = k => `<button class="pk-tile${pick === k ? ' on' : ''}" data-k="${esc(k)}"><span class="pk-av">${isEq ? pkEqIcon(k) : k === 'Other' ? '<span class="pk-ini">…</span>' : pkBody(k)}</span><span>${esc(isEq ? PK_EQ[k] : k)}</span></button>`;
         const grid = ks => `<div class="pk-grid">${ks.map(tile).join('')}</div>`;
         const fs = openSheet(`<div class="stack"><h2 class="pk-ft">${isEq ? 'Equipment' : 'Muscle group'}</h2>
@@ -4402,6 +4409,7 @@ function pickExercise(onPick, opts = {}) {
           fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; closeSheet(fs); redraw(); };
         } });
       };
+      b.querySelectorAll('[data-sc]').forEach(x => x.onclick = () => { scoped = x.dataset.sc === '1'; b.querySelectorAll('[data-sc]').forEach(y => y.classList.toggle('on', y === x)); redraw(); });
       b.querySelector('#pk-fe').onclick = () => filt('eq');
       b.querySelector('#pk-fm').onclick = () => filt('mus');
       L.onclick = ev => {
@@ -5091,7 +5099,7 @@ const ACT = {
   spColor: el => { splitById(el.dataset.id).color = el.dataset.c; persist('jd/meta'); rerender(); },
   spMove: el => { const sp = splitById(el.dataset.id), i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= sp.ex.length) return; [sp.ex[i], sp.ex[j]] = [sp.ex[j], sp.ex[i]]; persist('jd/meta'); rerender(); },
   spRemove: el => { const sp = splitById(el.dataset.id); sp.ex.splice(+el.dataset.i, 1); persist('jd/meta'); rerender(); },
-  spAdd: el => { const sp = splitById(el.dataset.id); pickExercise(name => { const l = lastSession(name); sp.ex.push({ name, sets: l ? Math.max(2, l.sets.length) : 3, repMin: 6, repMax: 10, rest: S.profile.defaultRest, note: '' }); persist('jd/meta'); rerender(); }); },
+  spAdd: el => { const sp = splitById(el.dataset.id); pickExercise(name => { const l = lastSession(name); sp.ex.push({ name, sets: l ? Math.max(2, l.sets.length) : 3, repMin: 6, repMax: 10, rest: S.profile.defaultRest, note: '' }); persist('jd/meta'); rerender(); }, { split: sp.name }); },
   spDup: el => { const sp = splitById(el.dataset.id); const id = 'sp-' + uid(); S.splits.push({ ...clone(sp), id, name: sp.name + ' copy', archived: false }); persist('jd/meta'); NAV.stack = [{ v: 'split', id }, { v: 'splitEdit', id }]; render(); toast('Split duplicated'); },
   spShare: el => shareSplit(splitById(el.dataset.id)),
   spDelete: el => { const sp = splitById(el.dataset.id); if (!sp) return; if (A && A.splitId === sp.id) return toast('Finish or discard the workout using this split first.');
@@ -5148,7 +5156,7 @@ const ACT = {
   delAccount: () => openDeleteAccount(),
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
-  wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: smooth() }), 50); }),
+  wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: smooth() }), 50); }, { split: A && A.splitName }),
   // Undo instead of "Are you sure?" (Job, 4 Nov)
   wkDiscard: () => { const was = A; if (A && A.atGym) atGymSet(false); A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
   rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
