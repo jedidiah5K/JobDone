@@ -1859,6 +1859,14 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Boulder finish note (Job, 8 Nov): smooth clean card, handwriting on the tape, number on a yellow hold */
 .fin-boulder .fin-tag { transform: rotate(-1deg); border-radius: 10px; box-shadow: 0 10px 24px -14px rgba(43,33,58,.4); }
 .fin-boulder .fin-tag h1 { color: #6C3FD6; font-weight: 900; letter-spacing: -.02em; text-transform: uppercase; }
-.fin-tape-txt { position: absolute; z-index: 3; top: -9px; left: 18px; transform: rotate(-14deg); transform-origin: left center; font: 15px/1 'JD Marker', 'Marker Felt', 'Comic Sans MS', cursive; color: #2B213A; text-transform: uppercase; letter-spacing: .03em; pointer-events: none; white-space: nowrap; }
 .fin-num { flex: none; width: 64px; height: 56px; display: grid; place-items: center; background: #F4B728; color: #2B213A; font: 900 20px/1 var(--font-display, inherit); clip-path: polygon(30% 2%, 72% 6%, 96% 34%, 92% 72%, 62% 98%, 24% 94%, 3% 64%, 6% 26%); }
 #recap .rc-hero.fin.fin-boulder { height: calc(276px + env(safe-area-inset-top, 0px)); flex-shrink: 0; } /* room for the taped JOB'S DONE above the note */
+
+/* Boulder tape (Job, 8 Nov): runs off the left edge with JOB'S DONE centred on it; two holds on the wall, partly behind the note */
+.fin-boulder .fin-tape-l { position: absolute; z-index: 3; top: -12px; left: -44px; width: 132px; height: 26px; transform: rotate(-12deg); display: grid; place-items: center; pointer-events: none; }
+.fin-boulder .fin-tape-l .tape { position: absolute; inset: 0; width: 100%; height: 100%; top: 0; left: 0; transform: none; }
+.fin-boulder .fin-tape-l span { position: relative; padding-left: 26px; font: 11px/1 'JD Marker', 'Marker Felt', 'Comic Sans MS', cursive; color: #2B213A; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.fin-rock { position: absolute; z-index: 0; height: auto; filter: drop-shadow(0 2px 2px rgba(43,33,58,.25)); }
+.rc-hero.fin > .fin-rock { position: absolute !important; }
+.fin-boulder .fin-tag { overflow: visible; }
+.fin-boulder .fin-tag > .fin-chalk { display: none; }

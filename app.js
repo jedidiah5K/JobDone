@@ -3321,7 +3321,8 @@ function finHero(d) {
   // Boulder (Job, 8 Nov, like the story card): a clean white route card taped to the chalk wall, JOB'S DONE written on the
   // left tape, ROUTE CARD and a capital SENT!, the route number on a yellow hold
   handFont();
-  return `<div class="rc-hero fin fin-boulder"><div class="fin-tag">${tapeSVG('tape l', 1)}<span class="fin-tape-txt">Job’s done</span>${tapeSVG('tape r', 4)}
+  const hold = (c, st) => `<svg class="fin-rock" style="${st}" viewBox="0 0 40 30" aria-hidden="true"><path d="M5 18C3 9 12 3 21 4s15 6 14 13-9 10-17 9S7 25 5 18z" fill="${c}"/><circle cx="20" cy="15" r="2.4" fill="#3A332C" opacity=".55"/></svg>`;
+  return `<div class="rc-hero fin fin-boulder">${hold('#5BA4CF', 'left:42%;top:calc(env(safe-area-inset-top, 0px) + 2px);width:40px;transform:rotate(-18deg)')}${hold('#E58A3A', 'right:-8px;top:52%;width:38px;transform:rotate(24deg)')}<div class="fin-tag"><div class="fin-tape-l">${tapeSVG('tape', 1)}<span>Job’s done</span></div>${tapeSVG('tape r', 4)}
     <div class="fin-row"><div><div class="fin-eb">Route card</div><h1>SENT!</h1></div><div class="fin-num">#${d.num}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
 }
