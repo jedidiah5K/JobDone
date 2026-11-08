@@ -1,8 +1,12 @@
 -- Reports inbox, auto-hide after 2 reports, remove and suspend for the owner (7 Nov 2026). Applied to the live database 7 Nov 2026.
 -- Who moderates: the owner's user id in jobdone_private (k = 'owner_id'), which only the service role can write.
--- It was filled once from the account with profile.owner, after checking that account's email is Job's.
+-- It is filled from the auth account with Job's email (auth emails are verified; profile.owner is not).
 -- (profile.owner itself can't be trusted here: users can write their own jd/meta.)
 -- Safe to run twice. Live functions are edited in place, so earlier edits (no avatars, two-step, blocks) stay.
+
+insert into public.jobdone_private (k, v)
+  select 'owner_id', u.id::text from auth.users u where lower(u.email) = 'jobchua123@gmail.com'
+    and not exists (select 1 from public.jobdone_private where k = 'owner_id');
 
 alter table public.jobdone_posts add column if not exists hidden boolean not null default false;
 alter table public.jobdone_comments add column if not exists hidden boolean not null default false;
