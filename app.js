@@ -1840,7 +1840,7 @@ async function stampPost(id, o = {}) {
 // Finish page feed row (Job, 8 Nov): a "Share with friends" tick and a camera beside it. Ticked = on the feed.
 const stampDone = ph => stampRow(true, ph);
 const stampAsk = () => stampRow(false, false);
-const stampRow = (on, ph) => `<div class="row g2"><label class="row g3 grow rc-share"><input type="checkbox" class="cbox" id="rc-on" ${on ? 'checked' : ''}><span>Share with friends</span></label><button class="icon-btn rc-cam ${ph ? 'has' : ''}" id="rc-ph" aria-label="${ph ? 'Change photo' : 'Add a photo'}" title="${ph ? 'Change photo' : 'Add a photo'}">${IC.cam}</button></div>`;
+const stampRow = (on, ph) => `<div class="row g2"><label class="grow rc-share" for="rc-on">Share with friends</label><input type="checkbox" class="cbox rc-tick" id="rc-on" aria-label="Share with friends" ${on ? 'checked' : ''}><button class="icon-btn rc-cam ${ph ? 'has' : ''}" id="rc-ph" aria-label="${ph ? 'Change photo' : 'Add a photo'}" title="${ph ? 'Change photo' : 'Add a photo'}">${IC.cam}</button></div>`;
 function stampWire(el, id) {
   const box = el.querySelector('#rc-feed'); if (!box) return;
   let busy = false, ph = false;
@@ -3378,8 +3378,8 @@ function showRecap(id, fresh) {
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · ${nextLbl()}: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
-    <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
     <button class="link cap rc-del" id="rc-del">Delete this workout</button>
+    <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
   </div>`;
   document.body.appendChild(el);
   const bc = el.querySelector('.fin-bamc'); if (bc) drawBam(bc.getContext('2d'), 330, 290);

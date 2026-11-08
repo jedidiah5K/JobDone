@@ -1809,9 +1809,13 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Every sheet: when its last item is the main button, it stays pinned at the bottom while the sheet scrolls (Job, 8 Nov) */
 .sheet-body > .stack > .btn.block.primary:last-child, .sheet-body > .stack > .btn.primary.block:last-child { position: sticky; bottom: 10px; z-index: 2; box-shadow: 0 -14px 18px -4px var(--surface-solid, var(--surface)); }
 
-/* Finish page: "Share with friends" tick and a camera button (Job, 8 Nov) */
-.rc-feed .rc-share { min-height: 40px; cursor: pointer; }
-.rc-feed .rc-cam { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--raised); color: var(--text); position: relative; }
+/* Finish page: "Share with friends", then a tick and a camera side by side as matching rounded squares (Job, 8 Nov) */
+.rc-feed .rc-share { min-height: 40px; display: flex; align-items: center; cursor: pointer; }
+.rc-feed .rc-tick, .rc-feed .rc-cam { flex: none; width: 40px; height: 40px; margin: 0; border-radius: 12px; display: grid; place-items: center; position: relative; }
+.rc-feed .rc-tick { -webkit-appearance: none; appearance: none; background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--border); cursor: pointer; transition: background .15s; }
+.rc-feed .rc-tick:checked { background: var(--accent); box-shadow: none; }
+.rc-feed .rc-tick:checked::after { content: ""; width: 7px; height: 14px; margin-top: -3px; border: solid var(--accent-ink, #fff); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.rc-feed .rc-cam { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--border); color: var(--text); }
 .rc-feed .rc-cam svg { width: 20px; height: 20px; }
 .rc-feed .rc-cam.has::after { content: ""; position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--green, #2E8B4E); box-shadow: 0 0 0 2px var(--surface-solid, var(--surface)); }
 
