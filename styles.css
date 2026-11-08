@@ -1932,3 +1932,4 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pk-av svg { height: 94%; }
 .pk-av svg[preserveAspectRatio] { width: 100%; height: 100%; }
 #pf-go, #pf-clear { white-space: nowrap; font-size: 15px; padding-left: 8px; padding-right: 8px; }
+.pk-tile .pk-av > svg[viewBox="0 0 24 24"] { width: 28px; height: 28px; color: #2B2B33; }
