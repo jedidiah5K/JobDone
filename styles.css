@@ -1958,7 +1958,8 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* CSV import sits above the plans (Job, 8 Nov: it was too far down) */
 .ob-imp { padding: 12px 14px; margin-bottom: 4px; }
 .ob-imp > summary { font-weight: 600; }
-#screen .card { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 85%, transparent); } /* 15% see-through so the theme scenery shows (Job, 8 Nov) */
+#screen .card:not(.nextup) { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 85%, transparent); } /* 15% see-through so the theme scenery shows (Job, 8 Nov) */
 .sets th:first-child { position: relative; } .sets th:first-child .set-i { position: absolute; margin-left: 3px; } /* "Set" centres over the number; the i hangs off to the side */
 .sets th:nth-child(2), .sets td.prev { padding-left: 16px; } /* room for the i */
 .sets th:nth-child(2), .sets td.prev { text-align: center; } /* Previous numbers centre under the label (Job, 8 Nov) */
+.idv .btn:not(.primary) { background: rgba(255,255,255,.14); color: #fff; border: 0; box-shadow: none; } .idv .btn[data-v="rm"], .idv .btn[data-v="block"] { color: #FF8A80; } /* readable over the dark blur in every theme */
