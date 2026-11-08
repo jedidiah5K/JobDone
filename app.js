@@ -1096,6 +1096,7 @@ const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.tex
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
+  { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Post to feed', d: 'When you finish a workout, tap Post to put it in your friends’ feed. Add a caption or a photo if you like.' },
   { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'This opens your next split. Try a practice run now (nothing is saved), or start your real workout.', pick: true },
   { wk: true, el: () => tq('#ex-0 .ex-name') || tq('#ex-0'), t: 'Your workout', d: 'Each lift shows last time’s numbers next to every set, plus a target for today.' },
@@ -4832,15 +4833,12 @@ const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'
 const obPlan = () => !OB.days || OB.days <= 2 ? 'fb' : OB.days >= 5 ? 'ppl' : OB.days === 4 ? 'ul' : OB.exp === 'new' ? 'fb' : 'ppl';
 function obTour() {
   const mock = (cls, inner) => `<div class="ob-mock ${cls}">${inner}</div>`;
+  const shot = (f, alt) => `<div class="ob-mock ob-shot"><img src="ob/${f}.webp" alt="${alt}" decoding="async"></div>`;
   const slides = [
-    ['Log a set in two taps', 'Last time’s numbers sit next to every set. Tap kg and load plates onto a bar instead of doing maths.',
-      mock('m-log', `<div class="m-h">Bench Press</div><div class="m-row m-hd"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div><div class="m-row done"><span>1</span><span class="mu">60×8</span><b>62.5</b><b>8</b><i class="m-ck">${I.check}</i></div><div class="m-row"><span>2</span><span class="mu">60×7</span><b>62.5</b><b class="mu">–</b><i class="m-ck off">${I.check}</i></div><div class="m-plates"><i style="background:#D9342B;height:46px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#F2B632;height:32px"></i><span></span><i style="background:#F2B632;height:32px"></i><i style="background:#2F6FD6;height:40px"></i><i style="background:#D9342B;height:46px"></i></div>`)],
-    ['Beat last time, every time', 'A target for each lift, a bar that races your last session, and a message after every set.',
-      mock('m-beat', `<div class="m-toast"><b>Strong set</b><span>Top of your range.</span></div><div class="m-tgt">Target: same weight, one more rep than last time.</div><div class="m-race"><i class="g" style="width:82%"></i><i class="me" style="width:64%"></i></div><div class="m-cap">240 kg to match last time</div>`)],
-    ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.',
-      mock('m-prog', `<svg viewBox="0 0 260 110" class="m-chart"><path d="M6 96 C50 90 70 70 110 66 S170 40 200 30 S240 16 254 10" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><path d="M6 40 C60 46 110 56 160 62 S230 72 254 76" fill="none" stroke="var(--text2)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><circle cx="254" cy="10" r="6" fill="var(--accent)"/></svg><div class="m-leg"><span><i style="background:var(--accent)"></i>Strength</span><span><i style="background:var(--text2)"></i>Body weight</span></div><div class="m-pr"><span>Incline Press</span><b>60×8</b><em>PR</em></div>`)],
-    ['Rest, recap, show it off', 'An hourglass rest timer that tells you when your next set starts, and a recap card to share when you’re done.',
-      mock('m-rest', `<div class="m-hg">${hourglass(.45, false)}</div><div class="m-rt"><b>3:12</b><span>Next set at 3:00 pm</span></div><div class="m-done">Job’s done!</div>`)],
+    ['Log a set in two taps', 'Last time’s numbers sit next to every set. Tap kg and load plates onto a bar instead of doing maths.', shot('log', 'A lift with three sets logged')],
+    ['Beat last time, every time', 'A target for each lift and a message after every set. Rest starts by itself.', shot('rest', 'The rest timer after a set')],
+    ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.', shot('chart', 'Weight vs strength chart')],
+    ['Show it off', 'When you finish you see what you beat, your PRs, and a recap card to share or post.', shot('done', 'The finish page')],
     ['Train with friends', 'Add friends by code and see who trained today. Your workout shows up in their feed when you finish. Photos are optional.',
       mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Sam · at the gym</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">2 weeks in a row together</div>`)],
     ['No signal? Keep lifting', 'Gym basement or flight mode, it still logs. Your sets sync when you’re back online, and your account is backed up every day.',

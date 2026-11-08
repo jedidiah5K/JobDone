@@ -740,6 +740,8 @@ a.xr { text-decoration: none; }
 .ob-dots i { width: 8px; height: 8px; border-radius: 4px; background: var(--muted); transition: width .25s ease, background .25s; }
 .ob-dots i.on { width: 22px; background: var(--accent); }
 .ob-mock { background: var(--surface-solid, var(--surface)); border-radius: 22px; box-shadow: var(--shadow), 0 14px 40px -18px rgba(0,0,0,.35); padding: var(--s4); min-height: 236px; display: flex; flex-direction: column; gap: var(--s3); justify-content: center; color: var(--text); }
+.ob-mock.ob-shot { padding: 0; overflow: hidden; background: #0d0d0f; }
+.ob-shot img { display: block; width: 100%; max-height: 300px; object-fit: contain; }
 .m-h { font-size: 19px; font-weight: 700; }
 .m-row { display: grid; grid-template-columns: 34px 1fr 64px 52px 40px; align-items: center; font-size: 17px; padding: 6px 4px; border-radius: 10px; font-variant-numeric: tabular-nums; }
 .m-row.m-hd { font-size: 12px; color: var(--text2); padding: 0 4px; }
