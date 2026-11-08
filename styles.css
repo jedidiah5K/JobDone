@@ -1300,7 +1300,7 @@ tr.upnext .check { box-shadow: 0 0 0 2px var(--accent); }
 .live-txt { color: #2FBF71; font-weight: 600; }
 
 /* Finish page and monthly report: Share and Done stay at the bottom while you scroll (5 Nov) */
-#recap .rc-body > .grid2:last-child { position: sticky; bottom: 0; z-index: 3; margin: 0 calc(-1 * var(--s4)) calc(-1 * (var(--s6) + env(safe-area-inset-bottom, 0px)));
+#recap .rc-body > .grid2:last-child, #recap .rc-body > .rc-foot:last-child { position: sticky; bottom: 0; z-index: 3; margin: 0 calc(-1 * var(--s4)) calc(-1 * (var(--s6) + env(safe-area-inset-bottom, 0px)));
   padding: var(--s5) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 72%, transparent); }
 .rc-fold { width: 100%; text-align: left; color: inherit; font: inherit; }
 .rc-fold > span { display: flex; flex-direction: column; }
@@ -1810,7 +1810,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .sheet-body > .stack > .btn.block.primary:last-child, .sheet-body > .stack > .btn.primary.block:last-child { position: sticky; bottom: 10px; z-index: 2; box-shadow: 0 -14px 18px -4px var(--surface-solid, var(--surface)); }
 
 /* Finish page: a slim "Post to feed" line with a small tick and camera side by side (Job, 8 Nov: keep it small) */
-.card.rc-feed { padding: 6px 10px 6px 14px; }
+.rc-foot .rc-feed { padding: 6px 2px 0; } /* Post to feed sits under Share and Done in the pinned bar (Job, 8 Nov) */
 .rc-feed .rc-share { min-height: 32px; display: flex; align-items: center; font-size: 14px; color: var(--text2); cursor: pointer; }
 .rc-feed .rc-tick, .rc-feed .rc-cam { flex: none; width: 28px; height: 28px; min-height: 28px; margin: 0; padding: 0; border-radius: 8px; display: grid; place-items: center; position: relative; }
 .rc-feed .rc-tick { -webkit-appearance: none; appearance: none; background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--border); cursor: pointer; transition: background .15s; }

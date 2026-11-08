@@ -3359,7 +3359,6 @@ function showRecap(id, fresh) {
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
     ${finHero(d)}
-    ${fresh && soOn() ? `<div class="card tight rc-feed" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
@@ -3379,7 +3378,8 @@ function showRecap(id, fresh) {
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · ${nextLbl()}: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
     <button class="link cap rc-del" id="rc-del">Delete this workout</button>
-    <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
+    <div class="rc-foot"><div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
+    ${fresh && soOn() ? `<div class="rc-feed" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}</div>
   </div>`;
   document.body.appendChild(el);
   const bc = el.querySelector('.fin-bamc'); if (bc) drawBam(bc.getContext('2d'), 330, 290);
