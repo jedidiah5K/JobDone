@@ -1833,7 +1833,8 @@ async function stampPost(id, o = {}) {
   try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: o.photo || null }); FEED = null; const el = document.getElementById('rc-feed'); if (el) el.innerHTML = stampDone(!!o.photo); return true; }
   catch (e) { postErr(e); return false; }
 }
-const stampDone = ph => `<div class="row between"><span class="eyebrow">On your feed</span><span class="cap">Friends see it for 24 hours</span></div><div class="row g2"><button class="btn sm" id="rc-ph">${ph ? 'Change photo' : 'Add photo'}</button><button class="btn sm ghost" id="rc-unst">Take it down</button></div>`;
+// Posted: a photo prompt right under the hero, so nobody has to scroll for it (Job, 8 Nov)
+const stampDone = ph => `<div class="row g3"><span class="rc-cam" aria-hidden="true">${IC.cam}</span><div class="grow"><b>${ph ? 'On your feed with a photo' : 'On your feed'}</b><div class="cap">${ph ? 'Friends see it for 24 hours.' : 'Add a photo so friends see you trained. Up for 24 hours.'}</div></div><button class="btn sm" id="rc-ph">${ph ? 'Change' : 'Add photo'}</button></div><button class="link cap rc-unst" id="rc-unst">Take it down</button>`;
 const stampAsk = () => `<div class="eyebrow">Share to your feed</div><input class="input" id="rc-cap" maxlength="80" placeholder="Say something (optional)" autocomplete="off">
   <label class="row between rc-opt"><span>${SO().noW ? 'Show every lift' : 'Show every lift and top set'}</span><input type="checkbox" class="cbox" id="rc-ex" checked></label>
   <div class="rc-ph-prev" id="rc-prev" hidden></div>
@@ -1843,7 +1844,7 @@ function stampWire(el, id) {
   let photo = null;
   const wireDone = () => {
     const ph = box.querySelector('#rc-ph'), un = box.querySelector('#rc-unst'); if (!ph) return;
-    ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); ph.textContent = 'Change photo'; toast('Photo added'); FEED = null; } catch (e) { postErr(e); } });
+    ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); box.innerHTML = stampDone(true); wireDone(); toast('Photo added'); FEED = null; } catch (e) { postErr(e); } });
     un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; box.innerHTML = stampAsk(); wireAsk(); toast('Taken down'); FEED = null; } catch (e) { un.disabled = false; toast('Couldn’t take it down. Try again.'); } };
   };
   const wireAsk = () => {
@@ -2228,7 +2229,7 @@ function viewToday() {
   ${past ? '' : (() => { const tw = Object.values(S.workouts).filter(w => w.date === T && !w.skipped).sort(sortW).pop(), lw2 = tw || Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); if (!lw2) return '';
     // Last session as one row (review 2): tap for the recap. Editing it lives on that day (tap its mark in the week).
     const sp = wSplit(lw2), sets = lw2.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
-    return `<button class="card last-row" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button>`; })()}
+    return `<div class="card last-row"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })()}
   ${past ? '' : goalsCard() + reportCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
@@ -3357,6 +3358,7 @@ function showRecap(id, fresh) {
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
     ${finHero(d)}
+    ${fresh && soOn() ? `<div class="card stack g2 rc-feed" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
       <div class="eyebrow">Volume</div>
@@ -3375,14 +3377,16 @@ function showRecap(id, fresh) {
     <div class="card rc-week"><div class="row between"><span class="eyebrow">This week</span><span class="cap">${esc(streakText())}</span></div>
       <div class="rc-dots">${Array.from({ length: tgt }, (_, i) => `<i class="${i < wk ? 'on' : ''}"></i>`).join('')}</div>
       <div class="cap">${wk} of ${plural(S.profile.weeklyTarget || 4, 'workout')}${nx ? ` · ${nextLbl()}: <b class="c-text">${esc(nx.name)}</b>` : ''}</div></div>
-    ${fresh && soOn() ? `<div class="card stack g2" id="rc-feed">${autoOn(d.w) ? '<div class="cap">Posting to your feed…</div>' : stampAsk()}</div>` : ''}
     <div class="grid2"><button class="btn block" id="rc-share">Share</button><button class="btn primary block" id="rc-done">Done</button></div>
+    <button class="link cap rc-del" id="rc-del">Delete this workout</button>
   </div>`;
   document.body.appendChild(el);
   const bc = el.querySelector('.fin-bamc'); if (bc) drawBam(bc.getContext('2d'), 330, 290);
   requestAnimationFrame(() => el.classList.add('in'));
   const close = () => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); if (fresh) setTimeout(maybeInstallGuide, 400); };
   el.querySelector('#rc-done').onclick = close;
+  el.querySelector('#rc-del').onclick = () => confirmSheet({ title: 'Delete this workout?', body: 'It comes off your history, PRs and streak. You can undo right after.', ok: 'Delete workout', danger: true, key: false,
+    onOk: () => { const sid = STAMP[d.w.id]; if (sid) gymRpc('jobdone_post_delete', { p_id: sid }).then(() => { delete STAMP[d.w.id]; FEED = null; }).catch(() => {}); close(); ACT.wkDelete({ dataset: { id: d.w.id } }); } });
   { const f = el.querySelector('[data-fold]'), box = el.querySelector('.rc-folded'); if (f && box) f.onclick = () => { const open = box.hidden; box.hidden = !open; f.setAttribute('aria-expanded', open); f.classList.toggle('open', open); }; }
   el.querySelector('#rc-share').onclick = () => openShareSheet(d);
   stampWire(el, id);
@@ -5011,6 +5015,9 @@ const ACT = {
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
+  // Today's session ⋯ (Job, 8 Nov): delete a test workout straight from the Today screen
+  lastMenu: el => { const id = el.dataset.id, w = S.workouts[id]; if (!w) return;
+    confirmSheet({ title: `Delete ${w.splitName || 'this workout'}?`, body: 'It comes off your history, PRs and streak. You can undo right after.', ok: 'Delete workout', danger: true, key: false, onOk: () => ACT.wkDelete({ dataset: { id } }) }); },
   wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; tomb(monthPath(w.date), w.id); invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },

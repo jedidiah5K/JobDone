@@ -1808,3 +1808,14 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 
 /* Every sheet: when its last item is the main button, it stays pinned at the bottom while the sheet scrolls (Job, 8 Nov) */
 .sheet-body > .stack > .btn.block.primary:last-child, .sheet-body > .stack > .btn.primary.block:last-child { position: sticky; bottom: 10px; z-index: 2; box-shadow: 0 -14px 18px -4px var(--surface-solid, var(--surface)); }
+
+/* Finish page: feed card sits under the hero; camera badge makes the photo prompt easy to spot (Job, 8 Nov) */
+.rc-feed .rc-cam { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); color: var(--accent); }
+.rc-feed .rc-cam svg { width: 20px; height: 20px; }
+.rc-feed .rc-unst { align-self: flex-start; color: var(--muted); }
+
+/* Today's session card: main area opens the recap, ⋯ deletes (Job, 8 Nov) */
+.last-row .lr-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; color: inherit; }
+.last-row .lr-main > svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
+.last-row .lr-more { flex: none; margin-right: -8px; }
+.rc-body .rc-del { align-self: center; color: var(--muted); margin-top: var(--s2); }
