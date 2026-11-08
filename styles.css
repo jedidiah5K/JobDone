@@ -1903,3 +1903,32 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .fin-boulder .fin-tag > .tape.fin-tl { left: -30px; }
 .fin-boulder .fin-tape-r { top: -16px; right: -38px; }
 .fin-boulder .fin-tag .tape .tg { fill: rgba(90,80,70,.26); } .fin-boulder .fin-tag .tape .tp { fill: rgba(110,100,90,.13); } .fin-boulder .fin-tag .tape .tc { stroke: rgba(120,105,85,.38); stroke-width: .9; }
+
+/* Exercise picker (Job, 8 Nov, from his reference): pill Cancel/Create, search with icon, two filter buttons, rows with a
+   round body map, filter sheets with tiles */
+.pk .pk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pk .pk-top b { font-size: 17px; font-weight: 600; }
+.pk-pill { min-height: 38px; padding: 0 16px; border-radius: 19px; background: var(--raised); color: var(--accent); font: inherit; font-weight: 600; font-size: 15px; }
+.pk-search { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 46px; border-radius: 14px; background: var(--raised); color: var(--muted); }
+.pk-search svg { width: 20px; height: 20px; flex: none; }
+.pk-search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 16px; color: var(--text); outline: none; }
+.pk-f { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pk-fb { min-height: 44px; border-radius: 12px; background: var(--raised); color: var(--text); font: inherit; font-weight: 600; font-size: 15px; }
+.pk-fb.on { background: var(--accent); color: var(--accent-ink, #fff); }
+.pk-row { gap: 14px; align-items: center; text-align: left; width: 100%; }
+.pk-av { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #F4F4F6; display: grid; place-items: center; overflow: hidden; color: #2B2B33; }
+.pk-av svg { height: 88%; width: auto; }
+.pk-av .bm-o { fill: #DADAE0; } .pk-av .bm-n { fill: #C9C9D1; } .pk-av .bm-p { fill: var(--accent); }
+.pk-plus svg, .pk-tile .pk-av > svg[viewBox="0 0 24 24"] { width: 24px; height: 24px; }
+.pk-ini { font-size: 18px; font-weight: 700; color: #8A8A94; }
+.pk-info { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); color: var(--text2); font: italic 700 13px/1 Georgia, serif; }
+.pk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pk-tile { display: flex; align-items: center; gap: 12px; padding: 10px 12px; min-height: 64px; border-radius: 14px; background: var(--raised); color: var(--text); font: inherit; font-size: 15px; font-weight: 500; text-align: left; box-shadow: inset 0 0 0 2px transparent; }
+.pk-tile.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.pk-tile .pk-av { width: 44px; height: 44px; }
+.pk-ft { text-align: center; font-size: 17px; }
+.sheet:has(.pk) { height: 92vh; height: 92dvh; } /* the picker gets nearly the whole screen, like the reference */
+.pk-av .bm-p { fill: var(--startc, var(--accent)); } .pk-av .bm-n { fill: #B4B4BE; } .pk-av .bm-o { fill: #CFCFD6; }
+.pk-av svg { height: 94%; }
+.pk-av svg[preserveAspectRatio] { width: 100%; height: 100%; }
+#pf-go, #pf-clear { white-space: nowrap; font-size: 15px; padding-left: 8px; padding-right: 8px; }

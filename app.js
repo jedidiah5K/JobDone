@@ -51,7 +51,7 @@ Cable Crunch|Abs|cable;Oblique Crunch|Abs|cable;Hanging Leg Raise|Abs|bodyweight
 Leg Press|Quads|machine;Leg Extension|Quads|machine;Back Squat|Quads|barbell;Front Squat|Quads|barbell;Hack Squat|Quads|machine;Smith Squat|Quads|smith;Goblet Squat|Quads|dumbbell;Bulgarian Split Squat|Quads|dumbbell;Walking Lunge|Quads|dumbbell;Pendulum Squat|Quads|machine;Step-Up|Quads|dumbbell;Sissy Squat|Quads|bodyweight;
 Stiff-Leg Deadlift|Hamstrings|barbell;Romanian Deadlift|Hamstrings|barbell;Dumbbell RDL|Hamstrings|dumbbell;Leg Curl|Hamstrings|machine;Seated Leg Curl|Hamstrings|machine;Lying Leg Curl|Hamstrings|machine;Nordic Curl|Hamstrings|bodyweight;Good Morning|Hamstrings|barbell;
 Hip Thrust|Glutes|barbell;Glute Bridge|Glutes|barbell;Cable Kickback|Glutes|cable;Abductor|Glutes|machine;Glute Drive|Glutes|machine;Adductor|Adductors|machine;Copenhagen Plank|Adductors|bodyweight;
-Calf Raise|Calves|machine;Seated Calf Raise|Calves|machine;Standing Calf Raise|Calves|machine;Leg Press Calf Raise|Calves|machine;Donkey Calf Raise|Calves|machine`;
+Calf Raise|Calves|machine;Seated Calf Raise|Calves|machine;Standing Calf Raise|Calves|machine;Leg Press Calf Raise|Calves|machine;Donkey Calf Raise|Calves|machine;Diamond Push-Up|Triceps|bodyweight;Decline Push-Up|Chest|bodyweight;Incline Push-Up|Chest|bodyweight;Archer Push-Up|Chest|bodyweight;Pike Push-Up|Shoulders|bodyweight;Handstand Push-Up|Shoulders|bodyweight;Handstand Hold|Shoulders|bodyweight;Planche Lean|Shoulders|bodyweight;Muscle-Up|Back|bodyweight;Inverted Row|Back|bodyweight;Scapula Pull-Up|Back|bodyweight;Front Lever|Back|bodyweight;Bench Dip|Triceps|bodyweight;L-Sit|Abs|bodyweight;Hollow Hold|Abs|bodyweight;Dragon Flag|Abs|bodyweight;Toes to Bar|Abs|bodyweight;Hanging Knee Raise|Abs|bodyweight;Mountain Climber|Abs|bodyweight;Bodyweight Squat|Quads|bodyweight;Pistol Squat|Quads|bodyweight;Jump Squat|Quads|bodyweight;Bodyweight Lunge|Quads|bodyweight;Wall Sit|Quads|bodyweight;Single-Leg Glute Bridge|Glutes|bodyweight;Single-Leg Calf Raise|Calves|bodyweight;Burpee|Other|bodyweight`;
 const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [name, muscle, equip] = s.split('|'); return { name, muscle, equip }; });
 // Equipment each built-in lift can really be done with (b barbell, d dumbbell, m machine, c cable, s smith, w bodyweight, n band, k kettlebell).
 // Built-in lifts keep their muscle group; only custom exercises can be re-grouped (Job, 16 Oct).
@@ -1167,8 +1167,11 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v141';
+const NEWS_ID = '2026-11-v147';
 const NEWS = [
+  ['A new exercise picker', 'Search, then filter by equipment or muscle. Each exercise shows the muscle it works, and the i explains how to do it.'],
+  ['More calisthenics', 'Pistol squats, muscle-ups, L-sits, handstand push-ups, dragon flags and more.'],
+  ['Set types', 'Tap a set number to make it a warm-up, a set to failure or a drop set. The i next to Set explains each one.'],
   ['Your theme on the strength chart', 'Progress → Strength fills the gap between your two lines with your theme: a web, scan lines, ridges or a climbing wall.'],
   ['Save stays in reach', 'On long lists the Save or Done button stays at the bottom of the screen.'],
   ['Rest time on the big button', 'Leave the workout screen while resting and the big button shows the time left, with a ring that runs down. Tap it to go back.'],
@@ -4328,8 +4331,22 @@ function mailFix(em) {
 // fuzzy:end
 const NICK = { 'Chest Fly': ['pec dec', 'pec deck', 'butterfly', 'machine fly'], 'Pec Deck': ['pec dec', 'butterfly'], 'Incline Press': ['incline machine', 'smith incline'], 'Lat Pulldown': ['pulldown', 'lats'], 'Wide-Grip Row': ['seated row', 'cable row'], 'Close-Grip Row': ['seated row', 'v-bar row', 'cable row'], 'Shoulder Press': ['ohp', 'military press'], 'Overhead Press': ['ohp', 'military press'], 'Lateral Raise': ['side raise', 'laterals', 'side delts'], 'Rear Delt Fly': ['reverse fly', 'rear delts'], 'Tricep Pushdown': ['pushdown', 'cable pushdown'], 'Overhead Tricep Extension': ['overhead tricep', 'french press'], 'Skull Crusher': ['lying tricep extension'], 'Leg Curl': ['hamstring curl', 'ham curl'], 'Leg Extension': ['quad extension'], 'Stiff-Leg Deadlift': ['sldl', 'stiff leg'], 'Romanian Deadlift': ['rdl'], 'Dumbbell RDL': ['rdl', 'db rdl'], 'Adductor': ['inner thigh', 'hip adduction'], 'Abductor': ['outer thigh', 'hip abduction'], 'Calf Raise': ['calves'], 'Bench Press': ['bench', 'flat bench'], 'Dumbbell Bench Press': ['db bench'], 'Pull-Up': ['pullup', 'pull up'], 'Chin-Up': ['chinup', 'chin up'], 'Back Squat': ['squat'], 'Hip Thrust': ['glute thrust'], "Farmer's Carry": ['farmers walk'] };
 const PICK_HIDE = new Set(['Single-Arm Pulldown', 'Single-Arm Tricep', 'Tricep Bar']);
+// Exercise picker (Job, 8 Nov, from a reference he liked): Cancel / Add exercise / Create, search, Equipment and Muscle
+// buttons that open a grid of tiles, and rows with a small body map of the main muscle (no exercise pictures).
+const PK_UPPER = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs'], PK_LOWER = ['Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves'];
+const PK_MUS = { Chest: ['f', 'chest'], Shoulders: ['f', 'deltoids'], Biceps: ['f', 'biceps'], Forearms: ['f', 'forearm'], Abs: ['f', 'abs', 'obliques'], Quads: ['f', 'quadriceps'], Adductors: ['f', 'adductors'], Back: ['b', 'upper-back', 'trapezius', 'lower-back'], Triceps: ['b', 'triceps'], Hamstrings: ['b', 'hamstring'], Glutes: ['b', 'gluteal'], Calves: ['b', 'calves'] };
+const PK_EQ = { barbell: 'Barbell', dumbbell: 'Dumbbell', machine: 'Machine', cable: 'Cable', smith: 'Smith machine', bodyweight: 'Bodyweight' };
+const PK_EQI = { barbell: '<path d="M2 12h20M5 8v8M8 6v12M16 6v12M19 8v8"/>', dumbbell: '<path d="M7 12h10M4 9v6M7 7v10M17 7v10M20 9v6"/>', machine: '<path d="M6 3v18M6 5h12v5H6M9 14h6v3H9z"/><path d="M18 10v11"/>', cable: '<path d="M6 3h12M12 3v9"/><circle cx="12" cy="15" r="3"/><path d="M8 21h8"/>', smith: '<path d="M5 3v18M19 3v18M3 10h18M8 8v4M16 8v4"/>', bodyweight: '<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M7 10h10M9 21l3-7 3 7"/>' };
+const pkEqIcon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${PK_EQI[k] || '<circle cx="12" cy="12" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="18" cy="12" r="1"/>'}</svg>`;
+function pkBody(m) {
+  const g = PK_MUS[m]; if (!BODY || !g) return `<span class="pk-ini">${esc((m || '?')[0])}</span>`;
+  const side = g[0], parts = side === 'f' ? BODY.f : BODY.b, lit = g.slice(1);
+  const y0 = PK_LOWER.includes(m) ? (m === 'Calves' ? 820 : 560) : 150; // zoom to the half that has the muscle
+  return `<svg viewBox="${side === 'f' ? 0 : 724} ${y0} 724 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path class="bm-o" d="${side === 'f' ? BODY.of : BODY.ob}"/>${parts.map(x => ['l', 'r'].map(sd => x[sd].map(d => `<path class="${lit.includes(x.s) ? 'bm-p' : 'bm-n'}" d="${d}"/>`).join('')).join('')).join('')}</svg>`;
+}
+const pkRow = (e, sub, extra = '') => `<button class="li pk-row" data-pick="${esc(e.name)}"><span class="pk-av">${pkBody(e.muscle)}</span><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(sub)}</div></div>${extra}</button>`;
 function pickExercise(onPick, opts = {}) {
-  let q = '', mf = null;
+  let q = '', mf = null, ef = null; howtoFor('Bench Press'); // loads the body map
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
   const score0 = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
@@ -4338,40 +4355,61 @@ function pickExercise(onPick, opts = {}) {
   // typos: below every real match, so "pec" still lists exact hits first
   const score = e => exact0(e) || Math.min(9, fuzzy([e.name, ...(NICK[e.name] || []), e.muscle].join(' '), q)) / 10;
   const list = () => {
-    let l = all().filter(e => !mf || e.muscle === mf).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
+    let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || e.equip === ef)).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
     l.sort((a, b) => b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
     return l.map(x => x.e);
   };
   const rows = () => {
     const l = list(); const exact = l.some(e => e.name.toLowerCase() === q.trim().toLowerCase());
-    if (!q.trim() && !mf) {
+    const info = e => `<span class="pk-info" role="button" tabindex="0" data-info="${esc(e.name)}" aria-label="About ${esc(e.name)}">i</span>`;
+    const row = (e, extra = '') => pkRow(e, e.muscle + extra, info(e));
+    if (!q.trim() && !mf && !ef) {
       const all2 = all(), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
-      const row = e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}</div></div></button>`;
-      return `<button class="li" data-pick-new="1"><div class="grow"><div class="t">New exercise</div><div class="s">Name it and pick its muscle group</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>`
-        + (rec.length ? `<div class="grp">Recent</div>` + rec.map(row).join('') : '')
-        + MUSCLES.map(m => { const g = all2.filter(e => e.muscle === m).sort((a, b) => a.name.localeCompare(b.name)); return g.length ? `<div class="grp">${esc(m)} <span>${g.length}</span></div>` + g.map(row).join('') : ''; }).join('');
+      return (rec.length ? `<div class="grp">Recent</div>` + rec.map(e => row(e)).join('') : '')
+        + `<div class="grp">All exercises <span>${all2.length}</span></div>` + all2.sort((a, b) => a.name.localeCompare(b.name)).map(e => row(e)).join('');
     }
-    const create = q.trim() && !exact ? `<button class="li" data-pick-new="1"><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Custom exercise${mf ? ' · ' + esc(mf) : ''}</div></div>${I.plus.replace('<svg', '<svg width="18" height="18"')}</button>` : '';
+    const create = q.trim() && !exact ? `<button class="li pk-row" data-pick-new="1"><span class="pk-av pk-plus">${I.plus}</span><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Your own exercise${mf ? ' · ' + esc(mf) : ''}</div></div></button>` : '';
     const typo = l.length && !l.some(e => exact0(e) > 0); // only typo matches: suggest them first, Create last
-    return (typo ? '<div class="grp">Did you mean</div>' : create) +
-      l.slice(0, typo ? 5 : 80).map(e => `<button class="li" data-pick="${esc(e.name)}"><div class="grow"><div class="t">${esc(e.name)}</div><div class="s">${esc(e.muscle)} · ${esc(e.equip)}${recent.includes(e.name) ? ' · used before' : ''}${!opts.title && lastSided(e.name) ? ' · left and right' : ''}</div></div></button>`).join('') + (typo ? create : '');
+    return (typo ? '<div class="grp">Did you mean</div>' : create) + (l.length ? '' : '<div class="empty">No exercises match. Try another filter.</div>') +
+      l.slice(0, typo ? 5 : 120).map(e => row(e, ' · ' + (PK_EQ[e.equip] || e.equip) + (recent.includes(e.name) ? ' · used before' : '') + (!opts.title && lastSided(e.name) ? ' · left and right' : ''))).join('') + (typo ? create : '');
   };
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">${esc(opts.title || 'Add exercise')}</div><input class="input" id="pk-q" placeholder="Search exercises" autocomplete="off">
-    <div class="chips" id="pk-m">${MUSCLES.map(m => `<button class="chip" data-m="${m}">${m}</button>`).join('')}</div>
+  const sh = openSheet(`<div class="stack pk"><div class="pk-top"><button class="pk-pill" id="pk-x">Cancel</button><b>${esc(opts.title || 'Add exercise')}</b><button class="pk-pill" id="pk-new">Create</button></div>
+    <label class="pk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pk-q" placeholder="Search exercises" autocomplete="off"></label>
+    <div class="pk-f"><button class="pk-fb" id="pk-fe">All equipment</button><button class="pk-fb" id="pk-fm">All muscles</button></div>
     <label class="g2 row cap"><input type="checkbox" id="pk-side" style="accent-color:var(--accent)"> Log left and right sides separately</label>
     <div class="list" id="pk-list">${rows()}</div></div>`, {
     label: 'Exercise picker',
     mount: b => {
-      const L = b.querySelector('#pk-list');
-      b.querySelector('#pk-q').oninput = ev => { q = ev.target.value; L.innerHTML = rows(); };
-      b.querySelector('#pk-m').onclick = ev => { const c = ev.target.closest('[data-m]'); if (!c) return; mf = mf === c.dataset.m ? null : c.dataset.m; b.querySelectorAll('#pk-m .chip').forEach(x => x.classList.toggle('on', x.dataset.m === mf)); L.innerHTML = rows(); };
+      const L = b.querySelector('#pk-list'), redraw = () => { L.innerHTML = rows(); b.querySelector('#pk-fe').textContent = ef ? PK_EQ[ef] : 'All equipment'; b.querySelector('#pk-fm').textContent = mf || 'All muscles'; b.querySelector('#pk-fe').classList.toggle('on', !!ef); b.querySelector('#pk-fm').classList.toggle('on', !!mf); };
+      if (!BODY) { const t = setInterval(() => { if (BODY) { clearInterval(t); redraw(); } }, 300); setTimeout(() => clearInterval(t), 10000); } // ponytail: poll until the body map loads, it arrives once per session
+      const created = n => { const sides = b.querySelector('#pk-side').checked; closeSheet(sh); if (sides) { onPick(n + ' (L)'); onPick(n + ' (R)'); } else onPick(n); };
+      b.querySelector('#pk-q').oninput = ev => { q = ev.target.value; redraw(); };
+      b.querySelector('#pk-x').onclick = () => closeSheet(sh);
+      b.querySelector('#pk-new').onclick = () => openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: created });
+      // Equipment / Muscle: a grid of tiles in its own sheet, Clear filters and Show N results at the bottom
+      const filt = kind => {
+        const isEq = kind === 'eq', keys = isEq ? Object.keys(PK_EQ) : [...PK_UPPER, ...PK_LOWER, 'Other'];
+        let pick = isEq ? ef : mf;
+        const count = v => all().filter(e => (isEq ? (!v || e.equip === v) && (!mf || e.muscle === mf) : (!v || e.muscle === v) && (!ef || e.equip === ef))).length;
+        const tile = k => `<button class="pk-tile${pick === k ? ' on' : ''}" data-k="${esc(k)}"><span class="pk-av">${isEq ? pkEqIcon(k) : k === 'Other' ? '<span class="pk-ini">…</span>' : pkBody(k)}</span><span>${esc(isEq ? PK_EQ[k] : k)}</span></button>`;
+        const grid = ks => `<div class="pk-grid">${ks.map(tile).join('')}</div>`;
+        const fs = openSheet(`<div class="stack"><h2 class="pk-ft">${isEq ? 'Equipment' : 'Muscle group'}</h2>
+          ${isEq ? grid(keys) : `<div class="grp">Upper body</div>${grid(PK_UPPER)}<div class="grp">Lower body</div>${grid(PK_LOWER)}<div class="grp">Other</div>${grid(['Other'])}`}
+          <div class="sheet-foot grid2"><button class="btn block" id="pf-clear">Clear filters</button><button class="btn primary block" id="pf-go">Show ${count(pick)} results</button></div></div>`, { label: isEq ? 'Equipment' : 'Muscle group', mount: fb => {
+          fb.querySelectorAll('.pk-tile').forEach(t => t.onclick = () => { pick = pick === t.dataset.k ? null : t.dataset.k; fb.querySelectorAll('.pk-tile').forEach(x => x.classList.toggle('on', x.dataset.k === pick)); fb.querySelector('#pf-go').textContent = `Show ${count(pick)} results`; });
+          fb.querySelector('#pf-clear').onclick = () => { ef = null; mf = null; closeSheet(fs); redraw(); };
+          fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; closeSheet(fs); redraw(); };
+        } });
+      };
+      b.querySelector('#pk-fe').onclick = () => filt('eq');
+      b.querySelector('#pk-fm').onclick = () => filt('mus');
       L.onclick = ev => {
+        const inf = ev.target.closest('[data-info]');
+        if (inf) { ev.stopPropagation(); const nm = inf.dataset.info, h = howtoHTML(nm, true); openSheet(`<div class="stack"><h2>${esc(nm)}</h2><div class="cap">${esc(exInfo(nm).muscle)} · ${esc(PK_EQ[exInfo(nm).equip] || exInfo(nm).equip)}</div>${h || '<div class="cap">No how-to for this one yet.</div>'}</div>`, { label: nm }); return; }
         const p = ev.target.closest('[data-pick]'), nw = ev.target.closest('[data-pick-new]');
-        let name = null;
-        if (p) name = p.dataset.pick;
-        if (nw) { const sides = b.querySelector('#pk-side').checked; openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: n => { closeSheet(sh); if (sides) { onPick(n + ' (L)'); onPick(n + ' (R)'); } else onPick(n); } }); return; }
-        if (!name) return;
-        const sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
+        if (nw) { openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: created }); return; }
+        if (!p) return;
+        const name = p.dataset.pick, sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
         closeSheet(sh);
         if (sides) { onPick(name + ' (L)'); onPick(name + ' (R)'); } else onPick(name);
       };
