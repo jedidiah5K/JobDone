@@ -1840,7 +1840,7 @@ async function stampPost(id, o = {}) {
 // Finish page feed row (Job, 8 Nov): a "Share with friends" tick and a camera beside it. Ticked = on the feed.
 const stampDone = ph => stampRow(true, ph);
 const stampAsk = () => stampRow(false, false);
-const stampRow = (on, ph) => `<div class="row g2"><label class="grow rc-share" for="rc-on">Share with friends</label><input type="checkbox" class="cbox rc-tick" id="rc-on" aria-label="Share with friends" ${on ? 'checked' : ''}><button class="icon-btn rc-cam ${ph ? 'has' : ''}" id="rc-ph" aria-label="${ph ? 'Change photo' : 'Add a photo'}" title="${ph ? 'Change photo' : 'Add a photo'}">${IC.cam}</button></div>`;
+const stampRow = (on, ph) => `<div class="row g2"><label class="grow rc-share" for="rc-on">Post to feed</label><input type="checkbox" class="cbox rc-tick" id="rc-on" aria-label="Post to feed" ${on ? 'checked' : ''}><button class="icon-btn rc-cam ${ph ? 'has' : ''}" id="rc-ph" aria-label="${ph ? 'Change photo' : 'Add a photo'}" title="${ph ? 'Change photo' : 'Add a photo'}">${IC.cam}</button></div>`;
 function stampWire(el, id) {
   const box = el.querySelector('#rc-feed'); if (!box) return;
   let busy = false, ph = false;
@@ -1848,7 +1848,7 @@ function stampWire(el, id) {
   const wire = () => {
     const on = box.querySelector('#rc-on'), cam = box.querySelector('#rc-ph'); if (!on) return;
     on.onchange = async () => { if (busy) { on.checked = !on.checked; return; } busy = true; on.disabled = true;
-      if (on.checked) { const ok = await stampPost(id, { ex: true, photo: null }); if (ok) toast('Shared with friends'); else on.checked = false; }
+      if (on.checked) { const ok = await stampPost(id, { ex: true, photo: null }); if (ok) toast('Posted to your feed'); else on.checked = false; }
       else { try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; ph = false; FEED = null; toast('Taken down'); } catch (e) { on.checked = true; toast('Couldn’t take it down. Try again.'); } }
       busy = false; draw(); };
     cam.onclick = () => pickPhoto(async d => { if (busy) return; busy = true;
