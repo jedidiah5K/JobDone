@@ -1912,9 +1912,10 @@ function idLiftsSheet() {
     <div class="list">${own.map(x => row(x[0], `${dw(+x[1])} ${U()} × ${+x[2] || 1} · typed in`)).join('')}${all.slice(0, 40).map(n => row(n, `${dw(best[n].maxW)} ${U()} × ${best[n].rep[best[n].maxW] || 1} ✓`)).join('')}</div>
     <div class="card stack"><div class="eyebrow">Add one that isn’t logged</div><input class="input" id="idl-n" placeholder="Lift, e.g. Chest Fly" maxlength="40" autocomplete="off">
       <div class="row g2"><input class="input grow" id="idl-w" inputmode="decimal" placeholder="${U()}"><input class="input grow" id="idl-r" inputmode="numeric" placeholder="reps"><button class="btn" id="idl-add">Add</button></div></div>
-    <button class="btn block primary" id="idl-ok">Save</button></div>`, { label: 'Top lifts', mount: b => {
-    b.onchange = ev => { if (ev.target.classList.contains('cbox') && b.querySelectorAll('.cbox:checked').length > 3) { ev.target.checked = false; toast('Up to 3 lifts'); } };
-    const save = extra => { const picks = [...b.querySelectorAll('.cbox:checked')].map(x => x.value); S.profile.id = { ...(S.profile.id || {}), prs: picks, own: extra || own }; persist('jd/meta'); };
+    <div class="sheet-foot"><button class="btn block primary" id="idl-ok">Done · ${cur.size} of 3</button></div></div>`, { label: 'Top lifts', mount: b => {
+    // Each tick saves straight away, and Done stays pinned to the bottom (Job, 8 Nov: nobody scrolls down to Save)
+    const save = extra => { const picks = [...b.querySelectorAll('.cbox:checked')].map(x => x.value); S.profile.id = { ...(S.profile.id || {}), prs: picks, own: extra || own }; persist('jd/meta'); b.querySelector('#idl-ok').textContent = `Done · ${picks.length} of 3`; };
+    b.onchange = ev => { if (!ev.target.classList.contains('cbox')) return; if (b.querySelectorAll('.cbox:checked').length > 3) { ev.target.checked = false; toast('Up to 3 lifts'); return; } save(); idSync(); };
     b.querySelector('#idl-add').onclick = () => {
       let n = b.querySelector('#idl-n').value.trim().replace(/\s+/g, ' '); const w = parseFloat(b.querySelector('#idl-w').value), r = parseInt(b.querySelector('#idl-r').value, 10);
       if (!n || !(w > 0) || !(r > 0)) return toast('Add the lift, the weight and the reps');
@@ -1923,7 +1924,7 @@ function idLiftsSheet() {
       const picks = [...b.querySelectorAll('.cbox:checked')].map(x => x.value).filter(x => x !== n); if (picks.length < 3) picks.push(n);
       S.profile.id = { ...(S.profile.id || {}), prs: picks.slice(0, 3), own: next }; persist('jd/meta'); closeSheet(sh); rerender(); idSync(); idLiftsSheet();
     };
-    b.querySelector('#idl-ok').onclick = () => { save(); closeSheet(sh); rerender(); idSync(); };
+    b.querySelector('#idl-ok').onclick = () => { closeSheet(sh); rerender(); };
   } });
 }
 async function friendAdd() {
