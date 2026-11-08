@@ -3318,8 +3318,11 @@ function finHero(d) {
   }
   if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}">${finSeal('cliffs')}<div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
     <div class="fin-eb">Trail log · Route #${d.num}</div><h1>Job’s done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
-  return `<div class="rc-hero fin fin-boulder">${wallSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
-    <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold fin-press">${check}</div></div>
+  // Boulder (Job, 8 Nov, like the story card): a clean white route card taped to the chalk wall, JOB'S DONE written on the
+  // left tape, ROUTE CARD and a capital SENT!, the route number on a yellow hold
+  handFont();
+  return `<div class="rc-hero fin fin-boulder"><div class="fin-tag">${tapeSVG('tape l', 1)}<span class="fin-tape-txt">Job’s done</span>${tapeSVG('tape r', 4)}
+    <div class="fin-row"><div><div class="fin-eb">Route card</div><h1>SENT!</h1></div><div class="fin-num">#${d.num}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
 }
 function monthHero(ym, d) {

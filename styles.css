@@ -1855,4 +1855,10 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #composer .cp-ex { margin-left: auto; }
 
 /* Boulder finish: the climbing wall instead of the split colour (Job, 8 Nov: no orange) */
-:root:not([data-theme]) .fin-boulder, :root[data-theme="climb"] .fin-boulder, .fin-boulder { background: #E6E0D4 !important; color: #2B213A; }
+.rc-hero.fin > 
+/* Boulder finish note (Job, 8 Nov): smooth clean card, handwriting on the tape, number on a yellow hold */
+.fin-boulder .fin-tag { transform: rotate(-1deg); border-radius: 10px; box-shadow: 0 10px 24px -14px rgba(43,33,58,.4); }
+.fin-boulder .fin-tag h1 { color: #6C3FD6; font-weight: 900; letter-spacing: -.02em; text-transform: uppercase; }
+.fin-tape-txt { position: absolute; z-index: 3; top: -9px; left: 18px; transform: rotate(-14deg); transform-origin: left center; font: 15px/1 'JD Marker', 'Marker Felt', 'Comic Sans MS', cursive; color: #2B213A; text-transform: uppercase; letter-spacing: .03em; pointer-events: none; white-space: nowrap; }
+.fin-num { flex: none; width: 64px; height: 56px; display: grid; place-items: center; background: #F4B728; color: #2B213A; font: 900 20px/1 var(--font-display, inherit); clip-path: polygon(30% 2%, 72% 6%, 96% 34%, 92% 72%, 62% 98%, 24% 94%, 3% 64%, 6% 26%); }
+#recap .rc-hero.fin.fin-boulder { height: calc(276px + env(safe-area-inset-top, 0px)); flex-shrink: 0; } /* room for the taped JOB'S DONE above the note */
