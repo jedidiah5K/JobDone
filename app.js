@@ -3301,6 +3301,8 @@ const NEXT_LBL = { mono: 'Next assignment', cliffs: 'Next ascent', climb: 'Next 
 const nextLbl = () => NEXT_LBL[theme()] || 'Next up';
 const FIN_SEAL = { cliffs: 'Summit reached', spidey: 'City safe' }; // Boulder's check hold presses in instead (its corner is full)
 const finSeal = k => FIN_SEAL[k] ? `<div class="fin-seal seal-${k} fin-press" aria-hidden="true">${FIN_SEAL[k]}</div>` : '';
+// Boulder finish background (Job, 8 Nov): the off-white climbing wall from the chart, bolt holes and a few faded holds
+const wallSVG = () => `<svg class="fin-chalk fin-wall" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${themeArt(400, 260, [[200, 300, true]])[0]}</svg>`;
 function finHero(d) {
   const k = theme(), num = String(d.num).padStart(3, '0'), when = esc(fmtDate(d.w.date, { wd: true }));
   const line = esc(d.line || (d.line = doneLine(d.w)));
@@ -3316,7 +3318,7 @@ function finHero(d) {
   }
   if (k === 'cliffs') { const sk = skyOfW(d.w); return `<div class="rc-hero fin fin-summit tod-${sk.tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}">${finSeal('cliffs')}<div class="fin-ridges" aria-hidden="true"></div><svg class="fin-flag" viewBox="0 0 60 70" aria-hidden="true"><path d="M8 68V6"/><path class="f" d="M8 6l40 10-40 12z"/></svg>
     <div class="fin-eb">Trail log · Route #${d.num}</div><h1>Job’s done!</h1><div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div>`; }
-  return `<div class="rc-hero fin fin-boulder">${chalkSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
+  return `<div class="rc-hero fin fin-boulder">${wallSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
     <div class="fin-row"><div><div class="fin-eb">Route sent · #${d.num}</div><h1>Sent!</h1></div><div class="fin-hold fin-press">${check}</div></div>
     <div class="rc-line">${line}</div><div class="fin-sub">${when}</div>${tags}</div></div>`;
 }
@@ -3329,7 +3331,7 @@ function monthHero(ym, d) {
   if (k === 'spidey') return `<div class="rc-hero fin fin-sky">${halftoneSVG()}${webSVG('fin-web')}<div class="fin-cap"><div class="fin-eb">City report · The Daily Web</div><h1>${mon}</h1>${sub}</div>${tags}</div>`;
   if (k === 'cliffs') { const n = new Date(), sk = skyNow(n.getHours() + n.getMinutes() / 60), tod = todOf(n.getHours());
     return `<div class="rc-hero fin fin-summit tod-${tod}" style="--sky1:${sk.s1};--sky2:${sk.s2};--sky3:${sk.s3}"><div class="fin-ridges" aria-hidden="true"></div><div class="fin-eb">Summit log · Month in the mountains</div><h1>${mon}</h1>${sub}${tags}</div>`; }
-  return `<div class="rc-hero fin fin-boulder">${chalkSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
+  return `<div class="rc-hero fin fin-boulder">${wallSVG()}<div class="fin-tag">${chalkSVG().replace('class="fin-chalk"', 'class="fin-chalk on-tag"').replace(/id="ch([bs])"/g, 'id="cht$1"').replace(/#ch([bs])\)/g, '#cht$1)')}${tapeSVG('tape l', 1)}${tapeSVG('tape r', 4)}
     <div class="fin-eb">Route book · Monthly sends</div><h1>${mon}</h1>${sub}${tags}</div></div>`;
 }
 // Boulder: a strip of used climbing tape: torn zigzag ends, creases, grime and chalky thumbprints.
@@ -3383,7 +3385,7 @@ function showRecap(id, fresh) {
   const sp = wSplit(d.w), col = sp ? sp.color : 'var(--accent)', nx = nextSplit();
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
-    <button class="rc-home" id="rc-home" aria-label="Back to Today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="rc-home" id="rc-home" aria-label="Home">${I.today}</button>
     ${finHero(d)}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
