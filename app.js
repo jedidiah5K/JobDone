@@ -2848,6 +2848,18 @@ function openWkDay() {
     b.querySelector('#wd-ok').onclick = () => { set(b.querySelector('#wd-date').value); closeSheet(sh); };
   } });
 }
+// Set types (Job, 8 Nov): the i next to SET explains them; tapping a set number picks one here, or removes the set
+const SET_TYPES = [['warm', 'W', 'Warm-up', 'A lighter set to get ready. It isn’t counted in your volume or PRs.'], ['work', '1', 'Working set', 'A normal set. These count towards everything.'], ['fail', 'F', 'To failure', 'You kept going until you couldn’t do another rep.'], ['drop', 'D', 'Drop set', 'Straight after a set, lower the weight and keep going.']];
+function setTypeSheet(ei, si) {
+  const pick = ei != null && A && A.ex[ei] && A.ex[ei].sets[si], e = pick && A.ex[ei], cur = pick ? A.ex[ei].sets[si].t || 'work' : null;
+  const sh = openSheet(`<div class="stack"><h2>${pick ? 'Set type' : 'Set types'}</h2><div class="list st-list">${SET_TYPES.map(([k, l, n, d]) => `<${pick ? 'button' : 'div'} class="li st-row${cur === k ? ' on' : ''}" ${pick ? `data-st="${k}"` : ''}><b class="setno ${k}">${k === 'work' && pick ? si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length : l}</b><div class="grow"><div class="t">${n}</div><div class="s">${d}</div></div>${cur === k ? I.check : ''}</${pick ? 'button' : 'div'}>`).join('')}
+    ${pick && e.sets.length > 1 ? `<button class="li st-row st-del" data-st="del"><b class="setno">${I.x}</b><div class="grow"><div class="t">Remove set</div></div></button>` : ''}</div></div>`, { label: 'Set types', mount: b => {
+    if (!pick) return;
+    b.onclick = ev => { const r = ev.target.closest('[data-st]'); if (!r) return; closeSheet(sh);
+      if (r.dataset.st === 'del') return ACT.delSet({ dataset: { e: ei, s: si } });
+      A.ex[ei].sets[si].t = r.dataset.st; touchA(); };
+  } });
+}
 function touchA() { A.touched = Date.now(); persist('jd/active'); renderWorkout(); }
 let wakeLock = null;
 async function openWk() {
@@ -2925,7 +2937,7 @@ function exCardHTML(e, ei) {
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
     ${setupHTML(e.name)}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
-    <table class="mt2 sets"><thead><tr><th>Set</th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
+    <table class="mt2 sets"><thead><tr><th>Set<button class="set-i" data-a="setInfo" aria-label="What the set types mean">i</button></th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
       <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
@@ -5080,7 +5092,8 @@ const ACT = {
   key: el => el.dataset.f === 'w' && usesPlates(A.ex[+el.dataset.e].name) && !UI.kgPad ? openSetPlates(+el.dataset.e, +el.dataset.s) : openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
   done: el => logSet(+el.dataset.e, +el.dataset.s),
   rpe: el => { const st = A.ex[+el.dataset.e].sets[+el.dataset.s], k = +el.dataset.k; st.rpe = st.rpe === k ? null : k; A.rpeAsk = null; touchA(); },
-  setType: el => { const s = A.ex[+el.dataset.e].sets[+el.dataset.s]; const o = ['work', 'warm', 'drop', 'fail']; s.t = o[(o.indexOf(s.t) + 1) % o.length]; touchA(); },
+  setType: el => setTypeSheet(+el.dataset.e, +el.dataset.s),
+  setInfo: () => setTypeSheet(),
   addSet: el => { const e = A.ex[+el.dataset.e]; const p = e.sets.filter(x => x.done).pop() || e.sets[e.sets.length - 1]; e.sets.push({ w: p ? p.w : null, r: p ? p.r : null, t: 'work', done: false }); touchA(); },
   delSet: el => { const e = A.ex[+el.dataset.e], si = +el.dataset.s; if (!e || e.sets.length < 2) return; const [gone] = e.sets.splice(si, 1); touchA(); toast('Set deleted', 0, () => { if (A && A.ex.includes(e)) { e.sets.splice(Math.min(si, e.sets.length), 0, gone); touchA(); } }); },
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length < 2) return; const gone = e.sets.pop(); touchA(); if (gone.done) toast('Logged set removed', 0, () => { if (A && A.ex.includes(e)) { e.sets.push(gone); touchA(); } }); },

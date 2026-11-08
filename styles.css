@@ -268,7 +268,7 @@ textarea.input { padding: var(--s3); min-height: 88px; resize: vertical; }
 .sets tr.done td { background: color-mix(in srgb, var(--green) 9%, transparent); }
 .sets tr.done .cell { color: var(--text); }
 .setno { width: 30px; height: 40px; border-radius: 8px; font-weight: 600; font-size: 15px; color: var(--text2); }
-.setno.warm { color: var(--yellow); } .setno.drop { color: var(--blue); } .setno.fail { color: var(--neg); }
+.setno.warm { color: #1F9E89; } .setno.drop { color: #8A63E8; } .setno.fail { color: #D6336C; } /* our own colours, not Hevy's (Job, 8 Nov) */
 .prev { text-align: left !important; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .cell { width: 100%; min-width: 56px; height: 40px; border-radius: 8px; background: transparent; border: 0; font-size: 17px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; }
 .cell:active, .cell:focus { background: var(--raised); }
@@ -1870,3 +1870,18 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .rc-hero.fin > .fin-rock { position: absolute !important; }
 .fin-boulder .fin-tag { overflow: visible; }
 .fin-boulder .fin-tag > .fin-chalk { display: none; }
+
+/* i next to SET, and the Set types sheet (Job, 8 Nov) */
+.set-i { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 4px; vertical-align: 1px; border-radius: 50%; background: var(--raised); color: var(--text2); font: italic 700 10px/1 Georgia, serif; text-transform: none; }
+.st-list .st-row { gap: 14px; align-items: center; text-align: left; width: 100%; }
+.st-list .setno { flex: none; width: 28px; height: auto; display: grid; place-items: center; font-size: 18px; font-weight: 800; }
+.st-list .setno svg { width: 18px; height: 18px; }
+.st-list .st-row > svg { width: 18px; height: 18px; color: var(--accent); flex: none; }
+.st-list .st-del .t, .st-list .st-del .setno { color: #D6336C; }
+/* Boulder tapes follow Job's sketch (8 Nov): left one steep and long off the left edge, right one long off the right edge */
+.fin-boulder .fin-tape-l { top: 14px; left: -62px; width: 176px; height: 26px; transform: rotate(-30deg); }
+.fin-boulder .fin-tape-l span { padding-left: 44px; }
+.fin-boulder .fin-tag .tape.r { width: 150px; height: 26px; right: -52px; top: -2px; transform: rotate(18deg); }
+.fin-boulder .fin-tape-l { top: -6px; left: -66px; }
+.fin-boulder .fin-tape-l .tape .tb, .fin-boulder .fin-tag .tape.r .tb { fill: rgba(226,214,186,.96); }
+.fin-boulder .fin-tape-l .tape { filter: drop-shadow(0 1.5px 2px rgba(43,33,58,.28)); }
