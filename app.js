@@ -562,7 +562,10 @@ function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(y
     // gaps between the lines: split where they cross, and centre a hub in the middle of each gap on its lower line
     const yb = x => { for (let i = 1; i < bot.length; i++) if (x <= bot[i].px) { const a = bot[i - 1], b = bot[i]; return a.py + (b.py - a.py) * (x - a.px) / ((b.px - a.px) || 1); } return bot[bot.length - 1].py; };
     const runs = []; top.forEach(p => { const up = yb(p.px) - p.py >= 0, r = runs[runs.length - 1]; if (!r || r.up !== up) runs.push({ up, ps: [p] }); else r.ps.push(p); });
-    const hubs = runs.filter(r => r.ps.length > 1).map(r => { const x = (r.ps[0].px + r.ps[r.ps.length - 1].px) / 2, p = r.ps.reduce((a, b) => Math.abs(b.px - x) < Math.abs(a.px - x) ? b : a); return [p.px, Math.max(yb(p.px), p.py), true]; });
+    // a gap only gets its own web if it's roomy; small ones just show part of a neighbour's web (Job, 8 Nov)
+    runs.forEach(r => { r.gap = Math.max(...r.ps.map(p => Math.abs(yb(p.px) - p.py))); });
+    const big = Math.max(...runs.map(r => r.gap));
+    const hubs = runs.filter(r => r.ps.length > 1 && (r.gap >= 45 || r.gap === big)).map(r => { const x = (r.ps[0].px + r.ps[r.ps.length - 1].px) / 2, p = r.ps.reduce((a, b) => Math.abs(b.px - x) < Math.abs(a.px - x) ? b : a); return [p.px, Math.max(yb(p.px), p.py), true]; });
     const [fill, end] = themeArt(W, h, hubs.filter(Boolean).length ? hubs.filter(Boolean) : [[W / 2, h - pb, true]]), ty = Math.min(...top.map(p => p.py), ...bot.map(p => p.py)), byy = Math.max(...top.map(p => p.py), ...bot.map(p => p.py));
     // the band between the two lines, whichever is on top (Job, 8 Nov: keep it when they cross)
     const back = bot.slice().reverse().map(p => 'L' + p.px.toFixed(1) + ' ' + p.py.toFixed(1)).join(' ');
