@@ -5324,7 +5324,7 @@ document.addEventListener('touchstart', e => {
   // Hold a set to copy its kg and reps into the sets below (Job, 4 Nov)
   if (row && !row.classList.contains('sw-open')) lpT = setTimeout(() => { lpAt = Date.now(); sw = null; const [, ei, si] = row.id.split('-').map(Number); copyDown(ei, si); }, 550);
   if (row && row.classList.contains('sw-open')) sw = null;
-  else if (row && !e.target.closest('.cell')) sw = { kind: 'set', el: row, x: t.clientX, y: t.clientY, dx: 0 };
+  else if (row && !e.target.closest('.cell, button')) sw = { kind: 'set', el: row, x: t.clientX, y: t.clientY, dx: 0 };
   else if (t.clientX < 24 && NAV.stack.length && !SHEETS.length && !(A && A.open) && e.target.closest('#screen')) sw = { kind: 'back', x: t.clientX, y: t.clientY, dx: 0 };
   else sw = null;
 }, { passive: true });
