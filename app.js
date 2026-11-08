@@ -2835,7 +2835,7 @@ function exCardHTML(e, ei) {
       <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight">${s.w == null ? '–' : dw(s.w)}</button></td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
-      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1">Delete</button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
+      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
     ${cmp}`}
@@ -5121,7 +5121,7 @@ document.addEventListener('touchmove', e => {
   if (lpT) { const t0 = e.touches[0]; if (!sw || Math.abs(t0.clientX - sw.x) > 8 || Math.abs(t0.clientY - sw.y) > 8) { clearTimeout(lpT); lpT = 0; } }
   if (!sw) return; const t = e.touches[0]; sw.dx = t.clientX - sw.x; const dy = Math.abs(t.clientY - sw.y);
   if (dy > 30 && Math.abs(sw.dx) < dy) { if (sw.el) sw.el.style.transform = ''; sw = null; return; }
-  if (sw.kind === 'set') { sw.el.style.transition = 'none'; sw.el.style.transform = `translateX(${sw.dx > 0 ? Math.min(90, sw.dx) : sw.el.querySelector('.set-del') ? Math.max(-40, sw.dx / 2) : 0}px)`; }
+  if (sw.kind === 'set') { sw.el.style.transition = 'none'; sw.el.style.transform = `translateX(${sw.dx > 0 ? Math.min(90, sw.dx) : sw.el.querySelector('.set-del') ? sw.dx : 0}px)`; }
   if (sw.kind === 'back' && sw.dx > 0) { const sc = $('#screen'); sc.style.transition = 'none'; sc.style.transform = `translateX(${Math.min(120, sw.dx * 0.6)}px)`; }
 }, { passive: true });
 document.addEventListener('touchend', () => {
@@ -5129,8 +5129,10 @@ document.addEventListener('touchend', () => {
   if (!sw) return; const s0 = sw; sw = null;
   if (s0.kind === 'set') {
     s0.el.style.transition = 'transform .2s ease'; s0.el.style.transform = '';
-    // Swipe left shows Delete (Job, 4 Nov); swipe right logs the set
-    if (s0.dx < -50 && s0.el.querySelector('.set-del')) { s0.el.classList.add('sw-open'); }
+    // Swipe left: the row slides over to show Delete beside it; a long swipe deletes (Job, 8 Nov, like Messenger). Swipe right logs the set.
+    const del = s0.el.querySelector('.set-del');
+    if (del && s0.dx < -s0.el.offsetWidth * 0.55) { s0.el.style.transform = 'translateX(-100%)'; setTimeout(() => del.click(), 180); }
+    else if (del && s0.dx < -50) { s0.el.classList.add('sw-open'); }
     else if (s0.dx > 70) { const [, ei, si] = s0.el.id.split('-').map(Number); if (A && A.ex[ei] && A.ex[ei].sets[si] && !A.ex[ei].sets[si].done) logSet(ei, si); } // swipe right only logs, never un-logs
   } else {
     const sc = $('#screen'); sc.style.transition = 'transform .2s ease'; sc.style.transform = '';
