@@ -1714,8 +1714,8 @@ function restDayLine(T, trained) {
   return S.profile.restDay === T ? `<div class="row between mt2 cap rest-line"><span>Rest day. Friends can see it.</span><button class="link" data-a="restDay">Undo</button></div>`
     : `<div class="row between mt2 cap rest-line"><span>Not training today?</span><button class="link" data-a="restDay">Mark a rest day</button></div>`;
 }
-// Photos for stamps and snaps: cropped to 4:5, 864 × 1080 JPEG, under 110 KB (server cap 120 KB), made on the phone.
-const PW = 864, PH = 1080, PK = PW / 720;
+// Photos for stamps and snaps: cropped to 4:5, 1080 × 1350 JPEG, under 230 KB (server cap 250 KB since 8 Nov), made on the phone.
+const PW = 1080, PH = 1350, PK = PW / 720, PMAX = 230000;
 // ponytail: photos live in the database row; move to a Storage bucket if posts ever get busy.
 async function postPhoto(file) {
   if (!file || !/^image\//.test(file.type)) { toast('Pick a photo'); return null; }
@@ -1727,10 +1727,10 @@ async function postPhoto(file) {
 }
 function jpegFit(cv) {
   // best quality that fits: start high, step down gently (Job, 8 Nov: photos looked soft)
-  const fit = c => { let q = .92, d = c.toDataURL('image/jpeg', q); while (d.length >= 110000 && q > .3) { q -= .04; d = c.toDataURL('image/jpeg', q); } return d; };
+  const fit = c => { let q = .92, d = c.toDataURL('image/jpeg', q); while (d.length >= PMAX && q > .3) { q -= .04; d = c.toDataURL('image/jpeg', q); } return d; };
   let d = fit(cv);
-  if (d.length >= 110000) { const s = document.createElement('canvas'); s.width = 720; s.height = 900; s.getContext('2d').drawImage(cv, 0, 0, 720, 900); d = fit(s); } // very grainy photo: fall back to the old size
-  if (d.length >= 110000) { toast('That photo is too big. Try another.'); return null; }
+  if (d.length >= PMAX) { const s = document.createElement('canvas'); s.width = 864; s.height = 1080; s.getContext('2d').drawImage(cv, 0, 0, 864, 1080); d = fit(s); } // very grainy photo: a smaller size
+  if (d.length >= PMAX) { toast('That photo is too big. Try another.'); return null; }
   return d;
 }
 // Story camera: back photo, then a 3-second countdown and the selfie (an iPhone website can't run both cameras at once).
