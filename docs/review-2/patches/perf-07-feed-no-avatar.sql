@@ -1,4 +1,4 @@
--- perf-07: the feed stops sending each author's ID photo again on every post (up to 88 KB per row).
+-- perf-07 (applied to the live database 7 Nov 2026, after v135 went live): the feed stops sending each author's ID photo again on every post (up to 88 KB per row).
 -- The app already has those photos from jobdone_friends_list; perf-04 makes postHTML fall back to them.
 -- Ship perf-04 (app) first, then run this. Same columns, so no drop is needed; ph is always null.
 create or replace function public.jobdone_feed() returns table (id bigint, user_id uuid, n text, ph text, kind text, body jsonb, photo text, at timestamptz, reacts jsonb, mine text, who jsonb, comments jsonb)

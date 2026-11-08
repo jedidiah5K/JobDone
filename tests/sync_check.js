@@ -3,6 +3,7 @@
 // 2. CSV export then import gives back the same sets (warm-ups stay warm-ups).
 // 3. A JSON backup keeps setup notes and measurements, and a broken file can't blank the app.
 // 4. A full phone storage warns once and keeps the workout in progress.
+// 6. Two phones on one account: a save merges with the server copy, and deletes reach the other phone.
 // 5. The double-tap guard doesn't compare DOM nodes (a re-render replaces them).
 const fs = require('fs'), assert = require('assert');
 const src = fs.readFileSync(process.env.APP_JS || __dirname + '/../app.js', 'utf8');
@@ -14,7 +15,7 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   let S = null, A = null, DB = null, IX = null, syncState = 'ok', LS_KEY = 'jobdone.v1';
   const freshState = () => ({ v: 1, profile: {}, splits: [], rotation: [], customEx: [], setup: {}, weights: {}, steps: {}, workouts: {}, imported: true, created: 1 });
   ${pick('// ---------- storage ----------', '// Lifts that were renamed')}
-  return { set: (s, a, db) => { S = s; A = a; DB = db; }, get: () => ({ S, A }), persist, pend, loadCloud, lsSave, lsLoad, dirty, inflight };`)(localStorage, { onLine: true }, () => {}, { addEventListener: () => {} }, toasts);
+  return { set: (s, a, db) => { S = s; A = a; DB = db; }, get: () => ({ S, A }), persist, pend, loadCloud, lsSave, lsLoad, dirty, inflight, writeDoc, tomb, replaceAll };`)(localStorage, { onLine: true }, () => {}, { addEventListener: () => {} }, toasts);
 
 (async () => {
   // Cloud has last week's workout; this phone also finished today's with no signal (still pending).
@@ -30,6 +31,26 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   assert(S.workouts.today, 'a workout finished offline survives a cloud load');
   assert.strictEqual(A, null, 'a finished workout is not brought back from the stale cloud copy');
 
+  // Two phones: phone B saves November without having loaded phone A's workout. A's workout must survive,
+  // B gets it, and B's delete of an old workout reaches the server as a tombstone.
+  const c2 = { 'months/2026-11': { w: { a: { id: 'a', date: '2026-11-02', ex: [] }, gone: { id: 'gone', date: '2026-11-01', ex: [] } } } };
+  const db2 = { doc: p => ({ get: async () => ({ exists: p in c2, data: () => JSON.parse(JSON.stringify(c2[p])) }), set: async b => { c2[p] = JSON.parse(JSON.stringify(b)); }, delete: async () => { delete c2[p]; } }) };
+  const phoneB = { v: 1, profile: {}, splits: [], rotation: [], customEx: [], setup: {}, weights: {}, steps: {}, imported: true, created: 1,
+    workouts: { b: { id: 'b', date: '2026-11-03', ex: [] } } };
+  env.set(phoneB, null, db2); env.tomb('months/2026-11', 'gone');
+  await env.writeDoc('months/2026-11');
+  assert.deepStrictEqual(Object.keys(c2['months/2026-11'].w).sort(), ['a', 'b'], 'a save keeps the other phone’s workout and drops the one deleted here');
+  assert(c2['months/2026-11'].x && c2['months/2026-11'].x.gone, 'the delete is saved so the other phone drops it too');
+  assert(env.get().S.workouts.a, 'this phone picks up the other phone’s workout');
+  // Phone A still has "gone" and saves: the tombstone wins, so it doesn't come back.
+  const phoneA = { ...phoneB, workouts: { a: { id: 'a', date: '2026-11-02', ex: [] }, gone: { id: 'gone', date: '2026-11-01', ex: [] } } };
+  env.set(phoneA, null, db2); await env.writeDoc('months/2026-11');
+  assert(!c2['months/2026-11'].w.gone && !env.get().S.workouts.gone, 'a workout deleted on one phone stays deleted');
+  // Replace everything: the file's workouts win, nothing from the server comes back.
+  const phoneC = { ...phoneB, workouts: { n: { id: 'n', date: '2026-11-09', ex: [] } } };
+  env.set(phoneC, null, db2); env.replaceAll(['months/2026-11']); await env.writeDoc('months/2026-11');
+  assert.deepStrictEqual(Object.keys(c2['months/2026-11'].w), ['n'], 'replace everything isn’t merged back');
+
   // Phone storage full: the save doesn't fail silently, and the workout in progress is still kept
   env.set(local, { id: 'live', ex: [] }, null); env.lsSave(); full = true; local.workouts.big = { id: 'big', date: '2026-11-08', ex: [], note: 'x'.repeat(300) };
   env.set(local, { id: 'live2', ex: [] }, null); env.lsSave(); env.lsSave(); full = false;
@@ -42,6 +63,11 @@ const env = new Function('localStorage', 'navigator', 'addEventListener', 'docum
   const f = csv({ workouts: { a: w } }, 2.20462, d => d.toISOString().slice(0, 10), () => 0);
   assert.deepStrictEqual(f.csvToWorkouts(f.exportCSV()).list[0].ex[0].sets.map(s => s.t), ['warm', 'work', 'drop'], 'set types survive CSV export and import');
 
+  // Hevy and Strong dates parse by hand (Safari's Date.parse rejects some), and two same-name workouts on a day stay two
+  const cd = new Function('pad2', 'ymd', pick('const MON3', 'function csvToWorkouts') + '; return csvDate;')(n => String(n).padStart(2, '0'), d => d.toISOString().slice(0, 10));
+  assert.deepStrictEqual([cd('4 Jan 2024, 18:13'), cd('Jan 4, 2024 6:13 PM'), cd('2024-01-04 18:13:00'), cd('nonsense')], ['2024-01-04', '2024-01-04', '2024-01-04', null], 'Hevy and Strong dates');
+  const two = f.csvToWorkouts(['date,split,exercise,weight_kg,reps', '2024-01-04 07:00:00,Push,Chest Fly,40,10', '2024-01-04 18:00:00,Push,Chest Fly,45,10'].join(String.fromCharCode(10))).list;
+  assert.strictEqual(two.length, 2, 'two Push sessions on one day stay two workouts');
   // "Replace everything" with a CSV keeps set types and the file's own split order (no Push/Pull forced on an Upper/Lower log)
   const bl = new Function('freshState', 'SPLIT_COLORS', 'PALETTE', pick('function buildFromLog', 'function renderWelcome') + pick('function logFromCsvList', 'function restoreFile') + '; return { buildFromLog, logFromCsvList };')(() => ({ profile: {}, splits: [], rotation: [], workouts: {} }), {}, ['#111']);
   const ul = f.csvToWorkouts('date,split,exercise,weight_kg,reps,set_type\n2026-11-03,Upper,Lat Pulldown,40,12,warmup\n2026-11-03,Upper,Lat Pulldown,60,8,\n2026-11-04,Lower,Leg Press,100,8,\n').list;

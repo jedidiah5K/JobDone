@@ -146,7 +146,7 @@ function forgetShared() {
   for (const k in NUDGED) delete NUDGED[k];
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
 }
-const forgetAccount = () => { try { for (const k of [LS_KEY, LS_KEY + ':a', LS_KEY + ':rest', LS_KEY + ':pending']) localStorage.removeItem(k); } catch (e) {} forgetShared(); };
+const forgetAccount = () => { try { for (const k of [LS_KEY, LS_KEY + ':a', LS_KEY + ':rest', LS_KEY + ':pending', LS_KEY + ':tomb', LS_KEY + ':nomerge']) localStorage.removeItem(k); } catch (e) {} forgetShared(); };
 async function pushOff() { if (S && S.profile && (S.profile.restPush || (S.profile.remind && S.profile.remind.on))) return; try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { restFn({ action: 'unsub', endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {} }
 // Clear delivered rest alerts when the app comes back, so the lock screen doesn't fill up (each alert has its own tag now).
 document.addEventListener('visibilitychange', () => { if (!document.hidden && 'serviceWorker' in navigator) navigator.serviceWorker.ready.then(r => r.getNotifications()).then(ns => ns.forEach(n => /^rest/.test(n.tag) && n.close())).catch(() => {}); });
@@ -217,6 +217,32 @@ function pend() {
   return pend.s;
 }
 function pendSave() { try { localStorage.setItem(LS_KEY + ':pending', JSON.stringify([...pend()])); } catch (e) {} }
+// Two phones on one account (7 Nov): months, weights and steps are merged with the server copy before each save, so a
+// phone with an old copy can't wipe what another phone logged. Deletes are remembered as tombstones (per path, id → time)
+// and saved in the doc as "x" so the other phone drops them too. A replace-everything import skips the merge once.
+// ponytail: read-then-write, so two saves of the same month in the same second can still lose one; add a version check if that ever happens.
+const MERGED = p => p.startsWith('months/') || p === 'jd/weights' || p === 'jd/steps';
+function lsSet(k, o) { try { localStorage.setItem(LS_KEY + k, JSON.stringify(o)); } catch (e) {} }
+function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(LS_KEY + k)) || d; } catch (e) { return d; } }
+function tombs() { if (tombs.k !== LS_KEY) { tombs.k = LS_KEY; tombs.o = lsGet(':tomb', {}); } return tombs.o; }
+function tomb(p, id) { const t = tombs(); (t[p] = t[p] || {})[id] = Date.now(); lsSet(':tomb', t); }
+function noMerge() { if (noMerge.k !== LS_KEY) { noMerge.k = LS_KEY; noMerge.s = new Set(lsGet(':nomerge', [])); } return noMerge.s; }
+function replaceAll(paths) { paths.forEach(p => noMerge().add(p)); lsSet(':nomerge', [...noMerge()]); }
+async function mergeServer(p, body) {
+  const snap = await DB.doc(p).get(); if (!snap.exists) return body;
+  const sd = snap.data() || {}, key = p.startsWith('months/') ? 'w' : 'e', srv = sd[key] || {}, loc = (body && body[key]) || {};
+  const lt = tombs()[p] || {}, st = sd.x && typeof sd.x === 'object' ? sd.x : {}, out = {};
+  for (const [k, v] of Object.entries(srv)) if (!(k in lt) && !(k in st)) out[k] = v;
+  // This phone's copy wins, except a workout another phone deleted (workout ids are never reused; a date's weight can be).
+  for (const [k, v] of Object.entries(loc)) if (key !== 'w' || !(k in st)) out[k] = v;
+  const old = Date.now() - 60 * 864e5, x = {}; for (const [k, t] of Object.entries({ ...st, ...lt })) if (t > old) x[k] = t;
+  // Bring the other phone's changes into this one.
+  let ch = 0;
+  if (key === 'w') { for (const [k, v] of Object.entries(out)) if (!S.workouts[k]) { S.workouts[k] = v; ch++; } for (const k in st) if (S.workouts[k]) { delete S.workouts[k]; ch++; } }
+  else { const tgt = p === 'jd/weights' ? S.weights : S.steps; for (const [k, v] of Object.entries(out)) if (!(k in tgt)) { tgt[k] = v; ch++; } }
+  if (ch) { invalidate(); lsSave(); if (typeof rerender === 'function') rerender(); }
+  return Object.keys(out).length || Object.keys(x).length ? { [key]: out, ...(Object.keys(x).length ? { x } : {}) } : null;
+}
 function persist(...paths) {
   if (DEMO) return;
   if (A && A.practice) { paths = paths.filter(p => p !== 'jd/active'); if (!paths.length) return; }
@@ -252,8 +278,11 @@ function docBody(p) {
 }
 async function writeDoc(p, attempt = 0) {
   try {
-    const body = docBody(p);
+    let body = docBody(p); const nm = noMerge().has(p);
+    if (MERGED(p) && !nm) body = await mergeServer(p, body);
     if (body) await DB.doc(p).set(body); else await DB.doc(p).delete();
+    if (nm) { noMerge().delete(p); lsSet(':nomerge', [...noMerge()]); }
+    if (MERGED(p) && tombs()[p]) { delete tombs()[p]; lsSet(':tomb', tombs()); } // the server has them in x now
     if (!dirty.has(p)) { pend().delete(p); pendSave(); }
     if (!dirty.size) setSync('ok');
   } catch (e) {
@@ -287,11 +316,12 @@ async function loadCloud() {
   const mine = new Set([...pend(), ...dirty, ...inflight]);
   if (S) for (const p of mine) {
     if (p === 'jd/meta') for (const k of ['v', 'profile', 'splits', 'rotation', 'customEx', 'setup', 'meas', 'imported', 'created']) ns[k] = S[k];
-    else if (p === 'jd/weights') ns.weights = S.weights;
-    else if (p === 'jd/steps') ns.steps = S.steps;
+    // Merged like a save (two phones): the cloud's other entries stay unless this phone deleted them or a replace is pending.
+    else if (p === 'jd/weights' || p === 'jd/steps') { const k = p === 'jd/weights' ? 'weights' : 'steps', lt = tombs()[p] || {};
+      if (noMerge().has(p)) ns[k] = S[k]; else { for (const d in lt) delete ns[k][d]; Object.assign(ns[k], S[k]); } }
     else if (p.startsWith('months/')) {
-      const m = p.slice(7);
-      for (const [id, w] of Object.entries(ns.workouts)) if (w.date.slice(0, 7) === m) delete ns.workouts[id];
+      const m = p.slice(7), lt = tombs()[p] || {}, nm = noMerge().has(p);
+      for (const [id, w] of Object.entries(ns.workouts)) if (w.date.slice(0, 7) === m && (nm || id in lt)) delete ns.workouts[id];
       for (const w of Object.values(S.workouts)) if (w.date.slice(0, 7) === m) ns.workouts[w.id] = w;
     }
   }
@@ -545,7 +575,9 @@ let toastT = null;
 let SCR_KEY = '';
 function screenChanged() { const top = NAV.stack[NAV.stack.length - 1], k = (top ? top.v : NAV.tab) + '|' + (A && A.open ? (A.view || 'log') : ''); if (k !== SCR_KEY) { SCR_KEY = k; document.querySelectorAll('.toast').forEach(t => t.remove()); } }
 // undo: optional function; adds an Undo button and keeps the toast up longer (deleting is forgiving, like Mail and Photos)
+let TOAST_HOLD = 0; // a message that must not be covered by the caller's generic error right after it
 function toast(html, ms = 2600, undo) {
+  if (Date.now() < TOAST_HOLD) return;
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast' + (undo ? ' has-undo' : ''); t.setAttribute('role', 'status'); t.innerHTML = html;
   if (undo) { ms = Math.max(ms, 6000); const b = document.createElement('button'); b.className = 'toast-undo'; b.textContent = 'Undo'; b.onclick = () => { t.remove(); undo(); }; t.appendChild(b); }
@@ -781,7 +813,6 @@ function gymTaken(name, rows, types, sameMuscle = []) {
 }
 // gym-builder:end
 
-const GYM_SCAN_READY = false; // off (7 Nov): Gemini's free tier isn't allowed for EU/UK users and gym photos have other people in them. Pick from the list instead.
 const GYM_GENERIC = ['dumbbells', 'cable_stack', 'smith_machine', 'leg_press', 'leg_extension', 'seated_leg_curl', 'lat_pulldown', 'seated_row', 'pec_dec', 'shoulder_press_machine', 'preacher_curl', 'standing_calf'];
 let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}; } catch (e) { return {}; } })();
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
@@ -791,7 +822,9 @@ const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id ===
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
 const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your connection and try again.' : m; };
 const gymErr = e => toast(esc(gymMsg(e)));
-async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {}); if (error) throw new Error(error.message); return data; }
+async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {});
+  if (error && error.message === 'Suspended') { toast('Your account can’t post or comment for now.', 4000); TOAST_HOLD = Date.now() + 4000; }
+  if (error) throw new Error(error.message); return data; }
 let gymBusy = null;
 function gymRefresh(force) {
   if (!gymOn()) return Promise.resolve();
@@ -841,7 +874,6 @@ function viewGym() {
   return `<div class="stack">${backBtn()}
     <div class="top pt0"><div class="gym-top"><div class="eyebrow">My Gym ${gymBeta}</div><h1 class="gym-h1" title="${esc(c.brand)}">${esc(c.brand)}</h1>${c.independent ? `<div class="cap gym-1l">${esc(c.branch)}</div>` : `<button class="cap daychip gym-1l" data-a="gymSwitch" title="${esc(c.branch)}">Training at: ${esc(c.branch)} ▾</button>`}</div></div>
     <button class="btn block primary" data-a="gymBuild" ${usable ? '' : 'disabled'}>Build today’s workout</button>
-    ${GYM_SCAN_READY ? '<button class="btn block" data-a="gymScan">Scan a corner</button>' : ''}
     ${rows.length ? '' : gymStarterHTML(c)}
     <div class="card"><div class="card-h"><span class="eyebrow">Equipment · ${usable}</span><button class="cap link" data-a="gymPick">+ Add</button></div>
       ${live.length ? `<div class="list">${live.map(row).join('')}</div>` : '<div class="empty">Nothing added yet.</div>'}</div>
@@ -1004,52 +1036,6 @@ function gymStart(c, focus, lifts) {
   gymRpc('jobdone_gym_use', { g: c.gym_id }).catch(() => {});
 }
 
-// AI scan of a gym corner. Off until GYM_SCAN_READY (needs the Gemini key and the face blur files).
-function gymScan() {
-  const c = gymCur(); if (!c || !GYM_SCAN_READY) return gymPick();
-  const sh = openSheet(`<div class="stack"><div><h2>Scan a corner</h2><div class="cap">Get as many machines in as you can. Faces are blurred on your phone first and the photo isn’t kept.</div></div>
-    <label class="btn block primary" for="gs-in">Take a photo</label><input type="file" id="gs-in" accept="image/*" capture="environment" hidden>
-    <div id="gs-out"></div></div>`, { label: 'Scan a corner', mount: b => {
-    b.querySelector('#gs-in').onchange = async ev => {
-      const f = ev.target.files && ev.target.files[0]; if (!f) return; const out = b.querySelector('#gs-out');
-      out.innerHTML = '<div class="gym-sk" style="height:180px"></div><div class="cap tc mt1">Looking for machines…</div>';
-      try {
-        const img = await gymPhoto(f);
-        const { data: { session } } = await SB.auth.getSession();
-        const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/gym-scan', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session && session.access_token), apikey: CFG.supabaseAnonKey }, body: JSON.stringify({ g: c.gym_id, img }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error === 'limit' ? 'That’s today’s scans used up. Pick machines from the list instead.' : j.error === 'not_set_up' ? 'Scanning isn’t switched on yet. Pick from the list.' : j.error || 'The scan failed.');
-        const keys = j.keys || [];
-        if (!keys.length) { out.innerHTML = '<div class="empty">No machines spotted. Try another angle, or pick from the list.</div><button class="btn block" data-a="gymPick">Pick from the list</button>'; return; }
-        out.innerHTML = `<div class="card"><div class="eyebrow mb1">Found ${plural(keys.length, 'machine')}</div><div class="cap mb1">Untick anything that’s wrong.</div><div class="list">${keys.map(k => `<label class="li"><div class="grow"><div class="t">${esc((gymType(k) || { name: k }).name)}</div></div><input type="checkbox" class="cbox" value="${k}" checked></label>`).join('')}</div>
-          <button class="link mt2" data-a="gymPick">Missed one? Pick it from the list</button></div><button class="btn block primary" id="gs-add">Add ticked machines</button><div class="cap tc">${j.left} scans left today</div>`;
-        out.querySelector('#gs-add').onclick = () => { const ks = [...out.querySelectorAll('.cbox:checked')].map(x => x.value); closeSheet(sh); gymAdd(ks, 'scan'); };
-      } catch (e) { out.innerHTML = `<div class="empty">${esc(gymMsg(e))}</div><button class="btn block" data-a="gymPick">Pick from the list</button>`; }
-    };
-  } });
-}
-// Shrink to 1024 px and blur faces before anything leaves the phone. No blur available → no upload.
-async function gymPhoto(file) {
-  const bmp = await createImageBitmap(file), k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
-  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-  const g = cv.getContext('2d'); g.drawImage(bmp, 0, 0, cv.width, cv.height);
-  const faces = await gymFaces(cv); if (faces == null) throw new Error('Face blur isn’t ready on this phone, so the photo wasn’t sent.');
-  for (const f of faces) { // pixelate each face with some margin
-    const p = Math.max(f.width, f.height) * .25, x = Math.max(0, f.originX - p), y = Math.max(0, f.originY - p), w = Math.min(cv.width - x, f.width + 2 * p), h = Math.min(cv.height - y, f.height + 2 * p);
-    const t = document.createElement('canvas'); t.width = 8; t.height = Math.max(1, Math.round(8 * h / w)); t.getContext('2d').drawImage(cv, x, y, w, h, 0, 0, t.width, t.height);
-    g.imageSmoothingEnabled = false; g.drawImage(t, 0, 0, t.width, t.height, x, y, w, h); g.imageSmoothingEnabled = true;
-  }
-  return cv.toDataURL('image/jpeg', .8).split(',')[1];
-}
-let gymFD = null;
-async function gymFaces(cv) {
-  try {
-    if (!gymFD) { const mp = await import('./vendor/mediapipe/vision_bundle.mjs'); const base = new URL('vendor/mediapipe/', location.href).href, fs = await mp.FilesetResolver.forVisionTasks(base + 'wasm');
-      gymFD = await mp.FaceDetector.createFromOptions(fs, { baseOptions: { modelAssetPath: base + 'blaze_face_short_range.tflite' }, runningMode: 'IMAGE', minDetectionConfidence: .35 }); }
-    return gymFD.detect(cv).detections.map(d => d.boundingBox);
-  } catch (e) { return null; }
-}
-
 // ---------- Tour of the whole app (Job, 4 Nov) ----------
 // New accounts get it once after setup; Me → Help → Take the tour replays it. The workout part runs on a practice
 // workout (nothing saved, no rest alerts) unless a workout is already open or they pick Start for real.
@@ -1129,24 +1115,15 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-tabs';
+const NEWS_ID = '2026-11-v136';
 const NEWS = [
-  ['More in the ⋯ menu', 'Tap ⋯ on a post to save its photo, share it, or take it down. Save on a new story works now too.'],
-  ['Posts in their own theme', 'A post looks like the theme its author had when they posted, so a friend on Agent shows up in Agent even if you use Skyline.'],
-  ['New-look posts', 'Each post has its own box for the workout. Share a post with the share button. In Friends → ⚙ pick which splits post on their own, and whether friends see your weights.'],
-  ['Friends at the bottom', 'Friends now has its own tab. Your splits live in the + button: pick one to start, or tap Edit splits and rotation.'],
-  ['Front-and-back stories', 'Share a story takes a back photo, counts down 3 seconds, then takes a selfie. Swap which one is big, or save it to your phone.'],
-  ['Fairer PRs', 'A heavier weight now counts as a PR only when you match the reps of your old heaviest set. A better estimated max still counts.'],
-  ['A proper feed', 'Friends now has a Feed: faces with today’s status, then posts with photos, stats, emoji reactions and comments. Double-tap a photo for a 🔥.'],
-  ['Share your workout', 'After a workout, post it to your feed with a line, every lift and a photo if you like. Or turn on Post every workout.'],
-  ['Every theme, its own touches', 'Next up has a new name in each theme, the finish page stamps a seal, and the numbers count up. Agent has a new look.'],
-  ['Friends', 'Send a request with their code. See who’s at the gym, who trained and who’s resting today. Tap Friends at the bottom.'],
-  ['Done Stamp', 'Finish a workout and friends see your split, volume and PRs. Adding a photo is up to you.'],
-  ['Stories and nudges', 'Post a front-and-back photo story that lasts 24 hours. Nudge someone who hasn’t trained yet. React to their stamps.'],
-  ['Streaks together', 'Weeks in a row you and a friend both hit your own number, even if you train on different days.'],
-  ['Your ID card', 'Level, top lifts, badges and more. Flip it, share a picture of it, or hide it. Me → Edit card.'],
-  ['Badges and monthly report', 'Earn badges as you train, and get a report card at the start of each month.'],
-  ['Rest days', 'Not training today? Mark it on Today so friends know.'],
+  ['A slimmer rest timer', 'Rest now sits in a thin bar at the bottom with a small hourglass by the time. Tap the time to pause. How the set went shows in the same bar.'],
+  ['Targets follow your plan', 'Next time’s weight and reps use the rep range in your split, so 12 reps on an 8 to 12 plan means add weight. A range set in Me still wins.'],
+  ['Cleaner Today and finish page', 'Today has one Start workout button and weight next to steps. The finish page leads with your numbers and says which old set each PR beat.'],
+  ['Block and report', 'Block someone from ⋯ on their post or from their card. Report a post or a comment. Unblock in Friends → ⚙ → Blocked people.'],
+  ['Safer syncing', 'Two phones on one account no longer overwrite each other. A workout finished with no signal stays put, and sign-out waits until your sets are saved.'],
+  ['Better imports', 'Hevy and Strong files keep the right dates and units, and two workouts on the same day stay separate.'],
+  ['Machines start empty', 'The plate loader on machines and cables starts at 0 with no bar.'],
 ];
 function whatsNew() {
   const p = S && S.profile;
@@ -1485,7 +1462,7 @@ function myStat() {
   const per = {}; ws.forEach(w => { const k = mondayOf(w.date); per[k] = (per[k] || 0) + 1; }); const rw = new Set(S.profile.restWeeks || []);
   let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
   while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
-  const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k };
+  const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k, o: -new Date().getTimezoneOffset() };
   if (SO().nn) s.nn = true; return s;
 }
 let STAT_SENT = '';
@@ -1494,9 +1471,12 @@ function statSync() {
   const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
   gymRpc('jobdone_stat', { p: JSON.parse(s) }).catch(() => { STAT_SENT = ''; });
 }
-const frWeek = s => s && s.w === mondayOf(today()) ? `${s.wd} of ${s.wg} this week` : '';
+// A friend's today and week by their own clock (stat.o = their minutes ahead of UTC), so someone abroad who trained
+// this morning doesn't show "Nothing yet today". Old stats without o use this phone's date.
+const frToday = s => s && Number.isFinite(+s.o) && Math.abs(+s.o) <= 900 ? new Date(Date.now() + s.o * 6e4).toISOString().slice(0, 10) : today();
+const frWeek = s => s && s.w === mondayOf(frToday(s)) ? `${s.wd} of ${s.wg} this week` : '';
 function frStatus(f) {
-  const s = f.stat, T = today(), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
+  const s = f.stat, T = frToday(s), wk = frWeek(s), plus = t => t + (wk ? ' · ' + wk : '');
   if (f.at_gym) return { c: 'gym', t: `At ${f.at_gym} · ${atGymAgo(f.at_since)}` };
   if (!s) return { c: '', t: '' };
   if (s.d === T && Array.isArray(s.tr) && s.tr.length) return { c: 'done', t: plus('Trained · ' + s.tr.map(String).join(', ')) };
@@ -1505,7 +1485,7 @@ function frStatus(f) {
   return { c: 'none', t: plus('Nothing yet today'), nudge: !s.nn };
 }
 // Weeks in a row you've both hit your own number. Their count is only trusted if they've opened the app since last week.
-const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(today()), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
+const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(frToday(s)), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
 let FEED = null, FR_AT = 0; const NUDGED = {};
 // Tab taps reuse friends and feed for 2 minutes (each load is every friend's photo); pull-down and Refresh always reload.
 const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FRIENDS = null; FEED = null; } };
@@ -1624,8 +1604,20 @@ function frSettings() {
   const body = () => { const o = SO(); return `<div class="stack"><h2>What friends see</h2><div class="sgrp">
     ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
     ${o.off ? '' : srow('Post every workout', swi(!!o.autoPost, 'soAuto'), o.autoPost ? 'Your Done Stamp goes up as soon as you finish' : 'Off: you choose on the finish page') + (o.autoPost ? `<div class="srow-x"><div class="cap">Post these splits on their own</div><div class="chips wrap mt2">${S.splits.filter(x => !x.archived).map(x => `<button class="chip${(o.noAutoSp || []).includes(x.id) ? '' : ' on'}" data-a="soAutoSp" data-k="${x.id}">${esc(x.name)}</button>`).join('')}</div></div>` : '') + srow('Show my weights', swi(!o.noW, 'soW'), o.noW ? 'Off: friends see your lifts and time, no numbers' : 'Volume and your top set for each lift') + srow('Ask for a story during workouts', swi(!o.noSnap, 'soSnap'), 'Once a workout, at a random set') + srow('Friends can nudge me', swi(!o.nn, 'soNudge'), 'A “Training today?” ping, once a day at most')}
-    </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="btn block" data-a="closeSheet">Done</button></div>`; };
+    </div><p class="cap m0">Posts disappear after 24 hours.</p><button class="link" data-a="blockedList">Blocked people</button><button class="btn block" data-a="closeSheet">Done</button></div>`; };
   const sh = openSheet(body(), { label: 'What friends see', mount: b => { b.addEventListener('click', () => setTimeout(() => { if (b.isConnected) b.innerHTML = body(); }, 0)); } });
+}
+// Blocked people, with Unblock. Unblocking doesn't make you friends again; they'd need your code.
+async function blockedList() {
+  let list = null;
+  const html = () => `<div class="stack"><h2>Blocked people</h2>${list === null ? '<div class="gym-sk" style="height:88px"></div>' : list === false ? '<p class="cap m0">Couldn’t load the list. Check your connection.</p>' : list.length ? `<div class="list">${list.map(x => `<div class="li"><div class="grow"><div class="t ell">${esc(x.n || 'Someone')}</div><div class="s">Blocked ${esc(fmtDate(String(x.at).slice(0, 10)))}</div></div><button class="btn sm" data-ub="${esc(x.id)}">Unblock</button></div>`).join('')}</div>` : '<p class="cap m0">You haven’t blocked anyone.</p>'}
+    <p class="cap m0">Unblocking doesn’t add them back. They’d need your code again.</p><button class="btn block" data-a="closeSheet">Done</button></div>`;
+  const sh = openSheet(html(), { label: 'Blocked people', mount: b => {
+    const wire = () => b.querySelectorAll('[data-ub]').forEach(x => x.onclick = async () => { x.disabled = true;
+      try { await gymRpc('jobdone_unblock', { p_user: x.dataset.ub }); list = list.filter(y => y.id !== x.dataset.ub); b.innerHTML = html(); wire(); toast('Unblocked'); }
+      catch (e) { x.disabled = false; toast('Couldn’t unblock. Try again later.'); } });
+    gymRpc('jobdone_blocks_list', {}).then(r => { list = r || []; }, () => { list = false; }).then(() => { if (b.isConnected) { b.innerHTML = html(); wire(); } });
+  } });
 }
 function postComments(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
@@ -1642,7 +1634,7 @@ function postComments(id) {
       go.onclick = send; t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); send(); } };
       b.querySelectorAll('.cm-rep').forEach(x => x.onclick = () => { const c = (p.comments || []).find(y => y.id === +x.dataset.cid); if (!c) return;
         confirmSheet({ title: 'Report this comment?', body: 'A copy goes to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-          onOk: () => sendReport(`comment ${c.id} on ${p.kind} post ${p.id}`, c.u, c.n, c.b) }); });
+          onOk: () => sendReport({ p_post: null, p_comment: c.id }, `comment ${c.id} on ${p.kind} post ${p.id}`, c.u, c.n, c.b) }); });
       b.querySelectorAll('.cm-del').forEach(x => x.onclick = async () => { const cid = +x.dataset.cid; x.disabled = true;
         try { await gymRpc('jobdone_comment_delete', { p_cid: cid }); p.comments = p.comments.filter(c => c.id !== cid); b.innerHTML = html(); wire(); rerender(); } catch (e) { x.disabled = false; toast('Couldn’t delete it. Try again.'); } });
     }; wire(); } });
@@ -1845,7 +1837,7 @@ function postMenu(id) {
         onOk: async () => { try { await gymRpc('jobdone_post_delete', { p_id: p.id }); FEED = FEED.filter(y => y !== p); rerender(); } catch (e) { toast('Couldn’t take it down. Try again.'); } } });
       if (m === 'hide') { hide(); toast('Hidden. Only you stop seeing it.'); }
       if (m === 'report') confirmSheet({ title: 'Report this post?', body: 'It’s hidden for you and sent to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
-        onOk: () => { hide(); const b = p.body || {}; sendReport(`${p.kind} post ${p.id} from ${p.at}`, p.user_id, p.n, [b.sp, b.c, b.h].filter(Boolean).join(' · ') || '(no text)'); } });
+        onOk: () => { hide(); const b = p.body || {}; sendReport({ p_post: p.id, p_comment: null }, `${p.kind} post ${p.id} from ${p.at}`, p.user_id, p.n, [b.sp, b.c, b.h].filter(Boolean).join(' · ') || '(no text)'); } });
       if (m === 'block') blockUser(p.user_id, p.n);
     }; },
   });
@@ -1947,8 +1939,12 @@ function friendOpen(id) {
   if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
   idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
 }
-// Reports land in the feedback inbox with a copy of the text, since posts and comments delete themselves within 48 hours. Photos aren't copied.
-async function sendReport(what, uid, n, text) {
+// Reports go to the reports inbox (supabase/reports.sql): the server keeps a copy of the text, since posts and
+// comments delete themselves within 48 hours, and hides it for everyone once two people report it. Photos aren't copied.
+// If that isn't set up yet, the report goes to the feedback inbox as before.
+async function sendReport(ids, what, uid, n, text) {
+  try { await gymRpc('jobdone_report', ids); toast('Reported. Thanks.'); return; }
+  catch (e) { if (/Too many/.test(e.message)) return toast('That’s enough reports for today.'); }
   try {
     const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `Report: ${what} by ${n || '?'} (${uid})
 ${String(text || '')}`.slice(0, 2000) });
@@ -2654,7 +2650,7 @@ function meParts() {
   </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
-    ${p.owner && HOSTED && USER ? slink('Feedback inbox', 'fbInbox') : ''}
+    ${p.owner && HOSTED && USER ? slink('Inbox', 'fbInbox') : ''}
     <a class="xr" href="privacy.html" target="_blank" rel="noopener"><span class="grow">Privacy Policy</span>${I.right}</a>
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED && USER ? slink('Delete account', 'delAccount', 'danger') : ''}
@@ -2981,7 +2977,7 @@ const GLOSSARY = [
   ['e1rm', 'e1RM (estimated one-rep max)', 'The most you could likely lift for a single rep, worked out from a set you did. 80 kg for 8 reps works out to about 100 kg. It lets sets with different reps be compared fairly.'],
   ['volume', 'Volume', 'Weight × reps, added up across sets. 3 sets of 10 at 50 kg is 1,500 kg. Warm-up sets don’t count.'],
   ['pr', 'PRs (personal records)', 'You get at most one PR per exercise per workout, and left and right sides count as one lift. Heaviest: more weight than ever before. e1RM: your strongest set ever once reps are taken into account. Reps: more reps than ever at a weight you’ve lifted before.'],
-  ['target', 'Today’s target', 'If you reached the top of your rep range last time, the target adds a small weight jump and aims for the bottom of the range. Otherwise it keeps the weight and asks for one more rep. Without a rep range set in Me, that’s 6 to 9 reps. You can turn targets off in Me too.'],
+  ['target', 'Today’s target', 'If you reached the top of your rep range last time, the target adds a small weight jump and aims for the bottom of the range. Otherwise it keeps the weight and asks for one more rep. The range comes from Me if you set one, otherwise from the split’s range for that lift. You can turn targets off in Me too.'],
   ['muscle', 'Sets per muscle', 'Working sets this week for each muscle, with the grey marker showing your 4-week average. Left and right sides of one exercise count as half a set each, which is why you can see 3.5.'],
   ['strength', 'Weight vs strength', 'Both lines start at 100% in the same week. Strength is the middle value of your e1RMs across lifts. If weight falls while strength holds, you are losing fat and keeping muscle.'],
   ['rotation', 'Rotation and Next up', 'Your splits in the order you train them. Next up is the split after the last one you did, so if you skip a day nothing gets out of order. Change the order in Splits → Rotation.'],
@@ -3096,7 +3092,7 @@ function logSet(ei, si) {
     if (!left) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA(); snapMaybe();
-    if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
+    if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
       if (!pr.length) celebrate(setVerdict(s.r, repRange(e.name)));
@@ -3104,7 +3100,7 @@ function logSet(ei, si) {
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
         celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 7000 }, 1200);
-        if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1700);
+        if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 1700);
       }
     }
     if (pr.length) { buzz([20, 40, 60]); celebrate({ k: 'amazing', title: 'New PR', sub: `${e.name}: ${setStr(s)}`, note: pr.join(', ') === 'e1RM' ? 'Best estimated 1-rep max' : pr.join(', '), bits: 40 }); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
@@ -4088,7 +4084,7 @@ function openWeighIn(date, prompt) {
         toast(`<b class="num">${bw(kg)} ${U()}</b> · ${prev ? wdelta(kg, prev.w) + ' vs last' : 'logged'} · 7-day avg <span class="num">${a7 ? bw(a7) : '—'}</span>`, 3200);
       };
       const sk = b.querySelector('#wi-skip'); if (sk) sk.onclick = () => { closeSheet(sh); };
-      const dl = b.querySelector('#wi-del'); if (dl) dl.onclick = () => { delete S.weights[date]; persist('jd/weights'); closeSheet(sh); rerender(); toast('Entry deleted'); };
+      const dl = b.querySelector('#wi-del'); if (dl) dl.onclick = () => { delete S.weights[date]; tomb('jd/weights', date); persist('jd/weights'); closeSheet(sh); rerender(); toast('Entry deleted'); };
     },
   });
 }
@@ -4603,7 +4599,7 @@ function restoreFile(file, replacing) {
         st.imported = true;
       }
     }
-    const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
+    const go = () => { const old = S ? allPaths() : []; S = st; renameLifts(S, null); invalidate(); if (replacing) replaceAll([...new Set([...old, ...allPaths()])].filter(p => p.startsWith('months/') || (what === 'Restored your backup' && (p === 'jd/weights' || p === 'jd/steps')))); if (DB) old.filter(p => !allPaths().includes(p)).forEach(p => dirty.add(p)); finishImport(`${what}: ${plural(Object.values(S.workouts).filter(w => !w.skipped).length, 'workout')}`); };
     if (replacing) confirmSheet({ title: 'Replace everything with this file?', body: what === 'Restored your backup' ? 'Your current workouts, weights and splits are replaced by the ones in the file.' : 'Your current workouts are replaced by the ones in the file. Your settings, body weights and steps stay.', ok: 'Replace', danger: true, key: false, onOk: go }); else go();
   };
   rd.readAsText(file);
@@ -4738,7 +4734,7 @@ function renderWelcomePublic() {
   const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
   q('#ob-next').onclick = () => {
     keep(); const err = m => { q('#ob-err').textContent = m; };
-    if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: 'smooth' }); return; }
+    if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: smooth() }); return; }
     if (k === 'days' && !OB.days) return err('Pick how often you plan to train.');
     if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { pushOn().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
     if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (OB.w && !(w > 20 && w < 700)) return err('That weight looks off. Fix it or leave it empty.'); }
@@ -4779,29 +4775,40 @@ function parseCSV(text) {
   if (f || row.length) { row.push(f); rows.push(row); }
   return rows.filter(r => r.some(x => x.trim()));
 }
+// Dates the way Hevy ("4 Jan 2024, 18:13") and Strong ("Jan 4, 2024 6:13 PM") write them. Safari's Date.parse rejects some of these.
+const MON3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+function csvDate(raw) {
+  const iso = (raw.match(/\d{4}-\d{2}-\d{2}/) || [])[0]; if (iso) return iso;
+  const ok = (y, m, d) => m >= 0 && d >= 1 && d <= 31 ? `${y}-${pad2(m + 1)}-${pad2(d)}` : null;
+  let x = raw.match(/^\s*(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); if (x) return ok(x[3], MON3.indexOf(x[2].toLowerCase()), +x[1]);
+  x = raw.match(/^\s*([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/); if (x) return ok(x[3], MON3.indexOf(x[1].toLowerCase()), +x[2]);
+  const p = Date.parse(raw); return isNaN(p) ? null : ymd(new Date(p));
+}
 function csvToWorkouts(text) {
   const rows = parseCSV(text); if (rows.length < 2) return { err: 'That file has no rows.' };
   const h = rows[0].map(x => x.trim().toLowerCase());
   const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
-  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight', 'weight (kg)'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), rpe: col('rpe'), note: col('notes', 'note', 'exercise_notes') };
+  const c = { date: col('date', 'start_time'), split: col('split', 'split_name', 'workout name', 'title'), ex: col('exercise', 'exercise name', 'exercise_title'), w: col('weight_kg', 'weight (kg)', 'weight'), lb: col('weight_lbs', 'weight (lbs)', 'weight (lb)'), r: col('reps'), t: col('set_type', 'set order'), rpe: col('rpe'), note: col('notes', 'note', 'exercise_notes') };
   if (c.date < 0 || c.ex < 0) return { err: 'Couldn’t find date and exercise columns. Expected Job’s Done, Strong or Hevy CSV headers.' };
+  // Strong's plain "Weight" column is in the exporter's own unit. A pounds account reads it as pounds.
+  const plainLb = c.w >= 0 && h[c.w] === 'weight' && !!(S && S.profile && S.profile.unit === 'lb');
   const map = {};
   for (const r of rows.slice(1)) {
-    const raw = (r[c.date] || '').trim(); let d = (raw.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
-    if (!d) { const p = Date.parse(raw); if (!isNaN(p)) d = ymd(new Date(p)); }
+    const raw = (r[c.date] || '').trim(), d = csvDate(raw);
     if (!d) continue;
     const sp = c.split >= 0 ? (r[c.split] || '').trim() || 'Workout' : 'Workout';
-    const key = d + '|' + sp; const w = map[key] || (map[key] = { date: d, splitName: sp, ex: [], skipped: false });
+    // Strong and Hevy give each workout's start time, so two "Push" sessions on one day stay two workouts.
+    const key = d + '|' + sp + '|' + ((raw.match(/\d{1,2}:\d{2}(\s*[AP]M)?/i) || [''])[0]); const w = map[key] || (map[key] = { date: d, splitName: sp, ex: [], skipped: false });
     const ex = (r[c.ex] || '').trim();
     if (!ex) { if (/skip/i.test(r[c.note] || '')) w.skipped = true; continue; }
     let e = w.ex[w.ex.length - 1]; if (!e || e.name !== ex) { e = { name: ex, note: '', sets: [] }; w.ex.push(e); }
     // Strong and Hevy export pounds in a separate column; set types come as warmup/dropset/failure (Hevy) or W/D/F (Strong).
-    const wkg = parseFloat(r[c.w]), wlb = parseFloat(r[c.lb]), wt = !isNaN(wkg) ? wkg : isNaN(wlb) ? NaN : Math.round(wlb / LB * 4) / 4, rp = parseInt(r[c.r], 10);
+    const wkg = plainLb ? NaN : parseFloat(r[c.w]), wlb = parseFloat(r[plainLb ? c.w : c.lb]), wt = !isNaN(wkg) ? wkg : isNaN(wlb) ? NaN : Math.round(wlb / LB * 4) / 4, rp = parseInt(r[c.r], 10);
     const ty = (r[c.t] || '').trim().toLowerCase(), t = /^(w|warm)/.test(ty) ? 'warm' : /^(d|drop)/.test(ty) ? 'drop' : /^(f|fail)/.test(ty) ? 'fail' : 'work';
     const rpe = parseFloat(r[c.rpe]); e.sets.push({ w: isNaN(wt) ? null : wt, r: isNaN(rp) ? null : rp, t, ...(rpe >= 6 && rpe <= 10 ? { rpe } : {}) });
     const nt = c.note >= 0 ? (r[c.note] || '').trim() : ''; if (nt && !e.note) e.note = nt;
   }
-  return { list: Object.values(map), lb: c.w < 0 && c.lb >= 0 };
+  return { list: Object.values(map), lb: plainLb || (c.w < 0 && c.lb >= 0) };
 }
 function importCSVFile(file) {
   const rd = new FileReader();
@@ -4815,7 +4822,7 @@ function importCSVFile(file) {
     const dates = fresh.map(w => w.date).sort();
     const sh = openSheet(`<div class="stack"><div class="eyebrow">Import preview</div>
       <div class="kpis"><div class="kpi"><b>${fresh.length}</b><span>new workouts</span></div><div class="kpi"><b>${fresh.reduce((a, w) => a + wSets(w), 0)}</b><span>sets</span></div><div class="kpi"><b>${res.list.length - fresh.length}</b><span>already here</span></div></div>
-      ${dates.length ? `<div class="cap">${fmtDate(dates[0], { y: true })} to ${fmtDate(dates[dates.length - 1], { y: true })}. ${res.lb ? 'Pounds are converted to kg.' : 'Weights are read as kg.'}</div>` : ''}
+      ${dates.length ? `<div class="cap">${fmtDate(dates[0], { y: true })} to ${fmtDate(dates[dates.length - 1], { y: true })}. ${res.lb ? 'Weights are read as pounds.' : 'Weights are read as kg.'} If that’s wrong, change your unit in Me first.</div>` : ''}
       ${unknown.length ? `<div class="note">New exercise names (added as custom): ${esc(unknown.join(', '))}</div>` : ''}
       <button class="btn primary block" id="ci-go" ${fresh.length ? '' : 'disabled'}>Import ${plural(fresh.length, 'workout')}</button><button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, {
       label: 'Import preview',
@@ -4921,7 +4928,7 @@ const ACT = {
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
   wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
-  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
+  wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; tomb(monthPath(w.date), w.id); invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
@@ -4987,7 +4994,6 @@ const ACT = {
   gymSwitch: () => gymSwitch(),
   gymUse: el => gymUse(el.dataset.g),
   gymPick: () => { while (SHEETS.length) closeSheet(); gymPick(); },
-  gymScan: () => gymScan(),
   gymRetry: () => { GYM.failAt = 0; gymRefresh(true); rerender(); },
   gymMachine: el => gymMachine(el.dataset.e),
   gymVote: el => gymVote(el.dataset.e, +el.dataset.v),
@@ -5015,7 +5021,7 @@ const ACT = {
   friendAdd: () => friendAdd(),
   friendOpen: el => friendOpen(el.dataset.k),
   frRefresh: () => frRefresh(),
-  frTab: el => { UI.frTab = el.dataset.k; UI.rxOpen = null; rerender(); }, frAddSheet: () => frAddSheet(), frSettings: () => frSettings(),
+  frTab: el => { UI.frTab = el.dataset.k; UI.rxOpen = null; rerender(); }, frAddSheet: () => frAddSheet(), frSettings: () => frSettings(), blockedList: () => blockedList(),
   postRxOpen: el => { UI.rxOpen = UI.rxOpen === +el.dataset.k ? null : +el.dataset.k; rerender(); }, postComments: el => postComments(el.dataset.k),
   snap: () => snapStart(), nudge: el => nudge(el.dataset.k), postReact: el => postReact(el.dataset.k, el.dataset.v), postMenu: el => postMenu(el.dataset.k), postShare: el => postShare(el.dataset.k),
   restDay: () => { S.profile.restDay = S.profile.restDay === today() ? null : today(); persist('jd/meta'); statSync(); rerender(); },
@@ -5056,7 +5062,7 @@ const IN = {
   repR: el => { const r = (S.profile.repRange || [null, null]).slice(); r[+el.dataset.rr] = +el.value || null; const o = { lo: r[0], hi: r[1] }; fixRR(o, 'lo', 'hi'); S.profile.repRange = o.lo && o.hi ? [o.lo, o.hi] : o.lo || o.hi ? [o.lo, o.hi] : null; persist('jd/meta'); rerender(); },
   remindAt: el => { if (!/^\d\d:\d\d$/.test(el.value) || !S.profile.remind) return; S.profile.remind.at = el.value; S.profile.remind.tz = myTz(); persist('jd/meta'); toast('Reminder moved to ' + hm12(el.value) + '.'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
-  wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; invalidate(); persist(old, monthPath(w.date)); rerender(); },
+  wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; if (old !== monthPath(w.date)) tomb(old, w.id); invalidate(); persist(old, monthPath(w.date)); rerender(); },
   wkSplit: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const sp = splitById(el.value); w.splitId = sp.id; w.splitName = sp.name; invalidate(); persist(monthPath(w.date)); rerender(); },
   wkNote: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; w.note = el.value; persist(monthPath(w.date)); },
   wsSet: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const s = w.ex[+el.dataset.e].sets[+el.dataset.s]; const v = parseFloat(el.value); if (el.dataset.f === 'w') s.w = isNaN(v) ? null : Math.round(toKg(v) * 1000) / 1000; else s.r = isNaN(v) ? null : Math.round(v); invalidate(); persist(monthPath(w.date)); },
@@ -5149,7 +5155,22 @@ function openFeedback() {
   } });
 }
 async function openInbox() {
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Feedback inbox</div><div id="ib" class="cap">Loading…</div></div>`, { label: 'Feedback inbox', mount: async b => {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Inbox</div><div id="ib-r"></div><div><div class="eyebrow mb1">Feedback</div><div id="ib" class="cap">Loading…</div></div></div>`, { label: 'Inbox', mount: async b => {
+    // Reports (supabase/reports.sql). Missing until that SQL runs; then this section just stays empty.
+    const reps = async () => {
+      let r; try { r = await gymRpc('jobdone_reports_inbox', {}); } catch (e) { return; }
+      const el = b.querySelector('#ib-r'); if (!el) return;
+      el.innerHTML = !r || !r.length ? '' : `<div class="eyebrow mb1">Reports</div><div class="list">${r.map(x => `<div class="li"><div class="grow">
+        <div class="t f15 pre">${esc(x.copy)}</div>
+        <div class="s">${esc(x.what)} by ${esc(x.target_n || 'someone')} · ${plural(+x.reports, 'report')}${x.hidden ? ' · hidden' : ''}${x.gone ? ' · already gone' : ''}${x.suspended ? ' · suspended' : ''} · ${esc(fmtDate(String(x.at).slice(0, 10)))}</div>
+        <div class="row g2 mt2 wrap"><button class="btn sm" data-mod="remove" data-k="${x.id}">Remove</button><button class="btn sm" data-mod="suspend" data-k="${x.id}">Remove + suspend 7 days</button><button class="btn sm ghost" data-mod="dismiss" data-k="${x.id}">Dismiss</button></div>
+      </div></div>`).join('')}</div>`;
+      el.querySelectorAll('[data-mod]').forEach(x => x.onclick = async () => { el.querySelectorAll('[data-mod]').forEach(y => y.disabled = true);
+        try { await gymRpc('jobdone_moderate', { p_report: +x.dataset.k, p_action: x.dataset.mod, p_days: 7 }); toast(x.dataset.mod === 'dismiss' ? 'Dismissed' : x.dataset.mod === 'suspend' ? 'Removed and suspended for 7 days' : 'Removed'); FEED = null; }
+        catch (e) { toast('Couldn’t do that. Try again.'); }
+        reps(); });
+    };
+    reps();
     const { data, error } = await SB.from('jobdone_feedback').select('email,body,created_at').order('created_at', { ascending: false }).limit(100);
     b.querySelector('#ib').innerHTML = error ? 'Couldn’t load feedback.' : !data.length ? 'No feedback yet.' : `<div class="list">${data.map(f => `<div class="li"><div class="grow"><div class="t f15 pre">${esc(f.body)}</div><div class="s">${esc(f.email || 'unknown')} · ${esc(fmtDate(f.created_at.slice(0, 10)))}</div></div></div>`).join('')}</div>`;
   } });

@@ -1,4 +1,4 @@
--- Block (7 Nov 2026, expert review L3). NOT applied yet: run in the SQL editor after Job says yes. Safe to run twice.
+-- Block (7 Nov 2026, expert review L3). Applied to the live database 7 Nov 2026. Safe to run twice.
 -- Blocking someone ends the friendship both ways, cancels requests both ways, and stops new requests between the two
 -- (the request quietly goes nowhere, so the blocked person isn't told). The app calls jobdone_block(p_user) from a
 -- friend's post ⋯ menu and their ID card; until this runs, the app says "Couldn't block. Try again later."

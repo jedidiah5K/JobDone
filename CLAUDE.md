@@ -70,7 +70,8 @@ App icon: flat black, white shirt and tie, gold ribbon and medal with a check. A
 QWatch Pro (not Apple Watch) → Apple Health → "JobDone Steps" Shortcut (daily 9:30 PM, last 3 days) → edge function steps with a per-user sync key (Me → Steps from QWatch). Working.
 
 ## Open work (as of 25 Oct 2026)
-- Daily workout reminders are built on branch claude/project-thread-nxnuq7 but not live. Going live = merge to main + run the daily_workout_reminders part of schema.sql + redeploy rest-push. Needs Job's explicit go.
+- Daily workout reminders are live (Me → Daily workout reminder; jobdone-remind cron + rest-push). Branch claude/project-thread-nxnuq7 is a stale copy; ignore it.
+- Reports inbox (supabase/reports.sql): app side is in v136, the SQL still needs running (the auto-mode check blocked it on 7 Nov). Until then reports fall back to the feedback inbox.
 - Ideas still open: more box-merging on Today, bigger milestone moments.
 - Job's optional free to-dos: GitHub Dependabot/secret scanning, UptimeRobot, Vercel Web Analytics, Cloudflare Turnstile.
 - Files only in the online Claude project (not in GitHub): build prompt, May–Oct workout log CSV, jobdone-backup.json, screenshots, notes/feature-ideas.md, private personal/ seed folder.

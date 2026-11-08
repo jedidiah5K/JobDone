@@ -1,4 +1,4 @@
--- Run once in the Supabase SQL editor (project jobdone). Safe to run twice.
+-- Applied to the live database 7 Nov 2026. Safe to run twice.
 -- 1) New posts from older app versions get the author's current theme saved with them.
 create or replace function public.jobdone_post(p_kind text, p_body jsonb, p_photo text) returns bigint language plpgsql security definer set search_path = '' as $$
 declare me uuid := auth.uid(); nid bigint; b jsonb := coalesce(p_body, '{}'::jsonb);
