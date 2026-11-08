@@ -1798,3 +1798,6 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 :root[data-theme="mono"] .tab-start { box-shadow: 0 0 0 4px var(--startring), 0 8px 18px -10px rgba(170,22,40,.8); }
 :root[data-theme="mono"] .tab-start.live { box-shadow: 0 0 0 4px var(--startring); }
 :root[data-theme="mono"] .keys button.done { background: #8E1222; }
+
+/* ID card: month you started training (Job, 8 Nov) */
+#id-start { flex: none; min-width: 168px; text-align: right; }

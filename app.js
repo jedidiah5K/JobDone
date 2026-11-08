@@ -1147,7 +1147,14 @@ function newsSheet() { // also opened from Me → Help
 // idcard:start (pure, checked by tests/idcard_check.js)
 const ID_LEVELS = { mono: ['Recruit', 'Field agent', 'Double-oh'], spidey: ['Low-level crook', 'Rooftop runner', 'City legend'], climb: ['Fresh chalk', 'Crazy sender', 'Send specialist'], cliffs: ['Base camp', 'Ridge walker', 'Summit veteran'] };
 const ID_PLAIN = ['Beginner', 'Intermediate', 'Advanced'];
-const ID_YEARS = [['', 'Not set'], ['0.5', 'Under a year'], ['1', '1 year'], ['2', '2 years'], ['3', '3 years'], ['4', '4 years'], ['5', '5+ years']];
+// Time training comes from the month you started (Job, 8 Nov): the card shows whole years only
+// and moves to the next year by itself on the anniversary. Old cards with a picked year keep it until a month is set.
+function idYears(o) {
+  const m = /^(\d{4})-(\d{2})$/.exec(o.start || ''); if (!m) return o.yr ? +o.yr : 0;
+  const d = new Date(), mo = (d.getFullYear() - +m[1]) * 12 + d.getMonth() + 1 - +m[2];
+  return mo < 0 ? 0 : mo < 12 ? 0.5 : Math.floor(mo / 12);
+}
+const idYearsLabel = y => !y ? '' : y < 1 ? 'Under a year' : y === 1 ? '1 year' : y + ' years';
 const ID_FIELDS = [['lv', 'Level', true], ['yr', 'Time training', true], ['wk', 'Workouts logged', true], ['since', 'Member since', true], ['prs', 'Top lifts', true], ['sp', 'Your split', true], ['gym', 'Home gym', true], ['bw', 'Body weight', false], ['ht', 'Height', false],
   ['st', 'Current streak', true], ['fav', 'Favourite lift', false], ['life', 'Lifetime kg lifted', true], ['prc', 'PR count', true], ['mon', 'Workouts this month', false], ['bdg', 'Badges', false], ['motto', 'Motto', false]];
 // Where each line goes when you haven't chosen (Job, 5 Nov: people pick front, back or off). c.pl carries your choice to friends.
@@ -1329,13 +1336,13 @@ function idCard(forFriends) {
   const own = (o.own || []).filter(x => Array.isArray(x) && x[0]);
   let picks = o.prs && o.prs.length ? o.prs : logged.slice().sort((a, b) => (hist[b] || []).length - (hist[a] || []).length).slice(0, 3);
   const prs = picks.map(n => { const m = own.find(x => x[0] === n); if (m) return [String(m[0]).slice(0, 40), +m[1], +m[2] || 1, 0]; const b = best[n]; return b && b.maxW > 0 ? [n.slice(0, 40), b.maxW, b.rep[b.maxW] || 1, 1] : null; }).filter(Boolean).slice(0, 3);
-  const lv = [0, 1, 2].includes(o.lv) ? o.lv : idAutoLevel(o.yr ? +o.yr : 0, ws.length);
+  const lv = [0, 1, 2].includes(o.lv) ? o.lv : idAutoLevel(idYears(o), ws.length);
   const created = USER && USER.created_at ? new Date(USER.created_at) : (ws[0] ? parseYmd(ws[0].date) : new Date());
   const rot = S.rotation.map(splitById).filter(Boolean).map(s => s.name), g = gymOn() ? gymCur() : null, lw = latestWeight();
   const c = { v: 2, n: (p.name || '').slice(0, 40), t: theme() };
   if (o.hidden && forFriends) return { ...c, hidden: true }; // friends see only your name; you still see the whole card
   if (idOn('lv')) c.lv = lv;
-  if (idOn('yr')) c.yr = o.yr ? (ID_YEARS.find(x => x[0] === o.yr) || ['', ''])[1] : '';
+  if (idOn('yr')) c.yr = idYearsLabel(idYears(o));
   if (idOn('wk')) c.wk = ws.length;
   if (idOn('since')) c.since = created.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   if (idOn('prs')) c.prs = prs;
@@ -1410,7 +1417,7 @@ function viewIdCard() {
     <div class="xr"><span class="grow">Photo<span class="s">Only friends you’ve added by code see it</span></span><label class="btn sm">${ID_PHOTO ? 'Change' : 'Add'}<input type="file" accept="image/*" id="id-photo" hidden></label>${ID_PHOTO ? '<button class="btn sm ghost" data-a="idPhotoRm">Remove</button>' : ''}</div>
     <div class="xr xr-col"><span class="grow">Level<span class="s">${auto ? 'Picked from how long you’ve trained and how many workouts you’ve logged' : 'You picked this'}</span></span>
       <div class="chips wrap mt2">${['auto', 0, 1, 2].map(k => `<button class="chip ${(auto ? 'auto' : o.lv) === k ? 'on' : ''}" data-a="idLevel" data-k="${k}">${k === 'auto' ? 'Let the app pick' : esc(names[k])}</button>`).join('')}</div></div>
-    <label class="xr"><span class="grow">Time training</span><select class="xr-in" id="id-yr">${ID_YEARS.map(([v, t]) => `<option value="${v}" ${(o.yr || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label class="xr"><span class="grow">Started training<span class="cap" style="display:block">${idYearsLabel(idYears(o)) || 'Pick the month you started'}</span></span><input class="xr-in" type="month" id="id-start" max="${today().slice(0, 7)}" value="${o.start || ''}"></label>
   </div><div class="sgf">Level, time training, workouts and member since are always on the front.</div></section>
   <section><div class="sgh">Your training</div><div class="sgrp">
     ${seg('prs')}
@@ -1964,6 +1971,7 @@ function friendOpenRemove(id, f) {
     onOk: async () => { try { await gymRpc('jobdone_friend_remove', { p_friend: id }); FRIENDS = FRIENDS.filter(x => x.id !== id); rerender(); } catch (e) { toast('Couldn’t remove them. Try again.'); } } });
 }
 document.addEventListener('change', ev => { const t = ev.target; if (!t) return;
+  if (t.id === 'id-start') { const v = t.value; if (v && !(/^\d{4}-\d{2}$/.test(v) && v <= today().slice(0, 7))) return; const id = { ...(S.profile.id || {}) }; if (v) { id.start = v; delete id.yr; } else delete id.start; S.profile.id = id; persist('jd/meta'); rerender(); idSync(); }
   if (t.id === 'id-yr') { S.profile.id = { ...(S.profile.id || {}), yr: t.value }; persist('jd/meta'); rerender(); }
   if (t.id === 'id-bw') { const v = parseFloat(t.value); S.profile.id = { ...(S.profile.id || {}), bw: v > 0 ? Math.round((U() === 'lb' ? v / LB : v) * 10) / 10 : null }; persist('jd/meta'); rerender(); }
   if (t.id === 'id-photo') idPhotoPick(t.files && t.files[0]);
