@@ -511,9 +511,9 @@ function themeArt(W, h, cx, by) {
   // Boulder: an off-white wall with a grid of bolt holes, a few holds scattered unevenly
   let holes = ''; for (let y = 6; y < h; y += 14) for (let x = 6 + (y / 14 % 2) * 7; x < W; x += 14) holes += `<circle cx="${x}" cy="${y}" r=".9"/>`;
   const cols = ['#E8A23B', '#4BA3C7', '#D9534F', '#6C3FD6', '#3E9E6A', '#E84F8A'];
-  for (let gy = 16, r = 0; gy < h; gy += 22, r++) for (let gx = 12 + (r % 2) * 15; gx < W; gx += 30) {
-    if (R(0, 1) < .34) continue; // about a quarter fewer than a full grid
-    const x = gx + R(-13, 13), y = gy + R(-9, 9), c = cols[Math.floor(R(0, cols.length))], z = R(3, 5.5), rot = R(-35, 35).toFixed(0), kind = Math.floor(R(0, 6));
+  for (let gy = 16, r = 0; gy < h; gy += 26, r++) for (let gx = 12 + (r % 2) * 19; gx < W; gx += 38) {
+    if (R(0, 1) < .2) continue; // spread out, not a grid
+    const x = gx + R(-17, 17), y = gy + R(-11, 11), c = cols[Math.floor(R(0, cols.length))], z = R(3, 5.5), rot = R(-35, 35).toFixed(0), kind = Math.floor(R(0, 6));
     // jug, crimp, sloper, pinch, pocket, undercling
     const shape = [
       `<path d="M${-z},0 Q${-z},${-z * 1.1} 0,${-z * 1.1} Q${z},${-z * 1.1} ${z},0 Q${z * .4},${-z * .35} 0,${-z * .3} Q${-z * .4},${-z * .35} ${-z},0 Z"/>`,
