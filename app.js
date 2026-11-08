@@ -1837,30 +1837,27 @@ async function stampPost(id, o = {}) {
   try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: o.photo || null }); FEED = null; const el = document.getElementById('rc-feed'); if (el) el.innerHTML = stampDone(!!o.photo); return true; }
   catch (e) { postErr(e); return false; }
 }
-// Posted: a photo prompt right under the hero, so nobody has to scroll for it (Job, 8 Nov)
-const stampDone = ph => `<div class="row g2"><span class="rc-cam" aria-hidden="true">${IC.cam}</span><span class="grow cap">${ph ? 'On your feed, with photo' : 'On your feed'}</span><button class="link cap" id="rc-ph">${ph ? 'Change photo' : 'Add photo'}</button><button class="link cap rc-unst" id="rc-unst">Take down</button></div>`;
-const stampAsk = () => `<div class="eyebrow">Share to your feed</div><input class="input" id="rc-cap" maxlength="80" placeholder="Say something (optional)" autocomplete="off">
-  <label class="row between rc-opt"><span>${SO().noW ? 'Show every lift' : 'Show every lift and top set'}</span><input type="checkbox" class="cbox" id="rc-ex" checked></label>
-  <div class="rc-ph-prev" id="rc-prev" hidden></div>
-  <div class="row g2"><button class="btn" id="rc-addph">Add photo</button><button class="btn grow rc-post" id="rc-post">Post to friends</button></div>`;
+// Finish page feed row (Job, 8 Nov): a "Share with friends" tick and a camera beside it. Ticked = on the feed.
+const stampDone = ph => stampRow(true, ph);
+const stampAsk = () => stampRow(false, false);
+const stampRow = (on, ph) => `<div class="row g2"><label class="row g3 grow rc-share"><input type="checkbox" class="cbox" id="rc-on" ${on ? 'checked' : ''}><span>Share with friends</span></label><button class="icon-btn rc-cam ${ph ? 'has' : ''}" id="rc-ph" aria-label="${ph ? 'Change photo' : 'Add a photo'}" title="${ph ? 'Change photo' : 'Add a photo'}">${IC.cam}</button></div>`;
 function stampWire(el, id) {
   const box = el.querySelector('#rc-feed'); if (!box) return;
-  let photo = null;
-  const wireDone = () => {
-    const ph = box.querySelector('#rc-ph'), un = box.querySelector('#rc-unst'); if (!ph) return;
-    ph.onclick = () => pickPhoto(async d => { try { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); box.innerHTML = stampDone(true); wireDone(); toast('Photo added'); FEED = null; } catch (e) { postErr(e); } });
-    un.onclick = async () => { un.disabled = true; try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; box.innerHTML = stampAsk(); wireAsk(); toast('Taken down'); FEED = null; } catch (e) { un.disabled = false; toast('Couldn’t take it down. Try again.'); } };
+  let busy = false, ph = false;
+  const draw = () => { box.innerHTML = stampRow(!!STAMP[id], ph); wire(); };
+  const wire = () => {
+    const on = box.querySelector('#rc-on'), cam = box.querySelector('#rc-ph'); if (!on) return;
+    on.onchange = async () => { if (busy) { on.checked = !on.checked; return; } busy = true; on.disabled = true;
+      if (on.checked) { const ok = await stampPost(id, { ex: true, photo: null }); if (ok) toast('Shared with friends'); else on.checked = false; }
+      else { try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; ph = false; FEED = null; toast('Taken down'); } catch (e) { on.checked = true; toast('Couldn’t take it down. Try again.'); } }
+      busy = false; draw(); };
+    cam.onclick = () => pickPhoto(async d => { if (busy) return; busy = true;
+      try { if (STAMP[id]) { await gymRpc('jobdone_post_photo', { p_id: STAMP[id], p_photo: d }); FEED = null; } else if (!(await stampPost(id, { ex: true, photo: d }))) { busy = false; return; } ph = true; toast('Photo added'); } catch (e) { postErr(e); }
+      busy = false; draw(); });
   };
-  const wireAsk = () => {
-    const add = box.querySelector('#rc-addph'), post = box.querySelector('#rc-post'), prev = box.querySelector('#rc-prev'); if (!post) return;
-    add.onclick = () => pickPhoto(d => { photo = d; prev.hidden = false; prev.innerHTML = `<img alt="Your photo" src="${d}"><button class="link" id="rc-rmph">Remove</button>`; add.textContent = 'Change photo'; prev.querySelector('#rc-rmph').onclick = () => { photo = null; prev.hidden = true; prev.innerHTML = ''; add.textContent = 'Add photo'; }; });
-    post.onclick = async () => { post.disabled = true; add.disabled = true;
-      const ok = await stampPost(id, { c: box.querySelector('#rc-cap').value.trim(), ex: box.querySelector('#rc-ex').checked, photo });
-      if (ok) { toast('Posted to your feed'); wireDone(); } else { post.disabled = false; add.disabled = false; } };
-  };
-  if (STAMP[id]) { box.innerHTML = stampDone(false); wireDone(); } else wireAsk();
-  // posted automatically while the page was opening
-  const mo = new MutationObserver(() => wireDone()); mo.observe(box, { childList: true });
+  if (STAMP[id] || !box.textContent.includes('Posting')) draw(); // still auto-posting: stampPost swaps the row in when done
+  // posted automatically while the page was opening: stampPost swaps the row in, so wire it again
+  new MutationObserver(() => { if (box.querySelector('#rc-on') && !box.querySelector('#rc-on').onchange) wire(); }).observe(box, { childList: true });
 }
 async function nudge(id) {
   const n = esc(((FRIENDS || []).find(x => x.id === id) || { card: {} }).card.n || 'them');
