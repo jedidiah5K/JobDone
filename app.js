@@ -1695,10 +1695,10 @@ function holdToSave(d) { openSheet(`<div class="stack"><h2>Save photo</h2><img c
 async function dualShot(cb) {
   if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return pickPhoto(cb);
   const ov = document.createElement('div'); ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Story camera');
-  ov.innerHTML = `<video playsinline muted autoplay></video><img class="cam-in" alt="" hidden><p class="cam-hint">Back camera</p><b class="cam-count" hidden></b><div class="cam-bar"><button class="link cam-x" type="button">Cancel</button><button class="cam-go" type="button" aria-label="Take photo"></button><button class="link cam-lib" type="button">Photos</button></div>`;
+  ov.innerHTML = `<video playsinline muted autoplay></video><img class="cam-in" alt="" hidden><b class="cam-count" hidden></b><div class="cam-bar"><button class="link cam-x" type="button">Cancel</button><button class="cam-go" type="button" aria-label="Take photo"></button><button class="link cam-lib" type="button">Photos</button></div>`;
   document.body.append(ov);
-  const v = ov.querySelector('video'), go = ov.querySelector('.cam-go'), hint = ov.querySelector('.cam-hint'), inset = ov.querySelector('.cam-in'), cnt = ov.querySelector('.cam-count');
-  let st = null;
+  const v = ov.querySelector('video'), go = ov.querySelector('.cam-go'), inset = ov.querySelector('.cam-in'), cnt = ov.querySelector('.cam-count');
+  let st = null, first = 'environment';
   const stop = () => { if (st) st.getTracks().forEach(t => t.stop()); st = null; };
   const close = () => { stop(); ov.remove(); };
   const open = async face => { stop(); st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }); /* the sensor's own 4:3; asking for 4:5 made Safari crop the sensor, so it looked zoomed in */ v.srcObject = st; await v.play(); ov.classList.toggle('front', face === 'user'); };
@@ -1733,15 +1733,17 @@ async function dualShot(cb) {
   };
   ov.querySelector('.cam-x').onclick = close;
   ov.querySelector('.cam-lib').onclick = () => { close(); pickPhoto(cb); };
-  try { await open('environment'); } catch (e) { close(); toast('No camera access, so pick a photo instead.'); return pickPhoto(cb); }
+  try { await open(first); } catch (e) { close(); toast('No camera access, so pick a photo instead.'); return pickPhoto(cb); }
+  // Tap the picture to start with the other camera (Job, 8 Nov). The first shot is the big one, the second goes in the corner.
+  v.onclick = async () => { if (go.disabled) return; const was = first; first = first === 'user' ? 'environment' : 'user'; try { await open(first); } catch (e) { first = was; try { await open(first); } catch (e2) {} } };
   go.onclick = async () => {
-    go.disabled = true; const back = grab(false);
-    inset.src = back.toDataURL('image/jpeg', .6); inset.hidden = false; hint.textContent = 'Now you';
-    try { await open('user'); } catch (e) { return review(back, null); }
+    go.disabled = true; const back = grab(first === 'user');
+    inset.src = back.toDataURL('image/jpeg', .6); inset.hidden = false;
+    try { await open(first === 'user' ? 'environment' : 'user'); } catch (e) { return review(back, null); }
     cnt.hidden = false;
     for (const n of [3, 2, 1]) { if (!ov.isConnected) return; cnt.textContent = n; await new Promise(r => setTimeout(r, 1000)); }
     if (!ov.isConnected) return;
-    review(back, grab(true));
+    review(back, grab(first !== 'user'));
   };
 }
 function pickPhoto(cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const d = await postPhoto(i.files && i.files[0]); if (d) cb(d); }; i.click(); }
