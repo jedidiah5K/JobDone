@@ -494,13 +494,14 @@ function niceTicks(lo, hi, n = 3) {
 }
 // Theme art in the gap between two lines (Job, 8 Nov): Skyline web, Agent scan lines, Summit ridges, Boulder wall with holds.
 // Seeded so it doesn't jump on every redraw. Faded from the top line down.
-function themeArt(W, h, cx, by) {
+function themeArt(W, h, hubs) {
   let n = 7; const R = (a, b) => { n = (n * 9301 + 49297) % 233280; return a + n / 233280 * (b - a); };
   const t = theme(); let f = '';
   if (t === 'spidey') {
-    const sp = [...Array(11)].map((_, i) => Math.PI + i * Math.PI / 10);
-    sp.forEach(a => { f += `<path d="M${cx},${by} L${(cx + 600 * Math.cos(a)).toFixed(1)},${(by + 600 * Math.sin(a)).toFixed(1)}"/>`; });
-    for (let k = 1; k <= 14; k++) { const r = k * 26; let d = ''; sp.forEach((a, i) => { const x = cx + r * Math.cos(a), y = by + r * Math.sin(a); if (!i) d = `M${x.toFixed(1)},${y.toFixed(1)}`; else { const m = (a + sp[i - 1]) / 2, q = r * .93; d += ` Q${(cx + q * Math.cos(m)).toFixed(1)},${(by + q * Math.sin(m)).toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}`; } }); f += `<path d="${d}"/>`; }
+    // one web per gap between the lines, centred where that gap is widest, on its lower edge, fanning up into it
+    hubs.forEach(([cx, by, up]) => { const sp = [...Array(11)].map((_, i) => (up ? Math.PI : 0) + i * Math.PI / 10);
+      sp.forEach(a => { f += `<path d="M${cx.toFixed(1)},${by.toFixed(1)} L${(cx + 600 * Math.cos(a)).toFixed(1)},${(by + 600 * Math.sin(a)).toFixed(1)}"/>`; });
+      for (let k = 1; k <= 14; k++) { const r = k * 26; let d = ''; sp.forEach((a, i) => { const x = cx + r * Math.cos(a), y = by + r * Math.sin(a); if (!i) d = `M${x.toFixed(1)},${y.toFixed(1)}`; else { const m = (a + sp[i - 1]) / 2, q = r * .93; d += ` Q${(cx + q * Math.cos(m)).toFixed(1)},${(by + q * Math.sin(m)).toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}`; } }); f += `<path d="${d}"/>`; } });
     return [`<g stroke="#fff" stroke-width=".7" fill="none" opacity=".5">${f}</g>`, 0];
   }
   if (t === 'mono') { for (let y = 0; y < h; y += 4) f += `<rect x="0" y="${y}" width="${W}" height="1.6"/>`; return [`<rect width="${W}" height="${h}" fill="#8E1222" opacity=".28"/><g fill="#C42035" opacity=".45">${f}</g>`, 0]; }
@@ -524,7 +525,7 @@ function themeArt(W, h, cx, by) {
       `<path d="M${-z},0 Q${-z},${z * 1.1} 0,${z * 1.1} Q${z},${z * 1.1} ${z},0 Q${z * .4},${z * .35} 0,${z * .3} Q${-z * .4},${z * .35} ${-z},0 Z"/>`][kind];
     f += `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot})" fill="${c}" stroke="${c}" stroke-width="1.5" stroke-linejoin="round">${shape}${kind === 4 ? '' : '<circle r="1.2" fill="#3A332C" stroke="none" opacity=".6"/>'}</g>`;
   }
-  return [`<rect width="${W}" height="${h}" fill="#E6E0D4"/><g fill="#6B6157" opacity=".55">${holes}</g><defs><linearGradient id="hfG" gradientUnits="userSpaceOnUse" x1="0" y1="${by - 110}" x2="0" y2="${by}"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="hfM"><rect width="${W}" height="${h}" fill="url(#hfG)"/></mask></defs><g opacity=".65" mask="url(#hfM)">${f}</g>`, .85];
+  return [`<rect width="${W}" height="${h}" fill="#E6E0D4"/><g fill="#6B6157" opacity=".55">${holes}</g><defs><linearGradient id="hfG" gradientUnits="userSpaceOnUse" x1="0" y1="${hubs[0][1] - 110}" x2="0" y2="${hubs[0][1]}"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="hfM"><rect width="${W}" height="${h}" fill="url(#hfG)"/></mask></defs><g opacity=".65" mask="url(#hfM)">${f}</g>`, .85];
 }
 function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(ymd(new Date(t))), area = true, w, art }) {
   const W = w || chartW(), id = 'c' + (++chartSeq);
@@ -545,7 +546,7 @@ function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(y
     const pts = s.pts.slice().sort((a, b) => a.x - b.x).map(p => ({ ...p, px: X(p.x), py: Y(p.y) }));
     if (!pts.length) return { ...s, pts };
     const d = pts.map((p, i) => (i ? 'L' : 'M') + p.px.toFixed(1) + ' ' + p.py.toFixed(1)).join(' ');
-    if (area && si === 0 && !s.noArea) {
+    if (area && !art && si === 0 && !s.noArea) {
       defs += `<linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".28"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient>`;
       body += `<path d="${d} L${pts[pts.length - 1].px} ${h - pb} L${pts[0].px} ${h - pb} Z" fill="url(#${id}g)" stroke="none"/>`;
     }
@@ -556,12 +557,18 @@ function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(y
     return { ...s, pts };
   });
   // art: fill the gap below the last series and above the first one, nothing outside it
-  if (art && mapped.length > 1 && mapped[0].pts.length > 1 && mapped[mapped.length - 1].pts.length > 1) {
-    const top = mapped[mapped.length - 1].pts, bot = mapped[0].pts, pd = a => a.map((p, i) => (i ? 'L' : 'M') + p.px.toFixed(1) + ' ' + p.py.toFixed(1)).join(' ');
-    const mid = bot[Math.floor(bot.length / 2)], [fill, end] = themeArt(W, h, mid.px, mid.py), ty = Math.min(...top.map(p => p.py)), byy = Math.max(...bot.map(p => p.py));
-    defs += `<clipPath id="${id}u"><path d="${pd(top)} L${top[top.length - 1].px} ${h} L${top[0].px} ${h} Z"/></clipPath><clipPath id="${id}o"><path d="${pd(bot)} L${bot[bot.length - 1].px} 0 L${bot[0].px} 0 Z"/></clipPath>
+  if (art && mapped[mapped.length - 1].pts.length > 1 && (art === 'base' || (mapped.length > 1 && mapped[0].pts.length > 1))) {
+    const top = mapped[mapped.length - 1].pts, bot = art === 'base' ? [{ px: top[0].px, py: h - pb }, { px: top[top.length - 1].px, py: h - pb }] : mapped[0].pts, pd = a => a.map((p, i) => (i ? 'L' : 'M') + p.px.toFixed(1) + ' ' + p.py.toFixed(1)).join(' ');
+    // gaps between the lines: split where they cross, and centre a hub in the middle of each gap on its lower line
+    const yb = x => { for (let i = 1; i < bot.length; i++) if (x <= bot[i].px) { const a = bot[i - 1], b = bot[i]; return a.py + (b.py - a.py) * (x - a.px) / ((b.px - a.px) || 1); } return bot[bot.length - 1].py; };
+    const runs = []; top.forEach(p => { const up = yb(p.px) - p.py >= 0, r = runs[runs.length - 1]; if (!r || r.up !== up) runs.push({ up, ps: [p] }); else r.ps.push(p); });
+    const hubs = runs.filter(r => r.ps.length > 1).map(r => { const x = (r.ps[0].px + r.ps[r.ps.length - 1].px) / 2, p = r.ps.reduce((a, b) => Math.abs(b.px - x) < Math.abs(a.px - x) ? b : a); return [p.px, Math.max(yb(p.px), p.py), true]; });
+    const [fill, end] = themeArt(W, h, hubs.filter(Boolean).length ? hubs.filter(Boolean) : [[W / 2, h - pb, true]]), ty = Math.min(...top.map(p => p.py), ...bot.map(p => p.py)), byy = Math.max(...top.map(p => p.py), ...bot.map(p => p.py));
+    // the band between the two lines, whichever is on top (Job, 8 Nov: keep it when they cross)
+    const back = bot.slice().reverse().map(p => 'L' + p.px.toFixed(1) + ' ' + p.py.toFixed(1)).join(' ');
+    defs += `<clipPath id="${id}u"><path d="${pd(top)} ${back} Z"/></clipPath>
       <linearGradient id="${id}f" gradientUnits="userSpaceOnUse" x1="0" y1="${ty}" x2="0" y2="${byy}"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="${end}"/></linearGradient><mask id="${id}m"><rect width="${W}" height="${h}" fill="url(#${id}f)"/></mask>`;
-    body = `<g clip-path="url(#${id}u)"><g clip-path="url(#${id}o)"><g mask="url(#${id}m)">${fill}</g></g></g>` + body;
+    body = `<g clip-path="url(#${id}u)"><g mask="url(#${id}m)">${fill}</g></g>` + body;
   }
   CH[id] = { W, h, pt, pb, series: mapped, yfmt, xfmt };
   return `<div class="chart" data-chart="${id}"><svg viewBox="0 0 ${W} ${h}" height="${h}" role="img" aria-label="Chart"><defs>${defs}</defs>${g}${body}<line class="scrub" x1="0" x2="0" y1="${pt}" y2="${h - pb}" stroke="var(--text2)" stroke-width="1" opacity="0"/></svg><div class="tip" hidden></div></div>`;
@@ -2562,7 +2569,7 @@ function viewExercise(v) {
   ${bw && B.e1 && ['barbell', 'dumbbell', 'smith'].includes(exInfo(main).equip) ? `<div class="mt3 cap">Strength-to-weight: e1RM is <b class="c-text num">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
   ${(G => G ? `<div class="card">${goalRow(G)}<button class="mt2 link cap" data-a="goal" data-k="${esc(main)}">Edit goal</button></div>` : `<button class="card tight row between" data-a="goal" data-k="${esc(main)}"><span>Set a goal</span><span class="cap">e.g. ${esc(dw(Math.ceil(((B.maxW || 20) * 1.1) / 2.5) * 2.5))} ${U()} × 5</span></button>`)(goalState(main))}
   <div class="card"><div class="mb3 seg">${[['e1', 'e1RM'], ['top', 'Top set'], ['vol', 'Volume']].map(([k, l]) => `<button class="${v.metric === k ? 'on' : ''}" data-a="exMetric" data-k="${k}">${l}</button>`).join('')}</div>
-    ${lineChart({ series, h: 180, yfmt: x => v.metric === 'vol' ? n0(x) : trim(Math.round(x * 10) / 10) })}
+    ${lineChart({ series, h: 180, yfmt: x => v.metric === 'vol' ? n0(x) : trim(Math.round(x * 10) / 10), art: 'base' })}
     ${sel.length > 1 ? `<div class="mt2 legend">${sel.map((n, i) => `<span><i style="background:${colors[i]}"></i>${sideOf(n) === 'L' ? 'Left' : 'Right'}</span>`).join('')}</div>` : ''}
   </div>
   <div class="card"><div class="card-h"><span class="eyebrow">Best sets${sel.length > 1 ? ' · right side' : ''}</span><span class="cap">heaviest weight for at least N reps</span></div>
