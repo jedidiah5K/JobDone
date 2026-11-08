@@ -1167,8 +1167,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v147';
+const NEWS_ID = '2026-11-v150';
 const NEWS = [
+  ['Import from other apps, up front', 'Coming from Strong, Hevy or another app? The CSV import now sits at the top of the plan step, so it is easy to find.'],
   ['A new exercise picker', 'Search, then filter by equipment or muscle. Each exercise shows the muscle it works, and the i explains how to do it.'],
   ['More calisthenics', 'Pistol squats, muscle-ups, L-sits, handstand push-ups, dragon flags and more.'],
   ['Set types', 'Tap a set number to make it a warm-up, a set to failure or a drop set. The i next to Set explains each one.'],
