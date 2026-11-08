@@ -1832,3 +1832,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .fr-off { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #9AA0A6; box-shadow: 0 0 0 2.5px var(--surface-solid, var(--bg)); }
 .fr-face > span:last-child { white-space: nowrap; }
 :root[data-theme="cliffs"] .fr-face > b, :root[data-theme="cliffs"] .fr-face > span:last-child { padding: 1px 7px; border-radius: 9px; background: color-mix(in srgb, var(--surface-solid, #EAF3FA) 72%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* Post to feed line centred under Share and Done (Job, 8 Nov) */
+.rc-foot .rc-feed > .row { justify-content: center; }
+.rc-foot .rc-feed .rc-share { flex: 0 0 auto; }
