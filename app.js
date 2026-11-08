@@ -512,7 +512,7 @@ function themeArt(W, h, cx, by) {
   let holes = ''; for (let y = 6; y < h; y += 14) for (let x = 6 + (y / 14 % 2) * 7; x < W; x += 14) holes += `<circle cx="${x}" cy="${y}" r=".9"/>`;
   const cols = ['#E8A23B', '#4BA3C7', '#D9534F', '#6C3FD6', '#3E9E6A', '#E84F8A'];
   for (let gy = 16, r = 0; gy < h; gy += 22, r++) for (let gx = 12 + (r % 2) * 15; gx < W; gx += 30) {
-    if (R(0, 1) < .12) continue;
+    if (R(0, 1) < .34) continue; // about a quarter fewer than a full grid
     const x = gx + R(-13, 13), y = gy + R(-9, 9), c = cols[Math.floor(R(0, cols.length))], z = R(3, 5.5), rot = R(-35, 35).toFixed(0), kind = Math.floor(R(0, 6));
     // jug, crimp, sloper, pinch, pocket, undercling
     const shape = [
@@ -524,7 +524,7 @@ function themeArt(W, h, cx, by) {
       `<path d="M${-z},0 Q${-z},${z * 1.1} 0,${z * 1.1} Q${z},${z * 1.1} ${z},0 Q${z * .4},${z * .35} 0,${z * .3} Q${-z * .4},${z * .35} ${-z},0 Z"/>`][kind];
     f += `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot})" fill="${c}" stroke="${c}" stroke-width="1.5" stroke-linejoin="round">${shape}${kind === 4 ? '' : '<circle r="1.2" fill="#3A332C" stroke="none" opacity=".6"/>'}</g>`;
   }
-  return [`<rect width="${W}" height="${h}" fill="#E6E0D4"/><g fill="#6B6157" opacity=".55">${holes}</g><g opacity=".65">${f}</g>`, .55];
+  return [`<rect width="${W}" height="${h}" fill="#E6E0D4"/><g fill="#6B6157" opacity=".55">${holes}</g><defs><linearGradient id="hfG" gradientUnits="userSpaceOnUse" x1="0" y1="${by - 110}" x2="0" y2="${by}"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="hfM"><rect width="${W}" height="${h}" fill="url(#hfG)"/></mask></defs><g opacity=".65" mask="url(#hfM)">${f}</g>`, .85];
 }
 function lineChart({ series, h = 170, yfmt = v => trim(v), xfmt = t => fmtDate(ymd(new Date(t))), area = true, w, art }) {
   const W = w || chartW(), id = 'c' + (++chartSeq);
