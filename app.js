@@ -4382,8 +4382,8 @@ function pickExercise(onPick, opts = {}) {
   };
   const sh = openSheet(`<div class="stack pk"><div class="pk-top"><button class="pk-pill" id="pk-x">Cancel</button><b>${esc(opts.title || 'Add exercise')}</b><button class="pk-pill" id="pk-new">Create</button></div>
     <label class="pk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pk-q" placeholder="Search exercises" autocomplete="off"></label>
-    ${pm ? `<div class="seg pk-scope"><button class="on" data-sc="1">${esc(opts.split)}</button><button data-sc="0">All exercises</button></div>` : ''}
     <div class="pk-f"><button class="pk-fb" id="pk-fe">All equipment</button><button class="pk-fb" id="pk-fm">All muscles</button></div>
+    ${pm ? `<div class="pk-scope"><button class="pk-sc on" id="pk-sc" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filter</button><span class="pk-sc-l" id="pk-sc-l">${esc(opts.split)} only</span></div>` : ''}
     <label class="g2 row cap"><input type="checkbox" id="pk-side" style="accent-color:var(--accent)"> Log left and right sides separately</label>
     <div class="list" id="pk-list">${rows()}</div></div>`, {
     label: 'Exercise picker',
@@ -4409,7 +4409,7 @@ function pickExercise(onPick, opts = {}) {
           fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; closeSheet(fs); redraw(); };
         } });
       };
-      b.querySelectorAll('[data-sc]').forEach(x => x.onclick = () => { scoped = x.dataset.sc === '1'; b.querySelectorAll('[data-sc]').forEach(y => y.classList.toggle('on', y === x)); redraw(); });
+      const sc = b.querySelector('#pk-sc'); if (sc) sc.onclick = () => { scoped = !scoped; sc.classList.toggle('on', scoped); sc.setAttribute('aria-pressed', scoped); b.querySelector('#pk-sc-l').textContent = scoped ? opts.split + ' only' : 'All exercises'; redraw(); };
       b.querySelector('#pk-fe').onclick = () => filt('eq');
       b.querySelector('#pk-fm').onclick = () => filt('mus');
       L.onclick = ev => {

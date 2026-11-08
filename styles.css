@@ -1934,3 +1934,10 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #pf-go, #pf-clear { white-space: nowrap; font-size: 15px; padding-left: 8px; padding-right: 8px; }
 .pk-tile .pk-av > svg[viewBox="0 0 24 24"] { width: 28px; height: 28px; color: #2B2B33; }
 .pk-scope { margin: 0; }
+
+/* Small split filter under Equipment / Muscles (Job, 8 Nov) */
+.pk-scope { display: flex; align-items: center; gap: 8px; margin: -2px 0 0; }
+.pk-sc { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 11px; border-radius: 15px; background: var(--raised); color: var(--text2); font: inherit; font-size: 13px; font-weight: 600; }
+.pk-sc svg { width: 14px; height: 14px; }
+.pk-sc.on { background: var(--accent); color: var(--accent-ink, #fff); }
+.pk-sc-l { font-size: 12px; color: var(--muted); }
