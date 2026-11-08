@@ -1121,7 +1121,8 @@ const NEWS = [
   ['Targets follow your plan', 'Next time’s weight and reps use the rep range in your split, so 12 reps on an 8 to 12 plan means add weight. A range set in Me still wins.'],
   ['Cleaner Today and finish page', 'Today has one Start workout button and weight next to steps. The finish page leads with your numbers and says which old set each PR beat.'],
   ['Block and report', 'Block someone from ⋯ on their post or from their card. Report a post or a comment. Unblock in Friends → ⚙ → Blocked people.'],
-  ['Safer syncing', 'A workout finished with no signal stays put, the rest timer survives the app closing, and sign-out waits until your sets are saved.'],
+  ['Safer syncing', 'Two phones on one account no longer overwrite each other. A workout finished with no signal stays put, and sign-out waits until your sets are saved.'],
+  ['Better imports', 'Hevy and Strong files keep the right dates and units, and two workouts on the same day stay separate.'],
   ['Machines start empty', 'The plate loader on machines and cables starts at 0 with no bar.'],
 ];
 function whatsNew() {
