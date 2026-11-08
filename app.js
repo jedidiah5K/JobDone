@@ -3359,7 +3359,7 @@ function tapeSVG(cls, seed) {
   d = 'M4 0' + pts.map(([x, y]) => `L${x.toFixed(1)} ${y}`).join('') + lp.map(([x, y]) => `L${x.toFixed(1)} ${y}`).join('') + 'Z';
   let grime = ''; for (let i = 0; i < 40; i++) grime += `<circle cx="${(6 + r() * 68).toFixed(1)}" cy="${(2 + r() * 20).toFixed(1)}" r="${(.25 + r() * .7).toFixed(2)}" opacity="${(.3 + r() * .7).toFixed(2)}"/>`;
   const crease = [0, 1, 2].map(() => { const x = 14 + r() * 52; return `M${x.toFixed(1)} 0L${(x + r() * 10 - 5).toFixed(1)} 24`; }).join('');
-  return `<svg class="${cls}" viewBox="0 0 80 24" aria-hidden="true"><path class="tb" d="${d}"/><path class="tc" d="${crease}"/><g class="tg">${grime}</g><ellipse class="tp" cx="${(30 + r() * 20).toFixed(1)}" cy="12" rx="9" ry="7"/></svg>`;
+  return `<svg class="${cls}" viewBox="0 0 80 24" preserveAspectRatio="none" aria-hidden="true"><path class="tb" d="${d}"/><path class="tc" d="${crease}"/><g class="tg">${grime}</g><ellipse class="tp" cx="${(30 + r() * 20).toFixed(1)}" cy="12" rx="9" ry="7"/></svg>`;
 }
 // Boulder: chalk on the wall: dusty clouds, speckle and finger swipes.
 let CHALK = '';
