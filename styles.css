@@ -370,7 +370,6 @@ tr.pop .check { animation: pop .3s var(--ease); }
 .rc-pr { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; border-top: 1px solid var(--border); }
 .rc-pr:first-of-type { border-top: 0; }
 .rc-pr .t { font-weight: 600; }
-.rc-medal { display: flex; color: var(--pr); }
 .rc-mu { display: grid; grid-template-columns: 96px 1fr 58px; align-items: center; gap: var(--s3); padding: 5px 0; font-size: 15px; }
 .rc-mu i { height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
 .rc-mu i b { display: block; height: 100%; border-radius: 4px; background: var(--accent); transform-origin: left; animation: grow .6s .2s var(--ease) both; }
