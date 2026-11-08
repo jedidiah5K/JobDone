@@ -1692,10 +1692,12 @@ function savePhoto(d, name = 'jobs-done-story.jpg', onFail = () => holdToSave(d)
   const a = document.createElement('a'); a.href = d; a.download = name; document.body.append(a); a.click(); a.remove();
 }
 function holdToSave(d) { openSheet(`<div class="stack"><h2>Save photo</h2><img class="po-ph" src="${d}" alt="Your photo"><p class="cap m0">Press and hold the photo, then tap Save to Photos.</p><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Save photo' }); }
+// One line at the top of the story camera, in the theme's voice (Job, 8 Nov)
+const CAM_LINE = { mono: ['Smile for the file', 'Look sharp, agent'], cliffs: ['Smile from the top', 'Say summit'], climb: ['Chalk up and smile', 'Say send it'], spidey: ['Smile for the front page', 'Say city lights'] };
 async function dualShot(cb) {
   if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return pickPhoto(cb);
   const ov = document.createElement('div'); ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Story camera');
-  ov.innerHTML = `<video playsinline muted autoplay></video><img class="cam-in" alt="" hidden><b class="cam-count" hidden></b><div class="cam-bar"><button class="link cam-x" type="button">Cancel</button><button class="cam-go" type="button" aria-label="Take photo"></button><button class="link cam-lib" type="button">Photos</button></div>`;
+  ov.innerHTML = `<video playsinline muted autoplay></video><img class="cam-in" alt="" hidden><p class="cam-hint">${esc(pick(CAM_LINE[theme()] || CAM_LINE.mono))}</p><b class="cam-count" hidden></b><div class="cam-bar"><button class="link cam-x" type="button">Cancel</button><button class="cam-go" type="button" aria-label="Take photo"></button><button class="link cam-lib" type="button">Photos</button></div>`;
   document.body.append(ov);
   const v = ov.querySelector('video'), go = ov.querySelector('.cam-go'), inset = ov.querySelector('.cam-in'), cnt = ov.querySelector('.cam-count');
   let st = null, first = 'environment';
