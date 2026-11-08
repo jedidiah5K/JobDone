@@ -1161,7 +1161,7 @@ addEventListener('scroll', () => { if (TOUR) requestAnimationFrame(tourPlace); }
 addEventListener('resize', () => { if (TOUR) tourPlace(); });
 function tourAuto() {
   const p = S && S.profile;
-  if (!p || p.tour1 || !p.onboarded || TOUR || A || DEMO || ix().ws.length || SHEETS.length || NAV.stack.length) return;
+  if (!p || p.tour1 || !p.onboarded || TOUR || A || (DEMO && !TESTER) || ix().ws.length || SHEETS.length || NAV.stack.length) return;
   setTimeout(() => { if (!TOUR && !A && !SHEETS.length && S.profile && !S.profile.tour1) tourGo(); }, 900);
 }
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
@@ -2068,7 +2068,7 @@ document.addEventListener('change', ev => { const t = ev.target; if (!t) return;
 // First-run hint (Job, 23 Oct): a brand-new account sees one bubble pointing at Start until they start or close it.
 function coach() {
   const old = document.getElementById('coach'); if (old) old.remove();
-  const p = S && S.profile; if (!p || p.hint1 || p.tour1 || TOUR || !p.onboarded || A || DEMO || NAV.tab !== 'today' || NAV.stack.length || ix().ws.length || SHEETS.length) return;
+  const p = S && S.profile; if (!p || p.hint1 || p.tour1 || TOUR || !p.onboarded || A || (DEMO && !TESTER) || NAV.tab !== 'today' || NAV.stack.length || ix().ws.length || SHEETS.length) return;
   const st = document.querySelector('.tab-start'); if (!st) return;
   const el = document.createElement('div'); el.id = 'coach'; el.setAttribute('role', 'status');
   el.innerHTML = `<div class="grow"><b>Start here</b><span>Tap Start to open your first workout. Log each set as you go.</span></div><button class="coach-x" aria-label="Got it">${I.x || '×'}</button>`;
@@ -4892,13 +4892,14 @@ function obBody(k) {
     <p class="m0 cap">It takes about a minute with Apple Passwords or Google Authenticator. You can turn it on or off any time in Me → Account.</p>`;
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
-    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
-    <details ${OB.importFile ? 'open' : ''}><summary class="link">Coming from Strong, Hevy or another app? Bring your history</summary><div class="mt3 stack">
+    <details class="card ob-imp" ${OB.importFile ? 'open' : ''}><summary class="link">Coming from Strong, Hevy or another app? Bring your history</summary><div class="mt3 stack">
       <p class="m0 cap">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here. Your history, PRs and charts start where you left off.</p>
       <label class="btn block" for="ob-file">${OB.importFile ? 'Chosen: ' + esc(OB.importFile.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
       <p class="m0 cap">${OB.importFile ? 'It will be added when you tap Start training.' : 'You can also import later in Me → Import workouts from CSV.'}</p>
       <p class="m0 cap">Have a Job’s Done backup (a JSON file from Me → Export)?</p>
-      <label class="btn block" for="wl-file">Restore a backup</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>`;
+      <label class="btn block" for="wl-file">Restore a backup</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>
+    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
+`;
 }
 function renderWelcomePublic() {
   if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true } };

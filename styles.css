@@ -1950,3 +1950,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 
 /* Tester mode bar (owner only) */
 #tester-bar { position: fixed; z-index: 99990; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 6px); padding: 6px 14px; border-radius: 16px; border: 0; background: #E8590C; color: #fff; font: 700 12px/1.2 inherit; font-family: inherit; box-shadow: 0 4px 12px rgba(0,0,0,.25); white-space: nowrap; }
+
+/* CSV import sits above the plans (Job, 8 Nov: it was too far down) */
+.ob-imp { padding: 12px 14px; margin-bottom: 4px; }
+.ob-imp > summary { font-weight: 600; }
