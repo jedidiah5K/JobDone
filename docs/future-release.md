@@ -39,7 +39,7 @@ Things Job wants added when the App Store release is near. Nothing here is built
 - Strava-style: one-tap "respect" on friends' workouts in each theme's voice; machine leaderboards per gym (like segments); "trained at the same time" at your gym (like flybys); stat stickers to lay over a gym selfie for Stories; monthly challenges with a trophy on the card; auto "best lifts of the year" cards.
 - Spotify-style: **Training Match**, a % match with a friend plus a joint plan made from both of you (like Blend); Wrapped compared with friends; time-of-day workout titles in the theme's voice, e.g. "Tuesday night iron mission" (like daylist); a live shared workout list in joint sessions (like Jam); a scannable code on the ID card to add friends (like Spotify Codes); animated card loops (like Canvas).
 - Apple Music-style: a year-so-far recap that updates every week instead of only in December (like Replay); crew splits everyone can edit and react to (like collaborative playlists); train together from different gyms with each other's sets live (like SharePlay).
-- Keep Wrapped free: Strava put its Year in Sport recap behind its paywall and got backlash.
+- Keep Wrapped free: Strava put its Year in Sport recap behind an $80-a-year paywall, which cuts the free advertising it brings.
 
 ## More social ideas
 - Live cheers between sets (sound plays over music), spot requests to friends at your gym, opt-in gym buddy finder, workout invites, "do my workout" challenge, beat-my-PR challenges, voice-note cheers, crew chat, mentor mode, gym meetups, rep-for-rep joint sessions, weekly crew recap card.
