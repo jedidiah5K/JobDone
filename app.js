@@ -1171,9 +1171,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v157';
+const NEWS_ID = '2026-11-v158';
 const NEWS = [
-  ['A smoother first setup', 'New accounts see their plan being put together from their answers, the steps slide from one to the next, and Continue stays in the same place on every step.'],
+  ['A new first-time setup', 'New people now answer a few questions, watch their plan get built and see what they get, then create their account as the last step. Their answers go straight into the new account.'],
   ['A hands-on tour', 'The tour now walks you through a sample lift: load the plates, add reps, finish, save and post. Nothing from it is saved.'],
   ['Posting just works', 'Posting a workout or a photo turns on your friend card for you, so there is no extra switch to find first.'],
   ['Import from other apps, up front', 'Coming from Strong, Hevy or another app? The CSV import now sits at the top of the plan step, so it is easy to find.'],
@@ -4834,8 +4834,23 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Job’s Done does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
-const OB_NAMES = { safe: 'Account safety', move: 'Moving from another app', home: 'Home Screen', tour: 'What it does', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
-const OB_STEPS = ['home', 'tour', 'you', 'days', 'exp', 'theme', 'prefs', 'train', 'plan']; // 9 steps; moving from another app is part of the plan step
+const OB_NAMES = { hook: 'Start', block: 'What gets in the way', account: 'Save your plan', move: 'Moving from another app', tour: 'What you get', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
+// Nov 2026 (Job): open with the problem, ask, build the plan, and ask for the account last. Signed-in people (tester, an account with no data yet) skip the account step.
+const obNeedAccount = () => HOSTED && !USER && !DEMO;
+const obSteps = () => ['hook', 'you', 'days', 'exp', 'block', 'train', 'plan', 'theme', 'prefs', 'tour', ...(obNeedAccount() ? ['account'] : [])];
+let OB_STEPS = []; // set by renderWelcomePublic; moving from another app is part of the plan step
+const OB_BLOCK = { next: ['Not knowing what to do next', 'Every set shows the weight and reps to beat', 'Targets on every set'], progress: ['Not seeing progress', 'PRs and charts show each lift going up', 'PRs and charts for every lift'], habit: ['Showing up every week', 'A weekly goal, streaks and friends who see you train', 'A weekly goal and streaks'], start: ['Not sure where to start', 'A plan built for your days and experience', 'A plan you can start today'] };
+// The answers live on this phone until the account exists, so closing Safari halfway doesn't lose them.
+const obSave = () => { try { if (obNeedAccount() && OB) { const { importFile, ...o } = OB; localStorage.setItem('jd-ob', JSON.stringify(o)); } } catch (e) {} };
+const obLoad = () => { try { return obNeedAccount() ? JSON.parse(localStorage.getItem('jd-ob')) : null; } catch (e) { return null; } };
+// Creates an account with the signup function (no confirmation email). Returns an error message, or '' when it worked.
+async function signUp(email, password, name, website, ms) {
+  try {
+    const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name, age: true, website, ms }) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok ? '' : j.error || 'Couldn’t create the account. Try again.';
+  } catch (e) { return 'No connection. Check your connection and try again.'; }
+}
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
@@ -4857,10 +4872,17 @@ function obTour() {
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
 }
 function obBody(k) {
-  if (k === 'home') return `<div class="ob-hero"><h1>Add Job’s Done to your Home Screen</h1><p class="sec">It opens full screen like an app, keeps you signed in, and can notify you when rest is over.</p></div>
-    ${isStandalone() ? `<div class="note ok">You’re already using Job’s Done from your Home Screen. Nice.</div>` : `<div class="seg"><button data-os="ios" class="${OB.os === 'ios' ? 'on' : ''}">iPhone</button><button data-os="android" class="${OB.os === 'android' ? 'on' : ''}">Android</button></div>
-    ${OB.os === 'android' && installEvt ? '<button class="btn block" id="ob-inst">Install now</button>' : ''}${installSteps(OB.os)}<p class="cap">Then open Job’s Done from its new icon and sign in once more. You can find these steps again in Me.</p>`}`;
-  if (k === 'tour') return `<h1 class="ob-t">Here’s what Job’s Done does</h1>${obTour()}`;
+  if (k === 'hook') return `<div class="ob-hero ob-hook"><div class="wordmark">Job’s <span>Done</span></div><h1>Stop guessing what to do at the gym</h1><p>Answer a few questions and get a plan that fits your week. Every session shows what to lift and when to go heavier.</p>
+    <div class="ob-mock ob-shot"><img src="ob/log.webp" alt="A lift with last time’s numbers and today’s targets" decoding="async"></div></div>`;
+  if (k === 'tour') return `<h1 class="ob-t">Here’s what you get</h1>${obTour()}`;
+  if (k === 'block') return `<h1 class="ob-t">What gets in the way most?</h1><p class="sec ob-s">Pick the one that sounds most like you.</p>
+    <div class="tmpl">${Object.entries(OB_BLOCK).map(([b, [n, d]]) => `<button data-block="${b}" class="${OB.block === b ? 'on' : ''}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`;
+  if (k === 'account') return `<h1 class="ob-t">Save your plan</h1><p class="sec ob-s">Your plan is ready${OB.name ? ', ' + esc(OB.name) : ''}. Create your account so it and every set you log are saved, on any phone you sign in on.</p>
+    <div class="field"><label for="ob-em">Email</label><input class="input" id="ob-em" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(OB.email || '')}"></div>
+    <div class="field"><label for="ob-pw">Password</label><div class="pw-wrap"><input class="input" id="ob-pw" type="password" autocomplete="new-password" placeholder="At least 8 characters"><button type="button" class="pw-eye link" id="ob-eye" aria-label="Show password">Show</button></div></div>
+    <label class="g2 row cap si-age"><input type="checkbox" id="ob-age" class="cbox"><span>I’m 13 or older and I agree to the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>.</span></label>
+    <input id="ob-web" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
+    <p class="m0 cap">You stay signed in. Two-step sign-in is optional in Me → Account.</p>`;
   if (k === 'you') return `<h1 class="ob-t">About you</h1><p class="sec ob-s">Used for your progress charts. Only you can see it.</p>
     <div class="field"><label for="ob-name">First name</label><input class="input" id="ob-name" maxlength="40" value="${esc(OB.name)}" placeholder="What should we call you?" autocomplete="given-name"></div>
     <div class="field"><span class="lbl">Units</span><div class="seg"><button data-unit="kg" class="${OB.unit === 'kg' ? 'on' : ''}">kg</button><button data-unit="lb" class="${OB.unit === 'lb' ? 'on' : ''}">lb</button></div></div>
@@ -4894,10 +4916,6 @@ function obBody(k) {
     <div class="field"><span class="lbl">Daily step goal</span>${seg('steps', [[6000, '6k'], [8000, '8k'], [10000, '10k'], [12000, '12k'], [15000, '15k']])}</div>
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div></div>`;
   }
-  if (k === 'safe') return `<h1 class="ob-t">Keep your account safe</h1><p class="sec ob-s">Optional. Two-step sign-in asks for a 6-digit code from an authenticator app when you sign in on a new device, so your password alone isn’t enough.</p>
-    <div class="ob-code" aria-hidden="true"><span>4</span><span>8</span><span>2</span><i></i><span>9</span><span>1</span><span>7</span></div>
-    <div class="seg"><button data-mfa="1" class="${OB.mfa ? 'on' : ''}">Set it up after this</button><button data-mfa="0" class="${OB.mfa ? '' : 'on'}">Not now</button></div>
-    <p class="m0 cap">It takes about a minute with Apple Passwords or Google Authenticator. You can turn it on or off any time in Me → Account.</p>`;
   const rec = obPlan();
   return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
     <details class="card ob-imp" ${OB.importFile ? 'open' : ''}><summary class="link">Coming from Strong, Hevy or another app? Bring your history</summary><div class="mt3 stack">
@@ -4913,20 +4931,38 @@ function obBody(k) {
 function obBuilding() {
   const body = $('#app .ob-body'), nx = $('#ob-next'); if (!body || !nx) return;
   const [, , lo, hi] = OB_EXP[OB.exp] || OB_EXP.some, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const lines = [OB_DAYS[(OB.days || 3) - 1][1], OB_EXP[OB.exp][0] + ' · ' + lo + '–' + hi + ' reps', 'Picking lifts for ' + TEMPLATES[obPlan()].n];
+  const lines = [OB_DAYS[(OB.days || 3) - 1][1], OB_EXP[OB.exp][0] + ' · ' + lo + '–' + hi + ' reps', 'Picking lifts for ' + TEMPLATES[obPlan()].n, ...(OB_BLOCK[OB.block] ? [OB_BLOCK[OB.block][2]] : [])];
   body.innerHTML = `<div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES.plan}</div><h1 class="ob-t">Building your plan</h1>
     <ul class="ob-build">${lines.map((l, i) => `<li style="--i:${i}">${esc(l)}</li>`).join('')}</ul>`;
   nx.disabled = true;
   setTimeout(() => { if (OB_STEPS[OB.step] === 'plan' && $('#app .ob-build')) { OB.dir = 1; renderWelcomePublic(); OB.dir = 0; } }, still ? 700 : 1600);
 }
+const obPushAsk = async () => USER ? pushOn() : (await Notification.requestPermission().catch(() => 'denied')) === 'granted';
+// Last intro step: make the account, sign in, then connect() sees OB.ready and saves the plan into it (obFinish).
+async function obAccount(err) {
+  const em = ($('#ob-em').value || '').trim(), pw = $('#ob-pw').value, b = $('#ob-next'); OB.email = em;
+  if (!/^\S+@\S+\.\S+$/.test(em)) return err('Enter your email address.');
+  if (pw.length < 8) return err('Use a password of at least 8 characters.');
+  if (!$('#ob-age').checked) return err('Please confirm you’re 13 or older and agree to the Privacy Policy and Terms.');
+  b.disabled = true; b.textContent = 'Saving your plan…'; obSave();
+  const back = m => { b.disabled = false; b.textContent = 'Save my plan'; err(m); };
+  const er = await signUp(em, pw, OB.name, $('#ob-web').value, Date.now() - (OB.t0 || 0)); if (er) return back(er);
+  OB.ready = true;
+  const { error } = await SB.auth.signInWithPassword({ email: em, password: pw });
+  if (error) { OB.ready = false; return back(/invalid login/i.test(error.message) ? 'Couldn’t create the account. If you already have one, sign in instead from the first screen.' : /rate/i.test(error.message) ? 'Too many tries. Wait a minute, then try again.' : error.message); }
+}
 function renderWelcomePublic() {
-  if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true } };
+  OB_STEPS = obSteps();
+  if (!OB) OB = obLoad() || { step: 0, name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', block: null, t0: Date.now(), theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true } };
+  OB.step = Math.min(OB.step, OB_STEPS.length - 1); obSave();
   const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
   if (k === 'theme') { document.documentElement.classList.remove('ob-on'); applyTheme(OB.theme); } else { document.documentElement.classList.add('ob-on'); document.documentElement.dataset.theme = 'mono'; delete document.documentElement.dataset.tod; }
-  const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Next' : last ? 'Start training' : 'Continue';
+  const next = k === 'hook' ? 'Build my plan' : k === 'tour' ? 'Next' : k === 'account' ? 'Save my plan' : last ? 'Start training' : 'Continue';
+  // The second button keeps its space on every step so the main one never moves (Continue in the same spot).
+  const alt = k === 'hook' && obNeedAccount() ? '<button class="self-c link" id="ob-have">I already have an account</button>' : '<button class="self-c link" tabindex="-1" aria-hidden="true" style="visibility:hidden">I already have an account</button>';
   $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div></div>
     <div class="ob-body stack${OB.dir ? (OB.dir > 0 ? ' ob-in' : ' ob-in-back') : ''}" data-k="${k}"><div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES[k]}</div>${obBody(k)}</div>
-    <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${k === 'home' && !isStandalone() ? '<button class="self-c link" id="ob-later">I’ll do it later</button>' : '<button class="self-c link" tabindex="-1" aria-hidden="true" style="visibility:hidden">I’ll do it later</button>'}</div></main>`;
+    <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${alt}</div></main>`;
   const q = x => $('#app').querySelector(x), qa = x => $('#app').querySelectorAll(x);
   const keep = () => { const f = id => { const e = q(id); return e ? e.value.trim() : null; }; const n = f('#ob-name'); if (n != null) { OB.name = n; OB.w = f('#ob-w'); OB.gw = f('#ob-gw'); OB.h = f('#ob-h'); } };
   const go = d => { keep(); OB.step = Math.max(0, Math.min(OB_STEPS.length - 1, OB.step + d)); OB.dir = d; renderWelcomePublic(); OB.dir = 0; const sc = $('#screen'); if (sc) sc.scrollTop = 0;
@@ -4934,8 +4970,9 @@ function renderWelcomePublic() {
     if (d > 0 && OB_STEPS[OB.step] === 'plan' && !OB.built) { OB.built = true; obBuilding(); } };
   q('#ob-back').onclick = () => go(-1);
   qa('#app input').forEach(i => i.addEventListener('input', () => { const e = q('#ob-err'); if (e) e.textContent = ''; }));
-  qa('[data-os]').forEach(b => b.onclick = () => { OB.os = b.dataset.os; renderWelcomePublic(); });
-  const ib = q('#ob-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; renderWelcomePublic(); };
+  const hv = q('#ob-have'); if (hv) hv.onclick = () => renderSignIn('start');
+  qa('[data-block]').forEach(b => b.onclick = () => { OB.block = b.dataset.block; renderWelcomePublic(); });
+  const ey = q('#ob-eye'); if (ey) ey.onclick = () => { const pw = q('#ob-pw'), show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; ey.textContent = show ? 'Hide' : 'Show'; ey.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
   qa('[data-unit]').forEach(b => b.onclick = () => { keep(); OB.unit = b.dataset.unit; renderWelcomePublic(); });
   qa('[data-goal]').forEach(b => b.onclick = () => { OB.goal = b.dataset.goal; if (OB.goal === 'strength' && OB.exp !== 'new') OB.exp = 'pro'; renderWelcomePublic(); });
   qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
@@ -4945,29 +4982,34 @@ function renderWelcomePublic() {
   qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
   qa('[data-pf]').forEach(b => b.onclick = async () => {
     const f = b.dataset.pf, on = !OB.prefs[f];
-    if (f === 'push' && on) { if (!pushReady()) { toast('Add Job’s Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await pushOn())) return; }
+    if (f === 'push' && on) { if (!pushReady()) { toast('Add Job’s Done to your Home Screen first. You can turn this on later in Me.'); return; } if (!(await obPushAsk())) return; }
     OB.prefs[f] = on; renderWelcomePublic();
   });
   qa('[data-mfa]').forEach(b => b.onclick = () => { OB.mfa = b.dataset.mfa === '1'; renderWelcomePublic(); });
   const of = q('#ob-file'); if (of) of.onchange = () => { if (of.files && of.files[0]) { OB.importFile = of.files[0]; OB.move = true; renderWelcomePublic(); } };
   qa('[data-t]').forEach(b => b.onclick = () => { OB.plan = b.dataset.t; qa('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
-  const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Set me up' : 'Next'; };
-  const lt = q('#ob-later'); if (lt) lt.onclick = () => { OB.skippedHome = true; go(1); };
+  const tr = q('#ob-tour'); if (tr) tr.onscroll = () => { if (!tr.isConnected) return; const i = Math.round(tr.scrollLeft / tr.clientWidth); qa('#ob-dots i').forEach((d, j) => d.classList.toggle('on', i === j)); q('#ob-next').textContent = i >= tr.children.length - 1 ? 'Continue' : 'Next'; };
   q('#ob-next').onclick = () => {
     keep(); const err = m => { q('#ob-err').textContent = m; };
     if (k === 'tour' && tr && Math.round(tr.scrollLeft / tr.clientWidth) < tr.children.length - 1) { tr.scrollBy({ left: tr.clientWidth, behavior: smooth() }); return; }
     if (k === 'days' && !OB.days) return err('Pick how often you plan to train.');
-    if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { pushOn().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
+    if (k === 'prefs' && OB.prefs.push && HOSTED && pushReady() && !(window.Notification && Notification.permission === 'granted')) { obPushAsk().then(ok => { if (!ok) OB.prefs.push = false; go(1); }); return; }
+    if (k === 'block' && !OB.block) return err('Pick the one that fits best.');
+    if (k === 'account') return obAccount(err);
     if (k === 'you') { if (!OB.name) return err('Add your first name.'); const w = parseFloat(OB.w); if (OB.w && !(w > 20 && w < 700)) return err('That weight looks off. Fix it or leave it empty.'); }
     if (!last) return go(1);
     obFinish();
   };
 }
+const pf0 = o => o.prefs || {};
 function obFinish() {
   S = freshState(); S.imported = true; S.profile.legacy = 0;
   const p = S.profile, num = x => { const v = parseFloat(x); return isNaN(v) ? null : v; };
   p.name = OB.name.slice(0, 40); p.unit = OB.unit; p.weeklyTarget = OB.days || 3; p.goal = OB.goal; p.exp = OB.exp; p.theme = OB.theme; p.cliffs1 = true; p.onboarded = today();
-  if (!OB.skippedHome) p.a2hs = today();
+  const fresh = !!OB.ready; if (isStandalone() || fresh) p.a2hs = today(); p.block = OB.block || null;
+  try { localStorage.removeItem('jd-ob'); } catch (e) {}
+  if (fresh && pf0(OB).push && window.Notification && Notification.permission === 'granted') setTimeout(() => pushOn(), 1500);
+  if (fresh && HOSTED && !isStandalone()) setTimeout(() => openInstallGuide(true), 300); // plan is saved now, so opening from the icon and signing in loses nothing
   const pf = OB.prefs || {}; p.sound = pf.sound !== false; p.soundSilent = false; p.music2 = true; p.musicOk = true; p.restPush = !!pf.push; p.noAutoRest = pf.autoRest === false; p.noWake = pf.wake === false; p.noWeighPrompt = pf.weigh === false; p.noConfetti = pf.confetti === false; if (pf.rest) p.defaultRest = pf.rest; p.rest5 = true; if (pf.bar === 0) p.barW = 0; if (pf.steps) p.stepGoal = pf.steps; p.noTargets = pf.targets === false; if (pf.repLo && pf.repHi > pf.repLo) p.repRange = [pf.repLo, pf.repHi];
   const toKg2 = v => v == null ? null : Math.round((OB.unit === 'lb' ? v / LB : v) * 100) / 100;
   const w = toKg2(num(OB.w)), gw = toKg2(num(OB.gw)), h = num(OB.h);
@@ -5455,7 +5497,7 @@ function openInstallGuide(first) {
     const draw = () => {
       b.querySelectorAll('[data-os]').forEach(x => x.classList.toggle('on', x.dataset.os === os));
       b.querySelector('#a2-body').innerHTML = (os === 'android' && installEvt ? '<button class="btn block" id="a2-inst">Install now</button><div class="mt3 mb2 cap tc">or do it yourself:</div>' : '') + installSteps(os)
-        + `<div class="mt3 cap">${os === 'ios' ? 'Then open Job’s Done from its new icon. If you added it before, remove the old icon first to get the newest one.' : 'Then open Job’s Done from its new icon on your Home Screen.'} You can find these steps again in Me.</div>`;
+        + `<div class="mt3 cap">${os === 'ios' ? 'Then open Job’s Done from its new icon. If you added it before, remove the old icon first to get the newest one.' : 'Then open Job’s Done from its new icon on your Home Screen.'}${first ? ' Sign in there with the same email and password.' : ''} You can find these steps again in Me.</div>`;
       const ib = b.querySelector('#a2-inst'); if (ib) ib.onclick = async () => { installEvt.prompt(); try { const r = await installEvt.userChoice; if (r.outcome === 'accepted') { closeSheet(sh); toast('Installed. Open Job’s Done from your Home Screen.'); } } catch (e) {} installEvt = null; draw(); };
     };
     b.querySelectorAll('[data-os]').forEach(x => x.onclick = () => { os = x.dataset.os; draw(); });
@@ -5562,11 +5604,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     const b = $('#si-go'); b.disabled = true; b.textContent = make ? 'Creating…' : 'Signing in…';
     if (make) {
       // Accounts are made by the "signup" function, ready to use with no confirmation email.
-      try {
-        const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em, password: pw, name: $('#si-name').value.trim(), age: true, website: $('#si-web').value, ms: Date.now() - shownAt }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) { b.disabled = false; b.textContent = 'Create account'; return m(j.error || 'Couldn’t create the account. Try again.'); }
-      } catch (e) { b.disabled = false; b.textContent = 'Create account'; return m('No connection. Check your connection and try again.'); }
+      const er = await signUp(em, pw, $('#si-name').value.trim(), $('#si-web').value, Date.now() - shownAt);
+      if (er) { b.disabled = false; b.textContent = 'Create account'; return m(er); }
     }
     const { data, error } = await SB.auth.signInWithPassword({ email: em, password: pw });
     if (error) {
@@ -5583,7 +5622,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
     e.textContent = ['Too weak: use 8 or more characters, not a common password.', 'Okay. Longer or mixed characters make it stronger.', 'Strong password.'][sc]; e.dataset.s = sc; };
   $('#si-eye').onclick = () => { const show = $('#si-pw').type === 'password'; for (const id of ['#si-pw', '#si-pw2']) { const e = $(id); if (e) e.type = show ? 'text' : 'password'; } $('#si-eye').textContent = show ? 'Hide' : 'Show'; $('#si-eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
   for (const id of ['#si-email', '#si-pw', ...(make ? ['#si-pw2'] : [])]) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
-  $('#si-switch').onclick = () => renderSignIn(make ? 'start' : 'create', $('#si-email').value.trim());
+  $('#si-switch').onclick = () => { if (make) return renderSignIn('start', $('#si-email').value.trim()); OB = null; applyTheme('mono'); renderWelcomePublic(); }; // Create account starts the intro; the account is its last step
   if (!make) $('#si-forgot').onclick = async () => {
     const em = emailOk(); if (!em) return;
     const { error } = await SB.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
@@ -5706,8 +5745,12 @@ async function startHosted() {
   else if (!USER) {
     // No signal and the sign-in token is due a refresh: open this phone's saved data instead of the sign-in page.
     const u = savedUser();
-    if (u && (error || navigator.onLine === false)) { USER = u; await openData(); } else renderSignIn();
+    if (u && (error || navigator.onLine === false)) { USER = u; await openData(); } else renderStart();
   }
+}
+function renderStart() {
+  let used = false; try { for (let i = 0; i < localStorage.length; i++) if (/^jobdone\.v1:/.test(localStorage.key(i))) used = true; } catch (e) {}
+  if (used && !localStorage.getItem('jd-ob')) renderSignIn(); else { applyTheme('mono'); $('#wk').hidden = true; OB = null; renderWelcomePublic(); }
 }
 function savedUser() {
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^sb-.*-auth-token$/.test(k)) { const v = JSON.parse(localStorage.getItem(k)); if (v && v.user && v.user.id) return v.user; } } } catch (e) {}
@@ -5739,8 +5782,10 @@ async function connect(db) {
   }
   try {
     const had = await loadCloud();
+    if (had && OB && OB.ready) { OB = null; document.documentElement.classList.remove('ob-on'); try { localStorage.removeItem('jd-ob'); } catch (e) {} } // signed into an account that already has data: keep it, drop the intro answers
     if (had) { lsSave(); const first = !ready; ready = true; if (first) $('#app').innerHTML = ''; rerender(); if (first) maybePrompt(); }
     else if (S && (S.imported || S.splits.length)) persist(...allPaths());
+    else if (OB && OB.ready) { ready = true; obFinish(); }
     else { ready = true; S = null; renderWelcome(); }
   } catch (e) {
     mode = 'local';
