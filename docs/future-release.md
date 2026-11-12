@@ -22,6 +22,7 @@ Things Job wants added when the App Store release is near. Nothing here is built
 
 ## Valentine's Day drop (14 Feb)
 - Release the free pink theme on Valentine's Day as a launch moment. Drafts in docs/drafts/pink-*.jpg; Job leans pastel pink and white, with Valentine touches (single-line heart in the header, heart-shaped finished days, rose-red accent).
+- **Chosen design (12 Nov): "Sweetheart"** = Strawberry milk base (blush #FFF1F4 page, white cards, pastel pink next-up card, rose #E05A82 buttons, deep-rose ink #3A1E28) + small-heart pattern background + heart day dots (trained = filled heart with cupid's arrow, today = rose outline, others faint outline). Draft: docs/drafts/pink-9-heart-pattern.jpg; mock-up script in the preview scratch folder (pink.js, key "sweethearts"). Still to build: theme entry, colours, voice lines (THEME_MSG, TIDY, HEAVY, NEXT_LBL, FIN_SEAL, INVITE, CAM_LINE), ID card look and levels, finish page, share cards, report card, chart art, picker preview. Free theme.
 - Pair it with duo features: "Swole mates" duo streak, a shared couple/partner ID card, a co-op mission ("train together 3 times this week"), and a "Gym date" recap card made for Stories.
 - Theme voice for Valentine's lines (finish page, "That's like…" comparisons).
 
