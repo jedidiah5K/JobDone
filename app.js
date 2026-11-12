@@ -2542,7 +2542,9 @@ function progInsights() {
   const when = `<div class="card"><div class="card-h"><span class="eyebrow">When you train</span><span class="cap">${plural(cur.ws.length, 'workout')}</span></div>
     <div class="ins-dow">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => `<div><b>${dow[i] || ''}</b><i style="height:${Math.round(dow[i] / dmx * 100)}%"></i><span>${d}</span></div>`).join('')}</div>
     ${todT ? `<div class="mt3 cap">${Object.entries(tod).filter(([, v]) => v).map(([k, v]) => `${k} ${Math.round(v / todT * 100)}%`).join(' · ')}</div>` : ''}</div>`;
-  return `<div class="seg rng">${Object.keys(IRANGES).map(k => `<button class="${key === k ? 'on' : ''}" data-a="irange" data-k="${k}">${k}</button>`).join('')}</div>${summary}${muscles}${balance}${strength}${length}${when}`;
+  // Placeholder (Job, 12 Nov): the AI coach launches with the App Store release; nothing calls an AI yet.
+  const coach = `<div class="card ins-coach"><div class="card-h"><span class="eyebrow">Coach</span><span class="ins-soon">Coming soon</span></div><p class="m0 sec">A coach that reads your training and talks it through with you: what changed this week, what’s working, and answers to your questions. Arrives with the official release.</p></div>`;
+  return `<div class="seg rng">${Object.keys(IRANGES).map(k => `<button class="${key === k ? 'on' : ''}" data-a="irange" data-k="${k}">${k}</button>`).join('')}</div>${summary}${coach}${muscles}${balance}${strength}${length}${when}`;
 }
 function progHistory() {
   const ws = ix().ws.slice().reverse();

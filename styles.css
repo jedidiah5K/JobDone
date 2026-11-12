@@ -1992,3 +1992,4 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .ins-mu .hbar { grid-template-columns: 92px 1fr 78px; }
 .ins-mu .hbar .tr { white-space: nowrap; }
 .ins-mu .hbar .tr span { font-size: 11px; margin-left: 4px; }
+.ins-soon { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
