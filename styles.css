@@ -1834,7 +1834,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .fring { position: relative; }
 .fr-off { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #9AA0A6; box-shadow: 0 0 0 2.5px var(--surface-solid, var(--bg)); }
 .fr-face > span:last-child { white-space: nowrap; }
-:root[data-theme="cliffs"] .fr-face > b, :root[data-theme="cliffs"] .fr-face > span:last-child { padding: 1px 7px; border-radius: 9px; background: color-mix(in srgb, var(--surface-solid, #EAF3FA) 72%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* Summit label chips removed (Job, 13 Nov): a soft shadow keeps names readable on the sky instead */
 
 /* Post to feed line centred under Share and Done (Job, 8 Nov) */
 .rc-foot .rc-feed > .row { justify-content: center; }
@@ -2100,3 +2100,28 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .idv-more { display: flex; gap: 10px; }
 .idv-more[hidden] { display: none; }
 .idv-more button { flex: 1; height: 44px; border-radius: 14px; background: rgba(255,255,255,.1); color: #FF8A80; font-weight: 600; font-size: 14px; }
+
+/* Friend faces without boxes (Job, 13 Nov): name and status sit on the background; the grey dot means offline */
+.fr-face > b, .fr-face > span:last-child { background: none !important; padding: 0 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; text-shadow: 0 1px 6px color-mix(in srgb, var(--bg, #000) 85%, transparent); }
+.fr-face > b { margin-top: 4px; }
+.fr-face > span:last-child { font-size: 11px; opacity: .8; }
+.fr-off { z-index: 1; }
+
+/* Card viewer v2 (Job, 13 Nov): card stays where it is; round icon actions; More floats over, never pushes; close X in the corner */
+.idv { place-items: start center; }
+.idv-in { margin-top: max(16vh, calc(env(safe-area-inset-top) + 64px)); }
+.idv-acts { position: relative; display: flex; flex-direction: row; justify-content: center; gap: 22px; margin-top: 22px; }
+.idv-r { display: flex; flex-direction: column; align-items: center; gap: 7px; width: 76px; color: #fff; font-size: 12px; font-weight: 500; line-height: 1.2; text-align: center; }
+.idv-ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.22); transition: transform .15s var(--ease); }
+.idv-ic.main { background: #fff; color: #111; }
+.idv-r:active .idv-ic { transform: scale(.94); }
+.idv-x { position: fixed; top: max(14px, calc(env(safe-area-inset-top) + 8px)); right: 16px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(255,255,255,.14); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.idv-more { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; min-width: 200px; border-radius: 14px; overflow: hidden; background: rgba(40,40,46,.92); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.idv-more[hidden] { display: none; }
+.idv-more button { height: 48px; padding: 0 18px; text-align: left; background: none; border-radius: 0; color: #FF8A80; font-weight: 600; font-size: 15px; }
+.idv-more button + button { box-shadow: inset 0 .5px 0 rgba(255,255,255,.12); }
+.idv-hint { margin-top: 14px; font-size: 13px; opacity: .65; }
+/* Friend faces: a name tag over the head, like a game nametag; grey dot = offline */
+.fr-face { gap: 6px; }
+.fr-tag { order: -1; max-width: 76px; padding: 2px 7px !important; border-radius: 4px; font-size: 12px !important; font-weight: 600; line-height: 1.35; color: #fff !important; background: rgba(0,0,0,.42) !important; text-shadow: none !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 !important; }
+:root:not([data-theme]) .fr-tag { background: rgba(42,34,48,.62) !important; }

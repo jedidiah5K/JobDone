@@ -1503,9 +1503,9 @@ function idView(c, code, photo, o = {}) {
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.train ? `<button class="idv-main" data-v="train">${IVI('db')}Train together</button>` : o.share ? `<button class="idv-main" data-v="share">${IVI('share')}Share card</button>` : ''}
-      <div class="idv-bar">${o.duo ? `<button data-v="duo">${IVI('cmp')}<span>Compare</span></button>` : ''}${o.share ? `<button data-v="qr">${IVI('qr')}<span>QR code</span></button>` : ''}${o.remove || o.block ? `<button data-v="more" aria-expanded="false">${IVI('more')}<span>More</span></button>` : ''}<button data-v="close">${IVI('x')}<span>Close</span></button></div>
-      ${o.remove || o.block ? `<div class="idv-more" hidden>${o.remove ? '<button data-v="rm">Remove friend</button>' : ''}${o.block ? '<button data-v="block">Block</button>' : ''}</div>` : ''}</div></div>`;
+    <div class="idv-acts">${o.train ? `<button class="idv-r" data-v="train"><span class="idv-ic main">${IVI('db')}</span>Train together</button>` : ''}${o.share ? `<button class="idv-r" data-v="share"><span class="idv-ic main">${IVI('share')}</span>Share</button>` : ''}${o.duo ? `<button class="idv-r" data-v="duo"><span class="idv-ic">${IVI('cmp')}</span>Compare</button>` : ''}${o.share ? `<button class="idv-r" data-v="qr"><span class="idv-ic">${IVI('qr')}</span>QR code</button>` : ''}${o.remove || o.block ? `<button class="idv-r" data-v="more" aria-expanded="false"><span class="idv-ic">${IVI('more')}</span>More</button>` : ''}
+      ${o.remove || o.block ? `<div class="idv-more" hidden>${o.remove ? '<button data-v="rm">Remove friend</button>' : ''}${o.block ? '<button data-v="block">Block</button>' : ''}</div>` : ''}</div></div>
+    <button class="idv-x" data-v="close" aria-label="Close">${IVI('x')}</button>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1691,7 +1691,7 @@ function postHTML(p) {
 // Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
 function frFaces(list) {
   return `<div class="fr-faces" role="list">${list.map(f => { const c = f.card || {}, st = frStatus(f);
-    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}"><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}${st.c ? '' : '<i class="fr-off" aria-hidden="true"></i>'}</span><b>${esc((c.n || 'Friend').split(' ')[0])}</b><span>${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : st.c === 'rest' ? 'Resting' : 'Not yet'}</span></button>`; }).join('')}</div>`;
+    return `<button class="fr-face" role="listitem" data-a="friendOpen" data-k="${esc(f.id)}" aria-label="${esc((c.n || 'Friend').split(' ')[0])}, ${st.c === 'gym' ? 'at the gym' : st.c === 'done' ? 'trained today' : st.c === 'rest' ? 'resting' : 'offline'}"><b class="fr-tag">${esc((c.n || 'Friend').split(' ')[0])}</b><span class="fring ${st.c || 'none'}">${face(c.n, c.hidden ? null : f.photo, c.t)}${['gym', 'done', 'rest'].includes(st.c) ? '' : '<i class="fr-off" aria-hidden="true"></i>'}</span></button>`; }).join('')}</div>`;
 }
 // Refresh (Job, 6 Nov): the button, or pull down at the top of Friends. Friends, requests and the feed load side by side,
 // and what's on screen stays until the new data arrives (no blank flash).
