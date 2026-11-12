@@ -2075,3 +2075,14 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .crew { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); }
 .crew:first-of-type { border-top: 0; }
 .crew-emb { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--gm-acc); background: color-mix(in srgb, var(--gm-acc) 14%, transparent); flex: none; }
+
+/* Routines by place (Job, 13 Nov): two-column tiles with a line icon */
+.rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rc-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; min-height: 112px; padding: 14px; border-radius: 16px; text-align: left; background: var(--raised, rgba(127,127,127,.1)); color: var(--text); transition: transform .15s var(--ease); }
+.rc-tile:active { transform: scale(.97); }
+.rc-t { display: flex; flex-direction: column; gap: 2px; }
+.rc-t b { font-size: 16px; }
+.rc-ic { color: var(--gm-acc); display: inline-flex; align-self: flex-end; }
+.row .rc-ic { align-self: center; }
+.rc-back { align-self: flex-start; }
+.rc-view .tmpl button span { display: block; } .rc-view .tmpl button span + span { margin-top: 4px; opacity: .8; }

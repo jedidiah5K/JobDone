@@ -741,16 +741,55 @@ function maybeImportSplit() {
   setTimeout(() => confirmSheet({ title: 'Add ' + name + ' to your splits?', body: 'Someone shared this split with you: ' + esc(ex.map(e => baseName(e.name)).join(', ')) + '.', ok: 'Add split', onOk: () => { const id = 'sp-' + uid(); S.splits.push({ id, name, color, archived: false, ex }); S.rotation.push(id); persist('jd/meta'); NAV.tab = 'splits'; NAV.stack = []; render(); toast(esc(name) + ' added to your splits'); } }), 400);
   return true;
 }
+// Routines by where you train (Job, 13 Nov, after Hevy's Explore tab): a tile with a line icon for each place.
+// Gym keeps the foundation-lift presets; the others use the library's dumbbell and bodyweight lifts. Icons: Lucide (ISC licence).
+const RC_IC = {
+  gym: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>',
+  home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  db: '<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>',
+  bw: '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+  travel: '<path d="M6 20a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2"/><path d="M8 18V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14"/><path d="M10 20h4"/><circle cx="16" cy="20" r="2"/><circle cx="8" cy="20" r="2"/>',
+  hiit: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
+};
+const rcIcon = k => `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RC_IC[k]}</svg>`;
+const ROUTINES = {
+  home: { n: 'At home', d: 'Dumbbells and the floor', p: [
+    ['Home full body', 'Two workouts you alternate', [['Full body A', ['Push-Up', 'Goblet Squat', 'Dumbbell Row', 'Dumbbell Shoulder Press', 'Dumbbell RDL', 'Plank']], ['Full body B', ['Incline Push-Up', 'Bulgarian Split Squat', 'Dumbbell Row', 'Dumbbell Lateral Raise', 'Hammer Curl', 'Hollow Hold']]]],
+    ['Home upper / lower', 'Four days a week', [['Home upper', ['Push-Up', 'Dumbbell Row', 'Dumbbell Shoulder Press', 'Dumbbell Fly', 'Dumbbell Curl', 'Dumbbell Kickback']], ['Home lower', ['Goblet Squat', 'Dumbbell RDL', 'Walking Lunge', 'Single-Leg Glute Bridge', 'Single-Leg Calf Raise']]]]] },
+  db: { n: 'Dumbbells only', d: 'Everything with one pair', p: [
+    ['Dumbbell push / pull / legs', 'Three workouts you rotate', [['DB push', ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Shoulder Press', 'Dumbbell Lateral Raise', 'Dumbbell Kickback']], ['DB pull', ['Dumbbell Row', 'Shrug', 'Dumbbell Curl', 'Hammer Curl', 'Concentration Curl']], ['DB legs', ['Goblet Squat', 'Dumbbell RDL', 'Bulgarian Split Squat', 'Step-Up', 'Single-Leg Calf Raise']]]],
+    ['Dumbbell full body', 'One workout, 2 to 3 days a week', [['DB full body', ['Dumbbell Bench Press', 'Dumbbell Row', 'Goblet Squat', 'Dumbbell RDL', 'Arnold Press', 'Hammer Curl']]]]] },
+  bw: { n: 'Bodyweight', d: 'A pull-up bar helps', p: [
+    ['Bodyweight push / pull / legs', 'Three workouts you rotate', [['BW push', ['Push-Up', 'Pike Push-Up', 'Dip', 'Diamond Push-Up', 'Decline Push-Up']], ['BW pull', ['Pull-Up', 'Inverted Row', 'Chin-Up', 'Hanging Knee Raise', 'Hollow Hold']], ['BW legs', ['Bodyweight Squat', 'Bodyweight Lunge', 'Single-Leg Glute Bridge', 'Wall Sit', 'Single-Leg Calf Raise']]]],
+    ['Calisthenics skills', 'Strength and skill work', [['Skills', ['Handstand Hold', 'Pike Push-Up', 'Pull-Up', 'L-Sit', 'Pistol Squat', 'Dragon Flag']]]]] },
+  travel: { n: 'Travel', d: 'A hotel room, no kit', p: [
+    ['Hotel room full body', 'About 30 minutes', [['Hotel full body', ['Push-Up', 'Bodyweight Squat', 'Bench Dip', 'Bodyweight Lunge', 'Pike Push-Up', 'Plank']]]],
+    ['Quick 20', 'When there’s barely time', [['Quick 20', ['Burpee', 'Jump Squat', 'Push-Up', 'Mountain Climber']]]]] },
+  hiit: { n: 'Cardio & HIIT', d: 'Short and sweaty', p: [
+    ['HIIT circuit', 'Go round 3 times', [['HIIT circuit', ['Burpee', 'Jump Squat', 'Mountain Climber', 'Push-Up', 'Bodyweight Lunge']]]],
+    ['Core finisher', 'Add after any workout', [['Core finisher', ['Mountain Climber', 'Russian Twist', 'Hollow Hold', 'Plank']]]]] },
+};
 function openNewSplit() {
   const seen = new Set(), one = [];
   for (const t of Object.values(TEMPLATES)) for (const [n, ex] of t.s) if (!seen.has(n)) { seen.add(n); one.push([n, ex]); }
-  const sh = openSheet(`<div class="stack"><h2>New split</h2>
-    <button class="btn block primary" data-a="newBlankSplit">Start from blank</button>
-    <section><div class="sgh">Add a ready-made plan</div><div class="tmpl">${Object.entries(TEMPLATES).filter(([, t]) => t.s.length).map(([k, t]) => `<button data-np="${k}"><b>${esc(t.n)}</b><span>${esc(t.d)}</span></button>`).join('')}</div></section>
-    <section><div class="sgh">Or one preset split</div><div class="tmpl">${one.map(([n, ex], i) => `<button data-ns="${i}"><b>${esc(n)}</b><span>${esc(ex.join(', '))}</span></button>`).join('')}</div></section></div>`, { label: 'New split' });
+  const tiles = [['gym', 'Gym', 'Machines and free weights'], ...Object.entries(ROUTINES).map(([k, r]) => [k, r.n, r.d])];
+  const home = () => `<div class="stack rc-view"><h2>New split</h2>
+    <section><div class="sgh">Where are you training?</div><div class="rc-grid">${tiles.map(([k, n, d]) => `<button class="rc-tile" data-rc="${k}"><span class="rc-t"><b>${esc(n)}</b><span class="cap">${esc(d)}</span></span><span class="rc-ic">${rcIcon(k)}</span></button>`).join('')}</div></section>
+    <button class="btn block" data-a="newBlankSplit">Start from blank</button></div>`;
+  const gym = () => `<div class="stack rc-view"><button class="link rc-back" data-rc="back">‹ Back</button><h2>Gym</h2>
+    <section><div class="sgh">Ready-made plans</div><div class="tmpl">${Object.entries(TEMPLATES).filter(([, t]) => t.s.length).map(([k, t]) => `<button data-np="${k}"><b>${esc(t.n)}</b><span>${esc(t.d)}</span></button>`).join('')}</div></section>
+    <section><div class="sgh">Or one split</div><div class="tmpl">${one.map(([n, ex], i) => `<button data-ns="${i}"><b>${esc(n)}</b><span>${esc(ex.join(', '))}</span></button>`).join('')}</div></section></div>`;
+  const cat = k => { const r = ROUTINES[k]; return `<div class="stack rc-view"><button class="link rc-back" data-rc="back">‹ Back</button><div class="row g3"><span class="rc-ic">${rcIcon(k)}</span><h2>${esc(r.n)}</h2></div>
+    <div class="tmpl">${r.p.map(([n, d, list], i) => `<button data-rp="${k}:${i}"><b>${esc(n)}</b><span>${esc(d)}</span><span>${esc(list.flatMap(x => x[1]).filter((v, j, a) => a.indexOf(v) === j).slice(0, 7).join(', '))}</span></button>`).join('')}</div></div>`; };
+  const sh = openSheet(home(), { label: 'New split' });
   const add = list => { const ids = []; for (const [name, ex] of list) { const id = 'sp-' + uid(); const r = S.profile.exp && OB_EXP[S.profile.exp] ? OB_EXP[S.profile.exp] : [0, 0, 6, 10]; S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: r[2], repMax: r[3], rest: S.profile.defaultRest || 120, note: '' })) }); S.rotation.push(id); ids.push(id); } persist('jd/meta'); closeSheet(sh); NAV.tab = 'splits'; NAV.stack = []; render(); toast(list.length > 1 ? list.length + ' splits added to your rotation' : list[0][0] + ' added to your rotation'); };
-  sh.el.querySelectorAll('[data-np]').forEach(b => b.onclick = () => add(TEMPLATES[b.dataset.np].s));
-  sh.el.querySelectorAll('[data-ns]').forEach(b => b.onclick = () => add([one[+b.dataset.ns]]));
+  sh.el.addEventListener('click', e => {
+    const t = e.target.closest('[data-rc],[data-np],[data-ns],[data-rp]'); if (!t) return;
+    if (t.dataset.rc) { const v = sh.el.querySelector('.rc-view'); v.outerHTML = t.dataset.rc === 'back' ? home() : t.dataset.rc === 'gym' ? gym() : cat(t.dataset.rc); return; }
+    if (t.dataset.np) return add(TEMPLATES[t.dataset.np].s);
+    if (t.dataset.ns) return add([one[+t.dataset.ns]]);
+    if (t.dataset.rp) { const [k, i] = t.dataset.rp.split(':'); return add(ROUTINES[k].p[+i][2]); }
+  });
 }
 // "Don't ask again" (Job, 4 Nov): ticking it remembers Yes for that pop-up (and No too when noToo is set).
 // key: false keeps asking every time (permanent deletes). Me → Workouts → Pop-ups brings them all back.
@@ -1174,8 +1213,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v165';
+const NEWS_ID = '2026-11-v166';
 const NEWS = [
+  ['Routines for anywhere', 'New split now asks where you’re training: gym, at home, dumbbells only, bodyweight, travel, or cardio and HIIT. Each has ready-made routines.'],
   ['Train together', 'Open a friend’s card and tap Train together. They get a Join button, and you both see each other’s sets as you go.'],
   ['Your gym’s board', 'The gym page now crowns whoever earned the most XP there this week, shows Regulars and Local Legends, who owns each machine, and how your gym ranks against others this month. Your name only shows if you turn it on.'],
   ['Crews and seasons', 'Start a crew with 2 to 5 friends in Friends. Seasons last 8 weeks and everyone starts from zero together; see yours in Card and rewards.'],
