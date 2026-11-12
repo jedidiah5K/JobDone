@@ -4939,7 +4939,7 @@ function obTour() {
     <div class="ob-dots" id="ob-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`;
 }
 function obBody(k) {
-  if (k === 'hook') return `<div class="ob-hero ob-hook"><div class="wordmark">Job’s <span>Done</span></div><h1>Stop guessing what to do at the gym</h1><p>Answer a few questions and get a plan that fits your week. Every session shows what to lift and when to go heavier.</p>
+  if (k === 'hook') return `<div class="ob-hero ob-hook"><div class="row g2 wm-row"><div class="wordmark">Job’s <span>Done</span></div><span class="beta-pill">Early beta</span></div><h1>Stop guessing what to do at the gym</h1><p>Answer a few questions and get a plan that fits your week. Every session shows what to lift and when to go heavier.</p>
     <div class="ob-mock ob-shot"><img src="ob/log.webp" alt="A lift with last time’s numbers and today’s targets" decoding="async"></div></div>`;
   if (k === 'tour') return `<h1 class="ob-t">Here’s what you get</h1>${obTour()}`;
   if (k === 'block') return `<h1 class="ob-t">What gets in the way most?</h1><p class="sec ob-s">Pick the one that sounds most like you.</p>
@@ -5642,7 +5642,7 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   $('#wk').hidden = true;
   const make = stage === 'create';
   $('#app').innerHTML = `<main id="screen" class="pb8"><div class="g3 pt6 stack" style="max-width:420px;margin:0 auto">
-    <div class="wordmark">Job’s <span>Done</span></div>
+    <div class="row g2 wm-row"><div class="wordmark">Job’s <span>Done</span></div><span class="beta-pill">Early beta</span></div>
     <div><h1>${make ? 'Create account' : 'Sign in'}</h1><p class="m0 mt2 sec">Your workouts, weights and splits are saved to your account, so they’re on every device you sign in on.</p></div>
     ${make ? `<div class="field"><label for="si-name">Your first name</label><input class="input" id="si-name" autocomplete="given-name" maxlength="40" placeholder="Alex"></div>` : ''}
     <div class="field"><label for="si-email">Email</label><input class="input" id="si-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}"></div>
