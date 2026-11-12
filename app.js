@@ -786,6 +786,7 @@ function render() {
   if (S && S.profile && !S.profile.rest5) { if (!S.profile.defaultRest || S.profile.defaultRest === 120) S.profile.defaultRest = 300; S.profile.rest5 = true; persist('jd/meta'); }
   const app = $('#app');
   if (!S || !S.imported && !S.splits.length) { renderWelcome(); return; }
+  document.documentElement.classList.remove('ob-on'); // the intro's dark look never carries into the app (e.g. after "I already have an account")
   if (!$('#screen') || !$('#tabs')) {
     app.innerHTML = `<main id="screen" tabindex="-1"></main><nav id="tabs" aria-label="Tabs"></nav>`;
   }

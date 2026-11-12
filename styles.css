@@ -1996,3 +1996,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* "Early beta" next to the wordmark on the first screens (Job, 12 Nov) */
 .wm-row { align-items: center; }
 .beta-pill { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 30%, transparent); color: var(--text2); white-space: nowrap; }
+/* See-through everywhere the scenery shows (Job, 12 Nov): the next-up card holds the key text, so 90%; settings groups join the other cards at 85% */
+#screen .sgrp { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 85%, transparent); }
+#screen .card.nextup { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 90%, transparent); }
+:root:not([data-theme]) #screen .card.nextup { background: color-mix(in srgb, var(--split, var(--accent)) 90%, transparent); }
