@@ -2121,12 +2121,15 @@ function skyNow(h) {
   return { s1: col(a[1], b[1]), s2: col(a[2], b[2]), s3: col(a[3], b[3]), tint: `rgba(${t.slice(0, 3).map(Math.round).join(',')},${t[3].toFixed(2)})`, stars: a[5] + (b[5] - a[5]) * f };
 }
 // The sky at the hour a workout finished (Job, 16 Oct: Summit finish page and card follow when you trained, not now).
+// Owner-only (Job, 12 Nov): pin Summit's sky to one time of day instead of following the clock.
+const SKY_LOCKS = [['auto', 'Auto', null], ['dawn', 'Sunrise', 6.6], ['day', 'Day', 12], ['dusk', 'Sunset', 18.2], ['eve', 'Twilight', 19.6], ['night', 'Night', 23]];
+const skyLockH = () => { const k = S && S.profile && S.profile.owner && S.profile.skyLock, x = k && SKY_LOCKS.find(l => l[0] === k); return x ? x[2] : null; };
 const todOf = h => h >= 19.5 || h < 5.5 ? 'night' : h < 8 || h >= 17 ? 'dusk' : 'day';
-function skyOfW(w) { const t = new Date(w && (w.end || w.start) || Date.now()), h = t.getHours() + t.getMinutes() / 60; return Object.assign(skyNow(h), { tod: todOf(h) }); }
+function skyOfW(w) { const t = new Date(w && (w.end || w.start) || Date.now()), L = skyLockH(), h = L != null ? L : t.getHours() + t.getMinutes() / 60; return Object.assign(skyNow(h), { tod: todOf(h) }); }
 function applySky() {
   const R = document.documentElement;
   if (R.dataset.theme !== 'cliffs') { delete R.dataset.tod; return; }
-  const n = new Date(), h = n.getHours() + n.getMinutes() / 60, k = skyNow(h), st = R.style;
+  const n = new Date(), L = skyLockH(), h = L != null ? L : n.getHours() + n.getMinutes() / 60, k = skyNow(h), st = R.style;
   st.setProperty('--sky1', k.s1); st.setProperty('--sky2', k.s2); st.setProperty('--sky3', k.s3); st.setProperty('--tint', k.tint); st.setProperty('--stars', k.stars.toFixed(2));
   const day = h >= 6 && h < 19, p = day ? (h - 6) / 13 : ((h + 24 - 19) % 24) / 11;
   st.setProperty('--sunx', (10 + p * 80).toFixed(1) + '%'); st.setProperty('--suny', (58 - Math.sin(Math.PI * p) * 46).toFixed(1) + '%');
@@ -2781,6 +2784,9 @@ function meParts() {
   <section><div class="sgh">Theme</div><div class="sgrp pad">
     <div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div>
   </div></section>
+  ${p.owner && theme() === 'cliffs' ? `<section><div class="sgh">Summit sky</div><div class="sgrp pad">
+    <div class="themes">${SKY_LOCKS.map(([k, n, h]) => { const c = skyNow(h == null ? new Date().getHours() + new Date().getMinutes() / 60 : h); return `<button class="theme-opt ${(p.skyLock || 'auto') === k ? 'on' : ''}" data-a="skyLock" data-k="${k}"><i style="background:linear-gradient(180deg, ${c.s1}, ${c.s2} 55%, ${c.s3})"></i>${n}</button>`; }).join('')}</div>
+  </div><div class="sgf">Only you see this. Auto follows the clock.</div></section>` : ''}
   <section><div class="sgh">App</div><div class="sgrp">
     ${slink(isStandalone() ? 'Home Screen app: installed' : 'Add Job’s Done to your Home Screen', 'a2hs')}
   </div></section>
@@ -5265,6 +5271,7 @@ const ACT = {
     confirmSheet({ title: `Delete ${w.splitName || 'this workout'}?`, body: 'It comes off your history, PRs and streak. You can undo right after.', ok: 'Delete workout', danger: true, key: false, onOk: () => ACT.wkDelete({ dataset: { id } }) }); },
   wkDelete: el => { const t = NAV.stack[NAV.stack.length - 1], id = (el && el.dataset.id) || (t && t.id), w = S.workouts[id]; if (!w) return; { delete S.workouts[w.id]; tomb(monthPath(w.date), w.id); invalidate(); persist(monthPath(w.date)); if (t && t.id === w.id) back(); else render(); toast('Workout deleted', 0, () => { S.workouts[w.id] = w; invalidate(); persist(monthPath(w.date)); render(); toast('Workout restored'); }); } },
   unit: el => { S.profile.unit = el.dataset.k; persist('jd/meta'); rerender(); },
+  skyLock: el => { if (el.dataset.k === 'auto') delete S.profile.skyLock; else S.profile.skyLock = el.dataset.k; applySky(); persist('jd/meta'); rerender(); },
   theme: el => { S.profile.theme = el.dataset.k; applyTheme(el.dataset.k); persist('jd/meta'); rerender(); },
   export: el => doExport(el.dataset.k),
   reset: () => confirmSheet({ title: 'Erase everything?', body: 'Workouts, weights, steps and splits are deleted from your account and this device. Export first if you want a copy.', ok: 'Erase all data', danger: true, key: false, onOk: eraseAll }),
