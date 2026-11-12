@@ -20,6 +20,11 @@ Things Job wants added when the App Store release is near. Nothing here is built
 - **Free:** logging, splits, plate loader, rest timer, Body/Strength/Volume/History, friends, feed, stories, joint sessions, basic ID card, gym features, recap cards, Wrapped, posters, data export.
 - **Pro:** AI coach, Insights, Summit and future themes, card cosmetics (holo, black card, animated, custom colours), season card designs, custom icons, detailed gym stats, early access.
 
+## Valentine's Day drop (14 Feb)
+- Release the free pink theme on Valentine's Day as a launch moment. Drafts in docs/drafts/pink-*.jpg; Job leans pastel pink and white, with Valentine touches (single-line heart in the header, heart-shaped finished days, rose-red accent).
+- Pair it with duo features: "Swole mates" duo streak, a shared couple/partner ID card, a co-op mission ("train together 3 times this week"), and a "Gym date" recap card made for Stories.
+- Theme voice for Valentine's lines (finish page, "That's like…" comparisons).
+
 ## Game layer (Job likes all of these; ★ = top picks)
 - ★ **Seasons** (Job especially likes): 8-week seasons with a theme ("Winter Arc"), a season card design, ranks reset so everyone restarts together.
 - XP and ranks on the ID card, named in each theme's voice.
