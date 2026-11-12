@@ -46,7 +46,7 @@ Always build with esbuild set: web/index.html is minified, and building without 
 ## Users and defaults
 - New accounts: count the bar (20 kg), 2:00 rest, per-exercise rest via the workout's ⋯ menu, "Steps from Apple Health".
 - Job's own account (legacy, profile.owner): plates only (no bar), 5:00 rest, QWatch step sync, feedback inbox, owner-only Skyline blazer icon.
-- First-login intro (new accounts only): 9 steps, no goal or sex/gender question, calm dark style; theme picker previews the whole screen live; Sounds step (all switches default on); How you train; plan step (presets or build your own); CSV import offered.
+- Onboarding (v158, Job 12 Nov): runs before any account exists. 11 steps: opener "Stop guessing what to do at the gym" (with "I already have an account"), About you, days, experience, what gets in the way, How you train, Building your plan → plan, theme, sounds, what you get (slides), Save your plan (account, last). Answers wait in localStorage jd-ob, then go into the new account; Home Screen guide shows right after. No goal or sex/gender question, calm dark style. Phones that had an account before open on sign-in instead.
 
 ## Design
 Four themes, same layout and identical heights across all of them, uppercase labels:
