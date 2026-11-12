@@ -1214,10 +1214,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v166';
+const NEWS_ID = '2026-11-v170';
 const NEWS = [
   ['Routines for anywhere', 'New split now asks where you’re training: gym, at home, dumbbells only, bodyweight, travel, or cardio and HIIT. Each has ready-made routines.'],
-  ['Train together', 'Open a friend’s card and tap Train together. They get a Join button, and you both see each other’s sets as you go.'],
+  ['Train together', 'Open a friend’s card and tap Train together, then Add more friends for a party of up to 6. They get a Join button, and everyone sees each other’s sets as you go.'],
   ['Your gym’s board', 'The gym page now crowns whoever earned the most XP there this week, shows Regulars and Local Legends, who owns each machine, and how your gym ranks against others this month. Your name only shows if you turn it on.'],
   ['Crews and seasons', 'Start a crew with 2 to 5 friends in Friends. Seasons last 8 weeks and everyone starts from zero together; see yours in Card and rewards.'],
   ['Add friends by QR', 'Your card has a QR code. A friend points their Camera at it and the code fills in for them.'],
@@ -3208,36 +3208,51 @@ function duoSheet(f) {
 // ---------- Game layer batch 3 (Job, 13 Nov): train together, seasons, gym Regulars, gym board, gym vs gym, crews ----------
 // Train together: tap Train together on a friend's card (or Join on their invite). Both phones share live progress through
 // the stat friends already get (stat.lv), so it needs no new tables. The friend sees "Sam is training with you · Join".
-let PARTNER = (() => { try { const p = JSON.parse(localStorage.getItem('jd-with') || 'null'); return p && Date.now() - p.t < 4 * 36e5 ? p : null; } catch (e) { return null; } })();
-function setPartner(p) { PARTNER = p; try { p ? localStorage.setItem('jd-with', JSON.stringify(p)) : localStorage.removeItem('jd-with'); } catch (e) {} }
-function trainWith(f) {
-  const n = ((f.card || {}).n || 'your friend').split(' ')[0];
-  setPartner({ id: f.id, n, t: Date.now() });
-  if (A) { A.with = f.id; A.withN = n; touchA(); statSync(); openWk(); toast(`Training with ${esc(n)}. They can join from their app.`); return; }
-  const sp = nextSplit(); startWorkout(sp ? sp.id : null); toast(`Training with ${esc(n)}. They can join from their app.`);
+// Parties (Job, 13 Nov): train with up to 5 friends at once. A.party = [{ id, n }]. Everyone's phone shares stat.lv.party,
+// so anyone invited sees the whole group and can join; joining brings in the others you're friends with.
+const PARTY_MAX = 5;
+let PARTY_NEXT = (() => { try { const p = JSON.parse(localStorage.getItem('jd-party') || 'null'); return p && Date.now() - p.t < 4 * 36e5 && Array.isArray(p.list) ? p.list : null; } catch (e) { return null; } })();
+function setPartyNext(list) { PARTY_NEXT = list; try { list ? localStorage.setItem('jd-party', JSON.stringify({ list, t: Date.now() })) : localStorage.removeItem('jd-party'); } catch (e) {} }
+const partyIds = () => A && Array.isArray(A.party) ? A.party.map(x => x.id) : [];
+const pName = f => ({ id: f.id, n: ((f.card || {}).n || 'Friend').split(' ')[0].slice(0, 20) });
+function mergeParty(a, b) { const out = [...(a || [])]; for (const x of b) if (!out.some(y => y.id === x.id) && (!USER || x.id !== USER.id)) out.push(x); return out.slice(0, PARTY_MAX); }
+function trainWith(f, also = []) {
+  const add = [f, ...also].filter(Boolean).map(pName), names = add.map(x => x.n).join(', ');
+  if (A) { A.party = mergeParty(A.party, add); touchA(); statSync(); openWk(); }
+  else { setPartyNext(mergeParty([], add)); const sp = nextSplit(); startWorkout(sp ? sp.id : null); }
+  toast(`Training with ${esc(names)}. They can join from their app.`);
 }
 function liveStat() {
-  if (!A || !A.with || A.practice) return null;
+  const ids = partyIds(); if (!ids.length || A.practice) return null;
   const done = A.ex.flatMap(e => e.sets.filter(s => s.done && s.t !== 'warm').map(s => ({ e: e.name, s, at: s.at || 0 }))).sort((a, b) => b.at - a.at)[0];
-  return { with: A.with, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+  return { party: ids, with: ids[0], n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
 }
-const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && l.with && Date.now() - (+l.at || 0) < 20 * 6e4 ? l : null; };
-// Someone started a session with you and you're not in it yet.
+const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 20 * 6e4 ? l : null; };
+const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
+// Someone started a party with you in it and you haven't joined yet.
 function joinBanner() {
   if (!GAME_ON || !HOSTED || !USER || !Array.isArray(FRIENDS)) return '';
-  const f = FRIENDS.find(x => { const l = liveOf(x); return l && l.with === USER.id && !(A && A.with === x.id); }); if (!f) return '';
-  const n = esc(((f.card || {}).n || 'A friend').split(' ')[0]), l = liveOf(f);
-  return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${n} is training with you</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">Join</button></div>`;
+  const mine = partyIds(), f = FRIENDS.find(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id) && !mine.includes(x.id); }); if (!f) return '';
+  const n = esc(((f.card || {}).n || 'A friend').split(' ')[0]), l = liveOf(f), size = lvParty(l).length + 1;
+  return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${size > 2 ? `${n}’s party · ${size} people` : `${n} is training with you`}</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">Join</button></div>`;
 }
 function partnerStrip() {
-  if (!A || !A.with) return '';
-  const f = (FRIENDS || []).find(x => x.id === A.with), l = liveOf(f), n = esc(A.withN || 'Friend'), mine = l && l.with === USER.id;
-  return `<div class="partner cap"><i class="live-dot"></i><b>${n}</b>${mine ? ` · ${plural(+l.n || 0, 'set')}${l.ex ? ` · ${esc(l.ex)} ${esc(l.last)}` : ''}` : ' · waiting for them to join'}<button class="link" data-a="partnerEnd">End</button></div>`;
+  const P = A && Array.isArray(A.party) ? A.party : []; if (!P.length) return '';
+  const rows = P.map(m => { const f = (FRIENDS || []).find(x => x.id === m.id), l = liveOf(f), joined = l && USER && lvParty(l).includes(USER.id);
+    return `<div class="pt-row"><i class="live-dot ${joined ? '' : 'off'}"></i><b>${esc(m.n)}</b><span class="cap">${joined ? `${plural(+l.n || 0, 'set')}${l.ex ? ` · ${esc(l.ex)} ${esc(l.last)}` : ''}` : 'invited'}</span></div>`; }).join('');
+  return `<div class="partner"><div class="pt-h cap"><b>Party · ${P.length + 1}</b>${P.length < PARTY_MAX ? '<button class="link" data-a="partyAdd">Add</button>' : ''}<button class="link" data-a="partnerEnd">Leave</button></div>${rows}</div>`;
+}
+function partyAddSheet() {
+  const have = partyIds(), fr = (FRIENDS || []).filter(f => !have.includes(f.id) && !(f.card || {}).hidden);
+  if (!fr.length) return toast(FRIENDS && FRIENDS.length ? 'All your friends are in already.' : 'Add a friend first.');
+  const sh = openSheet(`<div class="stack"><h2>Add to your party</h2><p class="cap m0">Up to ${PARTY_MAX} friends. They get a Join button in their app.</p><div class="list">${fr.map(f => `<button class="li" data-pa="${esc(f.id)}"><div class="grow t">${esc((f.card || {}).n || 'Friend')}</div>${I.right}</button>`).join('')}</div></div>`, { label: 'Add to your party', mount: b => {
+    b.addEventListener('click', e => { const x = e.target.closest('[data-pa]'); if (!x) return; const f = fr.find(y => y.id === x.dataset.pa); closeSheet(sh); if (f) trainWith(f); });
+  } });
 }
 let PARTNER_POLL = 0;
 function partnerTick() { // every 20 s while training together, refresh friends to see their sets
-  clearTimeout(PARTNER_POLL); if (!A || !A.with || !HOSTED || !USER) return;
-  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; } catch (e) {} if (A && A.with && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
+  clearTimeout(PARTNER_POLL); if (!partyIds().length || !HOSTED || !USER) return;
+  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; } catch (e) {} if (partyIds().length && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
 }
 // ---------- Seasons: 8 weeks each, starting Monday 2 Nov 2026. XP earned in the season; everyone starts at zero together.
 const SEASON0 = '2026-11-02', SEASON_NAMES = ['Winter Arc', 'Spring Build', 'Summer Cut', 'Iron Autumn', 'New Year Grind', 'Base Camp'];
@@ -3359,7 +3374,7 @@ function startWorkout(splitId, date, practice) {
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
-  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTNER) { A.with = PARTNER.id; A.withN = PARTNER.n; } }
+  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) A.party = PARTY_NEXT.slice(0, PARTY_MAX); }
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
 }
@@ -3441,7 +3456,7 @@ function renderWorkout() {
   const hadPop = !!el.querySelector('.restbar') && el._rest === REST; // −30, +30, Pause redraw the timer; only a new rest slides up
   el._rest = REST;
   UPNEXT = upNext();
-  if (GAME_ON && A.with) partnerTick();
+  if (GAME_ON && partyIds().length) partnerTick();
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   // One-line header (review 2): title with an ellipsis, then sets · kg · time, and a quiet Finish until every set is ticked.
@@ -3772,7 +3787,7 @@ function logSet(ei, si) {
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
       if (!pr.length && !ghostCheck(e, si, s)) celebrate(setVerdict(s.r, repRange(e.name)));
-      goldenCheck(s); if (A.with) statSync();
+      goldenCheck(s); if (partyIds().length) statSync();
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
@@ -3810,7 +3825,7 @@ function saveWorkout() {
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
   const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: A.endAt || Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
-  if (A.gym) w.gym = A.gym; if (A.with) { w.with = A.with; w.withN = A.withN; S.profile.joint = [...(S.profile.joint || []), w.date].slice(-200); setPartner(null); }
+  if (A.gym) w.gym = A.gym; if (A.party && A.party.length) { w.party = A.party; S.profile.joint = [...(S.profile.joint || []), w.date].slice(-200); } setPartyNext(null);
   S.workouts[w.id] = w;
   if (A.practice) { PRACTICE_W = w.id; A = null; REST = null; invalidate(); NAV.tab = 'today'; NAV.stack = []; render(); return showRecap(w.id); }
   const sp = A.splitId && splitById(A.splitId);
@@ -5824,8 +5839,9 @@ const ACT = {
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
   idQR: () => qrSheet(),
-  joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (f) trainWith(f); },
-  partnerEnd: () => { if (A) { delete A.with; delete A.withN; touchA(); statSync(); } setPartner(null); openWk(); toast('Training on your own'); },
+  joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others); },
+  partnerEnd: () => { if (A) { delete A.party; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
+  partyAdd: () => partyAddSheet(),
   gymBoardOn: el => { S.profile.gymBoard = el.checked; persist('jd/meta'); statSync(); toast(el.checked ? 'Your name shows on your gym’s board' : 'You show as “A member”'); },
   crewNew: () => crewNewSheet(),
   crewYes: async el => { try { await gymRpc('jobdone_crew_answer', { p_crew: el.dataset.id, p_yes: true }); crewsLoad(); toast('You’re in the crew'); } catch (e) { toast(esc(e.message || 'Couldn’t join. Try again.')); } },
