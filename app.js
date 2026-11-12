@@ -794,7 +794,7 @@ function render() {
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, friends: viewFriends, set: viewSet })[top.v](top) : ({ today: viewToday, splits: viewSplits, friends: viewFriends, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, rewards: viewRewards, friends: viewFriends, set: viewSet })[top.v](top) : ({ today: viewToday, splits: viewSplits, friends: viewFriends, progress: viewProgress, me: viewMe })[NAV.tab]();
   try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
   try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
@@ -1172,8 +1172,12 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v161';
+const NEWS_ID = '2026-11-v162';
 const NEWS = [
+  ['Card and rewards', 'Me → Card and rewards. Earn XP for sets, PRs and full weeks, and your card goes from Bronze to Silver, Gold, Holo and, after a year, the Black card. Its edge glows brighter for every week in a row.'],
+  ['Passport and lift cards', 'Collect stamps like the 5 AM club and Comeback, and get a card for each lift you log often. Cards get rarer as your lift grows. Share any of them.'],
+  ['Golden set and ghost race', 'One random set each week is golden and gives bonus XP. Beat a set from last time and you pass your ghost.'],
+  ['Your year so far', 'A recap of your year that updates every week, plus before and after and milestone posters, all sized for Stories.'],
   ['Crop your photos', 'When you add a photo to a post, drag it and pinch to zoom so it fits the frame the way you want.'],
   ['Shorter feed posts', 'Posts show the first 3 lifts. Tap See more for the rest.'],
   ['Tidier share card', 'The lifts on your share card now sit in a drop-down, so the card and the Share button stay in view.'],
@@ -2320,6 +2324,7 @@ function restWeekLine(ws, done) {
   const on = (S.profile.restWeeks || []).includes(ws);
   if (on) return `<div class="row between mt2 cap rest-line"><span>Rest week. Your streak is safe.</span><button class="link" data-a="restWeek" data-k="${ws}">Undo</button></div>`;
   if (done || daysBetween(ws, today()) < 4 || !ix().ws.some(w => !w.skipped && mondayOf(w.date) === addDays(ws, -7))) return '';
+  if (GAME_ON && !game().tokens) return `<div class="mt2 cap rest-line">No rest weeks banked. You get one for every 4 full weeks.</div>`;
   return `<div class="row between mt2 cap rest-line"><span>Sick or away this week?</span><button class="link" data-a="restWeek" data-k="${ws}">Take a rest week</button></div>`;
 }
 function ratePerMonth() {
@@ -2883,6 +2888,7 @@ function viewMe() {
   const sub = { look: (THEMES.find(t => t.k === theme()) || THEMES[0]).name + ' theme', account: HOSTED && USER ? esc(USER.email || 'Your account') : 'Backups, import and export', steps: p.stepSrc ? 'From ' + esc(p.stepSrc) : 'From Apple Health' };
   return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div></div>
   ${HOSTED && !DEMO ? meCard() : `<div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(w => !w.skipped).length, 'workout')}</b><span>logged</span></div></div></div>`}
+  ${GAME_ON ? `<div class="sgrp">${gameRow()}</div>` : ''}
   <section><div class="sgh">Settings</div><div class="sgrp">
     ${ME_GROUPS.filter(([k]) => k !== 'steps' || true).map(([k, t, d]) => `<button class="xr" data-a="meGroup" data-k="${k}"><span class="grow">${t}<span class="s">${sub[k] || d}</span></span>${I.right}</button>`).join('')}
   </div></section>
@@ -2894,6 +2900,168 @@ function viewSet(top) {
   return `<div class="stack">${backBtn('Me')}<div class="top pt0"><div><div class="eyebrow">Settings</div><h1>${g[1]}</h1></div></div>
 ${(h => (h.match(/class="sgh"/g) || []).length === 1 ? h.replace(/<div class="sgh">[^<]*(<[^>]+>[^<]*)*?<\/div>/, '') : h)(meParts()[g[0]])}
 </div>`; // one section: its heading would repeat the page title
+}
+
+// ---------- Game layer (Job, 13 Nov): XP, card tiers, streak edge, passport stamps, lift cards, golden set, ghost race,
+// comeback boost, banked rest weeks, posters, before and after, Wrapped. All worked out from your own workouts on the phone.
+// GAME_ON = false hides every bit of it (Job plans to leave it out of the App Store build).
+const GAME_ON = true;
+const TIERS = [{ k: 'bronze', n: 'Bronze', xp: 0 }, { k: 'silver', n: 'Silver', xp: 5000 }, { k: 'gold', n: 'Gold', xp: 15000 }, { k: 'holo', n: 'Holo', xp: 40000 }, { k: 'black', n: 'Black card', xp: null }];
+const STAMPS = [
+  ['first', 'First workout'], ['pr1', 'First PR'], ['w10', '10 workouts'], ['w50', '50 workouts'], ['w100', '100 workouts'],
+  ['am5', '5 AM club'], ['owl', 'Night owl'], ['wknd', 'Weekend warrior'], ['full', 'Full week'], ['back', 'Comeback'],
+  ['gold', 'Golden set'], ['ton', '100 kg set'], ['year', 'One year in'],
+];
+const RARITY = [['Common', 0], ['Rare', .05], ['Epic', .15], ['Legendary', .3]];
+const hourOf = w => w.start ? new Date(w.start).getHours() + new Date(w.start).getMinutes() / 60 : null;
+let GAME = null, GAME_IX = null;
+function game() {
+  const X = ix(); if (GAME && GAME_IX === X && GAME.n === (S.profile.gold || []).length + ':' + (S.profile.restWeeks || []).length) return GAME;
+  const ws = X.ws.filter(w => !w.skipped), target = S.profile.weeklyTarget || 4, st = {}, hit = (k, d) => { if (!st[k]) st[k] = d; };
+  const prBy = {}; X.prs.forEach(p => { prBy[p.wid] = (prBy[p.wid] || 0) + 1; });
+  let xp = 0, prev = null, backs = 0;
+  const perWeek = {};
+  ws.forEach((w, i) => {
+    const sets = w.ex.reduce((a, e) => a + e.sets.filter(s => validSet(s) && s.done !== false).length, 0);
+    xp += sets * 10 + (prBy[w.id] || 0) * 50;
+    (perWeek[mondayOf(w.date)] = perWeek[mondayOf(w.date)] || []).push(w);
+    if (prev && daysBetween(prev.date, w.date) >= 14) { xp += 150; backs++; hit('back', w.date); }
+    const h = hourOf(w); if (h != null && h < 6) hit('am5', w.date); if (h != null && h >= 22) hit('owl', w.date);
+    for (const e of w.ex) for (const s of e.sets) if (validSet(s) && s.w >= 100) hit('ton', w.date);
+    if (i === 0) hit('first', w.date); if (i === 9) hit('w10', w.date); if (i === 49) hit('w50', w.date); if (i === 99) hit('w100', w.date);
+    prev = w;
+  });
+  if (X.prs.length) hit('pr1', X.prs[0].date);
+  let full = 0;
+  for (const [m, l] of Object.entries(perWeek)) {
+    if (new Set(l.map(w => w.date)).size >= target) { full++; xp += 100; hit('full', l[l.length - 1].date); }
+    const days = new Set(l.map(w => parseYmd(w.date).getDay())); if (days.has(6) && days.has(0)) hit('wknd', l[l.length - 1].date);
+  }
+  const gold = S.profile.gold || []; xp += gold.length * 100; if (gold.length) hit('gold', gold[0]);
+  const first = ws[0], span = first ? daysBetween(first.date, today()) : 0;
+  if (span >= 365) hit('year', addDays(first.date, 365));
+  const streak = parseInt(streakText(), 10) || 0;
+  let tier = TIERS.filter(t => t.xp != null && xp >= t.xp).pop();
+  if (span >= 365 && Object.keys(perWeek).length >= 40) tier = TIERS[4];
+  const ti = TIERS.indexOf(tier), nextT = ti < 3 ? TIERS[ti + 1] : null;
+  // Rest weeks: everyone starts with one, then one more for every 4 full weeks, up to 3 banked.
+  const used = (S.profile.restWeeks || []).length, tokens = Math.max(0, Math.min(3, 1 + Math.floor(full / 4) - used));
+  // Lift cards: lifts logged in 3+ sessions; rarity rises with how far the best estimated max has come since the first session.
+  const deck = Object.keys(X.hist).filter(n => !/ \((L|R)\)$/.test(n) && X.hist[n].length >= 3).map(n => {
+    const h = X.hist[n].filter(x => x.e1 > 0); if (h.length < 3) return null;
+    const best = h.reduce((a, x) => x.e1 > a.e1 ? x : a), gain = best.e1 / h[0].e1 - 1, r = RARITY.filter(x => gain >= x[1]).pop()[0];
+    const top = h.reduce((a, x) => x.top && (!a || x.top.w > a.w || (x.top.w === a.w && x.top.r > a.r)) ? x.top : a, null);
+    return { n, e1: best.e1, gain, r, top, s: h.length };
+  }).filter(Boolean).sort((a, b) => b.s - a.s).slice(0, 12);
+  return (GAME_IX = X, GAME = { n: gold.length + ':' + used, xp: Math.round(xp), tier, nextT, streak, heat: Math.min(1, streak / 12), stamps: STAMPS.map(([k, t]) => ({ k, t, at: st[k] || null })), deck, tokens, full, backs, ws });
+}
+// The golden set: one random work set each week (the 3rd to 14th you log), the same pick all week.
+function goldenNo(week) { let h = 7; for (const c of week + (USER && USER.id || S.profile.name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 3 + h % 12; }
+function goldenCheck(s) {
+  if (!GAME_ON || !A || s.t === 'warm') return;
+  const wk = mondayOf(today()), gold = S.profile.gold || []; if (gold.some(d => mondayOf(d) === wk)) return;
+  let n = 0; for (const w of Object.values(S.workouts)) if (!w.skipped && mondayOf(w.date) === wk && w.id !== A.id) for (const e of w.ex) n += e.sets.filter(x => validSet(x) && x.done !== false).length;
+  for (const e of A.ex) n += e.sets.filter(x => x.done && x.t !== 'warm').length;
+  if (n !== goldenNo(wk)) return;
+  S.profile.gold = [...gold, today()]; persist('jd/meta');
+  setTimeout(() => celebrate({ k: 'amazing', title: 'Golden set', sub: 'This week’s lucky set. +100 XP', note: 'One set a week is golden. You found it.', bits: 60, ms: 4000 }), 900);
+}
+// Ghost race: beat the same set from last time and you pass your ghost.
+function ghostCheck(e, si, s) {
+  if (!GAME_ON || s.t === 'warm') return false;
+  const l = lastSession(e.name), g = l && l.sets.filter(x => x.t !== 'warm')[e.sets.filter(x => x.t !== 'warm').indexOf(s)];
+  if (!g || !validSet(g) || !validSet(s)) return false;
+  if (s.w > g.w || (s.w === g.w && s.r > g.r)) { toast(`<b>Passed your ghost</b> · last time ${esc(setStr(g))}`, 2400); return true; }
+  return false;
+}
+function comebackNote(w) {
+  if (!GAME_ON || !w) return '';
+  const ws = ix().ws.filter(x => !x.skipped), i = ws.findIndex(x => x.id === w.id), p = i > 0 ? ws[i - 1] : null;
+  return p && daysBetween(p.date, w.date) >= 14 ? 'Welcome back. +150 XP' : '';
+}
+const tierCls = g => `tier-${g.tier.k}`;
+function tierLine(g) { return g.nextT ? `${n0(g.xp)} XP · ${n0(g.nextT.xp - g.xp)} to ${g.nextT.n}` : g.tier.k === 'black' ? `${n0(g.xp)} XP · a year of training` : `${n0(g.xp)} XP · Black card after a year of training`; }
+function gameRow() {
+  if (!GAME_ON) return '';
+  const g = game();
+  return `<button class="xr gm-row" data-a="rewards"><i class="gm-chip ${tierCls(g)}"></i><span class="grow">Card and rewards<span class="s">${g.tier.n} · ${tierLine(g)}</span></span>${I.right}</button>`;
+}
+function viewRewards() {
+  const g = game(), c = idCard(), ti = TIERS.indexOf(g.tier), lo = g.tier.xp || 0, frac = g.nextT ? (g.xp - lo) / (g.nextT.xp - lo) : 1;
+  const got = g.stamps.filter(s => s.at).length, U0 = U();
+  const posters = [[10, 'w'], [25, 'w'], [50, 'w'], [100, 'w'], [250, 'w'], [100000, 'v'], [1000000, 'v']].map(([n, k]) => {
+    const tot = k === 'w' ? g.ws.length : g.ws.reduce((a, w) => a + wVol(w), 0); return tot >= n ? { n, k, t: k === 'w' ? n + ' workouts' : n0(n) + ' kg lifted' } : null; }).filter(Boolean);
+  return `<div class="stack">${backBtn('Me')}<div class="top pt0"><div><div class="eyebrow">Profile</div><h1>Card and rewards</h1></div></div>
+  <div class="gm-card ${tierCls(g)}" style="--heat:${g.heat.toFixed(2)}"><img class="idc" alt="Your ID card" src="${idSrc(idFront(c, ID_CODE, U0, ID_PHOTO, g.tier.n.toUpperCase()))}"></div>
+  <div class="card"><div class="row between"><b>${g.tier.n}</b><span class="cap num">${n0(g.xp)} XP</span></div>
+    <div class="gm-bar"><i style="width:${(frac * 100).toFixed(1)}%"></i></div>
+    <div class="cap mt2">${g.nextT ? `${n0(g.nextT.xp - g.xp)} XP to ${g.nextT.n}.` : g.tier.k === 'black' ? 'Black card: a year of training.' : 'Train for a year to get the Black card.'} ${g.streak ? `${plural(g.streak, 'week')} in a row: the edge of your card glows brighter each week.` : 'Train weeks in a row and the edge of your card starts to glow.'}</div>
+    <div class="gm-tiers">${TIERS.map((t, i) => `<span class="${i <= ti ? 'on' : ''}"><i class="gm-chip tier-${t.k}"></i>${t.n.replace(' card', '')}</span>`).join('')}</div>
+    <div class="cap mt2">Sets 10 XP · PRs 50 · full weeks 100 · golden set 100 · coming back after a break 150</div></div>
+  <section><div class="sgh">Passport · ${got} of ${g.stamps.length}</div><div class="card"><div class="gm-stamps">${g.stamps.map(s => `<div class="gm-stamp ${s.at ? 'on' : ''}"><b>${esc(s.t)}</b><span>${s.at ? esc(fmtDate(s.at, { y: true })) : 'Not yet'}</span></div>`).join('')}</div></div></section>
+  <section><div class="sgh">Your deck · ${g.deck.length} lift cards</div>${g.deck.length ? `<div class="gm-deck">${g.deck.map((d, i) => `<button class="gm-lc r-${d.r.toLowerCase()}" data-a="liftCard" data-k="${i}"><span class="gm-r">${d.r}</span><b>${esc(d.n)}</b><span class="num">${d.top ? esc(setStr(d.top)) : ''}</span><span class="cap">Best est. max ${n0(d.e1)} ${U0}</span><span class="cap">${d.gain > 0 ? '+' + Math.round(d.gain * 100) + '% since your first session' : 'First sessions logged'}</span></button>`).join('')}</div><div class="cap mt2">Tap a card to share it. Rarity goes up as your best lift grows.</div>` : '<div class="card cap">Log a lift in 3 sessions to get its card.</div>'}</section>
+  <section><div class="sgh">Rest weeks</div><div class="card"><b>${plural(g.tokens, 'rest week')} banked</b><div class="cap mt1">Sick or away? A rest week keeps your streak safe. You get one more for every 4 full weeks, up to 3.</div></div></section>
+  <section><div class="sgh">Share</div><div class="sgrp">
+    <button class="xr" data-a="wrapped"><span class="grow">Your year so far<span class="s">Top lift, total lifted, busiest month. Updates every week.</span></span>${I.right}</button>
+    <button class="xr" data-a="beforeAfter"><span class="grow">Before and after<span class="s">Your first month next to your last 30 days</span></span>${I.right}</button>
+    ${posters.map(p => `<button class="xr" data-a="poster" data-k="${p.k}${p.n}"><span class="grow">Milestone poster<span class="s">${esc(p.t)}</span></span>${I.right}</button>`).join('')}
+  </div>${posters.length ? '' : '<div class="sgf">Milestone posters unlock at 10 workouts.</div>'}</section>
+</div>`;
+}
+// Story-sized pictures (1080 × 1920) in the theme's colours.
+function gameCanvas(title, kicker, rows, foot) {
+  const L = ID_LOOK[theme()] || ID_LOOK.mono, W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), F = (s, w = 800) => `${w} ${s}px ${L.font}`;
+  g.fillStyle = L.bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = L.acc; g.fillRect(0, 0, W, 18); g.globalAlpha = .1; g.fillRect(0, H - 260, W, 260); g.globalAlpha = 1;
+  g.fillStyle = L.acc; g.font = F(34); g.fillText(kicker.toUpperCase(), 90, 220);
+  g.fillStyle = L.ink; g.font = F(110); let y = 360; for (const ln of wrapCanvas(g, title, W - 180)) { g.fillText(ln, 90, y); y += 120; }
+  y += 40;
+  for (const [k, v] of rows) { g.fillStyle = L.dim; g.font = F(34, 600); g.fillText(k, 90, y); g.fillStyle = L.ink; g.font = F(64); y += 76; for (const ln of wrapCanvas(g, String(v), W - 180)) { g.fillText(ln, 90, y); y += 72; } y += 40; if (y > H - 320) break; }
+  g.fillStyle = L.acc; g.font = F(40); g.fillText('JOB’S DONE', 90, H - 130); g.fillStyle = L.dim; g.font = F(30, 600); g.fillText(foot || 'jobdone-peach.vercel.app', 90, H - 80);
+  return c;
+}
+function wrapCanvas(g, s, max) { const out = []; let ln = ''; for (const w of String(s).split(' ')) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > max && ln) { out.push(ln); ln = w; } else ln = t; } if (ln) out.push(ln); return out; }
+async function shareCanvas(c, name) {
+  const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) return;
+  const file = new File([blob], name, { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function previewShare(c, name, label) {
+  const sh = openSheet(`<div class="stack"><img class="sh-prev story" src="${c.toDataURL('image/jpeg', .85)}" alt="${esc(label)}"><button class="btn primary block" id="gm-go">Share</button></div>`, { label, mount: b => { b.querySelector('#gm-go').onclick = () => { closeSheet(sh); shareCanvas(c, name); }; } });
+}
+function wrappedData(year = today().slice(0, 4)) {
+  const ws = ix().ws.filter(w => !w.skipped && w.date.startsWith(year)); if (!ws.length) return null;
+  const vol = ws.reduce((a, w) => a + wVol(w), 0), cnt = {}, mon = {}, day = {};
+  let heavy = null;
+  ws.forEach(w => { mon[w.date.slice(5, 7)] = (mon[w.date.slice(5, 7)] || 0) + 1; const d = parseYmd(w.date).getDay(); day[d] = (day[d] || 0) + 1;
+    for (const e of w.ex) { const b = baseName(e.name); cnt[b] = (cnt[b] || 0) + 1; for (const s of e.sets) if (validSet(s) && (!heavy || s.w > heavy.s.w)) heavy = { s, n: b }; } });
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0], bm = Object.entries(mon).sort((a, b) => b[1] - a[1])[0], bd = Object.entries(day).sort((a, b) => b[1] - a[1])[0];
+  const prs = ix().prs.filter(p => p.date.startsWith(year)).length;
+  return { year, n: ws.length, vol, top: top && top[0], topN: top && top[1], heavy, month: MON[+bm[0] - 1], monthN: bm[1], day: WD[bd[0]], prs };
+}
+function openWrapped() {
+  const d = wrappedData(); if (!d) return toast('Log a workout this year first.');
+  const rows = [['Workouts', d.n], ['Total lifted', `${n0(d.vol)} ${U()}`], ['', heavyLine(d.vol)], ['Top lift', `${d.top} · ${plural(d.topN, 'session')}`], d.heavy ? ['Heaviest set', `${d.heavy.n} · ${setStr(d.heavy.s)}`] : null, ['Busiest month', `${d.month} · ${plural(d.monthN, 'workout')}`], ['Favourite day', d.day], ['PRs', d.prs]].filter(Boolean);
+  previewShare(gameCanvas(`${d.year} so far`, 'Your year in the gym', rows.filter(r => r[0]).concat(rows.filter(r => !r[0]).map(r => ['That’s like', r[1]]))), `jobdone-${d.year}.png`, 'Your year so far');
+}
+function openBeforeAfter() {
+  const ws = ix().ws.filter(w => !w.skipped); if (ws.length < 4) return toast('Log a few more workouts first.');
+  const f0 = ws[0].date, m1 = ws.filter(w => daysBetween(f0, w.date) < 30), l30 = ws.filter(w => daysBetween(w.date, today()) < 30);
+  if (daysBetween(f0, today()) < 45) return toast('Come back after your second month.');
+  const st = l => ({ n: l.length, vol: l.reduce((a, w) => a + wVol(w), 0), best: l.reduce((a, w) => Math.max(a, ...w.ex.map(e => maxE1(e.sets))), 0) });
+  const a = st(m1), b = st(l30), g = game();
+  previewShare(gameCanvas('Then and now', `${fmtDate(f0, { y: true })} → today`, [['Workouts in a month', `${a.n} → ${b.n}`], ['Lifted in a month', `${n0(a.vol)} → ${n0(b.vol)} ${U()}`], ['Best estimated max', `${n0(a.best)} → ${n0(b.best)} ${U()}`], ['Card', `Bronze → ${g.tier.n}`]]), 'jobdone-then-now.png', 'Before and after');
+}
+function openPoster(k) {
+  const n = +k.slice(1), w = k[0] === 'w', g = game();
+  const tot = w ? `${n} workouts` : `${n0(n)} ${U()} lifted`;
+  previewShare(gameCanvas(tot, 'Milestone', [['Card', g.tier.n], ['Workouts so far', g.ws.length], ['Week streak', g.streak], w ? ['Total lifted', `${n0(g.ws.reduce((a, x) => a + wVol(x), 0))} ${U()}`] : ['That’s like', heavyLine(n)]]), `jobdone-${k}.png`, 'Milestone poster');
+}
+function openLiftCard(i) {
+  const d = game().deck[+i]; if (!d) return;
+  previewShare(gameCanvas(d.n, `${d.r} lift card`, [['Best set', d.top ? setStr(d.top) : '—'], ['Best estimated max', `${n0(d.e1)} ${U()}`], ['Progress', d.gain > 0 ? `+${Math.round(d.gain * 100)}% since the first session` : 'Just getting started'], ['Sessions', d.s]]), 'jobdone-lift-card.png', 'Lift card');
 }
 
 // ---------- active workout ----------
@@ -3341,7 +3509,8 @@ function logSet(ei, si) {
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
-      if (!pr.length) celebrate(setVerdict(s.r, repRange(e.name)));
+      if (!pr.length && !ghostCheck(e, si, s)) celebrate(setVerdict(s.r, repRange(e.name)));
+      goldenCheck(s);
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
@@ -3513,6 +3682,7 @@ function showRecap(id, fresh) {
   const d = recapData(id); if (!d.w) return;
   d.line = RC_LINE[id + theme()] || (RC_LINE[id + theme()] = doneLine(d.w));
   const old = document.getElementById('recap'); if (old) old.remove(); document.querySelectorAll('.toast').forEach(t => t.remove());
+  if (fresh) { const cb = comebackNote(d.w); if (cb) setTimeout(() => toast(cb, 3500), 1600); }
   const el = document.createElement('div'); el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Workout recap');
   const pr = new Map(d.prs.map(p => [p.ex, p])), mx = d.musL.length ? d.musL[0][1] : 1;
   const h = d.w.ex.map(e => { const H = ix().hist[e.name] || [], k = H.findIndex(x => x.wid === d.w.id), p = k > 0 ? H[k - 1] : null, t = topSet(e.sets);
@@ -5380,6 +5550,11 @@ const ACT = {
   gymStarterSave: () => { const ks = [...document.querySelectorAll('#gym-st .cbox:checked')].map(x => x.value); if (!ks.length) return toast('Tick the machines you can see first.'); gymAdd(ks, 'starter'); },
   gymLeave: () => { const c = gymCur(); if (c) confirmSheet({ title: 'Leave ' + gymTitle(c) + '?', body: 'Machines you added stay for everyone else.', ok: 'Leave', key: false, onOk: async () => { try { await gymRpc('jobdone_gym_leave', { g: c.gym_id }); if (S.profile.gymAt === c.gym_id) { delete S.profile.gymAt; persist('jd/meta'); } await gymRefresh(true); if (!(GYM.mine || []).length) { NAV.stack = []; render(); } } catch (e) { gymErr(e); } } }); },
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
+  rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
+  liftCard: el => openLiftCard(el.dataset.k),
+  wrapped: () => openWrapped(),
+  beforeAfter: () => openBeforeAfter(),
+  poster: el => openPoster(el.dataset.k),
   friends: () => { idTurnOn(); NAV.tab = 'friends'; NAV.stack = []; frExpire(); render(); },
   idShare: () => idShare(),
   meGroup: el => { NAV.stack = [{ v: 'set', k: el.dataset.k }]; render(); },
