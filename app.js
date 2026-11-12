@@ -768,6 +768,7 @@ function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger 
 
 // ---------- render shell ----------
 function render() {
+  addFromLink();
   if (!ready) return;
   syncRestPush();
   // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
@@ -1453,7 +1454,7 @@ function idView(c, code, photo, o = {}) {
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.duo ? '<button class="btn primary grow" data-v="duo">You and them</button>' : ''}${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+    <div class="idv-acts">${o.duo ? '<button class="btn primary grow" data-v="duo">You and them</button>' : ''}${o.share ? '<button class="btn primary grow" data-v="share">Share card</button><button class="btn grow" data-v="qr">QR code</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1464,7 +1465,7 @@ function idView(c, code, photo, o = {}) {
   card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
-  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'qr') { close(); qrSheet(); } if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
   addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
   setTimeout(() => card.focus(), 50);
 }
@@ -1684,10 +1685,33 @@ function viewFriends() {
     ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
   </div>`;
 }
-function frAddSheet() {
+// Friend QR (Job, 13 Nov): a link with your code. The iPhone Camera opens it, Job's Done fills in the code, they tap Send.
+const ADD_URL = c => 'https://jobdone-peach.vercel.app/?add=' + encodeURIComponent(c);
+function qrSVG(text, px = 220) {
+  if (typeof qrcode !== 'function') return '';
+  try { const q = qrcode(0, 'M'); q.addData(text); q.make(); const n = q.getModuleCount(), m = 2, size = n + m * 2; let d = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+    return `<svg class="qr" viewBox="0 0 ${size} ${size}" width="${px}" height="${px}" shape-rendering="crispEdges" role="img" aria-label="QR code with your friend code"><rect width="${size}" height="${size}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`; } catch (e) { return ''; }
+}
+function qrSheet() {
+  if (!ID_CODE) return toast('Your code shows once your card is saved. Try again in a moment.');
+  openSheet(`<div class="stack tc"><h2>Your friend code</h2><div class="qr-box">${qrSVG(ADD_URL(ID_CODE), 240)}</div><b class="num">${esc(idCode(ID_CODE))}</b><p class="cap m0">Your friend points their iPhone Camera at this, taps the link, then taps Send.</p><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Your friend code' });
+}
+// The Camera opens links in Safari, which on iPhone doesn't share the Home Screen app's sign-in, so the code is kept for a day too.
+let ADD_PENDING = (() => { try { const v = new URLSearchParams(location.search).get('add'); if (v) history.replaceState(null, '', location.pathname);
+  if (v && /^[A-Za-z0-9-]{4,12}$/.test(v)) { localStorage.setItem('jd-add', JSON.stringify({ v, t: Date.now() })); return v; }
+  const k = JSON.parse(localStorage.getItem('jd-add') || 'null'); return k && Date.now() - k.t < 864e5 ? k.v : null; } catch (e) { return null; } })();
+let ADD_NOTE = false;
+function addFromLink() {
+  if (!ADD_PENDING || !HOSTED || DEMO) return;
+  if (!USER || !S) { if (!ADD_NOTE) { ADD_NOTE = true; const v = ADD_PENDING; setTimeout(() => { if (!USER) toast(`Friend code <b>${esc(idCode(v))}</b>. Sign in here to add them, or open Job’s Done from your Home Screen: Friends → Add a friend.`, 9000); }, 1500); } return; }
+  const v = ADD_PENDING; ADD_PENDING = null; try { localStorage.removeItem('jd-add'); } catch (e) {}
+  setTimeout(() => { frAddSheet(v); }, 600);
+}
+function frAddSheet(pre) {
   const sh = openSheet(`<div class="stack"><h2>Add a friend</h2><p class="cap m0">Type the code on their ID card. They’ll get a request to accept.</p>
-    <div class="row g2"><input class="input grow" id="fr-code" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
-    <div class="row between"><span class="cap">Your code <b class="num c-text">${esc(idCode(ID_CODE))}</b></span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button></div></div>`, { label: 'Add a friend', mount: b => {
+    <div class="row g2"><input class="input grow" id="fr-code" value="${pre ? esc(pre) : ''}" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
+    <div class="row between"><span class="cap">Your code <b class="num c-text">${esc(idCode(ID_CODE))}</b></span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button></div>${ID_CODE && typeof qrcode === 'function' ? '<button class="btn block" data-a="idQR">Show my QR code</button>' : ''}</div>`, { label: 'Add a friend', mount: b => {
     const go = b.querySelector('#fr-go'); go.onclick = async () => { go.disabled = true; await friendAdd(); go.disabled = false; if (!b.querySelector('#fr-code').value) closeSheet(sh); };
     setTimeout(() => b.querySelector('#fr-code').focus(), 250); } });
 }
@@ -5610,6 +5634,7 @@ const ACT = {
   gymLeave: () => { const c = gymCur(); if (c) confirmSheet({ title: 'Leave ' + gymTitle(c) + '?', body: 'Machines you added stay for everyone else.', ok: 'Leave', key: false, onOk: async () => { try { await gymRpc('jobdone_gym_leave', { g: c.gym_id }); if (S.profile.gymAt === c.gym_id) { delete S.profile.gymAt; persist('jd/meta'); } await gymRefresh(true); if (!(GYM.mine || []).length) { NAV.stack = []; render(); } } catch (e) { gymErr(e); } } }); },
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
+  idQR: () => qrSheet(),
   liftCard: el => openLiftCard(el.dataset.k),
   wrapped: () => openWrapped(),
   beforeAfter: () => openBeforeAfter(),
