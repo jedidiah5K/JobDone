@@ -1172,8 +1172,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v162';
+const NEWS_ID = '2026-11-v163';
 const NEWS = [
+  ['You and your friends', 'Open a friend’s card and tap You and them: your duo streak, a shared 30-set mission each week, a face-off on this month’s stats, and how well your training matches.'],
+  ['Spotter points', 'Every friend who reacts to or comments on your post gives you 5 XP. Being a good gym friend pays.'],
   ['Card and rewards', 'Me → Card and rewards. Earn XP for sets, PRs and full weeks, and your card goes from Bronze to Silver, Gold, Holo and, after a year, the Black card. Its edge glows brighter for every week in a row.'],
   ['Passport and lift cards', 'Collect stamps like the 5 AM club and Comeback, and get a card for each lift you log often. Cards get rarer as your lift grows. Share any of them.'],
   ['Golden set and ghost race', 'One random set each week is golden and gives bonus XP. Beat a set from last time and you pass your ghost.'],
@@ -1451,7 +1453,7 @@ function idView(c, code, photo, o = {}) {
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+    <div class="idv-acts">${o.duo ? '<button class="btn primary grow" data-v="duo">You and them</button>' : ''}${o.share ? '<button class="btn primary grow" data-v="share">Share card</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1462,7 +1464,7 @@ function idView(c, code, photo, o = {}) {
   card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
-  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
   addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
   setTimeout(() => card.focus(), 50);
 }
@@ -1548,7 +1550,7 @@ function myStat() {
   let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
   while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
   const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k, o: -new Date().getTimezoneOffset() };
-  if (SO().nn) s.nn = true; return s;
+  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; return s;
 }
 let STAT_SENT = '';
 function statSync() {
@@ -1574,7 +1576,7 @@ const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(fr
 let FEED = null, FR_AT = 0; const NUDGED = {};
 // Tab taps reuse friends and feed for 2 minutes (each load is every friend's photo); pull-down and Refresh always reload.
 const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FRIENDS = null; FEED = null; } };
-async function feedLoad() { FEED = undefined; try { FEED = await gymRpc('jobdone_feed') || []; } catch (e) { FEED = []; } rerender(); }
+async function feedLoad() { FEED = undefined; try { FEED = await gymRpc('jobdone_feed') || []; spotSeen(FEED); } catch (e) { FEED = []; } rerender(); }
 const postHidden = () => { try { return JSON.parse(localStorage.getItem('jd-hidepost') || '[]'); } catch (e) { return []; } };
 function frRow(f) {
   const c = f.card || {}, t = ID_LEVELS[c.t] ? c.t : 'mono', st = frStatus(f), k = frStreak(f);
@@ -1645,7 +1647,7 @@ let FR_BUSY = false;
 async function frRefresh() {
   if (FR_BUSY || !HOSTED) return; FR_BUSY = true; rerender();
   const [f, r, p] = await Promise.allSettled([gymRpc('jobdone_friends_list'), gymRpc('jobdone_friend_requests'), gymRpc('jobdone_feed')]);
-  if (f.status === 'fulfilled') FRIENDS = f.value || []; if (r.status === 'fulfilled') REQS = r.value || []; if (p.status === 'fulfilled') FEED = p.value || [];
+  if (f.status === 'fulfilled') FRIENDS = f.value || []; if (r.status === 'fulfilled') REQS = r.value || []; if (p.status === 'fulfilled') { FEED = p.value || []; spotSeen(FEED); }
   FR_BUSY = false; rerender();
   toast([f, r, p].some(x => x.status === 'rejected') ? 'Couldn’t refresh everything. Check your connection.' : 'Up to date');
 }
@@ -2087,7 +2089,7 @@ async function friendCancel(id) {
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
   if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
-  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
+  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { duo: GAME_ON ? () => duoSheet(f) : null, remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
 }
 // Reports go to the reports inbox (supabase/reports.sql): the server keeps a copy of the text, since posts and
 // comments delete themselves within 48 hours, and hides it for everyone once two people report it. Photos aren't copied.
@@ -2910,13 +2912,13 @@ const TIERS = [{ k: 'bronze', n: 'Bronze', xp: 0 }, { k: 'silver', n: 'Silver', 
 const STAMPS = [
   ['first', 'First workout'], ['pr1', 'First PR'], ['w10', '10 workouts'], ['w50', '50 workouts'], ['w100', '100 workouts'],
   ['am5', '5 AM club'], ['owl', 'Night owl'], ['wknd', 'Weekend warrior'], ['full', 'Full week'], ['back', 'Comeback'],
-  ['gold', 'Golden set'], ['ton', '100 kg set'], ['year', 'One year in'],
+  ['gold', 'Golden set'], ['ton', '100 kg set'], ['year', 'One year in'], ['coop', 'Co-op mission'], ['spot', 'Good spotter'],
 ];
 const RARITY = [['Common', 0], ['Rare', .05], ['Epic', .15], ['Legendary', .3]];
 const hourOf = w => w.start ? new Date(w.start).getHours() + new Date(w.start).getMinutes() / 60 : null;
 let GAME = null, GAME_IX = null;
 function game() {
-  const X = ix(); if (GAME && GAME_IX === X && GAME.n === (S.profile.gold || []).length + ':' + (S.profile.restWeeks || []).length) return GAME;
+  const X = ix(); if (GAME && GAME_IX === X && GAME.n === (S.profile.gold || []).length + ':' + (S.profile.restWeeks || []).length + ':' + spotXP()) return GAME;
   const ws = X.ws.filter(w => !w.skipped), target = S.profile.weeklyTarget || 4, st = {}, hit = (k, d) => { if (!st[k]) st[k] = d; };
   const prBy = {}; X.prs.forEach(p => { prBy[p.wid] = (prBy[p.wid] || 0) + 1; });
   let xp = 0, prev = null, backs = 0;
@@ -2938,6 +2940,7 @@ function game() {
     const days = new Set(l.map(w => parseYmd(w.date).getDay())); if (days.has(6) && days.has(0)) hit('wknd', l[l.length - 1].date);
   }
   const gold = S.profile.gold || []; xp += gold.length * 100; if (gold.length) hit('gold', gold[0]);
+  const coop = Object.keys(S.profile.coop || {}).sort(); xp += coop.length * 200; if (coop.length) hit('coop', coop[0].slice(0, 10)); if (spotXP() >= 100) hit('spot', today());
   const first = ws[0], span = first ? daysBetween(first.date, today()) : 0;
   if (span >= 365) hit('year', addDays(first.date, 365));
   const streak = parseInt(streakText(), 10) || 0;
@@ -2953,7 +2956,7 @@ function game() {
     const top = h.reduce((a, x) => x.top && (!a || x.top.w > a.w || (x.top.w === a.w && x.top.r > a.r)) ? x.top : a, null);
     return { n, e1: best.e1, gain, r, top, s: h.length };
   }).filter(Boolean).sort((a, b) => b.s - a.s).slice(0, 12);
-  return (GAME_IX = X, GAME = { n: gold.length + ':' + used, xp: Math.round(xp), tier, nextT, streak, heat: Math.min(1, streak / 12), stamps: STAMPS.map(([k, t]) => ({ k, t, at: st[k] || null })), deck, tokens, full, backs, ws });
+  return (GAME_IX = X, GAME = { n: gold.length + ':' + used + ':' + spotXP(), xp: Math.round(xp + spotXP()), tier, nextT, streak, heat: Math.min(1, streak / 12), stamps: STAMPS.map(([k, t]) => ({ k, t, at: st[k] || null })), deck, tokens, full, backs, ws });
 }
 // The golden set: one random work set each week (the 3rd to 14th you log), the same pick all week.
 function goldenNo(week) { let h = 7; for (const c of week + (USER && USER.id || S.profile.name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 3 + h % 12; }
@@ -2997,7 +3000,7 @@ function viewRewards() {
     <div class="gm-bar"><i style="width:${(frac * 100).toFixed(1)}%"></i></div>
     <div class="cap mt2">${g.nextT ? `${n0(g.nextT.xp - g.xp)} XP to ${g.nextT.n}.` : g.tier.k === 'black' ? 'Black card: a year of training.' : 'Train for a year to get the Black card.'} ${g.streak ? `${plural(g.streak, 'week')} in a row: the edge of your card glows brighter each week.` : 'Train weeks in a row and the edge of your card starts to glow.'}</div>
     <div class="gm-tiers">${TIERS.map((t, i) => `<span class="${i <= ti ? 'on' : ''}"><i class="gm-chip tier-${t.k}"></i>${t.n.replace(' card', '')}</span>`).join('')}</div>
-    <div class="cap mt2">Sets 10 XP · PRs 50 · full weeks 100 · golden set 100 · coming back after a break 150</div></div>
+    <div class="cap mt2">Sets 10 XP · PRs 50 · full weeks 100 · golden set 100 · coming back after a break 150 · co-op mission 200 · each friend who cheers your post 5</div></div>
   <section><div class="sgh">Passport · ${got} of ${g.stamps.length}</div><div class="card"><div class="gm-stamps">${g.stamps.map(s => `<div class="gm-stamp ${s.at ? 'on' : ''}"><b>${esc(s.t)}</b><span>${s.at ? esc(fmtDate(s.at, { y: true })) : 'Not yet'}</span></div>`).join('')}</div></div></section>
   <section><div class="sgh">Your deck · ${g.deck.length} lift cards</div>${g.deck.length ? `<div class="gm-deck">${g.deck.map((d, i) => `<button class="gm-lc r-${d.r.toLowerCase()}" data-a="liftCard" data-k="${i}"><span class="gm-r">${d.r}</span><b>${esc(d.n)}</b><span class="num">${d.top ? esc(setStr(d.top)) : ''}</span><span class="cap">Best est. max ${n0(d.e1)} ${U0}</span><span class="cap">${d.gain > 0 ? '+' + Math.round(d.gain * 100) + '% since your first session' : 'First sessions logged'}</span></button>`).join('')}</div><div class="cap mt2">Tap a card to share it. Rarity goes up as your best lift grows.</div>` : '<div class="card cap">Log a lift in 3 sessions to get its card.</div>'}</section>
   <section><div class="sgh">Rest weeks</div><div class="card"><b>${plural(g.tokens, 'rest week')} banked</b><div class="cap mt1">Sick or away? A rest week keeps your streak safe. You get one more for every 4 full weeks, up to 3.</div></div></section>
@@ -3062,6 +3065,62 @@ function openPoster(k) {
 function openLiftCard(i) {
   const d = game().deck[+i]; if (!d) return;
   previewShare(gameCanvas(d.n, `${d.r} lift card`, [['Best set', d.top ? setStr(d.top) : '—'], ['Best estimated max', `${n0(d.e1)} ${U()}`], ['Progress', d.gain > 0 ? `+${Math.round(d.gain * 100)}% since the first session` : 'Just getting started'], ['Sessions', d.s]]), 'jobdone-lift-card.png', 'Lift card');
+}
+
+// ---------- Game layer batch 2 (Job, 13 Nov): friends. Rides on the stat friends already get (jobdone_stat), so no new tables.
+// g.xp / g.t = XP and tier, g.wb = weeks trained (newest first, 26), g.ss = sets this week, g.mu = push/pull/legs/core share, g.dw = days a week.
+function myGameStat() {
+  if (!GAME_ON) return null;
+  const G = game(), m = mondayOf(today()), weeks = new Set(G.ws.map(w => mondayOf(w.date))), rw = new Set(S.profile.restWeeks || []);
+  let wb = ''; for (let i = 0, x = m; i < 26; i++, x = addDays(x, -7)) wb += weeks.has(x) ? '1' : rw.has(x) ? 'r' : '0';
+  const ss = G.ws.filter(w => mondayOf(w.date) === m).reduce((a, w) => a + w.ex.reduce((b, e) => b + e.sets.filter(s => validSet(s) && s.done !== false).length, 0), 0);
+  const mu = { Push: 0, Pull: 0, Legs: 0, Core: 0 }; let t = 0;
+  G.ws.filter(w => daysBetween(w.date, today()) < 28).forEach(w => w.ex.forEach(e => { const k = MU_GROUP[exInfo(e.name).muscle]; if (k) { const n = e.sets.filter(validSet).length; mu[k] += n; t += n; } }));
+  for (const k in mu) mu[k] = t ? Math.round(mu[k] / t * 100) : 0;
+  return { xp: G.xp, t: G.tier.k, wb, ss, mu, dw: S.profile.weeklyTarget || 3, mo: G.ws.filter(w => ymOf(w.date) === ymOf(today())).length };
+}
+// Spotter points: 5 XP for every friend who reacts to or comments on your posts. Posts vanish after a day or two,
+// so each post's count is kept on the phone (best seen), and the total only goes up.
+function spotSeen(feed) {
+  if (!GAME_ON || !USER || !Array.isArray(feed)) return;
+  const sp = S.profile.spot = S.profile.spot || {}; let ch = false;
+  for (const p of feed) if (p.user_id === USER.id) {
+    const n = Math.max(0, Object.values(p.reacts || {}).reduce((a, v) => a + (+v || 0), 0) - (p.mine ? 1 : 0)) + (p.comments || []).filter(c => c.u !== USER.id).length;
+    if (n > (sp[p.id] || 0)) { sp[p.id] = Math.min(50, n); ch = true; }
+  }
+  const keys = Object.keys(sp); if (keys.length > 400) { const old = keys.slice(0, keys.length - 400), tot = old.reduce((a, k) => a + sp[k], 0); old.forEach(k => delete sp[k]); sp._old = (sp._old || 0) + tot; } // keep it small, keep the total
+  if (ch) { GAME = null; persist('jd/meta'); }
+}
+const spotXP = () => { const sp = S.profile.spot || {}; return Object.values(sp).reduce((a, v) => a + (+v || 0), 0) * 5; };
+// Duo streak: weeks in a row you both trained (a rest week counts for whoever took it).
+function duoStreak(a, b) { let k = 0; const on = c => c === '1' || c === 'r'; let i = a[0] === '1' && b[0] === '1' ? 0 : 1; for (; i < Math.min(a.length, b.length); i++) { if (!on(a[i]) || !on(b[i])) break; if (a[i] === '1' && b[i] === '1') k++; } return k; }
+// Training match: how alike your muscle mix and days a week are, as a percentage.
+function trainMatch(a, b) {
+  const K = ['Push', 'Pull', 'Legs', 'Core'], dot = K.reduce((s, k) => s + (a.mu[k] || 0) * (b.mu[k] || 0), 0), na = Math.hypot(...K.map(k => a.mu[k] || 0)), nb = Math.hypot(...K.map(k => b.mu[k] || 0));
+  if (!na || !nb) return null;
+  const mix = dot / na / nb, days = 1 - Math.min(1, Math.abs((a.dw || 3) - (b.dw || 3)) / 4);
+  return Math.round((mix * .75 + days * .25) * 100);
+}
+const COOP_GOAL = 30;
+function duoSheet(f) {
+  const me = myGameStat(), them = f.stat && f.stat.g, n = esc(((f.card || {}).n || 'Your friend').split(' ')[0]);
+  if (!them) return confirmSheet({ title: `${n} hasn’t updated yet`, body: `Once ${n} opens the newest version of Job’s Done, you’ll see your duo streak, a shared mission and how you compare.`, ok: 'OK', key: false });
+  const sameWeek = f.stat.w === mondayOf(today()), ts = sameWeek ? +them.ss || 0 : 0, together = me.ss + ts, done = together >= COOP_GOAL, duo = duoStreak(me.wb, them.wb || ''), match = trainMatch(me, them);
+  if (done) { const c = S.profile.coop = S.profile.coop || {}; const k = mondayOf(today()) + ':' + f.id; if (!c[k]) { c[k] = 1; persist('jd/meta'); } }
+  const coopN = Object.keys(S.profile.coop || {}).filter(k => k.endsWith(':' + f.id)).length;
+  const rows = [['Workouts this month', me.mo, +them.mo || 0], ['Week streak', parseInt(streakText(), 10) || 0, +f.stat.k || 0], ['Sets this week', me.ss, ts], ['XP', me.xp, +them.xp || 0]];
+  const wins = rows.reduce((a, r) => a + (r[1] > r[2] ? 1 : r[1] < r[2] ? -1 : 0), 0);
+  const tn = (TIERS.find(t => t.k === them.t) || TIERS[0]).n;
+  openSheet(`<div class="stack"><div><div class="eyebrow">You and ${n}</div><h2 class="mt1">${duo ? `${plural(duo, 'week')} together` : 'Start a duo streak'}</h2>
+    <div class="cap mt1">${duo ? 'Weeks in a row you both trained. Miss a week and you both lose it.' : 'Both train this week and your duo streak starts.'}</div></div>
+    <div class="card"><div class="row between"><b>This week’s mission</b><span class="cap num">${done ? `${together} sets · goal ${COOP_GOAL}` : `${together} of ${COOP_GOAL} sets`}</span></div>
+      <div class="gm-bar"><i style="width:${Math.min(100, together / COOP_GOAL * 100).toFixed(1)}%"></i></div>
+      <div class="cap mt2">${done ? `Done. You both get the co-op badge${coopN > 1 ? ` (${coopN} so far)` : ''}.` : `${COOP_GOAL} sets between you this week. You’ve done ${me.ss}, ${n} has done ${ts}.`}</div></div>
+    <div class="card"><div class="row between"><b>Face-off</b><span class="cap">${wins > 0 ? 'You’re ahead' : wins < 0 ? n + ' is ahead' : 'Dead even'}</span></div>
+      <div class="gm-vs"><span></span><b>You</b><b>${n}</b>${rows.map(([k, a, b]) => `<span class="cap">${k}</span><b class="num ${a > b ? 'win' : ''}">${n0(a)}</b><b class="num ${b > a ? 'win' : ''}">${n0(b)}</b>`).join('')}
+      <span class="cap">Card</span><b>${esc(game().tier.n)}</b><b>${esc(tn)}</b></div></div>
+    ${match != null ? `<div class="card"><div class="row between"><b>Training match</b><b class="num gm-match">${match}%</b></div><div class="cap mt1">How alike your last 4 weeks look: push, pull, legs and core, and days a week.${match >= 70 ? ' You’d make good gym partners.' : ''}</div></div>` : ''}
+    <button class="btn block" data-a="closeSheet">Close</button></div>`, { label: 'You and ' + n });
 }
 
 // ---------- active workout ----------

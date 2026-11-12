@@ -2054,3 +2054,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .gm-r { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 10px; background: var(--rc, rgba(127,127,127,.3)); color: #fff; }
 .r-common { --rc: #8A8F98; } .r-rare { --rc: #2F7DE1; } .r-epic { --rc: #8E44D9; } .r-legendary { --rc: #D9931F; }
 .r-legendary { box-shadow: 0 0 16px rgba(217,147,31,.35); }
+/* Batch 2: face-off table */
+.gm-vs { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px 8px; margin-top: 12px; align-items: baseline; }
+.gm-vs b { font-size: 16px; text-align: right; }
+.gm-vs b.win { color: var(--accent); }
+.gm-vs b.win::after { content: ' ★'; font-size: 12px; }
+.gm-match { font-size: 28px; color: var(--accent); }
