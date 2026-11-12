@@ -1495,12 +1495,17 @@ async function idSync(force) {
 }
 const idSrc = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 // The viewer: blurs the screen behind, a drag tilts the card, a tap flips it.
+// Viewer icons (Lucide, ISC licence)
+const IV_IC = { cmp: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/>', qr: '<rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/>', more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>', x: '<path d="M18 6 6 18M6 6l12 12"/>', share: '<path d="M12 2v13M16 6l-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>' };
+const IVI = k => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IV_IC[k] || RC_IC[k] || ''}</svg>`;
 function idView(c, code, photo, o = {}) {
   document.getElementById('idv')?.remove();
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.train ? '<button class="btn primary grow" data-v="train">Train together</button>' : ''}${o.duo ? '<button class="btn grow" data-v="duo">You and them</button>' : ''}${o.share ? '<button class="btn primary grow" data-v="share">Share card</button><button class="btn grow" data-v="qr">QR code</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+    <div class="idv-acts">${o.train ? `<button class="idv-main" data-v="train">${IVI('db')}Train together</button>` : o.share ? `<button class="idv-main" data-v="share">${IVI('share')}Share card</button>` : ''}
+      <div class="idv-bar">${o.duo ? `<button data-v="duo">${IVI('cmp')}<span>Compare</span></button>` : ''}${o.share ? `<button data-v="qr">${IVI('qr')}<span>QR code</span></button>` : ''}${o.remove || o.block ? `<button data-v="more" aria-expanded="false">${IVI('more')}<span>More</span></button>` : ''}<button data-v="close">${IVI('x')}<span>Close</span></button></div>
+      ${o.remove || o.block ? `<div class="idv-more" hidden>${o.remove ? '<button data-v="rm">Remove friend</button>' : ''}${o.block ? '<button data-v="block">Block</button>' : ''}</div>` : ''}</div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1511,7 +1516,7 @@ function idView(c, code, photo, o = {}) {
   card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
-  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'qr') { close(); qrSheet(); } if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'train') { close(); o.train(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'qr') { close(); qrSheet(); } if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'train') { close(); o.train(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } if (v && v.dataset.v === 'more') { const m = el.querySelector('.idv-more'); m.hidden = !m.hidden; v.setAttribute('aria-expanded', String(!m.hidden)); } });
   addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
   setTimeout(() => card.focus(), 50);
 }
