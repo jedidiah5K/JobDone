@@ -1172,8 +1172,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v158';
+const NEWS_ID = '2026-11-v160';
 const NEWS = [
+  ['Crop your photos', 'When you add a photo to a post, drag it and pinch to zoom so it fits the frame the way you want.'],
+  ['Tidier share card', 'The lifts on your share card now sit in a drop-down, so the card and the Share button stay in view.'],
   ['Insights', 'A new tab in Progress: workouts, sets, volume, workout length and PRs against the period before, a body heat map of the muscles you trained, your push, pull and legs balance, strength change per lift, and the days and times you train.'],
   ['A new first-time setup', 'New people now answer a few questions, watch their plan get built and see what they get, then create their account as the last step. Their answers go straight into the new account.'],
   ['A hands-on tour', 'The tour now walks you through a sample lift: load the plates, add reps, finish, save and post. Nothing from it is saved.'],
@@ -1736,9 +1738,37 @@ async function postPhoto(file) {
   if (!file || !/^image\//.test(file.type)) { toast('Pick a photo'); return null; }
   const url = URL.createObjectURL(file), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; }); URL.revokeObjectURL(url);
   if (!im) { toast('Couldn’t open that photo'); return null; }
-  const W = PW, H = PH, s = Math.max(W / im.naturalWidth, H / im.naturalHeight), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  cv.getContext('2d').drawImage(im, (W - im.naturalWidth * s) / 2, (H - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
+  const cv = await cropPhoto(im, PW, PH); if (!cv) return null;
   return jpegFit(cv);
+}
+// Crop before posting (Job, 12 Nov): drag to move, pinch or slider to zoom, inside the post's 4:5 frame. Full screen so it sits above the composer.
+function cropPhoto(im, W, H) {
+  return new Promise(done => {
+    const iw = im.naturalWidth, ih = im.naturalHeight, base = Math.max(W / iw, H / ih);
+    let z = 1, cx = 0, cy = 0;
+    const clamp = () => { const s = base * z, mx = Math.max(0, (iw * s - W) / 2), my = Math.max(0, (ih * s - H) / 2); cx = Math.max(-mx, Math.min(mx, cx)); cy = Math.max(-my, Math.min(my, cy)); };
+    const paint = cv => { const g = cv.getContext('2d'), s = base * z, k = cv.width / W; g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, (W / 2 + cx - iw * s / 2) * k, (H / 2 + cy - ih * s / 2) * k, iw * s * k, ih * s * k); };
+    const el = document.createElement('div'); el.id = 'cropper'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Crop photo');
+    el.innerHTML = `<div class="cp-top"><button class="btn sm" id="cr-x">Cancel</button><b>Crop photo</b><button class="btn sm primary" id="cr-ok">Use</button></div>
+      <div class="cr-body"><div class="cr-frame"><canvas width="${W / 2}" height="${H / 2}"></canvas></div><p class="cap m0">Drag to move it. Pinch or use the slider to zoom.</p>
+      <label class="row g3 cr-z"><span class="cap">Zoom</span><input type="range" min="1" max="4" step="0.01" value="1" class="grow"></label></div>`;
+    document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));
+    const cv = el.querySelector('canvas'), zr = el.querySelector('input');
+    const draw = () => { clamp(); paint(cv); };
+    const end = r => { el.classList.remove('in'); setTimeout(() => el.remove(), 250); done(r); };
+    zr.oninput = () => { z = +zr.value; draw(); };
+    const pts = new Map(); let last = null, pinch = null;
+    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, e); last = e; if (pts.size === 2) { const [p, q] = [...pts.values()]; pinch = { d: Math.hypot(p.clientX - q.clientX, p.clientY - q.clientY), z }; } });
+    cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, e); const k = W / cv.getBoundingClientRect().width;
+      if (pts.size === 2 && pinch) { const [p, q] = [...pts.values()]; z = Math.max(1, Math.min(4, pinch.z * Math.hypot(p.clientX - q.clientX, p.clientY - q.clientY) / pinch.d)); zr.value = z; }
+      else if (last) { cx += (e.clientX - last.clientX) * k; cy += (e.clientY - last.clientY) * k; }
+      last = e; draw(); });
+    const up = e => { pts.delete(e.pointerId); pinch = null; last = pts.size ? [...pts.values()][0] : null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    el.querySelector('#cr-x').onclick = () => end(null);
+    el.querySelector('#cr-ok').onclick = () => { const o = document.createElement('canvas'); o.width = W; o.height = H; paint(o); end(o); };
+    draw();
+  });
 }
 function jpegFit(cv) {
   // best quality that fits: start high, step down gently (Job, 8 Nov: photos looked soft)
@@ -3830,7 +3860,7 @@ function openShareSheet(d) {
     <img class="sh-prev ${x.story ? 'story' : ''}" id="sh-prev" alt="Your share card">
     <div><div class="mb2 eyebrow">Stats</div><div class="chips sh-chips">${STATS.map(([k, t]) => `<button class="chip ${x.hide.includes(k) ? '' : 'on'}" data-sx="${k}">${esc(t)}</button>`).join('')}</div></div>
     <div class="row between"><span class="eyebrow">Lifts</span><button class="xsw ${x.lifts ? 'on' : ''}" role="switch" aria-checked="${x.lifts}" data-sl="1" aria-label="Show lifts"></button></div>
-    ${x.lifts ? `<div class="cap">Up to ${max} fit on this card.</div><div class="list">${all.map(r => { const on = d.pick.includes(r.name); return `<label class="li sh-li"><div class="grow"><div class="t">${esc(r.name)} ${r.pr ? '<span class="pill pr">PR</span>' : ''}</div></div><input type="checkbox" class="cbox" data-lp="${esc(r.name)}" ${on ? 'checked' : ''} ${!on && d.pick.length >= max ? 'disabled' : ''}></label>`; }).join('')}</div>` : ''}
+    ${x.lifts ? `<details class="sh-dd" ${d.ddOpen ? 'open' : ''}><summary class="row between"><span>Choose lifts</span><span class="cap">${d.pick.length} of ${max} picked<i class="sh-chev">${I.down}</i></span></summary><div class="list mt2">${all.map(r => { const on = d.pick.includes(r.name); return `<label class="li sh-li"><div class="grow"><div class="t">${esc(r.name)} ${r.pr ? '<span class="pill pr">PR</span>' : ''}</div></div><input type="checkbox" class="cbox" data-lp="${esc(r.name)}" ${on ? 'checked' : ''} ${!on && d.pick.length >= max ? 'disabled' : ''}></label>`; }).join('')}</div></details>` : ''}
     <button class="btn primary block" id="sh-go">Share</button></div>`; };
   let tok = 0;
   const paint = async b => { const t = ++tok; const c = await drawShare(d, o()); if (t !== tok) return; const im = b.querySelector('#sh-prev'); if (im) im.src = c.toDataURL('image/jpeg', .8); };
@@ -3845,6 +3875,7 @@ function openShareSheet(d) {
       else if (sl) { const p = S.profile.share = S.profile.share || {}; p.lifts = p.lifts === false; save(); draw(b); }
       else if (e.target.id === 'sh-go') { closeSheet(sh); shareRecap(d); }
     });
+    b.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('sh-dd')) d.ddOpen = e.target.open; }, true);
     b.addEventListener('change', e => { const lp = e.target.closest('[data-lp]'); if (!lp) return; const n = lp.dataset.lp;
       d.pick = lp.checked ? [...d.pick, n] : d.pick.filter(x => x !== n); draw(b); });
   } });

@@ -1850,8 +1850,8 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* New post screen (Job, 8 Nov): top bar, live feed-card preview, caption/photo/lifts box underneath */
 #composer { position: fixed; inset: 0; z-index: 80; overflow-y: auto; background: var(--bg); opacity: 0; transform: translateY(20px); transition: opacity .25s, transform .3s var(--ease); }
 #composer.in { opacity: 1; transform: none; }
-#composer .cp-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-#composer .cp-top b { font-size: 17px; }
+#composer .cp-top, #cropper .cp-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+#composer .cp-top b, #cropper .cp-top b { font-size: 17px; }
 #composer .cp-body { padding: 4px 16px calc(32px + env(safe-area-inset-bottom)); }
 #composer #cp-prev { pointer-events: none; }
 #composer .cp-edit textarea { resize: none; }
@@ -2000,3 +2000,18 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #screen .sgrp { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 85%, transparent); }
 #screen .card.nextup { background-color: color-mix(in srgb, var(--surface-solid, var(--surface)) 90%, transparent); }
 :root:not([data-theme]) #screen .card.nextup { background: color-mix(in srgb, var(--split, var(--accent)) 90%, transparent); }
+
+/* Share card: lifts in a drop-down, photo crop screen (Job, 12 Nov) */
+.sh-dd { border-radius: 14px; background: var(--card2, rgba(127,127,127,.1)); padding: 12px 14px; }
+.sh-dd summary { list-style: none; cursor: pointer; font-weight: 600; }
+.sh-dd summary::-webkit-details-marker { display: none; }
+.sh-dd summary .cap { display: inline-flex; align-items: center; gap: 4px; }
+.sh-chev { display: inline-flex; transition: transform .2s var(--ease); }
+.sh-chev svg { width: 18px; height: 18px; }
+.sh-dd[open] .sh-chev { transform: rotate(180deg); }
+#cropper { position: fixed; inset: 0; z-index: 90; overflow-y: auto; background: var(--bg); opacity: 0; transform: translateY(20px); transition: opacity .25s, transform .3s var(--ease); }
+#cropper.in { opacity: 1; transform: none; }
+#cropper .cr-body { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 8px 16px 32px; }
+#cropper .cr-frame { width: min(340px, 86vw); aspect-ratio: 4 / 5; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 2px var(--line, rgba(255,255,255,.25)); }
+#cropper .cr-frame canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#cropper .cr-z { width: min(340px, 86vw); }
