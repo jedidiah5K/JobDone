@@ -1137,7 +1137,8 @@ let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
-  { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. React with an emoji, comment, or nudge someone who hasn’t trained yet.' },
+  { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. Open a friend’s card to train together or compare, and start a crew.' },
+  { tab: 'me', el: () => tq('#screen [data-a="rewards"]'), t: 'Card and rewards', d: 'Your XP, card tier, passport stamps, lift cards and season. Share any of them as a Story.' },
   { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'Let’s try a sample workout. Nothing in it is saved.', pick: true },
   { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Load the plates', d: 'Tap kg to open the plate loader, then tap plates to put them on the bar. Or tap Next and we’ll open it for you.', plates: true },
@@ -5371,10 +5372,10 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Job’s Done does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
-const OB_NAMES = { hook: 'Start', block: 'What gets in the way', account: 'Save your plan', move: 'Moving from another app', tour: 'What you get', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
+const OB_NAMES = { hook: 'Start', block: 'What gets in the way', account: 'Save your plan', move: 'Moving from another app', tour: 'What you get', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', where: 'Where you train', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
 // Nov 2026 (Job): open with the problem, ask, build the plan, and ask for the account last. Signed-in people (tester, an account with no data yet) skip the account step.
 const obNeedAccount = () => HOSTED && !USER && !DEMO;
-const obSteps = () => ['hook', 'you', 'days', 'exp', 'block', 'train', 'plan', 'theme', 'prefs', 'tour', ...(obNeedAccount() ? ['account'] : [])];
+const obSteps = () => ['hook', 'you', 'days', 'exp', 'where', 'block', 'train', 'plan', 'theme', 'prefs', 'tour', ...(obNeedAccount() ? ['account'] : [])];
 let OB_STEPS = []; // set by renderWelcomePublic; moving from another app is part of the plan step
 const OB_BLOCK = { next: ['Not knowing what to do next', 'Every set shows the weight and reps to beat', 'Targets on every set'], progress: ['Not seeing progress', 'PRs and charts show each lift going up', 'PRs and charts for every lift'], habit: ['Showing up every week', 'A weekly goal, streaks and friends who see you train', 'A weekly goal and streaks'], start: ['Not sure where to start', 'A plan built for your days and experience', 'A plan you can start today'] };
 // The answers live on this phone until the account exists, so closing Safari halfway doesn't lose them.
@@ -5391,7 +5392,10 @@ async function signUp(email, password, name, website, ms) {
 const OB_GOALS = { muscle: ['Build muscle', 'More size, rep ranges in the middle'], strength: ['Get stronger', 'Heavier lifts, fewer reps'], lean: ['Get leaner', 'Keep your strength while your weight drops'], fit: ['Stay fit', 'Train regularly and feel good'] };
 const OB_EXP = { new: ['New to lifting', 'Less than 6 months', 8, 12], some: ['Some experience', '6 months to 2 years', 6, 10], pro: ['Experienced', 'More than 2 years', 5, 8] };
 const OB_DAYS = [[1, 'Once a week', 'A full-body session to keep things ticking'], [2, '2 days a week', 'Full body, twice'], [3, '3 days a week', 'The classic starting point'], [4, '4 days a week', 'Upper and lower, twice each'], [5, '5 days a week', 'Room for a split per muscle group'], [6, '6 days a week', 'Push, pull and legs, twice'], [7, 'Every day', 'Make sure some days are light']];
-const obPlan = () => !OB.days || OB.days <= 2 ? 'fb' : OB.days >= 5 ? 'ppl' : OB.days === 4 ? 'ul' : OB.exp === 'new' ? 'fb' : 'ppl';
+const obPlan = () => OB.where && OB.where !== 'gym' && ROUTINES[OB.where] ? `r-${OB.where}-${OB.where === 'db' && (OB.days || 3) <= 2 ? 1 : 0}` : !OB.days || OB.days <= 2 ? 'fb' : OB.days >= 5 ? 'ppl' : OB.days === 4 ? 'ul' : OB.exp === 'new' ? 'fb' : 'ppl';
+// A plan key is a gym preset (TEMPLATES) or a routine from "where you train" (r-home-0 and so on).
+const obPlanDef = k => { if (TEMPLATES[k]) return TEMPLATES[k]; const m = /^r-(\w+)-(\d)$/.exec(k || ''), r = m && ROUTINES[m[1]], x = r && r.p[+m[2]]; return x ? { n: x[0], d: x[1], s: x[2] } : TEMPLATES.ppl; };
+const obPlanList = () => OB.where && OB.where !== 'gym' && ROUTINES[OB.where] ? ROUTINES[OB.where].p.map((x, i) => [`r-${OB.where}-${i}`, { n: x[0], d: x[1], s: x[2] }]) : Object.entries(TEMPLATES);
 function obTour() {
   const mock = (cls, inner) => `<div class="ob-mock ${cls}">${inner}</div>`;
   const shot = (f, alt) => `<div class="ob-mock ob-shot"><img src="ob/${f}.webp" alt="${alt}" decoding="async"></div>`;
@@ -5400,8 +5404,10 @@ function obTour() {
     ['Beat last time, every time', 'A target for each lift and a message after every set. Rest starts by itself.', shot('rest', 'The rest timer after a set')],
     ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.', shot('chart', 'Weight vs strength chart')],
     ['Show it off', 'When you finish you see what you beat, your PRs, and a recap card to share or post.', shot('done', 'The finish page')],
-    ['Train with friends', 'Add friends by code and see who trained today. Your workout shows up in their feed when you finish. Photos are optional.',
-      mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Sam · at the gym</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">2 weeks in a row together</div>`)],
+    ['Train with friends', 'Scan a friend’s QR to add them, train together and see each other’s sets live, and start a crew. Your workouts show up in their feed.',
+      mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Training with Sam · 7 sets</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">12 weeks in a row together</div>`)],
+    ['Level up your card', 'Sets, PRs and full weeks earn XP. Your ID card goes from Bronze to Gold, Holo and a Black card, and you collect stamps and a card for each lift.',
+      mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Gold · 16,300 XP</div><div class="m-pill"><i class="m-dot"></i>Stamp: 5 AM club</div><div class="m-cap">Top of your gym this week gets the crown</div>`)],
     ['No signal? Keep lifting', 'Gym basement or flight mode, it still logs. Your sets sync when you’re back online, and your account is backed up every day.',
       mock('m-off', `<div class="m-pill"><i class="m-dot off"></i>Offline · 3 sets saved on this phone</div><div class="m-pill"><i class="m-dot"></i>Back online · All synced</div><div class="m-cap">Daily backup · kept for 14 days</div>`)],
   ];
@@ -5430,6 +5436,9 @@ function obBody(k) {
     <div class="tmpl">${Object.entries(OB_GOALS).map(([g, [n, d]]) => `<button data-goal="${g}" class="${OB.goal === g ? 'on' : ''}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`;
   if (k === 'days') return `<h1 class="ob-t">How often do you plan to train?</h1><p class="sec ob-s">Be realistic. This sets your weekly goal and the plan we suggest. You can change it any time.</p>
     <div class="tmpl">${OB_DAYS.map(([n, t, d]) => `<button data-days="${n}" class="${OB.days === n ? 'on' : ''}"><b>${t}</b><span>${d}</span></button>`).join('')}</div>`;
+  if (k === 'where') { const tiles = [['gym', 'Gym', 'Machines and free weights'], ...Object.entries(ROUTINES).map(([x, r]) => [x, r.n, r.d])];
+    return `<h1 class="ob-t">Where do you train?</h1><p class="sec ob-s">Your plan uses what you have. You can add more splits for other places later.</p>
+    <div class="rc-grid">${tiles.map(([x, n, d]) => `<button class="rc-tile ${(OB.where || 'gym') === x ? 'on' : ''}" data-where="${x}"><span class="rc-t"><b>${esc(n)}</b><span class="cap">${esc(d)}</span></span><span class="rc-ic">${rcIcon(x)}</span></button>`).join('')}</div>`; }
   if (k === 'exp') return `<h1 class="ob-t">How long have you been lifting?</h1><p class="sec ob-s">Newer lifters get higher reps to learn the moves. You can change any target later.</p>
     <div class="tmpl">${Object.entries(OB_EXP).map(([e, [n, d, lo, hi]]) => `<button data-exp="${e}" class="${OB.exp === e ? 'on' : ''}"><b>${n}</b><span>${d} · ${lo} to ${hi} reps</span></button>`).join('')}</div>`;
   if (k === 'theme') return `<h1 class="ob-t">Pick your look</h1><p class="sec ob-s">Tap one to try it on this screen. Each theme has its own scenery and its own voice when you finish a set. You can switch any time in Me.</p>
@@ -5454,21 +5463,21 @@ function obBody(k) {
     <div class="sgrp"><div class="xr"><span class="grow">Today’s targets<span class="s">Suggests the weight and reps to beat last time on every set</span></span>${swi(!!P.targets, '', 'data-pf="targets"')}</div></div>`;
   }
   const rec = obPlan();
-  return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}, so we’ve suggested one. Every split can be renamed and edited later.</p>
+  return `<h1 class="ob-t">Pick a starting plan</h1><p class="sec ob-s">You said ${OB_DAYS[(OB.days || 3) - 1][1].toLowerCase()}${OB.where && OB.where !== 'gym' && ROUTINES[OB.where] ? ', ' + ROUTINES[OB.where].n.toLowerCase() : ''}, so we’ve suggested one. Every split can be renamed and edited later.</p>
     <details class="card ob-imp" ${OB.importFile ? 'open' : ''}><summary class="link">Coming from Strong, Hevy or another app? Bring your history</summary><div class="mt3 stack">
       <p class="m0 cap">In your old app, find Export data in its settings and save your workouts as a CSV file, then choose it here. Your history, PRs and charts start where you left off.</p>
       <label class="btn block" for="ob-file">${OB.importFile ? 'Chosen: ' + esc(OB.importFile.name) : 'Choose CSV file'}</label><input type="file" id="ob-file" accept=".csv,text/csv" hidden>
       <p class="m0 cap">${OB.importFile ? 'It will be added when you tap Start training.' : 'You can also import later in Me → Import workouts from CSV.'}</p>
       <p class="m0 cap">Have a Job’s Done backup (a JSON file from Me → Export)?</p>
       <label class="btn block" for="wl-file">Restore a backup</label><input type="file" id="wl-file" accept=".json,.csv,application/json,text/csv" data-in="wlFile" hidden></div></details>
-    <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
+    <div class="tmpl">${obPlanList().map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
 `;
 }
 // Shown for a moment before the plan step: says back what the questions picked, then the plan appears.
 function obBuilding() {
   const body = $('#app .ob-body'), nx = $('#ob-next'); if (!body || !nx) return;
   const [, , lo, hi] = OB_EXP[OB.exp] || OB_EXP.some, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const lines = [OB_DAYS[(OB.days || 3) - 1][1], OB_EXP[OB.exp][0] + ' · ' + lo + '–' + hi + ' reps', 'Picking lifts for ' + TEMPLATES[obPlan()].n, ...(OB_BLOCK[OB.block] ? [OB_BLOCK[OB.block][2]] : [])];
+  const lines = [OB_DAYS[(OB.days || 3) - 1][1], OB_EXP[OB.exp][0] + ' · ' + lo + '–' + hi + ' reps', 'Picking lifts for ' + obPlanDef(OB.plan || obPlan()).n, ...(OB_BLOCK[OB.block] ? [OB_BLOCK[OB.block][2]] : [])];
   body.innerHTML = `<div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES.plan}</div><h1 class="ob-t">Building your plan</h1>
     <ul class="ob-build">${lines.map((l, i) => `<li style="--i:${i}">${esc(l)}</li>`).join('')}</ul>`;
   nx.disabled = true;
@@ -5514,6 +5523,7 @@ function renderWelcomePublic() {
   qa('[data-goal]').forEach(b => b.onclick = () => { OB.goal = b.dataset.goal; if (OB.goal === 'strength' && OB.exp !== 'new') OB.exp = 'pro'; renderWelcomePublic(); });
   qa('[data-days]').forEach(b => b.onclick = () => { OB.days = +b.dataset.days; OB.plan = null; renderWelcomePublic(); });
   qa('[data-exp]').forEach(b => b.onclick = () => { OB.exp = b.dataset.exp; OB.plan = null; renderWelcomePublic(); });
+  qa('[data-where]').forEach(b => b.onclick = () => { OB.where = b.dataset.where; OB.plan = null; renderWelcomePublic(); });
   qa('[data-th]').forEach(b => b.onclick = () => { OB.theme = b.dataset.th; const y = $('#screen') ? $('#screen').scrollTop : 0; renderWelcomePublic(); if ($('#screen')) $('#screen').scrollTop = y; });
   qa('[data-rr]').forEach(el => el.onchange = () => { OB.prefs[el.dataset.rr === '0' ? 'repLo' : 'repHi'] = +el.value || null; fixRR(OB.prefs, 'repLo', 'repHi'); renderWelcomePublic(); });
   qa('[data-pv]').forEach(b => b.onclick = () => { const v = +b.dataset.v; OB.prefs[b.dataset.pv] = v; renderWelcomePublic(); });
@@ -5553,7 +5563,7 @@ function obFinish() {
   if (w) S.weights[today()] = { w, src: 'manual' };
   if (gw) p.goalW = gw; if (h && h > 90 && h < 250) p.heightCm = Math.round(h);
   const [, , lo, hi] = OB_EXP[OB.exp]; const [lo2, hi2] = p.repRange || (OB.goal === 'strength' ? [lo - 1, hi - 2] : [lo, hi]); // the plan follows a range picked here
-  for (const [name, ex] of TEMPLATES[OB.plan || obPlan()].s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
+  for (const [name, ex] of obPlanDef(OB.plan || obPlan()).s) { const id = 'sp-' + uid(); S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: lo2, repMax: hi2, rest: (OB.prefs && OB.prefs.rest) || 120, note: '' })) }); S.rotation.push(id); }
   if (UI) UI.lastPrompt = today();
   const imp = OB.move && OB.importFile, mfa = OB.mfa && HOSTED;
   if (mfa) setTimeout(() => openMfa(), imp ? 4000 : 1200);

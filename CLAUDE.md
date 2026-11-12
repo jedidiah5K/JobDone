@@ -46,7 +46,7 @@ Always build with esbuild set: web/index.html is minified, and building without 
 ## Users and defaults
 - New accounts: count the bar (20 kg), 2:00 rest, per-exercise rest via the workout's ⋯ menu, "Steps from Apple Health".
 - Job's own account (legacy, profile.owner): plates only (no bar), 5:00 rest, QWatch step sync, feedback inbox, owner-only Skyline blazer icon.
-- Onboarding (v158, Job 12 Nov): runs before any account exists. 11 steps: opener "Stop guessing what to do at the gym" (with "I already have an account"), About you, days, experience, what gets in the way, How you train, Building your plan → plan, theme, sounds, what you get (slides), Save your plan (account, last). Answers wait in localStorage jd-ob, then go into the new account; Home Screen guide shows right after. No goal or sex/gender question, calm dark style. Phones that had an account before open on sign-in instead.
+- Onboarding (v158, Job 12 Nov): runs before any account exists. 12 steps: opener "Stop guessing what to do at the gym" (with "I already have an account"), About you, days, experience, where you train (gym/home/dumbbells/bodyweight/travel/HIIT, v167), what gets in the way, How you train, Building your plan → plan, theme, sounds, what you get (slides), Save your plan (account, last). Answers wait in localStorage jd-ob, then go into the new account; Home Screen guide shows right after. No goal or sex/gender question, calm dark style. Phones that had an account before open on sign-in instead.
 
 ## Design
 Four themes, same layout and identical heights across all of them, uppercase labels:
@@ -65,6 +65,9 @@ App icon: flat black, white shirt and tie, gold ribbon and medal with a check. A
 - Rotation: next up is the split after the last one done; saving the rotation restarts it from the first split.
 - Plate loader opens first on every kg box (machines too), with a Dial/keypad switch.
 - After the last set of each lift, the "Exercise done" pop-up adds a theme-voiced wipe-down line (7 s, tap to close).
+
+## Game layer (v162–v165, Job 13 Nov)
+GAME_ON in app.js turns it all off (Job plans to drop it from the App Store build). XP/tiers/stamps/lift cards/golden set/seasons are computed on the phone; friend features ride on jobdone_cards.stat.g and stat.lv (train together); gym board, gym vs gym and crews use supabase/gym_game.sql. No purple anywhere in game UI (Boulder uses gold via --gm-acc).
 
 ## Steps
 QWatch Pro (not Apple Watch) → Apple Health → "JobDone Steps" Shortcut (daily 9:30 PM, last 3 days) → edge function steps with a per-user sync key (Me → Steps from QWatch). Working.
