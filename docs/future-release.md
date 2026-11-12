@@ -34,6 +34,9 @@ Things Job wants added when the App Store release is near. Nothing here is built
 - Same as last time: one tap fills the whole lift.
 - Text that grows with the iPhone text-size setting (clashes with the identical-heights rule; Job to decide).
 
+## Notifications
+- Constant reminder notifications to keep people coming back (more than today's single daily workout reminder). Decide how often and which kinds; keep within the no-nagging-about-measurements/photos rule. Native app makes this easier.
+
 ## How-to videos
 - Trainer films each lift against a plain wall, side-on.
 - Free motion capture (Rokoko Video or DeepMotion) turns it into a faceless 3D figure.
