@@ -2015,3 +2015,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #cropper .cr-frame { width: min(340px, 86vw); aspect-ratio: 4 / 5; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 2px var(--line, rgba(255,255,255,.25)); }
 #cropper .cr-frame canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 #cropper .cr-z { width: min(340px, 86vw); }
+/* Feed post: 3 lifts, then See more (Job, 13 Nov) */
+.po-dd summary { list-style: none; cursor: pointer; text-align: center; padding: 10px 0 2px; font-size: 14px; color: var(--text2); }
+.po-dd summary::-webkit-details-marker { display: none; }
+.po-dd .po-hide, .po-dd[open] .po-see { display: none; }
+.po-dd[open] .po-hide { display: inline; }
+.po-dd .po-lifts { margin-top: 0; border-top: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); }

@@ -1172,9 +1172,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v160';
+const NEWS_ID = '2026-11-v161';
 const NEWS = [
   ['Crop your photos', 'When you add a photo to a post, drag it and pinch to zoom so it fits the frame the way you want.'],
+  ['Shorter feed posts', 'Posts show the first 3 lifts. Tap See more for the rest.'],
   ['Tidier share card', 'The lifts on your share card now sit in a drop-down, so the card and the Share button stay in view.'],
   ['Insights', 'A new tab in Progress: workouts, sets, volume, workout length and PRs against the period before, a body heat map of the muscles you trained, your push, pull and legs balance, strength change per lift, and the days and times you train.'],
   ['A new first-time setup', 'New people now answer a few questions, watch their plan get built and see what they get, then create their account as the last step. Their answers go straight into the new account.'],
@@ -1600,6 +1601,9 @@ function face(name, photo, t, cls = '') {
 }
 const myFace = (cls = '') => face(S.profile.name || 'You', ID_PHOTO, theme(), cls);
 const agoShort = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h'; };
+// Feed posts show 3 lifts and fold the rest, like Hevy (Job, 13 Nov) so one post doesn't fill the screen; open ones stay open when the feed redraws.
+const PO_OPEN = new Set();
+document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('po-dd')) d.open ? PO_OPEN.add(d.dataset.po) : PO_OPEN.delete(d.dataset.po); }, true);
 function postHTML(p) {
   const b = p.body || {}, mine = USER && p.user_id === USER.id, rc = p.reacts || {}, cm = p.comments || [], fr = (FRIENDS || []).find(f => f.id === p.user_id), t = fr ? (fr.card || {}).t : theme();
   const who = mine ? 'You' : p.n || 'Friend', story = p.kind === 'snap';
@@ -1609,7 +1613,8 @@ function postHTML(p) {
   const nLifts = Array.isArray(b.ex) && b.ex.length ? b.ex.length : String(b.l || '').replace(/\D/g, '') || '—';
   const wk = p.kind === 'stamp' ? `<section class="po-wk"><div class="po-wk-h"><b>${esc(b.sp || 'Workout')}</b>${+b.pr > 0 ? `<span class="pill pr">${Math.floor(+b.pr)} PR${+b.pr > 1 ? 's' : ''}</span>` : ''}</div>
     <div class="po-stats${b.v ? '' : ' po-st2'}">${b.v ? `<div><span>Volume</span><b class="num">${esc(b.v)}</b></div>` : ''}<div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>Lifts</span><b class="num">${esc(String(nLifts))}</b></div></div>
-    ${Array.isArray(b.ex) && b.ex.length ? `<div class="po-lifts">${b.ex.slice(0, 10).map(x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`).join('')}</div>` : ''}
+    ${Array.isArray(b.ex) && b.ex.length ? (() => { const L = b.ex.slice(0, 10), row = x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`, more = L.length - 3;
+      return `<div class="po-lifts">${L.slice(0, more > 1 ? 3 : L.length).map(row).join('')}</div>${more > 1 ? `<details class="po-dd" data-po="${esc(String(p.id))}" ${PO_OPEN.has(String(p.id)) ? 'open' : ''}><summary><span class="po-see">See ${more} more lifts</span><span class="po-hide">Show less</span></summary><div class="po-lifts">${L.slice(3).map(row).join('')}</div></details>` : ''}`; })() : ''}
     ${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}</section>` : '';
   const cap = b.c ? `<p class="po-cap">${esc(b.c)}</p>` : '';
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
