@@ -928,6 +928,7 @@ function viewGym() {
   return `<div class="stack">${backBtn()}
     <div class="top pt0"><div class="gym-top"><div class="eyebrow">My Gym ${gymBeta}</div><h1 class="gym-h1" title="${esc(c.brand)}">${esc(c.brand)}</h1>${c.independent ? `<div class="cap gym-1l">${esc(c.branch)}</div>` : `<button class="cap daychip gym-1l" data-a="gymSwitch" title="${esc(c.branch)}">Training at: ${esc(c.branch)} ▾</button>`}</div></div>
     <button class="btn block primary" data-a="gymBuild" ${usable ? '' : 'disabled'}>Build today’s workout</button>
+    ${gymGameHTML()}
     ${rows.length ? '' : gymStarterHTML(c)}
     <div class="card"><div class="card-h"><span class="eyebrow">Equipment · ${usable}</span><button class="cap link" data-a="gymPick">+ Add</button></div>
       ${live.length ? `<div class="list">${live.map(row).join('')}</div>` : '<div class="empty">Nothing added yet.</div>'}</div>
@@ -1173,8 +1174,12 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v163';
+const NEWS_ID = '2026-11-v165';
 const NEWS = [
+  ['Train together', 'Open a friend’s card and tap Train together. They get a Join button, and you both see each other’s sets as you go.'],
+  ['Your gym’s board', 'The gym page now crowns whoever earned the most XP there this week, shows Regulars and Local Legends, who owns each machine, and how your gym ranks against others this month. Your name only shows if you turn it on.'],
+  ['Crews and seasons', 'Start a crew with 2 to 5 friends in Friends. Seasons last 8 weeks and everyone starts from zero together; see yours in Card and rewards.'],
+  ['Add friends by QR', 'Your card has a QR code. A friend points their Camera at it and the code fills in for them.'],
   ['You and your friends', 'Open a friend’s card and tap You and them: your duo streak, a shared 30-set mission each week, a face-off on this month’s stats, and how well your training matches.'],
   ['Spotter points', 'Every friend who reacts to or comments on your post gives you 5 XP. Being a good gym friend pays.'],
   ['Card and rewards', 'Me → Card and rewards. Earn XP for sets, PRs and full weeks, and your card goes from Bronze to Silver, Gold, Holo and, after a year, the Black card. Its edge glows brighter for every week in a row.'],
@@ -1454,7 +1459,7 @@ function idView(c, code, photo, o = {}) {
   const el = document.createElement('div'); el.id = 'idv'; el.className = 'idv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'ID card for ' + (c.n || 'you'));
   el.innerHTML = `<div class="idv-in"><div class="idv-card" tabindex="0" aria-label="Tap to flip"><img class="idv-f" alt="Front of the card" src="${idSrc(idFront(c, code, U(), photo))}"><img class="idv-b" alt="Back of the card" src="${idSrc(idBack(c, code, U()))}"></div>
     <p class="idv-hint">Drag the card to tilt it. Tap to flip.</p>
-    <div class="idv-acts">${o.duo ? '<button class="btn primary grow" data-v="duo">You and them</button>' : ''}${o.share ? '<button class="btn primary grow" data-v="share">Share card</button><button class="btn grow" data-v="qr">QR code</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
+    <div class="idv-acts">${o.train ? '<button class="btn primary grow" data-v="train">Train together</button>' : ''}${o.duo ? '<button class="btn grow" data-v="duo">You and them</button>' : ''}${o.share ? '<button class="btn primary grow" data-v="share">Share card</button><button class="btn grow" data-v="qr">QR code</button>' : ''}${o.remove ? '<button class="btn ghost grow" data-v="rm">Remove friend</button>' : ''}${o.block ? '<button class="btn ghost grow" data-v="block">Block</button>' : ''}<button class="btn grow" data-v="close">Close</button></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector('.idv-card'), MAX = 16, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let flip = false, drag = null, moved = 0; // phone-motion tilt removed (Job, 5 Nov: glitchy); drag still tilts
@@ -1465,7 +1470,7 @@ function idView(c, code, photo, o = {}) {
   card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } drag = null; tilt(0, 0); });
   card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip = !flip; card.style.setProperty('--flip', flip ? '180deg' : '0deg'); } });
-  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'qr') { close(); qrSheet(); } if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
+  el.addEventListener('click', e => { const v = e.target.closest('[data-v]'); if (e.target === el || (v && v.dataset.v === 'close')) close(); if (v && v.dataset.v === 'share') idShare(); if (v && v.dataset.v === 'qr') { close(); qrSheet(); } if (v && v.dataset.v === 'duo') { close(); o.duo(); } if (v && v.dataset.v === 'train') { close(); o.train(); } if (v && v.dataset.v === 'rm') { close(); o.remove(); } if (v && v.dataset.v === 'block') { close(); o.block(); } });
   addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', esc); } });
   setTimeout(() => card.focus(), 50);
 }
@@ -1551,7 +1556,7 @@ function myStat() {
   let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
   while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
   const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k, o: -new Date().getTimezoneOffset() };
-  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; return s;
+  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; const lv = GAME_ON && liveStat(); if (lv) s.lv = lv; return s;
 }
 let STAT_SENT = '';
 function statSync() {
@@ -1682,6 +1687,7 @@ function viewFriends() {
     ${A && !A.practice && list.length ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
       : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
     ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : frSwap()}
+    ${GAME_ON && list.length ? crewsHTML() : ''}
     ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
   </div>`;
 }
@@ -2113,7 +2119,7 @@ async function friendCancel(id) {
 function friendOpen(id) {
   const f = (FRIENDS || []).find(x => x.id === id); if (!f) return;
   if ((f.card || {}).hidden) return confirmSheet({ title: ((f.card || {}).n || 'This friend') + ' has hidden their card', body: 'You’re still friends. Their card shows again when they turn it back on.', ok: 'OK', no: 'Remove friend', key: false, onOk: () => {}, onNo: () => friendOpenRemove(id, f) });
-  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { duo: GAME_ON ? () => duoSheet(f) : null, remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
+  idView(f.card || {}, f.code, idPhotoOk(f.photo) ? f.photo : null, { duo: GAME_ON ? () => duoSheet(f) : null, train: GAME_ON && !DEMO ? () => trainWith(f) : null, remove: () => friendOpenRemove(id, f), block: () => blockUser(id, (f.card || {}).n) });
 }
 // Reports go to the reports inbox (supabase/reports.sql): the server keeps a copy of the text, since posts and
 // comments delete themselves within 48 hours, and hides it for everyone once two people report it. Photos aren't copied.
@@ -2340,7 +2346,7 @@ function viewToday() {
     // Last session as one row (review 2): tap for the recap. Editing it lives on that day (tap its mark in the week).
     const sp = wSplit(lw2), sets = lw2.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
     return `<div class="card last-row"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })()}
-  ${past ? '' : goalsCard() + reportCard()}
+  ${past ? '' : (GAME_ON ? joinBanner() : '') + goalsCard() + reportCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -2936,7 +2942,7 @@ const TIERS = [{ k: 'bronze', n: 'Bronze', xp: 0 }, { k: 'silver', n: 'Silver', 
 const STAMPS = [
   ['first', 'First workout'], ['pr1', 'First PR'], ['w10', '10 workouts'], ['w50', '50 workouts'], ['w100', '100 workouts'],
   ['am5', '5 AM club'], ['owl', 'Night owl'], ['wknd', 'Weekend warrior'], ['full', 'Full week'], ['back', 'Comeback'],
-  ['gold', 'Golden set'], ['ton', '100 kg set'], ['year', 'One year in'], ['coop', 'Co-op mission'], ['spot', 'Good spotter'],
+  ['gold', 'Golden set'], ['ton', '100 kg set'], ['year', 'One year in'], ['coop', 'Co-op mission'], ['spot', 'Good spotter'], ['duo', 'Trained together'], ['legend', 'Local Legend'],
 ];
 const RARITY = [['Common', 0], ['Rare', .05], ['Epic', .15], ['Legendary', .3]];
 const hourOf = w => w.start ? new Date(w.start).getHours() + new Date(w.start).getMinutes() / 60 : null;
@@ -2965,6 +2971,8 @@ function game() {
   }
   const gold = S.profile.gold || []; xp += gold.length * 100; if (gold.length) hit('gold', gold[0]);
   const coop = Object.keys(S.profile.coop || {}).sort(); xp += coop.length * 200; if (coop.length) hit('coop', coop[0].slice(0, 10)); if (spotXP() >= 100) hit('spot', today());
+  const jt = S.profile.joint || []; xp += jt.length * 100; if (jt.length) hit('duo', jt[0]);
+  { const gc = gymOn() && gymCur(); if (gc && gymRegular(gc.gym_id).lc >= 8) hit('legend', today()); }
   const first = ws[0], span = first ? daysBetween(first.date, today()) : 0;
   if (span >= 365) hit('year', addDays(first.date, 365));
   const streak = parseInt(streakText(), 10) || 0;
@@ -3024,7 +3032,9 @@ function viewRewards() {
     <div class="gm-bar"><i style="width:${(frac * 100).toFixed(1)}%"></i></div>
     <div class="cap mt2">${g.nextT ? `${n0(g.nextT.xp - g.xp)} XP to ${g.nextT.n}.` : g.tier.k === 'black' ? 'Black card: a year of training.' : 'Train for a year to get the Black card.'} ${g.streak ? `${plural(g.streak, 'week')} in a row: the edge of your card glows brighter each week.` : 'Train weeks in a row and the edge of your card starts to glow.'}</div>
     <div class="gm-tiers">${TIERS.map((t, i) => `<span class="${i <= ti ? 'on' : ''}"><i class="gm-chip tier-${t.k}"></i>${t.n.replace(' card', '')}</span>`).join('')}</div>
-    <div class="cap mt2">Sets 10 XP · PRs 50 · full weeks 100 · golden set 100 · coming back after a break 150 · co-op mission 200 · each friend who cheers your post 5</div></div>
+    <div class="cap mt2">Sets 10 XP · PRs 50 · full weeks 100 · golden set 100 · coming back after a break 150 · co-op mission 200 · training with a friend 100 · each friend who cheers your post 5</div></div>
+  ${(() => { const se = seasonNow(), sx = xpBetween(se.start, today()), fr = (FRIENDS || []).filter(f => f.stat && f.stat.g && +f.stat.g.sk === se.i).map(f => ({ n: ((f.card || {}).n || 'Friend').split(' ')[0], x: +f.stat.g.sx || 0 })), all = [{ n: 'You', x: sx, me: 1 }, ...fr].sort((a, b) => b.x - a.x);
+    return `<section><div class="sgh">Season ${se.i + 1} · ${esc(se.name)}</div><div class="card"><div class="row between"><b>${n0(sx)} XP this season</b><span class="cap">${plural(se.left, 'day')} left</span></div><div class="cap mt1">8-week seasons. Everyone starts from zero together.</div>${all.length > 1 ? all.slice(0, 6).map((r, i) => `<div class="row between gm-lb ${r.me ? 'me' : ''}"><span>${i + 1}. ${esc(r.n)}</span><b class="num">${n0(r.x)}</b></div>`).join('') : ''}</div></section>`; })()}
   <section><div class="sgh">Passport · ${got} of ${g.stamps.length}</div><div class="card"><div class="gm-stamps">${g.stamps.map(s => `<div class="gm-stamp ${s.at ? 'on' : ''}"><b>${esc(s.t)}</b><span>${s.at ? esc(fmtDate(s.at, { y: true })) : 'Not yet'}</span></div>`).join('')}</div></div></section>
   <section><div class="sgh">Your deck · ${g.deck.length} lift cards</div>${g.deck.length ? `<div class="gm-deck">${g.deck.map((d, i) => `<button class="gm-lc r-${d.r.toLowerCase()}" data-a="liftCard" data-k="${i}"><span class="gm-r">${d.r}</span><b>${esc(d.n)}</b><span class="num">${d.top ? esc(setStr(d.top)) : ''}</span><span class="cap">Best est. max ${n0(d.e1)} ${U0}</span><span class="cap">${d.gain > 0 ? '+' + Math.round(d.gain * 100) + '% since your first session' : 'First sessions logged'}</span></button>`).join('')}</div><div class="cap mt2">Tap a card to share it. Rarity goes up as your best lift grows.</div>` : '<div class="card cap">Log a lift in 3 sessions to get its card.</div>'}</section>
   <section><div class="sgh">Rest weeks</div><div class="card"><b>${plural(g.tokens, 'rest week')} banked</b><div class="cap mt1">Sick or away? A rest week keeps your streak safe. You get one more for every 4 full weeks, up to 3.</div></div></section>
@@ -3101,7 +3111,9 @@ function myGameStat() {
   const mu = { Push: 0, Pull: 0, Legs: 0, Core: 0 }; let t = 0;
   G.ws.filter(w => daysBetween(w.date, today()) < 28).forEach(w => w.ex.forEach(e => { const k = MU_GROUP[exInfo(e.name).muscle]; if (k) { const n = e.sets.filter(validSet).length; mu[k] += n; t += n; } }));
   for (const k in mu) mu[k] = t ? Math.round(mu[k] / t * 100) : 0;
-  return { xp: G.xp, t: G.tier.k, wb, ss, mu, dw: S.profile.weeklyTarget || 3, mo: G.ws.filter(w => ymOf(w.date) === ymOf(today())).length };
+  const se = seasonNow(), T0 = today();
+  return { xp: G.xp, t: G.tier.k, wb, ss, mu, dw: S.profile.weeklyTarget || 3, mo: G.ws.filter(w => ymOf(w.date) === ymOf(T0)).length,
+    wx: xpBetween(m, T0), mx: xpBetween(T0.slice(0, 8) + '01', T0), mk: T0.slice(0, 7), sk: se.i, sx: xpBetween(se.start, T0), ...gymStatBits() };
 }
 // Spotter points: 5 XP for every friend who reacts to or comments on your posts. Posts vanish after a day or two,
 // so each post's count is kept on the phone (best seen), and the total only goes up.
@@ -3147,6 +3159,124 @@ function duoSheet(f) {
     <button class="btn block" data-a="closeSheet">Close</button></div>`, { label: 'You and ' + n });
 }
 
+// ---------- Game layer batch 3 (Job, 13 Nov): train together, seasons, gym Regulars, gym board, gym vs gym, crews ----------
+// Train together: tap Train together on a friend's card (or Join on their invite). Both phones share live progress through
+// the stat friends already get (stat.lv), so it needs no new tables. The friend sees "Sam is training with you · Join".
+let PARTNER = (() => { try { const p = JSON.parse(localStorage.getItem('jd-with') || 'null'); return p && Date.now() - p.t < 4 * 36e5 ? p : null; } catch (e) { return null; } })();
+function setPartner(p) { PARTNER = p; try { p ? localStorage.setItem('jd-with', JSON.stringify(p)) : localStorage.removeItem('jd-with'); } catch (e) {} }
+function trainWith(f) {
+  const n = ((f.card || {}).n || 'your friend').split(' ')[0];
+  setPartner({ id: f.id, n, t: Date.now() });
+  if (A) { A.with = f.id; A.withN = n; touchA(); statSync(); openWk(); toast(`Training with ${esc(n)}. They can join from their app.`); return; }
+  const sp = nextSplit(); startWorkout(sp ? sp.id : null); toast(`Training with ${esc(n)}. They can join from their app.`);
+}
+function liveStat() {
+  if (!A || !A.with || A.practice) return null;
+  const done = A.ex.flatMap(e => e.sets.filter(s => s.done && s.t !== 'warm').map(s => ({ e: e.name, s, at: s.at || 0 }))).sort((a, b) => b.at - a.at)[0];
+  return { with: A.with, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+}
+const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && l.with && Date.now() - (+l.at || 0) < 20 * 6e4 ? l : null; };
+// Someone started a session with you and you're not in it yet.
+function joinBanner() {
+  if (!GAME_ON || !HOSTED || !USER || !Array.isArray(FRIENDS)) return '';
+  const f = FRIENDS.find(x => { const l = liveOf(x); return l && l.with === USER.id && !(A && A.with === x.id); }); if (!f) return '';
+  const n = esc(((f.card || {}).n || 'A friend').split(' ')[0]), l = liveOf(f);
+  return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${n} is training with you</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">Join</button></div>`;
+}
+function partnerStrip() {
+  if (!A || !A.with) return '';
+  const f = (FRIENDS || []).find(x => x.id === A.with), l = liveOf(f), n = esc(A.withN || 'Friend'), mine = l && l.with === USER.id;
+  return `<div class="partner cap"><i class="live-dot"></i><b>${n}</b>${mine ? ` · ${plural(+l.n || 0, 'set')}${l.ex ? ` · ${esc(l.ex)} ${esc(l.last)}` : ''}` : ' · waiting for them to join'}<button class="link" data-a="partnerEnd">End</button></div>`;
+}
+let PARTNER_POLL = 0;
+function partnerTick() { // every 20 s while training together, refresh friends to see their sets
+  clearTimeout(PARTNER_POLL); if (!A || !A.with || !HOSTED || !USER) return;
+  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; } catch (e) {} if (A && A.with && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
+}
+// ---------- Seasons: 8 weeks each, starting Monday 2 Nov 2026. XP earned in the season; everyone starts at zero together.
+const SEASON0 = '2026-11-02', SEASON_NAMES = ['Winter Arc', 'Spring Build', 'Summer Cut', 'Iron Autumn', 'New Year Grind', 'Base Camp'];
+function seasonNow(d = today()) {
+  const i = Math.max(0, Math.floor(daysBetween(SEASON0, d) / 56)), start = addDays(SEASON0, i * 56), end = addDays(start, 55);
+  return { i, name: SEASON_NAMES[i % SEASON_NAMES.length], start, end, left: daysBetween(d, end) + 1 };
+}
+function xpBetween(a, b) { // sets and PRs in a date range
+  const X = ix(), prBy = {}; X.prs.forEach(p => { prBy[p.wid] = (prBy[p.wid] || 0) + 1; });
+  return X.ws.filter(w => !w.skipped && w.date >= a && w.date <= b).reduce((t, w) => t + w.ex.reduce((s, e) => s + e.sets.filter(x => validSet(x) && x.done !== false).length, 0) * 10 + (prBy[w.id] || 0) * 50, 0);
+}
+// Regular: 3+ sessions at your home gym this week. Local Legend: 3+ a week for 8 weeks in a row.
+function gymRegular(gid) {
+  if (!gid) return { lc: 0, label: '' };
+  const per = {}; ix().ws.filter(w => !w.skipped && w.gym === gid).forEach(w => { const k = mondayOf(w.date); per[k] = (per[k] || new Set()).add(w.date); });
+  let lc = 0, m = mondayOf(today()); if (!(per[m] && per[m].size >= 3)) m = addDays(m, -7);
+  while (per[m] && per[m].size >= 3) { lc++; m = addDays(m, -7); }
+  return { lc, label: lc >= 8 ? 'Local Legend' : lc >= 1 ? 'Regular' : '' };
+}
+function gymStatBits() {
+  const g = gymOn() && gymCur(); if (!g) return {};
+  const gid = g.gym_id, mc = {};
+  ix().ws.filter(w => !w.skipped && w.gym === gid && daysBetween(w.date, today()) < 90).forEach(w => new Set(w.ex.map(e => baseName(e.name))).forEach(n => { mc[n] = (mc[n] || 0) + 1; }));
+  const top = Object.fromEntries(Object.entries(mc).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => [k.slice(0, 24), v]));
+  return { gym: gid, lc: gymRegular(gid).lc, mc: top, gb: !!S.profile.gymBoard };
+}
+// ---------- Gym page: king or queen of the week, Regulars, machine owners, gym vs gym. Needs supabase/gym_game.sql.
+let GBOARD = null, GRANKS = null;
+async function gymBoardLoad(gid) {
+  GBOARD = undefined; GRANKS = undefined;
+  const [b, r] = await Promise.allSettled([gymRpc('jobdone_gym_board', { g: gid }), gymRpc('jobdone_gym_ranks')]);
+  GBOARD = b.status === 'fulfilled' ? b.value || [] : 'off'; GRANKS = r.status === 'fulfilled' ? r.value || [] : 'off'; rerender();
+}
+const ROYAL = { mono: ['Top agent', 'Top agent'], cliffs: ['King of the hill', 'Queen of the hill'], climb: ['Wall king', 'Wall queen'], spidey: ['King of the city', 'Queen of the city'] };
+function gymGameHTML() {
+  if (!GAME_ON || !gymOn()) return '';
+  const g = gymCur(); if (!g) return '';
+  if (GBOARD === null) { gymBoardLoad(g.gym_id); return ''; }
+  if (GBOARD === undefined) return `<div class="card"><div class="sk sk-line"></div><div class="sk sk-line"></div></div>`;
+  if (GBOARD === 'off') return '';
+  const rows = GBOARD.filter(r => r.wx > 0), top = rows[0], who = r => r.n ? esc(r.n) : 'A member';
+  const own = {}; for (const r of GBOARD) if (r.n && r.mc) for (const [k, v] of Object.entries(r.mc)) if (+v >= 3 && (!own[k] || +v > own[k].v)) own[k] = { v: +v, n: r.n };
+  const owned = Object.entries(own).sort((a, b) => b[1].v - a[1].v).slice(0, 6);
+  const me = GBOARD.find(r => r.mine), reg = gymRegular(g.gym_id);
+  const ranks = Array.isArray(GRANKS) ? GRANKS : [], myRank = ranks.findIndex(r => r.gym_id === g.gym_id);
+  const crown = (ROYAL[theme()] || ROYAL.mono)[0];
+  return `<div class="card"><div class="card-h"><span class="eyebrow">This week at ${esc(g.brand)}</span><span class="cap">resets Monday</span></div>
+    ${top ? `<div class="row g3 gm-king"><span class="gm-crown" aria-hidden="true">${embSVG('crown', 26)}</span><div class="grow"><b>${who(top)}</b><div class="cap">${esc(crown)}${top.lc >= 8 ? ' · Local Legend' : top.lc >= 1 ? ' · Regular' : ''} · ${n0(top.wx)} XP this week</div></div></div>` : '<div class="cap">No XP at this gym yet this week. First set takes the crown.</div>'}
+    ${rows.slice(1, 5).map((r, i) => `<div class="row between gm-lb ${r.mine ? 'me' : ''}"><span>${i + 2}. ${who(r)}${r.lc >= 8 ? ' · Local Legend' : r.lc >= 1 ? ' · Regular' : ''}</span><b class="num">${n0(r.wx)}</b></div>`).join('')}
+    ${me ? `<div class="cap mt2">You: ${n0(me.wx)} XP this week${reg.label ? ' · ' + reg.label : ''}.</div>` : ''}
+    <label class="row between mt2 cap"><span>Show my name on this board</span><input type="checkbox" class="cbox" data-a="gymBoardOn" ${S.profile.gymBoard ? 'checked' : ''}></label></div>
+  ${owned.length ? `<div class="card"><div class="card-h"><span class="eyebrow">Machine owners</span><span class="cap">most sessions, 90 days</span></div>${owned.map(([k, o]) => `<div class="row between gm-lb"><span>${esc(k)}</span><span class="cap">owned by <b>${esc(o.n)}</b> · ${o.v}</span></div>`).join('')}</div>` : ''}
+  ${ranks.length ? `<div class="card"><div class="card-h"><span class="eyebrow">Gym vs gym · ${esc(MON[new Date().getMonth()])}</span><span class="cap">${myRank >= 0 ? `you’re #${myRank + 1}` : 'top 20'}</span></div>${ranks.slice(0, 5).map((r, i) => `<div class="row between gm-lb ${r.gym_id === g.gym_id ? 'me' : ''}"><span>${i + 1}. ${esc(r.name)}</span><span class="cap num">${n0(r.xp)} XP · ${plural(r.people, 'member')}</span></div>`).join('')}
+    ${myRank >= 5 ? `<div class="row between gm-lb me"><span>${myRank + 1}. ${esc(ranks[myRank].name)}</span><span class="cap num">${n0(ranks[myRank].xp)} XP</span></div>` : ''}</div>` : ''}`;
+}
+// ---------- Crews: 3 to 6 friends, a name and an emblem; the crew card adds up everyone's week.
+let CREWS = null;
+const CREW_EMB = { bolt: 'M13 2L4 14h6l-1 8 9-12h-6z', peak: 'M3 20l6-10 4 6 2-3 6 7z', crown: 'M3 18h18l-2-10-4 4-3-6-3 6-4-4z', star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z', flame: 'M12 3c1 4 5 5 5 10a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z', shield: 'M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z' };
+const embSVG = (k, s = 22) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="${CREW_EMB[k] || CREW_EMB.bolt}"/></svg>`;
+async function crewsLoad() { CREWS = undefined; try { CREWS = await gymRpc('jobdone_crew_mine') || []; } catch (e) { CREWS = 'off'; } rerender(); }
+function crewsHTML() {
+  if (!GAME_ON || !HOSTED || !USER) return '';
+  if (CREWS === null) { crewsLoad(); return ''; }
+  if (CREWS === undefined || CREWS === 'off') return '';
+  const wk = mondayOf(today());
+  return `<div class="card"><div class="card-h"><span class="eyebrow">Crews</span><button class="cap mh32" data-a="crewNew">New crew</button></div>
+    ${CREWS.length ? CREWS.map(c => { const ms = c.members || [], inn = ms.filter(m => m.in), sets = inn.reduce((a, m) => a + (m.w === wk && m.g ? +m.g.ss || 0 : 0), 0), xp = inn.reduce((a, m) => a + (m.g ? +m.g.wx || 0 : 0), 0);
+      return c.accepted ? `<div class="crew"><span class="crew-emb">${embSVG(c.emblem)}</span><div class="grow"><b>${esc(c.name)}</b><div class="cap">${inn.map(m => esc(m.n)).join(', ')} · ${plural(sets, 'set')} this week · ${n0(xp)} XP</div></div><button class="link cap" data-a="crewLeave" data-id="${esc(c.crew_id)}">Leave</button></div>`
+        : `<div class="crew"><span class="crew-emb">${embSVG(c.emblem)}</span><div class="grow"><b>${esc(c.name)}</b><div class="cap">Invite from your friends</div></div><button class="btn sm primary" data-a="crewYes" data-id="${esc(c.crew_id)}">Join</button><button class="btn sm ghost" data-a="crewNo" data-id="${esc(c.crew_id)}">No</button></div>`; }).join('')
+      : '<div class="cap">Start a crew with 2 to 5 friends. Your crew card adds up everyone’s week.</div>'}</div>`;
+}
+function crewNewSheet() {
+  const fr = (FRIENDS || []).filter(f => !(f.card || {}).hidden); if (fr.length < 2) return toast('Add at least 2 friends first.');
+  let emb = 'bolt'; const pick = new Set();
+  const sh = openSheet(`<div class="stack"><h2>New crew</h2><input class="input" id="cr-n" maxlength="30" placeholder="Crew name">
+    <div class="chips wrap">${Object.keys(CREW_EMB).map(k => `<button class="chip ${k === emb ? 'on' : ''}" data-emb="${k}" aria-label="${k}">${embSVG(k, 20)}</button>`).join('')}</div>
+    <div class="cap">Pick 2 to 5 friends</div><div class="list">${fr.map(f => `<label class="li"><div class="grow t">${esc((f.card || {}).n || 'Friend')}</div><input type="checkbox" class="cbox" data-cf="${esc(f.id)}"></label>`).join('')}</div>
+    <button class="btn primary block" id="cr-go">Send invites</button></div>`, { label: 'New crew', mount: b => {
+    b.addEventListener('click', e => { const x = e.target.closest('[data-emb]'); if (x) { emb = x.dataset.emb; b.querySelectorAll('[data-emb]').forEach(y => y.classList.toggle('on', y === x)); } });
+    b.addEventListener('change', e => { const x = e.target.closest('[data-cf]'); if (x) x.checked ? pick.add(x.dataset.cf) : pick.delete(x.dataset.cf); });
+    const go = b.querySelector('#cr-go'); go.onclick = async () => { const n = b.querySelector('#cr-n').value.trim(); if (n.length < 2) return toast('Give your crew a name'); if (pick.size < 2 || pick.size > 5) return toast('Pick 2 to 5 friends');
+      go.disabled = true; try { await gymRpc('jobdone_crew_create', { p_name: n, p_emblem: emb, p_members: [...pick] }); closeSheet(sh); toast('Invites sent'); crewsLoad(); } catch (e) { go.disabled = false; toast(/up to 3|Too many|3 to 6/.test(e.message) ? esc(e.message) : 'Couldn’t make the crew. Try again.'); } };
+  } });
+}
+
 // ---------- active workout ----------
 // Today's target for a set, from the same set last time, using the rep tiers:
 // Reaching the top of your rep range means add weight (aim for the bottom), anything less means same weight, one more rep.
@@ -3183,6 +3313,7 @@ function startWorkout(splitId, date, practice) {
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
+  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTNER) { A.with = PARTNER.id; A.withN = PARTNER.n; } }
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
 }
@@ -3264,6 +3395,7 @@ function renderWorkout() {
   const hadPop = !!el.querySelector('.restbar') && el._rest === REST; // −30, +30, Pause redraw the timer; only a new rest slides up
   el._rest = REST;
   UPNEXT = upNext();
+  if (GAME_ON && A.with) partnerTick();
   const gv = ghostVol(), dv = doneVol(), totalSets = A.ex.reduce((a, e) => a + e.sets.length, 0), doneSets = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const scale = Math.max(gv, dv, 1);
   // One-line header (review 2): title with an ellipsis, then sets · kg · time, and a quiet Finish until every set is ticked.
@@ -3272,6 +3404,7 @@ function renderWorkout() {
       <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · ${dvol(dv)} ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
       <button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
+    ${GAME_ON ? partnerStrip() : ''}
   </div>
   <div class="wk-body">${A.ex.map(exCardHTML).join('')}
     <button class="btn block" data-a="wkAddEx">Add exercise</button>
@@ -3593,7 +3726,7 @@ function logSet(ei, si) {
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
       if (!pr.length && !ghostCheck(e, si, s)) celebrate(setVerdict(s.r, repRange(e.name)));
-      goldenCheck(s);
+      goldenCheck(s); if (A.with) statSync();
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
@@ -3631,6 +3764,7 @@ function saveWorkout() {
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
   const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: A.endAt || Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
+  if (A.gym) w.gym = A.gym; if (A.with) { w.with = A.with; w.withN = A.withN; S.profile.joint = [...(S.profile.joint || []), w.date].slice(-200); setPartner(null); }
   S.workouts[w.id] = w;
   if (A.practice) { PRACTICE_W = w.id; A = null; REST = null; invalidate(); NAV.tab = 'today'; NAV.stack = []; render(); return showRecap(w.id); }
   const sp = A.splitId && splitById(A.splitId);
@@ -5635,6 +5769,13 @@ const ACT = {
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
   idQR: () => qrSheet(),
+  joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (f) trainWith(f); },
+  partnerEnd: () => { if (A) { delete A.with; delete A.withN; touchA(); statSync(); } setPartner(null); openWk(); toast('Training on your own'); },
+  gymBoardOn: el => { S.profile.gymBoard = el.checked; persist('jd/meta'); statSync(); toast(el.checked ? 'Your name shows on your gym’s board' : 'You show as “A member”'); },
+  crewNew: () => crewNewSheet(),
+  crewYes: async el => { try { await gymRpc('jobdone_crew_answer', { p_crew: el.dataset.id, p_yes: true }); crewsLoad(); toast('You’re in the crew'); } catch (e) { toast(esc(e.message || 'Couldn’t join. Try again.')); } },
+  crewNo: async el => { try { await gymRpc('jobdone_crew_answer', { p_crew: el.dataset.id, p_yes: false }); crewsLoad(); } catch (e) { toast('Couldn’t answer. Try again.'); } },
+  crewLeave: el => confirmSheet({ title: 'Leave this crew?', body: 'You can be invited back later.', ok: 'Leave', danger: true, key: false, onOk: async () => { try { await gymRpc('jobdone_crew_leave', { p_crew: el.dataset.id }); crewsLoad(); } catch (e) { toast('Couldn’t leave. Try again.'); } } }),
   liftCard: el => openLiftCard(el.dataset.k),
   wrapped: () => openWrapped(),
   beforeAfter: () => openBeforeAfter(),

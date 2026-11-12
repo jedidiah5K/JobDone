@@ -2064,3 +2064,14 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .gm-match { font-size: 28px; color: var(--gm-acc); }
 .qr-box { align-self: center; padding: 12px; background: #fff; border-radius: 16px; line-height: 0; }
 .qr-box .qr { display: block; }
+/* Batch 3: train together, gym board, crews */
+.join-card { border: 1.5px solid var(--gm-acc); }
+.partner { display: flex; align-items: center; gap: 6px; padding: 6px 16px 2px; }
+.partner .link { margin-left: auto; }
+.gm-king { padding: 6px 0 10px; }
+.gm-crown { color: var(--gm-acc); display: inline-flex; }
+.gm-lb { padding: 7px 0; border-top: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); font-size: 14px; }
+.gm-lb.me { font-weight: 700; }
+.crew { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: .5px solid color-mix(in srgb, var(--text2) 18%, transparent); }
+.crew:first-of-type { border-top: 0; }
+.crew-emb { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--gm-acc); background: color-mix(in srgb, var(--gm-acc) 14%, transparent); flex: none; }
