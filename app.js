@@ -1171,8 +1171,11 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v150';
+const NEWS_ID = '2026-11-v157';
 const NEWS = [
+  ['A smoother first setup', 'New accounts see their plan being put together from their answers, the steps slide from one to the next, and Continue stays in the same place on every step.'],
+  ['A hands-on tour', 'The tour now walks you through a sample lift: load the plates, add reps, finish, save and post. Nothing from it is saved.'],
+  ['Posting just works', 'Posting a workout or a photo turns on your friend card for you, so there is no extra switch to find first.'],
   ['Import from other apps, up front', 'Coming from Strong, Hevy or another app? The CSV import now sits at the top of the plan step, so it is easy to find.'],
   ['A new exercise picker', 'Search, then filter by equipment or muscle. Each exercise shows the muscle it works, and the i explains how to do it.'],
   ['More calisthenics', 'Pistol squats, muscle-ups, L-sits, handstand push-ups, dragon flags and more.'],
@@ -4906,17 +4909,29 @@ function obBody(k) {
     <div class="tmpl">${Object.entries(TEMPLATES).map(([k2, t]) => `<button data-t="${k2}" class="${(OB.plan || rec) === k2 ? 'on' : ''}"><b>${esc(t.n)}${k2 === rec ? ' <em class="ob-rec">Suggested</em>' : ''}</b><span>${esc(t.d)}</span></button>`).join('')}</div>
 `;
 }
+// Shown for a moment before the plan step: says back what the questions picked, then the plan appears.
+function obBuilding() {
+  const body = $('#app .ob-body'), nx = $('#ob-next'); if (!body || !nx) return;
+  const [, , lo, hi] = OB_EXP[OB.exp] || OB_EXP.some, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const lines = [OB_DAYS[(OB.days || 3) - 1][1], OB_EXP[OB.exp][0] + ' · ' + lo + '–' + hi + ' reps', 'Picking lifts for ' + TEMPLATES[obPlan()].n];
+  body.innerHTML = `<div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES.plan}</div><h1 class="ob-t">Building your plan</h1>
+    <ul class="ob-build">${lines.map((l, i) => `<li style="--i:${i}">${esc(l)}</li>`).join('')}</ul>`;
+  nx.disabled = true;
+  setTimeout(() => { if (OB_STEPS[OB.step] === 'plan' && $('#app .ob-build')) { OB.dir = 1; renderWelcomePublic(); OB.dir = 0; } }, still ? 700 : 1600);
+}
 function renderWelcomePublic() {
   if (!OB) OB = { step: 0, os: devOS(), name: firstName() === 'there' ? '' : firstName(), unit: 'kg', w: '', gw: '', h: '', goal: 'muscle', days: null, exp: 'some', theme: theme(), plan: null, prefs: { sound: true, music: true, push: !!(HOSTED && pushReady()), autoRest: true, wake: true, weigh: true, confetti: true, rest: 120, bar: 1, steps: 10000, targets: true } };
   const k = OB_STEPS[OB.step], last = OB.step === OB_STEPS.length - 1;
   if (k === 'theme') { document.documentElement.classList.remove('ob-on'); applyTheme(OB.theme); } else { document.documentElement.classList.add('ob-on'); document.documentElement.dataset.theme = 'mono'; delete document.documentElement.dataset.tod; }
   const next = k === 'home' ? (isStandalone() ? 'Continue' : 'I’ve added it') : k === 'tour' ? 'Next' : last ? 'Start training' : 'Continue';
   $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div></div>
-    <div class="ob-body stack" data-k="${k}"><div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES[k]}</div>${obBody(k)}</div>
-    <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${k === 'home' && !isStandalone() ? '<button class="self-c link" id="ob-later">I’ll do it later</button>' : ''}</div></main>`;
+    <div class="ob-body stack${OB.dir ? (OB.dir > 0 ? ' ob-in' : ' ob-in-back') : ''}" data-k="${k}"><div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES[k]}</div>${obBody(k)}</div>
+    <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${k === 'home' && !isStandalone() ? '<button class="self-c link" id="ob-later">I’ll do it later</button>' : '<button class="self-c link" tabindex="-1" aria-hidden="true" style="visibility:hidden">I’ll do it later</button>'}</div></main>`;
   const q = x => $('#app').querySelector(x), qa = x => $('#app').querySelectorAll(x);
   const keep = () => { const f = id => { const e = q(id); return e ? e.value.trim() : null; }; const n = f('#ob-name'); if (n != null) { OB.name = n; OB.w = f('#ob-w'); OB.gw = f('#ob-gw'); OB.h = f('#ob-h'); } };
-  const go = d => { keep(); OB.step = Math.max(0, Math.min(OB_STEPS.length - 1, OB.step + d)); renderWelcomePublic(); const sc = $('#screen'); if (sc) sc.scrollTop = 0; };
+  const go = d => { keep(); OB.step = Math.max(0, Math.min(OB_STEPS.length - 1, OB.step + d)); OB.dir = d; renderWelcomePublic(); OB.dir = 0; const sc = $('#screen'); if (sc) sc.scrollTop = 0;
+    // Nov 2026: a short "building your plan" moment between the questions and the plan, the first time only.
+    if (d > 0 && OB_STEPS[OB.step] === 'plan' && !OB.built) { OB.built = true; obBuilding(); } };
   q('#ob-back').onclick = () => go(-1);
   qa('#app input').forEach(i => i.addEventListener('input', () => { const e = q('#ob-err'); if (e) e.textContent = ''; }));
   qa('[data-os]').forEach(b => b.onclick = () => { OB.os = b.dataset.os; renderWelcomePublic(); });

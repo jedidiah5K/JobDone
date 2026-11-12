@@ -1963,3 +1963,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .sets th:nth-child(2), .sets td.prev { padding-left: 16px; } /* room for the i */
 .sets th:nth-child(2), .sets td.prev { text-align: center; } /* Previous numbers centre under the label (Job, 8 Nov) */
 .idv .btn:not(.primary) { background: rgba(255,255,255,.14); color: #fff; border: 0; box-shadow: none; } .idv .btn[data-v="rm"], .idv .btn[data-v="block"] { color: #FF8A80; } /* readable over the dark blur in every theme */
+/* Nov 2026: intro steps slide in (0.22s), and the "Building your plan" lines tick in one by one */
+@keyframes ob-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes ob-in-back { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+.ob-body.ob-in { animation: ob-in .22s var(--ease) both; }
+.ob-body.ob-in-back { animation: ob-in-back .22s var(--ease) both; }
+.ob-build { list-style: none; margin: var(--s5) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.ob-build li { display: flex; align-items: center; gap: var(--s3); font-size: 17px; color: var(--text); opacity: 0; animation: ob-in .25s var(--ease) both; animation-delay: calc(var(--i) * .4s + .1s); }
+.ob-build li::before { content: ""; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A0A0C' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / 14px no-repeat; }
+@media (prefers-reduced-motion: reduce) { .ob-body.ob-in, .ob-body.ob-in-back, .ob-build li { animation: none; opacity: 1; } }
