@@ -50,6 +50,13 @@ Things Job wants added when the App Store release is near. Nothing here is built
 ## More social ideas
 - Live cheers between sets (sound plays over music), spot requests to friends at your gym, opt-in gym buddy finder, workout invites, "do my workout" challenge, beat-my-PR challenges, voice-note cheers, crew chat, mentor mode, gym meetups, rep-for-rep joint sessions, weekly crew recap card.
 
+## ID card in Apple Wallet / Google Wallet, and NFC (Job, 13 Nov: very marketable)
+- Add your ID card to Apple Wallet or Google Wallet (Samsung phones use Google Wallet too). The pass shows your name, tier, streak and a QR to add you as a friend, and updates when your stats change.
+- Apple Wallet: needs the Apple Developer Program ($99/year) for a Pass Type ID certificate. That breaks "nothing paid", so it waits for the App Store release, when that account is needed anyway.
+- Google Wallet: free (Google Wallet API, Google Cloud project, issuer account), but Job has to sign up and get approved, then a Supabase function signs the pass. Can be done before release if Job wants to do the sign-up.
+- Samsung Wallet: own partner program with review. Google Wallet covers Samsung phones in the meantime.
+- NFC "tap phones to add a friend": iPhone websites can't use NFC. Android Chrome can read and write NFC tags (Web NFC), but phone-to-phone tapping isn't possible from a website. In a native app, iPhone and Android can both read tags. A cheap NFC sticker/keyring with your add-friend link works on any phone today (the phone opens the link). The QR code on the card does the same job now.
+
 ## Easier logging
 - Shake to log the next set; shake again to undo.
 - Say it: "60 for 8" with the mic.
