@@ -1973,3 +1973,22 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .ob-build li::before { content: ""; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A0A0C' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / 14px no-repeat; }
 @media (prefers-reduced-motion: reduce) { .ob-body.ob-in, .ob-body.ob-in-back, .ob-build li { animation: none; opacity: 1; } }
 .ob-body[data-k="hook"] > .ob-eb { display: none; }
+/* Insights tab (Nov 2026) */
+.bm .bm-h { fill: var(--hl, var(--accent)); }
+.ins-bm { margin: var(--s2) 0 0; }
+.ins-k { row-gap: var(--s3); }
+.ins-k .kpi:nth-child(3n+1) { border-left: 0; padding-left: 0; }
+.ins-k .kpi .cap { font-size: 12px; }
+.ins-stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; }
+.ins-stack i { display: block; min-width: 4px; }
+.ins-dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 110px; align-items: end; }
+.ins-dow > div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.ins-dow i { display: block; width: 100%; min-height: 2px; border-radius: 6px 6px 2px 2px; background: var(--accent); }
+.ins-dow b { font-size: 12px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; }
+.ins-dow span { font-size: 12px; color: var(--muted); }
+#screen .seg[role="tablist"] button { padding-left: 4px; padding-right: 4px; }
+.ins-bm { justify-content: center; gap: var(--s6); }
+.ins-bm .bm { height: 220px; }
+.ins-mu .hbar { grid-template-columns: 92px 1fr 78px; }
+.ins-mu .hbar .tr { white-space: nowrap; }
+.ins-mu .hbar .tr span { font-size: 11px; margin-left: 4px; }

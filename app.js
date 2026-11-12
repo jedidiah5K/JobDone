@@ -1173,6 +1173,7 @@ function tourAuto() {
 // To announce the next update: change NEWS_ID and the NEWS lines.
 const NEWS_ID = '2026-11-v158';
 const NEWS = [
+  ['Insights', 'A new tab in Progress: workouts, sets, volume, workout length and PRs against the period before, a body heat map of the muscles you trained, your push, pull and legs balance, strength change per lift, and the days and times you train.'],
   ['A new first-time setup', 'New people now answer a few questions, watch their plan get built and see what they get, then create their account as the last step. Their answers go straight into the new account.'],
   ['A hands-on tour', 'The tour now walks you through a sample lift: load the plates, add reps, finish, save and post. Nothing from it is saved.'],
   ['Posting just works', 'Posting a workout or a photo turns on your friend card for you, so there is no extra switch to find first.'],
@@ -2358,8 +2359,8 @@ function viewSplitEdit({ id }) {
 
 // ---------- Progress ----------
 function viewProgress() {
-  const segs = [['body', 'Body'], ['strength', 'Strength'], ['volume', 'Volume'], ['history', 'History']];
-  const inner = ({ body: progBody, strength: progStrength, volume: progVolume, history: progHistory })[NAV.prog]();
+  const segs = [['body', 'Body'], ['strength', 'Strength'], ['volume', 'Volume'], ['insights', 'Insights'], ['history', 'History']];
+  const inner = ({ body: progBody, strength: progStrength, volume: progVolume, insights: progInsights, history: progHistory })[NAV.prog]();
   return `<div class="stack"><div class="top"><h1>Progress</h1></div>
   <div class="seg" role="tablist">${segs.map(([k, l]) => `<button role="tab" class="${NAV.prog === k ? 'on' : ''}" aria-selected="${NAV.prog === k}" data-a="prog" data-k="${k}">${l}</button>`).join('')}</div>${inner}</div>`;
 }
@@ -2478,6 +2479,70 @@ function progVolume() {
     <div class="g2 stack">${musc.map(m => `<div class="hbar"><span class="sec">${m}</span><div class="rel b"><i style="width:${(cur[m] || 0) / mx * 100}%;background:var(--text)"></i><span style="position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--muted);left:${(prev4[m] || 0) / mx * 100}%"></span></div><span class="tr num">${trim(cur[m] || 0)}</span></div>`).join('') || '<div class="empty">No sets this week yet.</div>'}</div>
     ${note ? `<div class="mt3 note">${note}</div>` : ''}
     <div class="mt3 cap">Left and right sides of one exercise count as half a set each.</div></div>`;
+}
+// ---------- insights (Nov 2026, Job: "whatever Hevy and the others have, but better") ----------
+// Everything here describes what happened; nothing tells you to change weight or reps (Job's rule).
+const IRANGES = { '4W': 28, '3M': 91, '6M': 182, '1Y': 365, 'All': 0 };
+const MU_SLUG = { Chest: ['chest'], Back: ['upper-back', 'trapezius', 'lower-back'], Shoulders: ['deltoids'], Biceps: ['biceps'], Triceps: ['triceps'], Forearms: ['forearm'], Abs: ['abs', 'obliques'], Quads: ['quadriceps'], Hamstrings: ['hamstring'], Glutes: ['gluteal'], Adductors: ['adductors'], Calves: ['calves'] };
+const MU_GROUP = { Chest: 'Push', Shoulders: 'Push', Triceps: 'Push', Back: 'Pull', Biceps: 'Pull', Forearms: 'Pull', Quads: 'Legs', Hamstrings: 'Legs', Glutes: 'Legs', Adductors: 'Legs', Calves: 'Legs', Abs: 'Core' };
+function insWindow(from, to) { // workouts and totals from `from` (inclusive) to `to` (exclusive)
+  const ws = ix().ws.filter(w => !w.skipped && w.date >= from && w.date < to);
+  const mus = {}, mins = []; let sets = 0, vol = 0;
+  const prs = ix().prs.filter(p => p.date >= from && p.date < to).length;
+  for (const w of ws) {
+    vol += wVol(w); if (w.start && w.end && w.end > w.start) mins.push((w.end - w.start) / 60000);
+    for (const e of w.ex) { const n = e.sets.filter(s => s.t !== 'warm' && validSet(s)).length * (sideOf(e.name) ? 0.5 : 1); sets += n; const m = exInfo(e.name).muscle; mus[m] = (mus[m] || 0) + n; }
+  }
+  return { ws, sets, vol, prs, mus, mins: mins.filter(m => m > 5 && m < 300) };
+}
+function progInsights() {
+  howtoFor(''); // loads the body map outlines once
+  const all = ix().ws.filter(w => !w.skipped); if (!all.length) return '<div class="card"><div class="empty">Insights appear after your first workout.</div></div>';
+  const t = today(), end = addDays(t, 1), key = IRANGES[NAV.irange] != null ? NAV.irange : '3M', len = IRANGES[key] || Math.max(7, daysBetween(all[0].date, t) + 1);
+  const from = addDays(end, -len), cur = insWindow(from, end), prev = IRANGES[key] ? (p => p.ws.length ? p : null)(insWindow(addDays(from, -len), from)) : null, wk = len / 7; // no earlier workouts: no comparison
+  const avgMin = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const r1 = v => trim(Math.round(v * 10) / 10);
+  const dl = (a, b, f = v => trim(v)) => prev ? `<span class="cap">${delta(a, b, f) || ''}</span>` : '';
+  const kpi = (v, l, d) => `<div class="kpi"><b>${v}</b><span>${l}</span>${d || ''}</div>`;
+  const cm = avgMin(cur.mins), pm = prev && avgMin(prev.mins);
+  const summary = `<div class="card"><div class="card-h"><span class="eyebrow">Overview</span><span class="cap">${prev ? 'vs the ' + len + ' days before' : IRANGES[key] ? 'last ' + len + ' days' : 'since ' + esc(fmtDate(all[0].date))}</span></div>
+    <div class="kpis ins-k">${kpi(cur.ws.length, 'workouts', dl(cur.ws.length, prev && prev.ws.length))}${kpi(r1(cur.ws.length / wk), 'per week', dl(cur.ws.length / wk, prev && prev.ws.length / wk, r1))}${kpi(n0(cur.sets), 'sets', dl(cur.sets, prev && prev.sets, n0))}
+    ${kpi(dvol(cur.vol), U() + ' lifted', dl(cur.vol, prev && prev.vol, dvol))}${kpi(cm ? Math.round(cm) + ' min' : '—', 'per workout', cm && pm ? dl(cm, pm, v => Math.round(v) + ' min') : '')}${kpi(cur.prs, cur.prs === 1 ? 'PR' : 'PRs', dl(cur.prs, prev && prev.prs))}</div></div>`;
+  // muscles: heat map + sets per week, with change vs the period before
+  const ms = MUSCLES.filter(m => m !== 'Other' && ((cur.mus[m] || 0) + ((prev && prev.mus[m]) || 0)) > 0).sort((a, b) => (cur.mus[b] || 0) - (cur.mus[a] || 0));
+  const mx = Math.max(1, ...ms.map(m => cur.mus[m] || 0)), slugHeat = {};
+  for (const m of ms) for (const s of MU_SLUG[m] || []) slugHeat[s] = Math.max(slugHeat[s] || 0, (cur.mus[m] || 0) / mx);
+  const fig = (parts, outline, vb) => `<svg class="bm" viewBox="${vb}" aria-hidden="true"><path class="bm-o" d="${outline}"/>${parts.map(p => { const v = slugHeat[p.s] || 0; return ['l', 'r'].map(sd => p[sd].map(d => `<path class="${v ? 'bm-h' : 'bm-n'}"${v ? ` style="fill-opacity:${(0.18 + v * 0.82).toFixed(2)}"` : ''} d="${d}"/>`).join('')).join(''); }).join('')}</svg>`;
+  const heat = BODY ? `<div class="bm-row ins-bm">${fig(BODY.f, BODY.of, '0 0 724 1448')}${fig(BODY.b, BODY.ob, '724 0 724 1448')}</div>` : '';
+  const muscles = `<div class="card"><div class="card-h"><span class="eyebrow">Muscles ${infoBtn('muscle')}</span><span class="cap">sets per week</span></div>${heat}
+    <div class="g2 stack mt3 ins-mu">${ms.map(m => { const c = (cur.mus[m] || 0) / wk, p = prev ? (prev.mus[m] || 0) / wk : null; return `<div class="hbar"><span class="sec">${m}</span><div class="rel b"><i style="width:${(cur.mus[m] || 0) / mx * 100}%;background:var(--accent)"></i></div><span class="tr num">${r1(c)}${p != null ? ' ' + delta(c, p, r1) : ''}</span></div>`; }).join('') || '<div class="empty">No sets in this range.</div>'}</div>
+    <div class="mt3 cap">Brighter means more sets. Left and right sides count as half a set each.</div></div>`;
+  // balance: push / pull / legs / core share of sets
+  const g = {}; let gt = 0; for (const m of ms) { const k = MU_GROUP[m]; if (k) { g[k] = (g[k] || 0) + (cur.mus[m] || 0); gt += cur.mus[m] || 0; } }
+  const GC = { Push: 'var(--accent)', Pull: 'var(--blue)', Legs: 'var(--green)', Core: 'var(--yellow)' }, GK = ['Push', 'Pull', 'Legs', 'Core'].filter(k => g[k]);
+  const pc = v => Math.round((v || 0) / gt * 100);
+  const balance = gt ? `<div class="card"><div class="card-h"><span class="eyebrow">Balance</span><span class="cap">share of sets</span></div>
+    <div class="ins-stack">${GK.map(k => `<i style="flex:${g[k]};background:${GC[k]}"></i>`).join('')}</div>
+    <div class="mt2 legend">${GK.map(k => `<span><i style="background:${GC[k]}"></i>${k} ${pc(g[k])}%</span>`).join('')}</div>
+    <div class="mt3 cap">${[['Upper body', (g.Push || 0) + (g.Pull || 0)], ['legs', g.Legs], ['core', g.Core]].filter(([, v]) => v).map(([k, v]) => k + ' ' + pc(v) + '%').join(' · ')}</div></div>` : '';
+  // strength: best e1RM in range vs where each lift stood when the range began, for the lifts done most
+  const lw = latestWeight(), h = ix().hist;
+  const lifts = Object.keys(h).map(n => { const ss = h[n].filter(s => s.e1 > 0), inR = ss.filter(s => s.date >= from); if (inR.length < 2) return null; const before = ss.filter(s => s.date < from), start = before.length ? before[before.length - 1].e1 : inR[0].e1, best = Math.max(...inR.map(s => s.e1)); return { n, best, k: inR.length, pct: (best - start) / start * 100 }; }).filter(Boolean).sort((a, b) => b.k - a.k).slice(0, 8);
+  const strength = lifts.length ? `<div class="card"><div class="card-h"><span class="eyebrow">Strength ${infoBtn('e1rm')}</span><span class="cap">best e1RM · change</span></div><div class="list">${lifts.map(l => `<button class="li" data-a="openEx" data-name="${esc(l.n)}"><div class="grow"><div class="t">${esc(l.n)}</div><div class="s">${plural(l.k, 'session')}${lw ? ' · ' + trim(Math.round(l.best / lw.w * 100) / 100) + '× body weight' : ''}</div></div><div class="tr"><div class="fw6 num">${e1f(l.best)} ${U()}</div><div class="cap"><span class="${l.pct > 0.5 ? 'pos' : l.pct < -0.5 ? 'neg' : 'neu'}">${l.pct > 0 ? '+' : ''}${r1(l.pct)}%</span></div></div>${I.right}</button>`).join('')}</div></div>` : '';
+  // workout length per week
+  const m0 = mondayOf(t), nW = Math.min(12, Math.max(4, Math.ceil(len / 7))), weeks = []; for (let i = nW - 1; i >= 0; i--) weeks.push(addDays(m0, -7 * i));
+  const pool = cur.ws.concat(prev ? prev.ws : []);
+  const lenBars = weeks.map((k, i) => { const xs = pool.filter(w => mondayOf(w.date) === k && w.start && w.end).map(w => (w.end - w.start) / 60000).filter(m => m > 5 && m < 300); const v = xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0; return { v, label: i % 3 === 0 || i === weeks.length - 1 ? fmtDate(k) : '', tip: 'Week of ' + fmtDate(k) + (v ? ' · ' + Math.round(v) + ' min average' : ' · no workouts'), hi: k === m0 }; });
+  const length = cur.mins.length ? `<div class="card"><div class="card-h"><span class="eyebrow">Workout length</span><span class="cap">average per week · minutes</span></div>${barChart({ bars: lenBars, h: 130, yfmt: v => Math.round(v) })}
+    <div class="mt3 cap">Shortest ${Math.round(Math.min(...cur.mins))} min · longest ${Math.round(Math.max(...cur.mins))} min</div></div>` : '';
+  // when you train: days of the week and time of day
+  const dow = [0, 0, 0, 0, 0, 0, 0], tod = { Morning: 0, Afternoon: 0, Evening: 0 };
+  for (const w of cur.ws) { dow[(parseYmd(w.date).getDay() + 6) % 7]++; if (w.start) { const hr = new Date(w.start).getHours(); tod[hr < 12 ? 'Morning' : hr < 17 ? 'Afternoon' : 'Evening']++; } }
+  const dmx = Math.max(1, ...dow), todT = tod.Morning + tod.Afternoon + tod.Evening;
+  const when = `<div class="card"><div class="card-h"><span class="eyebrow">When you train</span><span class="cap">${plural(cur.ws.length, 'workout')}</span></div>
+    <div class="ins-dow">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => `<div><b>${dow[i] || ''}</b><i style="height:${Math.round(dow[i] / dmx * 100)}%"></i><span>${d}</span></div>`).join('')}</div>
+    ${todT ? `<div class="mt3 cap">${Object.entries(tod).filter(([, v]) => v).map(([k, v]) => `${k} ${Math.round(v / todT * 100)}%`).join(' · ')}</div>` : ''}</div>`;
+  return `<div class="seg rng">${Object.keys(IRANGES).map(k => `<button class="${key === k ? 'on' : ''}" data-a="irange" data-k="${k}">${k}</button>`).join('')}</div>${summary}${muscles}${balance}${strength}${length}${when}`;
 }
 function progHistory() {
   const ws = ix().ws.slice().reverse();
@@ -5156,6 +5221,7 @@ const ACT = {
   mfa: () => openMfa(),
   prog: el => { NAV.tab = 'progress'; NAV.stack = []; NAV.prog = el.dataset.k; render(); },
   range: el => { NAV.range = el.dataset.k; rerender(); },
+  irange: el => { NAV.irange = el.dataset.k; rerender(); },
   startSplit: el => startWorkout(el.dataset.id),
   day: el => setViewDay(el.dataset.k || null),
   wkDay: () => openWkDay(),
