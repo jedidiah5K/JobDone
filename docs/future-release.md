@@ -13,6 +13,7 @@ Things Job wants added when the App Store release is near. Nothing here is built
 - Weight and seat memory per machine, per gym.
 - Gym page: who's training today, busy hours, regulars, popular machines, gym leaderboard.
 - Pitch: "The gym app you do with your people, at your gym." ID cards, stories, recap cards and joint sessions are the social side.
+- **Headline feature for marketing: your ID card in Apple Wallet / Google Wallet**, plus tap-to-add (NFC) in the native app. Lead launch posts and App Store screenshots with it. Details in the Wallet section below.
 
 ## Free vs Pro (Job, 12 Nov)
 - One plan: **Job's Done Pro**, monthly or yearly (yearly suggested). Price set later with the founder-pricing skill.
