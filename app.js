@@ -1639,7 +1639,7 @@ function myStat() {
   let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
   while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
   const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k, o: -new Date().getTimezoneOffset() };
-  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; const lv = GAME_ON && liveStat(); if (lv) s.lv = lv; return s;
+  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; const lv = GAME_ON && liveStat(); if (lv) { s.lv = lv; while (lv.xs.length && JSON.stringify(s).length > 880) lv.xs.pop(); } return s;
 }
 let STAT_SENT = '';
 function statSync() {
@@ -3272,16 +3272,29 @@ function setPartyNext(list) { PARTY_NEXT = list; try { list ? localStorage.setIt
 const partyIds = () => A && Array.isArray(A.party) ? A.party.map(x => x.id) : [];
 const pName = f => ({ id: f.id, n: ((f.card || {}).n || 'Friend').split(' ')[0].slice(0, 20) });
 function mergeParty(a, b) { const out = [...(a || [])]; for (const x of b) if (!out.some(y => y.id === x.id) && (!USER || x.id !== USER.id)) out.push(x); return out.slice(0, PARTY_MAX); }
-function trainWith(f, also = []) {
+function trainWith(f, also = [], host) {
   const add = [f, ...also].filter(Boolean).map(pName), names = add.map(x => x.n).join(', ');
-  if (A) { A.party = mergeParty(A.party, add); touchA(); statSync(); openWk(); }
-  else { setPartyNext(mergeParty([], add)); const sp = nextSplit(); startWorkout(sp ? sp.id : null); }
+  const xs = host && Array.isArray(host.xs) ? host.xs.map(String).filter(Boolean) : [];
+  const canSwap = !A || !A.ex.some(e => e.sets.some(x => x.done)); // nothing ticked yet, so switching loses nothing
+  if (A) A.party = mergeParty(A.party, add);
+  else { setPartyNext(mergeParty([], add)); const sp = nextSplit(); startWorkout(xs.length ? null : sp ? sp.id : null); if (xs.length && SHEETS.length) closeSheet(); } // close the empty-workout exercise picker
+  if (xs.length && canSwap) useHostWorkout(host, xs);
+  else if (xs.length) toast('You’ve already logged sets, so you keep your own workout.');
+  if (A) { touchA(); statSync(); openWk(); }
   toast(`Training with ${esc(names)}. They can join from their app.`);
+}
+// Same split as the friend who invited you (Job, 13 Nov: Mikey joined a Pull and got his own Full body).
+function useHostWorkout(host, xs) {
+  const mine = S.splits.find(sp => sp.name.toLowerCase() === String(host.sp || '').toLowerCase());
+  A.splitId = mine ? mine.id : null; A.splitName = String(host.sp || 'Workout').slice(0, 40);
+  A.ex = xs.map(n => { const m = mine && mine.ex.find(e => e.name === n); return m ? newExEntry(m.name, m.sets, m.rest, m.note, mine) : newExEntry(n); });
+  A.orig = A.ex.map(e => e.name);
 }
 function liveStat() {
   const ids = partyIds(); if (!ids.length || A.practice) return null;
   const done = A.ex.flatMap(e => e.sets.filter(s => s.done && s.t !== 'warm').map(s => ({ e: e.name, s, at: s.at || 0 }))).sort((a, b) => b.at - a.at)[0];
-  return { party: ids, with: ids[0], n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+  const xs = A.ex.map(e => baseName(e.name).slice(0, 26)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 10);
+  return { party: ids, with: ids[0], xs, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
 }
 const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 20 * 6e4 ? l : null; };
 const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
@@ -5933,7 +5946,7 @@ const ACT = {
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
   idQR: () => qrSheet(),
-  joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others); },
+  joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others, l); },
   partnerEnd: () => { if (A) { delete A.party; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),
