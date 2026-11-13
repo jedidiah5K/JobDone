@@ -1643,6 +1643,19 @@ function frRow(f) {
 // the photo edge to edge, Strava-style stats, emoji reactions (one per person) and comments. Add-a-friend and settings move into sheets.
 const REACTS = ['🔥', '💪', '👏', '😂', '😮', '❤️'];
 const IC = {
+  eq_machine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 10.5h6M9 14h6M12 17.5v.01"/></svg>',
+  eq_barbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h20"/><rect x="4" y="8" width="2.5" height="8" rx="1"/><rect x="17.5" y="8" width="2.5" height="8" rx="1"/></svg>',
+  eq_dumbbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12h8"/><rect x="3" y="8.5" width="5" height="7" rx="1.5"/><rect x="16" y="8.5" width="5" height="7" rx="1.5"/></svg>',
+  eq_cable: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.2V16"/><path d="M8.5 16h7l-1 4h-5z"/></svg>',
+  eq_smith: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3v18M19 3v18M3 10h18"/><rect x="2" y="8.5" width="2" height="3" rx=".5"/><rect x="20" y="8.5" width="2" height="3" rx=".5"/></svg>',
+  eq_bodyweight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M5 9l7 1.5L19 9M12 10.5V15l-3 6M12 15l3 6"/></svg>',
+  me_profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>',
+  me_workouts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>',
+  me_alerts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
+  me_look: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.4 0 1.6-1.2.9-2-.8-.9-.3-2.5 1.1-2.5H17a3.5 3.5 0 0 0 3.5-3.5"/><circle cx="8" cy="10" r=".9"/><circle cx="11.5" cy="7.5" r=".9"/><circle cx="15.5" cy="8.5" r=".9"/></svg>',
+  me_steps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5c1.7 0 2.7 1.9 2.7 4.3 0 2-1 3.2-1 4.7H6.3c0-1.5-1-2.7-1-4.7 0-2.4 1-4.3 2.7-4.3zM6.4 15h3.3v1.6a1.65 1.65 0 0 1-3.3 0zM16 7.5c1.7 0 2.7 1.9 2.7 4.3 0 2-1 3.2-1 4.7h-3.4c0-1.5-1-2.7-1-4.7 0-2.4 1-4.3 2.7-4.3zM14.4 19h3.3v.6a1.65 1.65 0 0 1-3.3 0z"/></svg>',
+  me_account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v6c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12v6c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-6"/></svg>',
+  me_help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 16.8v.01"/></svg>',
   team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.1c2.6.3 4.5 2.5 4.5 5.1"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg>',
@@ -1765,12 +1778,15 @@ function addFromLink() {
   setTimeout(() => { frAddSheet(v); }, 600);
 }
 function frAddSheet(pre) {
-  const sh = openSheet(`<div class="stack"><h2>Add a friend</h2><p class="cap m0">Type the code on their ID card. They’ll get a request to accept.</p>
-    <div class="row g2"><input class="input grow" id="fr-code" value="${pre ? esc(pre) : ''}" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
-    <div class="row between"><span class="cap">Your code <b class="num c-text">${esc(idCode(ID_CODE))}</b></span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy</button></div>${ID_CODE && typeof qrcode === 'function' ? '<button class="btn block" data-a="idQR">Show my QR code</button>' : ''}</div>`, { label: 'Add a friend', mount: b => {
-    const go = b.querySelector('#fr-go'); go.onclick = async () => { go.disabled = true; await friendAdd(); go.disabled = false; if (!b.querySelector('#fr-code').value) closeSheet(sh); };
-    setTimeout(() => b.querySelector('#fr-code').focus(), 250); } });
+  const qr = ID_CODE && typeof qrcode === 'function' ? qrSVG(ADD_URL(ID_CODE), 112) : '';
+  const sh = openSheet(`<div class="stack af"><h2>Add a friend</h2>
+    <div class="af-me">${qr ? `<button class="af-qr" data-a="idQR" aria-label="Show my QR code bigger">${qr}</button>` : ''}<div class="af-code"><span class="eyebrow">Your code</span><b class="num">${esc(idCode(ID_CODE)) || '—'}</b><span class="cap">${qr ? 'They scan this with their iPhone camera.' : 'Share it so friends can add you.'}</span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy code</button></div></div>
+    <div><label class="eyebrow" for="fr-code">Their code</label><div class="row g2 mt1"><input class="input grow num af-in" id="fr-code" value="${pre ? esc(pre) : ''}" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
+    <p class="cap mt1 m0">Or scan their QR with your camera. They get a request to accept.</p></div></div>`, { label: 'Add a friend', mount: b => {
+    const go = b.querySelector('#fr-go'); go.onclick = async () => { if (go.disabled) return; go.disabled = true; await friendAdd(); go.disabled = false; if (!b.querySelector('#fr-code').value) closeSheet(sh); };
+    if (pre) setTimeout(() => b.querySelector('#fr-code').focus(), 250); } });
 }
+
 function frSettings() {
   const body = () => { const o = SO(); return `<div class="stack"><h2>What friends see</h2><div class="sgrp">
     ${srow('Share my training', swi(!o.off, 'soShare'), o.off ? 'Off. Friends only see your card.' : 'If you trained or rested today, your Done Stamps and your weekly count')}
@@ -2972,7 +2988,7 @@ function viewMe() {
   ${HOSTED && !DEMO ? meCard() : `<div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(w => !w.skipped).length, 'workout')}</b><span>logged</span></div></div></div>`}
   ${GAME_ON ? `<div class="sgrp">${gameRow()}</div>` : ''}
   <section><div class="sgh">Settings</div><div class="sgrp">
-    ${ME_GROUPS.filter(([k]) => k !== 'steps' || true).map(([k, t, d]) => `<button class="xr" data-a="meGroup" data-k="${k}"><span class="grow">${t}<span class="s">${sub[k] || d}</span></span>${I.right}</button>`).join('')}
+    ${ME_GROUPS.filter(([k]) => k !== 'steps' || true).map(([k, t, d]) => `<button class="xr me-xr" data-a="meGroup" data-k="${k}"><i class="me-ic">${IC['me_' + k] || ''}</i><span class="grow">${t}<span class="s">${sub[k] || d}</span></span>${I.right}</button>`).join('')}
   </div></section>
   <p class="tc cap beta-foot">Job’s Done early beta</p>
 </div>`;
@@ -4370,6 +4386,15 @@ async function shareRecap(d) {
 }
 
 // ---------- Swap: same-muscle alternatives, ranked by your own history ----------
+const EQ_ORDER = ['machine', 'cable', 'smith', 'barbell', 'dumbbell', 'bodyweight'];
+const EQ_NAME = { machine: 'Machines', cable: 'Cable', smith: 'Smith machine', barbell: 'Barbell', dumbbell: 'Dumbbells', bodyweight: 'Bodyweight' };
+function swapList(list, n) {
+  const row = x => { const l = lastSession(x.name);
+    return `<button class="li sw-li" data-sw="${esc(x.name)}"><i class="sw-ic">${IC['eq_' + x.equip] || IC.eq_machine}</i><div class="grow"><div class="t">${esc(x.name)}</div>${l ? `<div class="s">Last ${esc(l.sets.filter(validSet).map(setStr).join(', '))} · ${esc(relDay(l.date))}</div>` : ''}</div>${I.right}</button>`; };
+  const used = list.filter(x => n(x.name) > 0), rest = list.filter(x => !n(x.name));
+  const groups = [...new Set([...EQ_ORDER, ...rest.map(x => x.equip)])].map(k => [EQ_NAME[k] || k, rest.filter(x => x.equip === k)]).filter(g => g[1].length);
+  return (used.length ? `<div><div class="sgh">You’ve done these</div><div class="list">${used.map(row).join('')}</div></div>` : '') + groups.map(([t, xs]) => `<div><div class="sgh">${esc(t)}</div><div class="list">${xs.map(row).join('')}</div></div>`).join('');
+}
 function openSwap(ei, taken) {
   const e = A.ex[ei], cur = exInfo(e.name), h = ix().hist;
   const names = new Set([...LIB.map(x => x.name), ...(S.customEx || []).map(x => x.name)]);
@@ -4385,7 +4410,7 @@ function openSwap(ei, taken) {
   }
   const sh = openSheet(`<div class="stack"><div><div class="eyebrow">${taken ? 'Machine taken' : 'Swap ' + esc(e.name)}</div>${taken ? `<h2 class="mt1">${esc(e.name)}</h2>` : ''}<div class="mt1 cap">${head}</div></div>
     ${inSplit ? `<label class="row between card tight"><span>Also change it in ${esc(sp.name)}</span><input type="checkbox" id="sw-keep" class="cbox"></label>` : ''}
-    ${list.length ? `<div class="list">${list.map(x => { const l = lastSession(x.name); return `<button class="li" data-sw="${esc(x.name)}"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.equip)}${l ? ' · last ' + esc(l.sets.filter(validSet).map(setStr).join(', ')) + ' · ' + esc(relDay(l.date)) : ''}</div></div>${I.right}</button>`; }).join('') || '<div class="empty">No other exercises for this muscle yet.</div>'}</div>` : ''}
+    ${list.length ? swapList(list, n) : ''}
     <button class="btn block" id="sw-all">Search all exercises</button></div>`, { label: 'Swap exercise', mount: b => {
     const go = name => {
       const keep = b.querySelector('#sw-keep') && b.querySelector('#sw-keep').checked; closeSheet(sh);
@@ -4786,9 +4811,12 @@ function openWeighIn(date, prompt) {
   const sh = openSheet(`<div class="g4 stack">
     <div><div class="eyebrow">${isToday ? 'Morning weigh-in' : 'Weight entry'}</div>${isToday ? '' : `<input class="mt2 input" type="date" id="wi-date" value="${date}">`}</div>
     <div class="row between"><button class="f22 icon-btn" data-wd="-1" aria-label="Decrease by 0.1" style="background:var(--surface)">−</button><div class="tc big" id="wi-val">${val.toFixed(1)}<span class="unit">${U()}</span></div><button class="f22 icon-btn" data-wd="1" aria-label="Increase by 0.1" style="background:var(--surface)">+</button></div>
+    ${(() => { const l = weightList().filter(x => x.d < date).slice(-30), v = l.map(x => x.w); if (v.length < 2) return '';
+      const mx = Math.max(...v), mn = Math.min(...v), last = l[l.length - 1];
+      return `<div class="wi-trend"><svg viewBox="0 0 200 30" preserveAspectRatio="none" aria-hidden="true"><path d="${v.map((y, i) => (i ? 'L' : 'M') + (i / (v.length - 1) * 200).toFixed(1) + ' ' + (3 + (1 - (y - mn) / ((mx - mn) || 1)) * 24).toFixed(1)).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><span class="cap num">Last ${bw(last.w)} ${U()} · ${esc(relDay(last.d))}</span></div>`; })()}
     <div class="rel"><div class="ruler" id="wi-ruler"><div class="ruler-in">${ticks}</div></div><span class="ruler-mark"></span></div>
     <button class="btn primary block" id="wi-save">Save</button>
-    ${prompt ? `<button class="btn ghost block" id="wi-skip">Skip today</button>` : ex ? `<button class="btn ghost block danger" id="wi-del">Delete this entry</button>` : `<button class="btn ghost block" data-a="closeSheet">Cancel</button>`}
+    ${prompt ? `<button class="btn ghost block" id="wi-skip">Skip today</button>` : ex ? `<button class="link wi-del" id="wi-del">Delete this entry</button>` : `<button class="btn ghost block" data-a="closeSheet">Cancel</button>`}
   </div>`, {
     label: 'Weigh-in',
     onClose: () => { if (prompt) { UI.lastPrompt = today(); lsSave(); } },
@@ -4858,17 +4886,23 @@ function openSyncKey() {
   } });
 }
 function openSteps(day) {
-  const t = today(), d0 = day && day <= t ? day : t;
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Steps</div>
-    <div class="grid2"><div class="field"><label for="st-date">Date</label><input class="input" type="date" id="st-date" value="${d0}" max="${t}"></div><div class="field"><label for="st-n">Steps</label><input class="input num" id="st-n" inputmode="numeric" placeholder="Steps" value="${S.steps[d0] || ''}"></div></div>
-    <button class="btn primary block" id="st-save">Save</button>
-    <div class="mt2 field"><label for="st-paste">Or paste from your “${SC_NAME()}” shortcut</label><textarea class="input num" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea></div>
-    <button class="btn block" id="st-import">Import pasted steps</button><div class="cap" id="st-msg"></div></div>`, {
+  const t = today(), d0 = day && day <= t ? day : t, goal = S.profile.stepGoal || 10000, C = 2 * Math.PI * 52;
+  const sh = openSheet(`<div class="stack st"><div class="row between"><h2>Steps</h2><label class="st-day"><span id="st-dl">${d0 === t ? 'Today' : esc(fmtDate(d0))}</span>${I.right}<input type="date" id="st-date" value="${d0}" max="${t}" aria-label="Day"></label></div>
+    <div class="st-dial"><button class="icon-btn st-pm" data-sd="-500" aria-label="500 fewer steps">−</button>
+      <div class="st-ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--raised)" stroke-width="10"/><circle id="st-arc" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 999"/></svg>
+        <div class="st-mid"><input class="num" id="st-n" inputmode="numeric" value="${S.steps[d0] || ''}" placeholder="0" aria-label="Steps"><span class="cap" id="st-of">of ${n0(goal)}</span></div></div>
+      <button class="icon-btn st-pm" data-sd="500" aria-label="500 more steps">+</button></div>
+    <button class="btn primary block" id="st-save">Save</button><div class="cap tc" id="st-msg"></div>
+    <details class="st-more"><summary class="cap">Paste from your “${SC_NAME()}” shortcut</summary><textarea class="input num mt2" id="st-paste" placeholder="2026-10-13 9412&#10;2026-10-14 6120"></textarea><button class="btn block mt2" id="st-import">Import pasted steps</button></details></div>`, {
     label: 'Steps',
     mount: b => {
-      b.querySelector('#st-date').onchange = ev => { b.querySelector('#st-n').value = S.steps[ev.target.value] || ''; };
+      const n = b.querySelector('#st-n'), arc = b.querySelector('#st-arc'), num = () => parseInt(n.value.replace(/[^\d]/g, ''), 10);
+      const draw = () => { const v = num() || 0, f = Math.min(1, v / goal); arc.setAttribute('stroke-dasharray', `${(C * f).toFixed(1)} 999`); arc.setAttribute('stroke', f >= 1 ? 'var(--pos)' : 'var(--accent)'); };
+      draw(); n.oninput = draw;
+      b.querySelectorAll('[data-sd]').forEach(x => x.onclick = () => { n.value = Math.max(0, (num() || 0) + +x.dataset.sd); draw(); });
+      b.querySelector('#st-date').onchange = ev => { const d = ev.target.value || t; n.value = S.steps[d] || ''; b.querySelector('#st-dl').textContent = d === t ? 'Today' : fmtDate(d); draw(); };
       b.querySelector('#st-save').onclick = () => {
-        const d = b.querySelector('#st-date').value || t; const v = parseInt(b.querySelector('#st-n').value.replace(/[^\d]/g, ''), 10);
+        const d = b.querySelector('#st-date').value || t; const v = num();
         if (isNaN(v)) { b.querySelector('#st-msg').textContent = 'Enter a number of steps.'; return; }
         S.steps[d] = v; persist('jd/steps'); closeSheet(sh); rerender(); toast(`${n0(v)} steps saved for ${fmtDate(d)}`);
       };
@@ -4880,6 +4914,7 @@ function openSteps(day) {
     },
   });
 }
+
 
 // ---------- exercise picker ----------
 // One-arm/one-leg lifts, and any lift you last logged one side at a time, are added as Left and Right (Job, 2 Nov: re-adding Single-Arm Tricep lost its L/R)
@@ -6016,20 +6051,26 @@ document.addEventListener('touchend', () => {
 
 // ---------- boot ----------
 // ---------- Feedback and account deletion ----------
+const FB_KINDS = [['Bug', 'Something broke', 'What did you tap, and what happened?'], ['Idea', 'I wish it could…', 'What would make Job’s Done better?'], ['Off', 'Felt off', 'What felt wrong or confusing?'], ['Love', 'I like this', 'What do you like? It helps to know what to keep.']];
 function openFeedback() {
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Send feedback</div><div class="cap">Ideas, bugs, anything that felt off. It goes straight to the person who builds Job’s Done.</div>
-    <textarea class="input" id="fb-t" maxlength="2000" rows="5" placeholder="What happened, or what would make Job’s Done better?"></textarea>
+  let kind = 0;
+  const sh = openSheet(`<div class="stack fb"><div><h2>Tell us anything</h2><p class="cap m0">It goes straight to the person who builds Job’s Done.</p></div>
+    <div class="fb-kinds" role="radiogroup" aria-label="What is it?">${FB_KINDS.map((k, i) => `<button class="chip" role="radio" aria-checked="${i === 0}" data-fk="${i}">${k[1]}</button>`).join('')}</div>
+    <textarea class="input" id="fb-t" maxlength="2000" rows="5" placeholder="${FB_KINDS[0][2]}"></textarea>
     <button class="btn primary block" id="fb-s">Send</button></div>`, { label: 'Send feedback', mount: b => {
+    const ta = b.querySelector('#fb-t');
+    b.querySelectorAll('[data-fk]').forEach(x => x.onclick = () => { kind = +x.dataset.fk; b.querySelectorAll('[data-fk]').forEach(y => y.setAttribute('aria-checked', y === x)); ta.placeholder = FB_KINDS[kind][2]; ta.focus(); });
     b.querySelector('#fb-s').onclick = async ev => {
-      const t = b.querySelector('#fb-t').value.trim(); if (!t) return;
+      const t = ta.value.trim(); if (!t) return ta.focus();
       if (!(HOSTED && USER && SB)) { toast('Sign in to send feedback.'); return; }
-      ev.currentTarget.disabled = true;
-      const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: t.slice(0, 2000) });
-      if (error) { ev.currentTarget.disabled = false; toast('Couldn’t send it. Check your connection and try again.'); return; }
+      const btn = ev.currentTarget; if (btn.disabled) return; btn.disabled = true;
+      const { error } = await SB.from('jobdone_feedback').insert({ user_id: USER.id, email: USER.email || null, body: `[${FB_KINDS[kind][0]}] ${t}`.slice(0, 2000) });
+      if (error) { btn.disabled = false; toast('Couldn’t send it. Check your connection and try again.'); return; }
       closeSheet(sh); toast('Thanks! Feedback sent.');
     };
   } });
 }
+
 async function openInbox() {
   const sh = openSheet(`<div class="stack"><div class="eyebrow">Inbox</div><div id="ib-r"></div><div><div class="eyebrow mb1">Feedback</div><div id="ib" class="cap">Loading…</div></div></div>`, { label: 'Inbox', mount: async b => {
     // Reports (supabase/reports.sql). Missing until that SQL runs; then this section just stays empty.
