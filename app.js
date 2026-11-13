@@ -1137,7 +1137,10 @@ let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
-  { tab: 'today', el: () => tq('#tabs [data-k="friends"]'), t: 'Friends', d: 'Your friends’ workouts and stories. Open a friend’s card to train together or compare, and start a crew.' },
+  { tab: 'today', el: () => tq('#screen .wk-card'), t: 'Your week', d: 'Each day you train gets marked. Hit your weekly target to keep the streak going.' },
+  { tab: 'friends', el: () => tq('#screen [data-a="partyAdd"]') || tq('#screen [data-a="frAddSheet"]'), t: () => tq('#screen [data-a="partyAdd"]') ? 'Train together' : 'Add friends',
+    d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start. They get a Join button and you see each other’s sets live.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
+  { tab: 'friends', el: () => tq('#screen .fr-faces'), t: 'Your friends', d: 'A green ring means they’re at the gym now. Tap a face to see their card, compare or nudge them.' },
   { tab: 'me', el: () => tq('#screen [data-a="rewards"]'), t: 'Card and rewards', d: 'Your XP, card tier, passport stamps, lift cards and season. Share any of them as a Story.' },
   { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
   { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'Let’s try a sample workout. Nothing in it is saved.', pick: true },
@@ -1180,7 +1183,7 @@ function tourShow() {
   const n = TOUR_STEPS.length, d = typeof st.d === 'function' ? st.d() : st.d;
   const btns = st.pick && !A ? `<button class="btn sm primary" data-tr="practice">Try a sample workout</button>`
     : `${TOUR.i ? '<button class="btn sm ghost" data-tr="back">Back</button>' : ''}<button class="btn sm primary" data-tr="next">${st.last ? 'Done' : 'Next'}</button>`;
-  b.innerHTML = `<div class="tour-n">${TOUR.i + 1} of ${n}</div><b>${esc(st.t)}</b><span>${esc(d)}</span><div class="tour-btns"><button class="link" data-tr="skip">Skip tour</button><i class="grow"></i>${btns}</div>`;
+  b.innerHTML = `<div class="tour-n" aria-label="Step ${TOUR.i + 1} of ${n}">${TOUR_STEPS.map((_, k) => `<i class="${k < TOUR.i ? 'done' : k === TOUR.i ? 'cur' : ''}"></i>`).join('')}</div><b>${esc(typeof st.t === 'function' ? st.t() : st.t)}</b><span>${esc(d)}</span><div class="tour-btns"><button class="link" data-tr="skip">Skip tour</button><i class="grow"></i>${btns}</div>`;
   document.body.appendChild(b);
   b.onclick = ev => {
     const k = ev.target.closest('[data-tr]'); if (!k) return; const a = k.dataset.tr;
@@ -3243,19 +3246,29 @@ function partnerStrip() {
     return `<div class="pt-row"><i class="live-dot ${joined ? '' : 'off'}"></i><b>${esc(m.n)}</b><span class="cap">${joined ? `${plural(+l.n || 0, 'set')}${l.ex ? ` · ${esc(l.ex)} ${esc(l.last)}` : ''}` : 'invited'}</span></div>`; }).join('');
   return `<div class="partner"><div class="pt-h cap"><b>Party · ${P.length + 1}</b>${P.length < PARTY_MAX ? '<button class="link" data-a="partyAdd">Add</button>' : ''}<button class="link" data-a="partnerEnd">Leave</button></div>${rows}</div>`;
 }
+const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
 function partyAddSheet() {
   const have = partyIds(), room = PARTY_MAX - have.length, fr = (FRIENDS || []).filter(f => !have.includes(f.id) && !(f.card || {}).hidden);
   if (!fr.length) return toast(FRIENDS && FRIENDS.length ? 'All your friends are in already.' : 'Add a friend first.');
   if (room <= 0) return toast(`A party fits ${PARTY_MAX + 1} people.`);
-  const pick = new Set(), title = A ? 'Add to your party' : 'Train together';
-  const sh = openSheet(`<div class="stack"><h2>${title}</h2><p class="cap m0">Pick up to ${room} ${room === 1 ? 'friend' : 'friends'}. They get a Join button in their app.</p><div class="list">${fr.map(f => `<button class="li" data-pa="${esc(f.id)}" aria-pressed="false"><div class="grow t">${esc((f.card || {}).n || 'Friend')}</div><i class="pa-tick" aria-hidden="true"></i></button>`).join('')}</div><button class="btn primary block" id="pa-go" disabled>${A ? 'Add' : 'Start workout'}</button></div>`, { label: title, mount: b => {
-    const go = b.querySelector('#pa-go');
+  const pick = [], [title, sub] = A ? ['Add to your party', 'They get a Join button in their app.'] : (PARTY_VOICE[theme()] || PARTY_VOICE.mono);
+  const first = f => esc(((f.card || {}).n || 'Friend').split(' ')[0]);
+  const goTxt = () => { const n = pick.map(id => first(fr.find(f => f.id === id))); const w = n.length > 2 ? `${n[0]}, ${n[1]} +${n.length - 2}` : n.join(' and ');
+    return n.length ? `${A ? 'Add' : 'Start with'} ${w}` : 'Pick at least one'; };
+  // you plus every slot left in the party: picked faces fill in from the left
+  const lineup = () => myFace('pt-me') + [...Array(have.length)].map(() => '<i class="pt-slot on"></i>').join('') + pick.map(id => { const f = fr.find(x => x.id === id), c = f.card || {}; return face(c.n, c.hidden ? null : f.photo, c.t); }).join('') + [...Array(room - pick.length)].map(() => '<i class="pt-slot"></i>').join('');
+  const sh = openSheet(`<div class="pt-sheet"><div class="pt-hd"><div><h2>${esc(title)}</h2><p class="cap m0">${esc(sub)}</p></div><span class="pt-count num" id="pt-count">${have.length + 1} of ${PARTY_MAX + 1}</span></div>
+    <div class="pt-line" id="pt-line" aria-hidden="true">${lineup()}</div>
+    <div class="pt-grid" role="group" aria-label="Friends">${fr.map(f => { const c = f.card || {}, st = frStatus(f), on = ['gym', 'done', 'rest'].includes(st.c);
+      return `<button class="pt-pick" data-pa="${esc(f.id)}" aria-pressed="false"><span class="pt-av">${face(c.n, c.hidden ? null : f.photo, c.t)}<i class="pt-ok" aria-hidden="true"></i>${on ? `<i class="pt-st ${st.c}" aria-hidden="true"></i>` : ''}</span><b>${first(f)}</b>${on ? `<span class="cap">${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : 'Resting'}</span>` : ''}</button>`; }).join('')}</div>
+    <button class="btn primary block" id="pa-go" disabled>Pick at least one</button></div>`, { label: title, mount: b => {
+    const go = b.querySelector('#pa-go'), line = b.querySelector('#pt-line'), cnt = b.querySelector('#pt-count');
     b.addEventListener('click', e => {
-      if (e.target.closest('#pa-go')) { if (!pick.size || go.disabled) return; go.disabled = true; const sel = fr.filter(f => pick.has(f.id)); closeSheet(sh); trainWith(sel[0], sel.slice(1)); return; }
-      const x = e.target.closest('[data-pa]'); if (!x) return; const id = x.dataset.pa;
-      if (pick.has(id)) pick.delete(id); else if (pick.size < room) pick.add(id); else return toast(`Up to ${room} this time.`);
-      x.setAttribute('aria-pressed', pick.has(id)); go.disabled = !pick.size;
-      go.textContent = pick.size ? `${A ? 'Add' : 'Start workout'} with ${pick.size}` : (A ? 'Add' : 'Start workout');
+      if (e.target.closest('#pa-go')) { if (!pick.length || go.disabled) return; go.disabled = true; const sel = pick.map(id => fr.find(f => f.id === id)); closeSheet(sh); trainWith(sel[0], sel.slice(1)); return; }
+      const x = e.target.closest('[data-pa]'); if (!x) return; const id = x.dataset.pa, i = pick.indexOf(id);
+      if (i >= 0) pick.splice(i, 1); else if (pick.length < room) pick.push(id); else return toast(`The party’s full at ${PARTY_MAX + 1}.`);
+      x.setAttribute('aria-pressed', i < 0); go.disabled = !pick.length; go.textContent = goTxt();
+      line.innerHTML = lineup(); cnt.textContent = `${have.length + pick.length + 1} of ${PARTY_MAX + 1}`;
     });
   } });
 }
