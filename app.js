@@ -1594,6 +1594,16 @@ function reqsCard() {
   const rin = HOSTED && USER ? (REQS || []).filter(r => r.dir === 'in') : []; if (!rin.length) return '';
   return `<div class="card inbox-card"><div class="eyebrow">${rin.length > 1 ? rin.length + ' friend requests' : 'Friend request'}</div><div class="list">${rin.map(r => `<div class="li fr-req">${face(r.n || '?', null, 'mono')}<div class="grow"><div class="t ell">${esc(r.n || 'Someone')}</div><div class="s">wants to be friends</div><div class="row g2 mt2"><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button></div></div></div>`).join('')}</div></div>`;
 }
+// Bell on Today (Job, 13 Nov): friend requests and party invites in one place, with a count.
+const inboxCount = () => !HOSTED || !USER ? 0 : (REQS || []).filter(r => r.dir === 'in').length + (GAME_ON && joinBanner() ? 1 : 0);
+const bellBtn = () => { if (!HOSTED || !USER || DEMO) return ''; const n = inboxCount();
+  return `<button class="icon-btn bell-btn" data-a="inbox" aria-label="Notifications${n ? ', ' + n + ' new' : ''}" title="Notifications">${IC.bell}${n ? `<b class="bell-n num">${n > 9 ? '9+' : n}</b>` : ''}</button>`; };
+function inboxSheet() {
+  const body = inboxHTML();
+  openSheet(`<div class="stack inbox-sh"><h2>Notifications</h2>${body || '<div class="empty">Nothing new. Friend requests and party invites show up here.</div>'}</div>`, { label: 'Notifications', mount: (b, sh) => {
+    b.addEventListener('click', e => { if (e.target.closest('[data-a="frYes"],[data-a="frNo"],[data-a="joinFriend"]')) setTimeout(() => closeSheet(sh), 0); });
+  } });
+}
 const inboxHTML = () => (GAME_ON ? joinBanner() : '') + reqsCard();
 // Check for new requests and party invites every minute while the app is open, and right away when it comes back
 // to the front. Two small calls; stops when signed out or in the background. New ones get a toast once.
@@ -1667,6 +1677,7 @@ function frRow(f) {
 // the photo edge to edge, Strava-style stats, emoji reactions (one per person) and comments. Add-a-friend and settings move into sheets.
 const REACTS = ['🔥', '💪', '👏', '😂', '😮', '❤️'];
 const IC = {
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
   eq_machine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 10.5h6M9 14h6M12 17.5v.01"/></svg>',
   eq_barbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h20"/><rect x="4" y="8" width="2.5" height="8" rx="1"/><rect x="17.5" y="8" width="2.5" height="8" rx="1"/></svg>',
   eq_dumbbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12h8"/><rect x="3" y="8.5" width="5" height="7" rx="1.5"/><rect x="16" y="8.5" width="5" height="7" rx="1.5"/></svg>',
@@ -2404,13 +2415,13 @@ function viewToday() {
   }).join('');
   const prs = past ? ix().prs.filter(x => x.date === t) : ix().prs.slice(-3).reverse();
   return `<div class="stack">
-  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div class="grow"><div class="eyebrow">${esc(longDay(t))}</div><h1 class="hi-h">${greeting()}, ${esc(p.name)}</h1></div></div>`}
+  ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div class="grow"><div class="eyebrow">${esc(longDay(t))}</div><h1 class="hi-h">${greeting()}, ${esc(p.name)}</h1></div>${bellBtn()}</div>`}
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
   ${past ? `<div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
     <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">week of ${esc(fmtDate(ws))}</span></div>`
     : `<div class="card wk-card"><div class="card-h"><span class="eyebrow">This week</span><span class="cap wk-sum"><b class="c-text num">${done} of ${p.weeklyTarget}</b> · ${esc(streakText())}</span></div>`}
     <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
-  ${past ? '' : inboxHTML() + frStrip()}
+  ${past ? '' : (GAME_ON ? joinBanner() : '') + frStrip()}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     ${(() => { const rot = S.rotation.map(splitById).filter(Boolean), ri = nx ? rot.indexOf(nx) : -1; // review 2: lifts in one line, a rotation strip, "Start workout"
       return `<div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span>${ri >= 0 && rot.length > 1 ? `<span class="cap num">${ri + 1} of ${rot.length}</span>` : ''}</div>
@@ -5925,6 +5936,7 @@ const ACT = {
   joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others); },
   partnerEnd: () => { if (A) { delete A.party; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
+  inbox: () => inboxSheet(),
   gymBoardOn: el => { S.profile.gymBoard = el.checked; persist('jd/meta'); statSync(); toast(el.checked ? 'Your name shows on your gym’s board' : 'You show as “A member”'); },
   crewNew: () => crewNewSheet(),
   crewYes: async el => { try { await gymRpc('jobdone_crew_answer', { p_crew: el.dataset.id, p_yes: true }); crewsLoad(); toast('You’re in the crew'); } catch (e) { toast(esc(e.message || 'Couldn’t join. Try again.')); } },

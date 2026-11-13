@@ -2237,3 +2237,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .inbox-card .fr-req { gap: 12px; align-items: flex-start; }
 .inbox-card .fr-req .btn.primary { min-width: 96px; }
 .inbox-card, .join-card { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent) !important; }
+
+/* Notifications bell, top right of Today */
+.bell-btn { position: relative; flex: none; align-self: center; }
+.bell-btn svg { width: 22px; height: 22px; }
+.bell-n { position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; background: #E5484D; color: #fff; font-size: 11px; line-height: 19px; font-weight: 700; text-align: center; box-shadow: 0 0 0 2px var(--bg, #000); }
+.inbox-sh .card { background: var(--raised); }
+/* Bell uses the same round plate as the Friends header buttons */
+.top .bell-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; border: 0; background: color-mix(in srgb, var(--surface-solid, var(--surface)) 82%, transparent); color: var(--text); box-shadow: 0 0 0 .5px var(--edge); }
+:root[data-theme="spidey"] .top .bell-btn, :root[data-theme="mono"] .top .bell-btn { background: rgba(10,18,48,.55); color: #fff; }
