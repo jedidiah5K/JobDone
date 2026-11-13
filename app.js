@@ -1640,6 +1640,7 @@ function frRow(f) {
 // the photo edge to edge, Strava-style stats, emoji reactions (one per person) and comments. Add-a-friend and settings move into sheets.
 const REACTS = ['🔥', '💪', '👏', '😂', '😮', '❤️'];
 const IC = {
+  team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.1c2.6.3 4.5 2.5 4.5 5.1"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg>',
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.6 3.6-5.5 6.5-5.5s5.5 1.9 6.5 5.5M19 8v6M16 11h6"/></svg>',
@@ -1721,7 +1722,7 @@ function viewFriends() {
   // the name is one line, and the buttons go on their own row so long names don't break mid-word.
   const req = (r, btns) => `<div class="li fr-req">${face(r.n || '?', null, 'mono')}<div class="grow"><div class="t ell">${esc(r.n || 'Someone')}</div><div class="s">${r.code ? esc(idCode(r.code)) + ' · ' : ''}${esc(fmtDate(String(r.at).slice(0, 10)))}</div>${btns}</div></div>`;
   // Refresh is the pull-down at the top (review 2), so the header keeps two buttons on a plate that reads on any wallpaper.
-  const head = `<div class="stack"><i class="fr-pull${FR_BUSY ? ' spin' : ''}" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2"><button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
+  const head = `<div class="stack"><i class="fr-pull${FR_BUSY ? ' spin' : ''}" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2">${GAME_ON && list.length ? `<button class="icon-btn" data-a="partyAdd" aria-label="Train together" title="Train together">${IC.team}</button>` : ''}<button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
     ${list.length ? frFaces(list) : ''}
@@ -3243,10 +3244,19 @@ function partnerStrip() {
   return `<div class="partner"><div class="pt-h cap"><b>Party · ${P.length + 1}</b>${P.length < PARTY_MAX ? '<button class="link" data-a="partyAdd">Add</button>' : ''}<button class="link" data-a="partnerEnd">Leave</button></div>${rows}</div>`;
 }
 function partyAddSheet() {
-  const have = partyIds(), fr = (FRIENDS || []).filter(f => !have.includes(f.id) && !(f.card || {}).hidden);
+  const have = partyIds(), room = PARTY_MAX - have.length, fr = (FRIENDS || []).filter(f => !have.includes(f.id) && !(f.card || {}).hidden);
   if (!fr.length) return toast(FRIENDS && FRIENDS.length ? 'All your friends are in already.' : 'Add a friend first.');
-  const sh = openSheet(`<div class="stack"><h2>Add to your party</h2><p class="cap m0">Up to ${PARTY_MAX} friends. They get a Join button in their app.</p><div class="list">${fr.map(f => `<button class="li" data-pa="${esc(f.id)}"><div class="grow t">${esc((f.card || {}).n || 'Friend')}</div>${I.right}</button>`).join('')}</div></div>`, { label: 'Add to your party', mount: b => {
-    b.addEventListener('click', e => { const x = e.target.closest('[data-pa]'); if (!x) return; const f = fr.find(y => y.id === x.dataset.pa); closeSheet(sh); if (f) trainWith(f); });
+  if (room <= 0) return toast(`A party fits ${PARTY_MAX + 1} people.`);
+  const pick = new Set(), title = A ? 'Add to your party' : 'Train together';
+  const sh = openSheet(`<div class="stack"><h2>${title}</h2><p class="cap m0">Pick up to ${room} ${room === 1 ? 'friend' : 'friends'}. They get a Join button in their app.</p><div class="list">${fr.map(f => `<button class="li" data-pa="${esc(f.id)}" aria-pressed="false"><div class="grow t">${esc((f.card || {}).n || 'Friend')}</div><i class="pa-tick" aria-hidden="true"></i></button>`).join('')}</div><button class="btn primary block" id="pa-go" disabled>${A ? 'Add' : 'Start workout'}</button></div>`, { label: title, mount: b => {
+    const go = b.querySelector('#pa-go');
+    b.addEventListener('click', e => {
+      if (e.target.closest('#pa-go')) { if (!pick.size || go.disabled) return; go.disabled = true; const sel = fr.filter(f => pick.has(f.id)); closeSheet(sh); trainWith(sel[0], sel.slice(1)); return; }
+      const x = e.target.closest('[data-pa]'); if (!x) return; const id = x.dataset.pa;
+      if (pick.has(id)) pick.delete(id); else if (pick.size < room) pick.add(id); else return toast(`Up to ${room} this time.`);
+      x.setAttribute('aria-pressed', pick.has(id)); go.disabled = !pick.size;
+      go.textContent = pick.size ? `${A ? 'Add' : 'Start workout'} with ${pick.size}` : (A ? 'Add' : 'Start workout');
+    });
   } });
 }
 let PARTNER_POLL = 0;
