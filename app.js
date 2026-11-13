@@ -142,7 +142,7 @@ async function pushForget(tellServer) { try { const reg = 'serviceWorker' in nav
 // What this phone keeps for whoever is signed in, outside LS_KEY. The next account on the phone must see none of it.
 function forgetShared() {
   try { for (const k of ['jd-idphoto', 'jd-idcode', 'jd-gym', 'jd-hidepost', 'jd-nav', 'jd-owner-icon', 'jobdone-theme']) localStorage.removeItem(k); } catch (e) {}
-  ID_PHOTO = null; ID_CODE = ''; ID_SENT = ''; idFetched = false; STAT_SENT = ''; FRIENDS = null; REQS = null; FEED = null; PHOTOS = null; GYM = {}; VIEWDAY = null; CLOUD_AT = null; FR_AT = 0;
+  ID_PHOTO = null; ID_CODE = ''; ID_SENT = ''; idFetched = false; STAT_SENT = ''; FRIENDS = null; REQS = null; FEED = null; PHOTOS = null; INBOX_ON = false; INBOX_SEEN = null; clearTimeout(INBOX_T); GYM = {}; VIEWDAY = null; CLOUD_AT = null; FR_AT = 0;
   for (const k in NUDGED) delete NUDGED[k];
   NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' };
 }
@@ -1525,7 +1525,7 @@ function idView(c, code, photo, o = {}) {
 }
 // Me: the ID card itself sits at the top (Job, 5 Nov). Tap it to enlarge and flip; Edit card changes what's on it.
 // Friend requests (Job, 6 Nov): a red dot on the Friends button when someone has asked. Checked once per app open.
-const frTab = () => { if (HOSTED) frBtn(); const n = HOSTED ? (REQS || []).filter(r => r.dir === 'in').length : 0;
+const frTab = () => { if (HOSTED) { frBtn(); inboxStart(); } const n = HOSTED ? (REQS || []).filter(r => r.dir === 'in').length : 0;
   return `<button class="tab ${NAV.tab === 'friends' ? 'on' : ''}${n ? ' has-dot' : ''}" data-a="tab" data-k="friends" aria-label="Friends${n ? ', ' + n + ' new' : ''}" ${NAV.tab === 'friends' ? 'aria-current="page"' : ''}>${I.friends}<span>Friends</span></button>`; };
 const frBtn = () => { if (!HOSTED) return ''; if (REQS === null) reqsLoad(); if (FRIENDS === null && USER) { FRIENDS = undefined; friendsLoad(true); } statSync(); const n = (REQS || []).filter(r => r.dir === 'in').length;
   return `<button class="btn sm top-ic${n ? ' has-dot' : ''}" data-a="friends" aria-label="Friends${n ? ', ' + n + ' new' : ''}" title="Friends">${I.friends}</button>`; };
@@ -1589,6 +1589,30 @@ function atGymAsk() {
 }
 const atGymAgo = t => { const m = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; };
 let FRIENDS = null, REQS = null;
+// Friend requests and party invites (Job, 13 Nov: "I can't see them"). Shown on top of Today and of both Friends tabs.
+function reqsCard() {
+  const rin = HOSTED && USER ? (REQS || []).filter(r => r.dir === 'in') : []; if (!rin.length) return '';
+  return `<div class="card inbox-card"><div class="eyebrow">${rin.length > 1 ? rin.length + ' friend requests' : 'Friend request'}</div><div class="list">${rin.map(r => `<div class="li fr-req">${face(r.n || '?', null, 'mono')}<div class="grow"><div class="t ell">${esc(r.n || 'Someone')}</div><div class="s">wants to be friends</div><div class="row g2 mt2"><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button></div></div></div>`).join('')}</div></div>`;
+}
+const inboxHTML = () => (GAME_ON ? joinBanner() : '') + reqsCard();
+// Check for new requests and party invites every minute while the app is open, and right away when it comes back
+// to the front. Two small calls; stops when signed out or in the background. New ones get a toast once.
+let INBOX_ON = false, INBOX_T = 0, INBOX_SEEN = null;
+async function inboxPoll() {
+  clearTimeout(INBOX_T); if (!HOSTED || !USER || document.hidden) return;
+  const [f, r] = await Promise.allSettled([gymRpc('jobdone_friends_list'), gymRpc('jobdone_friend_requests')]), was = JSON.stringify([FRIENDS, REQS]);
+  if (f.status === 'fulfilled') FRIENDS = f.value || []; if (r.status === 'fulfilled') REQS = r.value || [];
+  const now = [];
+  (REQS || []).filter(x => x.dir === 'in').forEach(x => now.push(['r' + x.id, `${x.n || 'Someone'} sent you a friend request`]));
+  if (GAME_ON) (FRIENDS || []).forEach(x => { const l = liveOf(x); if (l && lvParty(l).includes(USER.id) && !partyIds().includes(x.id)) now.push(['p' + x.id, `${((x.card || {}).n || 'A friend').split(' ')[0]} invited you to train together`]); });
+  const fresh = INBOX_SEEN ? now.filter(([k]) => !INBOX_SEEN.has(k)) : [];
+  INBOX_SEEN = new Set(now.map(([k]) => k));
+  if (fresh.length) toast(esc(fresh[0][1]) + (fresh.length > 1 ? ` and ${fresh.length - 1} more` : ''), 4000);
+  if (JSON.stringify([FRIENDS, REQS]) !== was) rerender(); // nothing new, no redraw
+  INBOX_T = setTimeout(inboxPoll, 60000);
+}
+const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); } };
+document.addEventListener('visibilitychange', () => { if (!document.hidden && INBOX_ON) inboxPoll(); });
 async function reqsLoad() { REQS = undefined; try { REQS = await gymRpc('jobdone_friend_requests') || []; } catch (e) { REQS = []; } rerender(); }
 async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; if (!quiet) toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
 // ---------- Friends today (Job, 6 Nov) ----------
@@ -1741,12 +1765,13 @@ function viewFriends() {
   const head = `<div class="stack"><i class="fr-pull${FR_BUSY ? ' spin' : ''}" id="fr-pull" aria-hidden="true">${IC.rf}</i><div class="top fr-top"><div><h1>Friends</h1></div><div class="row g2">${GAME_ON && list.length ? `<button class="icon-btn" data-a="partyAdd" aria-label="Train together" title="Train together">${IC.team}</button>` : ''}<button class="icon-btn" data-a="frAddSheet" aria-label="Add a friend" title="Add a friend">${IC.add}</button><button class="icon-btn" data-a="frSettings" aria-label="What friends see" title="What friends see">${IC.gear}</button></div></div>
     <div class="seg fr-seg"><button class="${tab === 'feed' ? 'on' : ''}" data-a="frTab" data-k="feed">Feed</button><button class="${tab === 'friends' ? 'on' : ''}" data-a="frTab" data-k="friends">Friends${rin.length ? ` <i class="seg-n">${rin.length}</i>` : ''}</button></div>`;
   if (tab === 'feed') return `${head}
+    ${inboxHTML()}
     ${list.length ? frFaces(list) : ''}
     ${HOSTED && USER && !DEMO && !SO().off ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
     ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : list.length ? '<div class="empty fr-empty">Nothing from the last 24 hours yet. Finish a workout and it shows up here.</div>' : frSwap()}
   </div>`;
   return `${head}
-    ${rin.length ? `<div class="card"><div class="eyebrow">Requests</div><div class="list">${rin.map(r => req(r, `<div class="row g2 mt2"><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button></div>`)).join('')}</div></div>` : ''}
+    ${inboxHTML()}
     ${A && !A.practice && list.length ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
       : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
     ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : frSwap()}
@@ -2385,7 +2410,7 @@ function viewToday() {
     <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">week of ${esc(fmtDate(ws))}</span></div>`
     : `<div class="card wk-card"><div class="card-h"><span class="eyebrow">This week</span><span class="cap wk-sum"><b class="c-text num">${done} of ${p.weeklyTarget}</b> · ${esc(streakText())}</span></div>`}
     <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
-  ${past ? '' : frStrip()}
+  ${past ? '' : inboxHTML() + frStrip()}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
     ${(() => { const rot = S.rotation.map(splitById).filter(Boolean), ri = nx ? rot.indexOf(nx) : -1; // review 2: lifts in one line, a rotation strip, "Start workout"
       return `<div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span>${ri >= 0 && rot.length > 1 ? `<span class="cap num">${ri + 1} of ${rot.length}</span>` : ''}</div>
@@ -2412,7 +2437,7 @@ function viewToday() {
     // Last session as one row (review 2): tap for the recap. Editing it lives on that day (tap its mark in the week).
     const sp = wSplit(lw2), sets = lw2.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
     return `<div class="card last-row"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })()}
-  ${past ? '' : (GAME_ON ? joinBanner() : '') + goalsCard() + reportCard()}
+  ${past ? '' : goalsCard() + reportCard()}
   ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
