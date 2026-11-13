@@ -2985,7 +2985,7 @@ function viewMe() {
   const p = S.profile, lw = latestWeight();
   const sub = { look: (THEMES.find(t => t.k === theme()) || THEMES[0]).name + ' theme', account: HOSTED && USER ? esc(USER.email || 'Your account') : 'Backups, import and export', steps: p.stepSrc ? 'From ' + esc(p.stepSrc) : 'From Apple Health' };
   return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div></div>
-  ${HOSTED && !DEMO ? meCard() : `<div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(w => !w.skipped).length, 'workout')}</b><span>logged</span></div></div></div>`}
+  ${HOSTED || DEMO ? meCard() : `<div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(w => !w.skipped).length, 'workout')}</b><span>logged</span></div></div></div>`}
   ${GAME_ON ? `<div class="sgrp">${gameRow()}</div>` : ''}
   <section><div class="sgh">Settings</div><div class="sgrp">
     ${ME_GROUPS.filter(([k]) => k !== 'steps' || true).map(([k, t, d]) => `<button class="xr me-xr" data-a="meGroup" data-k="${k}"><i class="me-ic">${IC['me_' + k] || ''}</i><span class="grow">${t}<span class="s">${sub[k] || d}</span></span>${I.right}</button>`).join('')}

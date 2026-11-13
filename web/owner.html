@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-foZOrJvnlIQofTRAEbGIK2hB8cVrxVy/+5mAOmwFMGA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-VrrkAOUIj9hQj0y1OhLZlRqSBOQF6qvkbSTDSTp1vDE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -418,7 +418,7 @@ ${String(n||"")}`.slice(0,2e3)});if(i)throw i;toast("Reported. Thanks.")}catch{t
     ${HOSTED&&USER?slink("Delete account","delAccount","danger"):""}
   </div></section>
 `}}function viewMe(){const t=S.profile,e=latestWeight(),s={look:(THEMES.find(a=>a.k===theme())||THEMES[0]).name+" theme",account:HOSTED&&USER?esc(USER.email||"Your account"):"Backups, import and export",steps:t.stepSrc?"From "+esc(t.stepSrc):"From Apple Health"};return`<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(t.name)}</h1></div></div>
-  ${HOSTED&&!DEMO?meCard():`<div class="card"><div class="kpis"><div class="kpi"><b>${t.heightCm?t.heightCm+" cm":"\u2014"}</b><span>height</span></div><div class="kpi"><b>${e?bw(e.w)+" "+U():"\u2014"}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(a=>!a.skipped).length,"workout")}</b><span>logged</span></div></div></div>`}
+  ${HOSTED||DEMO?meCard():`<div class="card"><div class="kpis"><div class="kpi"><b>${t.heightCm?t.heightCm+" cm":"\u2014"}</b><span>height</span></div><div class="kpi"><b>${e?bw(e.w)+" "+U():"\u2014"}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(a=>!a.skipped).length,"workout")}</b><span>logged</span></div></div></div>`}
   ${GAME_ON?`<div class="sgrp">${gameRow()}</div>`:""}
   <section><div class="sgh">Settings</div><div class="sgrp">
     ${ME_GROUPS.filter(([a])=>a!=="steps"||!0).map(([a,n,i])=>`<button class="xr me-xr" data-a="meGroup" data-k="${a}"><i class="me-ic">${IC["me_"+a]||""}</i><span class="grow">${n}<span class="s">${s[a]||i}</span></span>${I.right}</button>`).join("")}
