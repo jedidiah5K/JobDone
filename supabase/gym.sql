@@ -254,9 +254,8 @@ insert into public.jobdone_equipment_types (key, name, nicknames, lifts, sort) v
   ('dumbbells', 'Dumbbells', '{db,dumbells,free weights,dumbbell rack}', '{Dumbbell Bench Press,Incline Dumbbell Press,Dumbbell Fly,Dumbbell Shoulder Press,Arnold Press,Dumbbell Lateral Raise,Front Raise,Dumbbell Curl,Hammer Curl,Incline Dumbbell Curl,Concentration Curl,Spider Curl,Dumbbell Row,Shrug,Dumbbell RDL,Dumbbell Kickback,Goblet Squat,Bulgarian Split Squat,Walking Lunge,Step-Up,Wrist Curl,Farmer''s Carry}', 10),
   ('barbell', 'Barbell and plates', '{bar,olympic bar,free bar}', '{Barbell Row,Pendlay Row,Deadlift,Romanian Deadlift,Stiff-Leg Deadlift,Barbell Curl,Good Morning,Hip Thrust,Glute Bridge,Reverse Curl}', 11),
   ('ez_bar', 'EZ Bar', '{ez curl bar,curl bar,cambered bar}', '{EZ-Bar Curl,Skull Crusher}', 12),
-  ('bench_press', 'Flat Bench Press', '{bench,flat bench,bench station}', '{Bench Press,Close-Grip Bench Press}', 20),
-  ('incline_bench', 'Incline Bench Press', '{incline bench station}', '{Incline Bench Press}', 21),
-  ('decline_bench', 'Decline Bench Press', '{decline bench}', '{Decline Bench Press}', 22),
+  -- One bench, set flat, incline or decline (merged 14 Nov 2026, Job): the lifts stay separate.
+  ('bench_press', 'Bench (flat, incline or decline)', '{bench,flat bench,bench station,incline bench,incline bench station,decline bench,adjustable bench}', '{Bench Press,Close-Grip Bench Press,Incline Bench Press,Decline Bench Press}', 20),
   ('smith_machine', 'Smith Machine', '{smith,smith rack}', '{Smith Bench Press,Smith Squat,Incline Press}', 23),
   ('squat_rack', 'Squat Rack', '{power rack,squat cage,rack}', '{Back Squat,Front Squat,Rack Pull,Overhead Press}', 24),
   ('incline_press_machine', 'Incline Press Machine', '{incline chest press,incline machine,upper chest machine}', '{Incline Press}', 30),
