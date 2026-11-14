@@ -9,7 +9,7 @@ const mk = new Function('env', `
   const calls = [], timers = [], sent = [];
   const gymRpc = async n => { calls.push(n); return env.rows[n]; };
   const setTimeout = (f, ms) => { timers.push(ms); return 1; }, clearTimeout = () => {};
-  const toast = () => {}, rerender = () => {}, esc = x => x, statSync = () => sent.push(1);
+  const toast = () => {}, rerender = () => {}, esc = x => x, statSync = () => sent.push(1), rtSync = () => {};
   let ACTS = [], ACT_AT = 0; const actNew = () => [];
   const partyIds = () => env.party, liveOf = () => null, lvParty = () => [], A = null, turnWatch = () => {};
   ${body}

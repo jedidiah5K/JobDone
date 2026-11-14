@@ -1230,6 +1230,7 @@ function tourAuto() {
 // To announce the next update: change NEWS_ID and the NEWS lines.
 const NEWS_ID = '2026-11-v192';
 const NEWS = [
+  ['Instant updates', 'Pushes for friend requests, party invites and your turn now go out straight away, and in a party your friends’ sets show up the moment they tick them.'],
   ['Invite from a workout', 'Tap the gear in a workout and pick Invite friends to start a party without leaving it.'],
   ['Pick your bar', 'The plate loader has an Include the bar tick and a choice of bar: Olympic, women’s, EZ curl or trap bar. Each lift remembers its own, curls start on the EZ bar, and you can set each bar’s weight to match your gym.'],
   ['Plates your gym has', 'In the plate loader, untick the plates your gym doesn’t have and it only loads the rest.'],
@@ -1655,6 +1656,7 @@ async function inboxPoll() {
   if (fresh.length) toast(esc(fresh[0][1]) + (fresh.length > 1 ? ` and ${fresh.length - 1} more` : ''), 4000);
   if (inboxSig() !== was) rerender(); // nothing new, no redraw
   if (A && A.turns) turnWatch();
+  rtSync();
   INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : A && A.turns ? 5000 : partyLive() ? 15000 : 60000);
 }
 const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); } };
@@ -1681,8 +1683,20 @@ let STAT_SENT = '';
 function statSync() {
   if (!HOSTED || !SB || !USER || DEMO || !(S.profile.id || {}).on) return;
   const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
-  STAT_AT = Date.now(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).catch(() => { STAT_SENT = ''; });
+  STAT_AT = Date.now(); rtSync(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).then(rtPoke).catch(() => { STAT_SENT = ''; });
 }
+// Live party updates (v192, Job 14 Nov): a Supabase Realtime broadcast "poke" on a channel per party. It carries no
+// data, it only tells the others to refresh now through the normal checked call, so someone who guesses the channel
+// name can't change anything. Falls back to the 5–60 s refresh if the socket drops.
+let RT = null, RT_KEY = '', RT_T = 0;
+function rtSync() {
+  const key = HOSTED && SB && USER && !DEMO && A && !A.practice && partyIds().length ? 'jd-party-' + (A.partyHost || USER.id) : '';
+  if (key === RT_KEY) return;
+  if (RT) { try { SB.removeChannel(RT); } catch (e) {} RT = null; }
+  RT_KEY = key; if (!key) return;
+  try { RT = SB.channel(key, { config: { broadcast: { self: false } } }).on('broadcast', { event: 'poke' }, () => { clearTimeout(RT_T); RT_T = setTimeout(() => { if (INBOX_ON) inboxPoll(); }, 250); }).subscribe(); } catch (e) { RT = null; }
+}
+const rtPoke = () => { if (RT) try { RT.send({ type: 'broadcast', event: 'poke', payload: {} }); } catch (e) {} };
 // A friend's today and week by their own clock (stat.o = their minutes ahead of UTC), so someone abroad who trained
 // this morning doesn't show "Nothing yet today". Old stats without o use this phone's date.
 const frToday = s => s && Number.isFinite(+s.o) && Math.abs(+s.o) <= 900 ? new Date(Date.now() + s.o * 6e4).toISOString().slice(0, 10) : today();
