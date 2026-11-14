@@ -1228,8 +1228,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v191';
+const NEWS_ID = '2026-11-v192';
 const NEWS = [
+  ['Invite from a workout', 'Tap the gear in a workout and pick Invite friends to start a party without leaving it.'],
   ['Pick your bar', 'The plate loader has an Include the bar tick and a choice of bar: Olympic, women’s, EZ curl or trap bar. Each lift remembers its own, curls start on the EZ bar, and you can set each bar’s weight to match your gym.'],
   ['Plates your gym has', 'In the plate loader, untick the plates your gym doesn’t have and it only loads the rest.'],
   ['Same as last time', 'One tap on an exercise fills every set with last session’s numbers.'],
@@ -3786,7 +3787,9 @@ const TEXT_SIZES = [[1, 'Normal'], [1.12, 'Large'], [1.25, 'Larger']];
 const textSizeSeg = () => `<div class="seg">${TEXT_SIZES.map(([v, n]) => `<button class="${(S.profile.ts || 1) === v ? 'on' : ''}" data-a="textSize" data-k="${v}">${n}</button>`).join('')}</div>`;
 function wkSettings() {
   const body = () => { const p = S.profile, rest = p.defaultRest || 300;
-    return `<div class="stack"><h2>Workout settings</h2><button class="btn block far-open" data-a="farOpen">${IC.expand}Big view<span class="cap">Giant numbers you can read from the bench. Or turn your phone sideways.</span></button><div class="sgrp">
+    return `<div class="stack"><h2>Workout settings</h2><button class="btn block far-open" data-a="farOpen">${IC.expand}Big view<span class="cap">Giant numbers you can read from the bench. Or turn your phone sideways.</span></button>${GAME_ON && HOSTED && USER && !DEMO && A && !A.practice ? (() => { const n = partyIds().length; return (FRIENDS || []).length
+      ? (n < PARTY_MAX ? `<div class="sgrp"><button class="xr" data-a="partyAdd"><span class="grow">${n ? 'Invite more friends' : 'Invite friends'}<span class="s">${n ? 'Your party has ' + plural(n + 1, 'person', 'people') : 'Train together and see each other’s sets live'}</span></span>${I.right}</button></div>` : '')
+      : `<div class="sgrp"><button class="xr" data-a="frAddSheet"><span class="grow">Invite friends<span class="s">Add a friend first, then train together</span></span>${I.right}</button></div>`; })() : ''}<div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
     <label class="xr"><span class="grow">Rest between sets<span class="s">Lifts with their own rest keep it</span></span><select class="xr-in" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(rest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === rest ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow('Start rest automatically', swi(!p.noAutoRest, 'pset', 'data-f="noAutoRest"'))}
@@ -3801,7 +3804,7 @@ function wkSettings() {
     ${srow('Text size', textSizeSeg())}
     </div></details><button class="btn block" data-a="closeSheet">Done</button></div>`; };
   openSheet(body(), { label: 'Workout settings', mount: b => {
-    b.addEventListener('click', ev => { if (ev.target.closest('[data-a="lockerNote"],[data-a="closeSheet"],[data-a="farOpen"],summary')) return;
+    b.addEventListener('click', ev => { if (ev.target.closest('[data-a="lockerNote"],[data-a="closeSheet"],[data-a="farOpen"],[data-a="partyAdd"],[data-a="frAddSheet"],summary')) return;
       setTimeout(() => { if (S.profile.noWake && wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
         if (!b.isConnected) return; const open = b.querySelector('details').open; b.innerHTML = body(); b.querySelector('details').open = open; }, 0); });
   } });
