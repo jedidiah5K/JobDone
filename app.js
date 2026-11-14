@@ -3329,13 +3329,17 @@ function turnWatch(ticked) {
   }
   if (ticked && !ts.mine && HOSTED && USER && !DEMO) gymRpc('jobdone_turn_ping', { p_to: ts.now.id }).catch(() => {}); // a push for a locked phone
 }
+// The order from whoever is up now: pick, count their set, pick again (so set counts and ties play out the same way)
+function turnQueue(ts) { let ppl = ts.ppl.map(x => ({ ...x })); const out = []; for (let i = 0; i < ppl.length * 2 && out.length < ppl.length; i++) { const n = turnPick(ppl); if (!n) break; if (!out.some(x => x.id === n.id)) out.push(n); n.c++; } return out; }
+const pInit = n => esc(String(n || '?').trim().charAt(0).toUpperCase());
 function turnLine() {
   if (!A || !A.turns) return '';
   const ts = turnState();
   if (!ts) return '';
-  if (ts.waiting) return `<div class="pt-turn cap">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>`;
-  if (ts.mine) return `<div class="pt-turn me"><b>Your turn</b><span class="cap">${esc(ts.lift)}${ts.next ? ' · next: ' + esc(ts.next.n) : ''}</span></div>`;
-  return `<div class="pt-turn"><b>${esc(ts.now.n)}’s turn</b><span class="cap">${ts.next && ts.next.id === USER.id ? 'You’re next' : esc(ts.lift)}</span><button class="link" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button></div>`;
+  if (ts.waiting) return `<div class="pt-turn wait"><span class="cap">Turns start when a friend with turns on is on <b>${esc(ts.lift)}</b> too.</span></div>`;
+  const q = turnQueue(ts), me = ts.ppl.find(x => x.id === USER.id), setNo = me ? Math.min(me.c + 1, me.t) : 0;
+  const chips = q.map((x, i) => `${i ? '<i class="pt-arrow" aria-hidden="true"></i>' : ''}<span class="pt-chip${i === 0 ? ' now' : ''}${x.id === USER.id ? ' you' : ''}"><b>${x.id === USER.id ? 'You' : pInit(x.n)}</b></span>`).join('');
+  return `<div class="pt-turn${ts.mine ? ' me' : ''}"><div class="pt-tt"><div><div class="eyebrow">${ts.mine ? 'Your turn' : 'Up now'}</div><div class="pt-who">${ts.mine ? esc(ts.lift) : esc(ts.now.n)}</div><div class="cap">${ts.mine ? `Set ${setNo} of ${me.t}` : ts.next && ts.next.id === USER.id ? 'You’re next' : esc(ts.lift)}</div></div>${ts.mine ? '' : `<button class="btn sm pt-skip" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button>`}</div><div class="pt-q" aria-label="Order: ${esc(q.map(x => x.id === USER.id ? 'you' : x.n).join(', '))}">${chips}</div></div>`;
 }
 const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 45 * 6e4 ? l : null; };
 const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
@@ -3349,8 +3353,8 @@ function joinBanner() {
 function partnerStrip() {
   const P = A && Array.isArray(A.party) ? A.party : []; if (!P.length) return '';
   const rows = P.map(m => { const f = (FRIENDS || []).find(x => x.id === m.id), l = liveOf(f), joined = l && USER && lvParty(l).includes(USER.id);
-    return `<div class="pt-row"><i class="live-dot ${joined ? '' : 'off'}"></i><b>${esc(m.n)}</b><span class="cap">${joined ? `${plural(+l.n || 0, 'set')}${l.ex ? ` · ${esc(l.ex)} ${esc(l.last)}` : ''}` : 'invited'}</span></div>`; }).join('');
-  return `<div class="partner"><div class="pt-h cap"><b>Party · ${P.length + 1}</b>${P.length < PARTY_MAX ? '<button class="link" data-a="partyAdd">Add</button>' : ''}<button class="link" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">${A.turns ? 'Turns on' : 'Take turns'}</button><button class="link" data-a="partnerEnd">Leave</button></div>${turnLine()}${rows}</div>`;
+    return `<div class="pt-row"><i class="live-dot ${joined ? '' : 'off'}"></i><b class="ell">${esc(m.n)}</b><span class="cap ell">${joined ? (l.ex ? esc(l.ex) : plural(+l.n || 0, 'set')) : 'invited'}</span>${joined && l.last ? `<span class="pt-last num">${esc(l.last)}</span>` : ''}</div>`; }).join('');
+  return `<div class="partner"><div class="pt-h"><span class="eyebrow">Party · ${P.length + 1}</span><span class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill quiet" data-a="partnerEnd">Leave</button></span></div>${turnLine()}<div class="pt-rows">${rows}</div></div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
 function partyAddSheet() {

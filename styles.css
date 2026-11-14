@@ -2284,10 +2284,27 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 :root:not([data-theme]) .card.nextup .nx-strip b { background: rgba(40,38,50,.12) !important; }
 :root:not([data-theme]) .card.nextup .nx-strip .done b { background: rgba(40,38,50,.35) !important; }
 :root:not([data-theme]) .card.nextup .nx-strip .cur b { background: var(--split) !important; }
-/* Taking turns (v181): one line in the party bar saying whose go it is */
-.partner .pt-turn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 6px 0 4px; border-radius: 10px; background: color-mix(in srgb, var(--text) 7%, transparent); }
-.partner .pt-turn b { font-weight: 700; }
-.partner .pt-turn .cap { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.partner .pt-turn.me { background: color-mix(in srgb, var(--pos) 20%, transparent); box-shadow: inset 4px 0 0 var(--pos); }
-.partner .pt-turn .link { flex: none; }
-.partner div.pt-turn.cap { display: block; white-space: normal; }
+
+/* Party bar (v181, Job 14 Nov): pill buttons, a turn card with the order as faces, friends' last set on the right */
+.partner .pt-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.partner .pt-acts { display: flex; gap: 6px; }
+.partner .pt-pill { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; min-height: 32px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); background: transparent; color: var(--text); }
+.partner .pt-pill.on { background: var(--gm-acc); border-color: var(--gm-acc); color: #fff; }
+.partner .pt-pill.quiet { color: var(--text2); }
+.partner .pt-pill:active { transform: scale(.96); }
+.partner .pt-turn { margin: 10px 0 6px; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--text) 6%, transparent); border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+.partner .pt-turn.me { background: color-mix(in srgb, var(--gm-acc) 16%, transparent); border-color: color-mix(in srgb, var(--gm-acc) 55%, transparent); }
+.partner .pt-turn.wait { padding: 10px 12px; }
+.partner .pt-tt { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.partner .pt-who { font-size: 20px; line-height: 24px; font-weight: 700; margin-top: 2px; }
+.partner .pt-skip { flex: none; }
+.partner .pt-q { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.partner .pt-chip { display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 999px; font-size: 13px; background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text2); }
+.partner .pt-chip.now { background: var(--text); color: var(--bg); }
+.partner .pt-turn.me .pt-chip.now { background: var(--gm-acc); color: #fff; }
+.partner .pt-arrow { width: 10px; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--text) 25%, transparent); }
+.partner .pt-rows { margin-top: 4px; }
+.partner .pt-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.partner .pt-row b { flex: none; max-width: 40%; }
+.partner .pt-row .cap { flex: 1; min-width: 0; }
+.partner .pt-last { flex: none; font-weight: 600; font-size: 14px; }
