@@ -1220,8 +1220,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v181';
+const NEWS_ID = '2026-11-v182';
 const NEWS = [
+  ['Tidier workout screen', 'Your party is one small line at the top. Tap it to see everyone’s last set. When you take turns, whose go it is sits in a bar at the bottom.'],
   ['Take turns', 'Sharing a machine? In a party, tap Take turns. When you’re both on the same lift, the app says whose go it is and tells you when it’s yours. Forgot to tick? Your friend can tap Skip.'],
   ['Faster parties', 'When you train together, your friends’ sets now update every 15 seconds, and a long break between sets no longer drops you out of the party.'],
   ['A tidier Today', 'Your week now sits at the top of the Next up card, and your last session and newest PRs share one Recently card. Less scrolling to get to Start.'],
@@ -3332,14 +3333,13 @@ function turnWatch(ticked) {
 // The order from whoever is up now: pick, count their set, pick again (so set counts and ties play out the same way)
 function turnQueue(ts) { let ppl = ts.ppl.map(x => ({ ...x })); const out = []; for (let i = 0; i < ppl.length * 2 && out.length < ppl.length; i++) { const n = turnPick(ppl); if (!n) break; if (!out.some(x => x.id === n.id)) out.push(n); n.c++; } return out; }
 const pInit = n => esc(String(n || '?').trim().charAt(0).toUpperCase());
-function turnLine() {
+// The turn sits in a bar at the bottom of the workout (Job, 14 Nov), above the rest timer when one is running.
+function turnDock() {
   if (!A || !A.turns) return '';
-  const ts = turnState();
-  if (!ts) return '';
-  if (ts.waiting) return `<div class="pt-turn wait"><span class="cap">Turns start when a friend with turns on is on <b>${esc(ts.lift)}</b> too.</span></div>`;
+  const ts = turnState(); if (!ts || ts.waiting || !ts.now) return '';
   const q = turnQueue(ts), me = ts.ppl.find(x => x.id === USER.id), setNo = me ? Math.min(me.c + 1, me.t) : 0;
-  const chips = q.map((x, i) => `${i ? '<i class="pt-arrow" aria-hidden="true"></i>' : ''}<span class="pt-chip${i === 0 ? ' now' : ''}${x.id === USER.id ? ' you' : ''}"><b>${x.id === USER.id ? 'You' : pInit(x.n)}</b></span>`).join('');
-  return `<div class="pt-turn${ts.mine ? ' me' : ''}"><div class="pt-tt"><div><div class="eyebrow">${ts.mine ? 'Your turn' : 'Up now'}</div><div class="pt-who">${ts.mine ? esc(ts.lift) : esc(ts.now.n)}</div><div class="cap">${ts.mine ? `Set ${setNo} of ${me.t}` : ts.next && ts.next.id === USER.id ? 'You’re next' : esc(ts.lift)}</div></div>${ts.mine ? '' : `<button class="btn sm pt-skip" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button>`}</div><div class="pt-q" aria-label="Order: ${esc(q.map(x => x.id === USER.id ? 'you' : x.n).join(', '))}">${chips}</div></div>`;
+  const after = q.slice(1).map(x => x.id === USER.id ? 'you' : esc(x.n));
+  return `<div class="pt-dock${ts.mine ? ' me' : ''}${REST ? ' up' : ''}" role="status"><span class="pt-av now big">${ts.mine ? 'You' : pInit(ts.now.n)}</span><span class="t"><b>${ts.mine ? 'Your turn' : esc(ts.now.n) + '’s turn'}</b><span class="cap">${esc(ts.lift)}${ts.mine && me ? ` · set ${setNo} of ${me.t}` : ''}${after.length ? ' · then ' + after.join(', then ') : ''}</span></span>${ts.mine ? '' : `<button class="btn sm" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button>`}</div>`;
 }
 const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 45 * 6e4 ? l : null; };
 const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
@@ -3350,11 +3350,17 @@ function joinBanner() {
   const n = esc(((f.card || {}).n || 'A friend').split(' ')[0]), l = liveOf(f), size = lvParty(l).length + 1;
   return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${size > 2 ? `${n}’s party · ${size} people` : `${n} is training with you`}</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">Join</button></div>`;
 }
+// Party in the workout header (Job, 14 Nov): one small line of faces; tap it to open each friend's last set and the buttons.
 function partnerStrip() {
   const P = A && Array.isArray(A.party) ? A.party : []; if (!P.length) return '';
-  const rows = P.map(m => { const f = (FRIENDS || []).find(x => x.id === m.id), l = liveOf(f), joined = l && USER && lvParty(l).includes(USER.id);
-    return `<div class="pt-row"><i class="live-dot ${joined ? '' : 'off'}"></i><b class="ell">${esc(m.n)}</b><span class="cap ell">${joined ? (l.ex ? esc(l.ex) : plural(+l.n || 0, 'set')) : 'invited'}</span>${joined && l.last ? `<span class="pt-last num">${esc(l.last)}</span>` : ''}</div>`; }).join('');
-  return `<div class="partner"><div class="pt-h"><span class="eyebrow">Party · ${P.length + 1}</span><span class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill quiet" data-a="partnerEnd">Leave</button></span></div>${turnLine()}<div class="pt-rows">${rows}</div></div>`;
+  const info = P.map(m => { const f = (FRIENDS || []).find(x => x.id === m.id), l = liveOf(f); return { m, l, joined: !!(l && USER && lvParty(l).includes(USER.id)) }; });
+  const ts = A.turns ? turnState() : null;
+  const faces = info.slice(0, 4).map(x => `<span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>`).join('');
+  const sum = `Party of ${P.length + 1}${A.turns ? ts && ts.waiting ? ' · turns on, waiting' : ' · turns on' : ''}`;
+  const open = A.partyOpen ? `<div class="pt-open"><div class="pt-chips">${info.map(x => `<span class="pt-chip2"><span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>${esc(x.m.n)} ${x.joined ? (x.l.last ? `<b class="num">${esc(x.l.last)}</b>` : `<span class="cap">${plural(+x.l.n || 0, 'set')}</span>`) : '<span class="cap">invited</span>'}</span>`).join('')}</div>
+    ${ts && ts.waiting ? `<div class="cap pt-wait">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>` : ''}
+    <div class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill quiet" data-a="partnerEnd">Leave</button></div></div>` : '';
+  return `<div class="partner"><button class="pt-sum" data-a="partyFold" aria-expanded="${A.partyOpen ? 'true' : 'false'}"><span class="pt-faces">${faces}</span><span class="cap">${sum}</span><i class="pt-chev">${I.down}</i></button>${open}</div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
 function partyAddSheet() {
@@ -3604,8 +3610,9 @@ function renderWorkout() {
   <div class="wk-body">${A.ex.map(exCardHTML).join('')}
     <button class="btn block" data-a="wkAddEx">Add exercise</button>
     <button class="self-c c-neg link" data-a="wkDiscard">Discard workout</button>
+    ${GAME_ON && A.turns ? '<div class="pt-dock-space"></div>' : ''}
   </div>
-  ${REST ? restHTML() : ''}`);
+  ${REST ? restHTML() : ''}${GAME_ON ? turnDock() : ''}`);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
   const rp = hadPop && el.querySelector('.restbar'); if (rp) rp.style.animation = 'none';
 }
@@ -3638,7 +3645,7 @@ function exCardHTML(e, ei) {
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
     ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
-    ${setupHTML(e.name)}${sugg ? `<div class="tgt-line">${esc(sugg.replace(/\s+\S+$/, ''))} <span class="nw">${esc((sugg.match(/\S+$/) || [''])[0])} ${infoBtn('target')}</span></div>` : ''}
+    ${setupHTML(e.name)}${sugg ? `<div class="tgt-line"><span class="ell">${esc(sugg)}</span>${infoBtn('target')}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set<button class="set-i" data-a="setInfo" aria-label="What the set types mean">i</button></th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
@@ -3648,7 +3655,7 @@ function exCardHTML(e, ei) {
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
-    <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
+    <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 && ix().ws.length < 5 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
     ${cmp}`}
   </section>`;
 }
@@ -6008,6 +6015,7 @@ const ACT = {
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
   idQR: () => qrSheet(),
   joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others, l); },
+  partyFold: () => { if (!A) return; A.partyOpen = !A.partyOpen; touchA(); renderWorkout(); },
   turnsToggle: () => { if (!A) return; A.turns = !A.turns; delete A.turnSkip; TURN_WAS = null; touchA(); statSync(); renderWorkout(); toast(A.turns ? 'Taking turns. Friends on the same lift go one after another.' : 'Turns off'); },
   turnSkip: el => { if (!A) return; const ts = turnState(); if (!ts || !ts.now || ts.now.id !== el.dataset.id) return; const k = A.turnSkip && A.turnSkip.cur === ts.lift ? A.turnSkip.k : {}; k[ts.now.id] = (k[ts.now.id] || 0) + 1; A.turnSkip = { cur: ts.lift, k }; touchA(); turnWatch(); renderWorkout(); },
   partnerEnd: () => { if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
