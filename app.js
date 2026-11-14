@@ -1220,8 +1220,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v179';
+const NEWS_ID = '2026-11-v180';
 const NEWS = [
+  ['Faster parties', 'When you train together, your friends’ sets now update every 15 seconds, and a long break between sets no longer drops you out of the party.'],
   ['A tidier Today', 'Your week now sits at the top of the Next up card, and your last session and newest PRs share one Recently card. Less scrolling to get to Start.'],
   ['Pop-ups behave', 'Only one message shows at a time, they go away when you change page, and you can tap one to close it.'],
   ['Notifications', 'Tap the bell at the top of Today to see friend requests and invites to train together. The red number shows how many are new, and they check for new ones every minute.'],
@@ -1586,24 +1587,34 @@ function inboxSheet() {
 const inboxHTML = () => (GAME_ON ? joinBanner() : '') + reqsCard();
 // Check for new requests and party invites every minute while the app is open, and right away when it comes back
 // to the front. Two small calls; stops when signed out or in the background. New ones get a toast once.
-let INBOX_ON = false, INBOX_T = 0, INBOX_SEEN = null;
+// v180: the refresh uses jobdone_friends_live (no photos, a few KB); names and photos reload every 10 minutes or when
+// someone is added or removed. Every 15 s while you're in a party or invited to one, every minute otherwise.
+let INBOX_ON = false, INBOX_T = 0, INBOX_SEEN = null, FR_FULL_AT = 0, STAT_AT = 0;
+const inboxSig = () => JSON.stringify([(FRIENDS || []).map(x => [x.id, x.stat, x.at_gym, x.nudged_me, !!x.photo, x.card]), REQS]);
+const partyLive = () => partyIds().length > 0 || (Array.isArray(FRIENDS) && !!USER && FRIENDS.some(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id); }));
 async function inboxPoll() {
   clearTimeout(INBOX_T); if (!HOSTED || !USER || document.hidden) return;
-  const [f, r] = await Promise.allSettled([gymRpc('jobdone_friends_list'), gymRpc('jobdone_friend_requests')]), was = JSON.stringify([FRIENDS, REQS]);
-  if (f.status === 'fulfilled') FRIENDS = f.value || []; if (r.status === 'fulfilled') REQS = r.value || [];
+  const full = !Array.isArray(FRIENDS) || Date.now() - FR_FULL_AT > 600e3, was = inboxSig();
+  const [f, r] = await Promise.allSettled([gymRpc(full ? 'jobdone_friends_list' : 'jobdone_friends_live'), gymRpc('jobdone_friend_requests')]);
+  if (f.status === 'fulfilled') { const rows = f.value || [];
+    if (full) { FRIENDS = rows; FR_FULL_AT = Date.now(); }
+    else { const by = new Map((FRIENDS || []).map(x => [x.id, x])); if (rows.length !== by.size || rows.some(x => !by.has(x.id))) FR_FULL_AT = 0; // someone added or removed: full reload next
+      FRIENDS = rows.filter(x => by.has(x.id)).map(x => ({ ...by.get(x.id), ...x })); } }
+  if (r.status === 'fulfilled') REQS = r.value || [];
+  if (partyIds().length && Date.now() - STAT_AT > 5 * 6e4) statSync(); // still here: keeps the party alive through a long break
   const now = [];
   (REQS || []).filter(x => x.dir === 'in').forEach(x => now.push(['r' + x.id, `${x.n || 'Someone'} sent you a friend request`]));
   if (GAME_ON) (FRIENDS || []).forEach(x => { const l = liveOf(x); if (l && lvParty(l).includes(USER.id) && !partyIds().includes(x.id)) now.push(['p' + x.id, `${((x.card || {}).n || 'A friend').split(' ')[0]} invited you to train together`]); });
   const fresh = INBOX_SEEN ? now.filter(([k]) => !INBOX_SEEN.has(k)) : [];
   INBOX_SEEN = new Set(now.map(([k]) => k));
   if (fresh.length) toast(esc(fresh[0][1]) + (fresh.length > 1 ? ` and ${fresh.length - 1} more` : ''), 4000);
-  if (JSON.stringify([FRIENDS, REQS]) !== was) rerender(); // nothing new, no redraw
-  INBOX_T = setTimeout(inboxPoll, 60000);
+  if (inboxSig() !== was) rerender(); // nothing new, no redraw
+  INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : partyLive() ? 15000 : 60000);
 }
 const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); } };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && INBOX_ON) inboxPoll(); });
 async function reqsLoad() { REQS = undefined; try { REQS = await gymRpc('jobdone_friend_requests') || []; } catch (e) { REQS = []; } rerender(); }
-async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; } catch (e) { FRIENDS = []; if (!quiet) toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
+async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; FR_FULL_AT = Date.now(); } catch (e) { FRIENDS = []; if (!quiet) toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
 // ---------- Friends today (Job, 6 Nov) ----------
 // Each friend's status for today (at the gym, trained, rest day, nothing yet), Done Stamps and snaps that last 24 hours,
 // three reactions, a once-a-day nudge, and weekly streaks you keep with each friend: weeks in a row you both hit your own number.
@@ -1624,7 +1635,7 @@ let STAT_SENT = '';
 function statSync() {
   if (!HOSTED || !SB || !USER || DEMO || !(S.profile.id || {}).on) return;
   const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
-  gymRpc('jobdone_stat', { p: JSON.parse(s) }).catch(() => { STAT_SENT = ''; });
+  STAT_AT = Date.now(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).catch(() => { STAT_SENT = ''; });
 }
 // A friend's today and week by their own clock (stat.o = their minutes ahead of UTC), so someone abroad who trained
 // this morning doesn't show "Nothing yet today". Old stats without o use this phone's date.
@@ -1648,7 +1659,7 @@ const skCard = (n = 3) => `<div class="card" aria-busy="true" aria-label="Loadin
 const skPost = () => `<div class="card" aria-busy="true" aria-label="Loading">${skRows(1)}<i class="sk" style="height:200px;margin-top:10px"></i></div>`;
 let FEED = null, FR_AT = 0; const NUDGED = {};
 // Tab taps reuse friends and feed for 2 minutes (each load is every friend's photo); pull-down and Refresh always reload.
-const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FRIENDS = null; FEED = null; } };
+const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FEED = null; if (!INBOX_ON) FRIENDS = null; } };
 async function feedLoad() { FEED = undefined; try { FEED = await gymRpc('jobdone_feed') || []; spotSeen(FEED); } catch (e) { FEED = []; } rerender(); }
 const postHidden = () => { try { return JSON.parse(localStorage.getItem('jd-hidepost') || '[]'); } catch (e) { return []; } };
 function frRow(f) {
@@ -3267,6 +3278,7 @@ function trainWith(f, also = [], host) {
   if (xs.length && canSwap) useHostWorkout(host, xs);
   else if (xs.length) toast('You’ve already logged sets, so you keep your own workout.');
   if (A) { touchA(); statSync(); openWk(); }
+  if (INBOX_ON) { clearTimeout(INBOX_T); INBOX_T = setTimeout(inboxPoll, 15000); }
   toast(`Training with ${esc(names)}. They can join from their app.`);
 }
 // Same split as the friend who invited you (Job, 13 Nov: Mikey joined a Pull and got his own Full body).
@@ -3282,7 +3294,7 @@ function liveStat() {
   const xs = A.ex.map(e => baseName(e.name).slice(0, 26)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 10);
   return { party: ids, with: ids[0], xs, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
 }
-const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 20 * 6e4 ? l : null; };
+const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 45 * 6e4 ? l : null; };
 const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
 // Someone started a party with you in it and you haven't joined yet.
 function joinBanner() {
