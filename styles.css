@@ -2284,3 +2284,10 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 :root:not([data-theme]) .card.nextup .nx-strip b { background: rgba(40,38,50,.12) !important; }
 :root:not([data-theme]) .card.nextup .nx-strip .done b { background: rgba(40,38,50,.35) !important; }
 :root:not([data-theme]) .card.nextup .nx-strip .cur b { background: var(--split) !important; }
+/* Taking turns (v181): one line in the party bar saying whose go it is */
+.partner .pt-turn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 6px 0 4px; border-radius: 10px; background: color-mix(in srgb, var(--text) 7%, transparent); }
+.partner .pt-turn b { font-weight: 700; }
+.partner .pt-turn .cap { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partner .pt-turn.me { background: color-mix(in srgb, var(--pos) 20%, transparent); box-shadow: inset 4px 0 0 var(--pos); }
+.partner .pt-turn .link { flex: none; }
+.partner div.pt-turn.cap { display: block; white-space: normal; }

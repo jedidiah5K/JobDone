@@ -1220,8 +1220,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v180';
+const NEWS_ID = '2026-11-v181';
 const NEWS = [
+  ['Take turns', 'Sharing a machine? In a party, tap Take turns. When you’re both on the same lift, the app says whose go it is and tells you when it’s yours. Forgot to tick? Your friend can tap Skip.'],
   ['Faster parties', 'When you train together, your friends’ sets now update every 15 seconds, and a long break between sets no longer drops you out of the party.'],
   ['A tidier Today', 'Your week now sits at the top of the Next up card, and your last session and newest PRs share one Recently card. Less scrolling to get to Start.'],
   ['Pop-ups behave', 'Only one message shows at a time, they go away when you change page, and you can tap one to close it.'],
@@ -1609,7 +1610,8 @@ async function inboxPoll() {
   INBOX_SEEN = new Set(now.map(([k]) => k));
   if (fresh.length) toast(esc(fresh[0][1]) + (fresh.length > 1 ? ` and ${fresh.length - 1} more` : ''), 4000);
   if (inboxSig() !== was) rerender(); // nothing new, no redraw
-  INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : partyLive() ? 15000 : 60000);
+  if (A && A.turns) turnWatch();
+  INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : A && A.turns ? 5000 : partyLive() ? 15000 : 60000);
 }
 const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); } };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && INBOX_ON) inboxPoll(); });
@@ -3265,6 +3267,7 @@ function duoSheet(f) {
 // so anyone invited sees the whole group and can join; joining brings in the others you're friends with.
 const PARTY_MAX = 5;
 let PARTY_NEXT = (() => { try { const p = JSON.parse(localStorage.getItem('jd-party') || 'null'); return p && Date.now() - p.t < 4 * 36e5 && Array.isArray(p.list) ? p.list : null; } catch (e) { return null; } })();
+let PARTY_HOST_NEXT = null; // who invited you, for the workout that's about to start
 function setPartyNext(list) { PARTY_NEXT = list; try { list ? localStorage.setItem('jd-party', JSON.stringify({ list, t: Date.now() })) : localStorage.removeItem('jd-party'); } catch (e) {} }
 const partyIds = () => A && Array.isArray(A.party) ? A.party.map(x => x.id) : [];
 const pName = f => ({ id: f.id, n: ((f.card || {}).n || 'Friend').split(' ')[0].slice(0, 20) });
@@ -3273,8 +3276,8 @@ function trainWith(f, also = [], host) {
   const add = [f, ...also].filter(Boolean).map(pName), names = add.map(x => x.n).join(', ');
   const xs = host && Array.isArray(host.xs) ? host.xs.map(String).filter(Boolean) : [];
   const canSwap = !A || !A.ex.some(e => e.sets.some(x => x.done)); // nothing ticked yet, so switching loses nothing
-  if (A) A.party = mergeParty(A.party, add);
-  else { setPartyNext(mergeParty([], add)); const sp = nextSplit(); startWorkout(xs.length ? null : sp ? sp.id : null); if (xs.length && SHEETS.length) closeSheet(); } // close the empty-workout exercise picker
+  if (A) { A.party = mergeParty(A.party, add); if (!A.partyHost) A.partyHost = host ? f.id : USER && USER.id; }
+  else { setPartyNext(mergeParty([], add)); PARTY_HOST_NEXT = host ? f.id : null; const sp = nextSplit(); startWorkout(xs.length ? null : sp ? sp.id : null); if (xs.length && SHEETS.length) closeSheet(); } // close the empty-workout exercise picker
   if (xs.length && canSwap) useHostWorkout(host, xs);
   else if (xs.length) toast('You’ve already logged sets, so you keep your own workout.');
   if (A) { touchA(); statSync(); openWk(); }
@@ -3292,7 +3295,47 @@ function liveStat() {
   const ids = partyIds(); if (!ids.length || A.practice) return null;
   const done = A.ex.flatMap(e => e.sets.filter(s => s.done && s.t !== 'warm').map(s => ({ e: e.name, s, at: s.at || 0 }))).sort((a, b) => b.at - a.at)[0];
   const xs = A.ex.map(e => baseName(e.name).slice(0, 26)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 10);
-  return { party: ids, with: ids[0], xs, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+  const ti = myTurnInfo();
+  return { party: ids, with: ids[0], xs, tt: A.turns ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+}
+// ---------- Taking turns (v181, Job 14 Nov) ----------
+// Everyone in the party with Taking turns on who is on the same lift goes in order: the host first, then the rest.
+// Whose turn = whoever has ticked the fewest work sets on that lift (ties go in order); anyone who has done all their
+// sets on it drops out, so different set counts just work. Undo moves the turn back by itself, and someone who leaves
+// or goes quiet drops out. Skip only changes this phone: it counts the person whose turn it is as having gone.
+const curLift = () => (A && A.ex.find(x => x.sets.some(y => !y.done && y.t !== 'warm'))) || null;
+function myTurnInfo() { const e = curLift(); if (!e) return null; const w = e.sets.filter(x => x.t !== 'warm'); return { cur: baseName(e.name).slice(0, 26), c: w.filter(x => x.done).length, t: w.length }; }
+function turnPick(ppl) { const left = ppl.filter(x => x.c < x.t); if (!left.length) return null; const m = Math.min(...left.map(x => x.c)); return left.find(x => x.c === m); }
+function turnState() {
+  if (!A || !A.turns || !USER || !Array.isArray(A.party) || !A.party.length) return null;
+  const me = myTurnInfo(); if (!me) return null;
+  const host = A.partyHost || USER.id, sk = A.turnSkip && A.turnSkip.cur === me.cur ? A.turnSkip.k : {};
+  const ppl = [{ id: USER.id, n: 'You', c: me.c, t: me.t }];
+  for (const m of A.party) { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); if (l && l.tt && l.cur === me.cur && lvParty(l).includes(USER.id)) ppl.push({ id: m.id, n: m.n, c: +l.c || 0, t: +l.t || 0 }); }
+  if (ppl.length < 2) return { lift: me.cur, waiting: true };
+  ppl.forEach(x => { x.c += sk[x.id] || 0; });
+  ppl.sort((a, b) => a.id === host ? -1 : b.id === host ? 1 : a.id < b.id ? -1 : 1);
+  const now = turnPick(ppl); if (!now) return null;
+  const next = turnPick(ppl.map(x => x === now ? { ...x, c: x.c + 1 } : x));
+  return { lift: me.cur, now, next: next && next.id !== now.id ? next : null, mine: now.id === USER.id, ppl };
+}
+let TURN_WAS = null;
+// Called after every refresh and every tick: says "Your turn" when it comes back to you, and pings the next person.
+function turnWatch(ticked) {
+  const ts = turnState(), was = TURN_WAS; TURN_WAS = ts && ts.now ? { id: ts.now.id, lift: ts.lift } : null;
+  if (!ts || !ts.now) return;
+  if (ts.mine && was && was.id !== USER.id && was.lift === ts.lift) {
+    REST = null; try { SOUNDS.rest(); } catch (e) {} buzz([30, 60, 30]); toast(`Your turn · ${esc(ts.lift)}`); if (A && A.open) renderWorkout();
+  }
+  if (ticked && !ts.mine && HOSTED && USER && !DEMO) gymRpc('jobdone_turn_ping', { p_to: ts.now.id }).catch(() => {}); // a push for a locked phone
+}
+function turnLine() {
+  if (!A || !A.turns) return '';
+  const ts = turnState();
+  if (!ts) return '';
+  if (ts.waiting) return `<div class="pt-turn cap">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>`;
+  if (ts.mine) return `<div class="pt-turn me"><b>Your turn</b><span class="cap">${esc(ts.lift)}${ts.next ? ' · next: ' + esc(ts.next.n) : ''}</span></div>`;
+  return `<div class="pt-turn"><b>${esc(ts.now.n)}’s turn</b><span class="cap">${ts.next && ts.next.id === USER.id ? 'You’re next' : esc(ts.lift)}</span><button class="link" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button></div>`;
 }
 const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 45 * 6e4 ? l : null; };
 const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
@@ -3307,7 +3350,7 @@ function partnerStrip() {
   const P = A && Array.isArray(A.party) ? A.party : []; if (!P.length) return '';
   const rows = P.map(m => { const f = (FRIENDS || []).find(x => x.id === m.id), l = liveOf(f), joined = l && USER && lvParty(l).includes(USER.id);
     return `<div class="pt-row"><i class="live-dot ${joined ? '' : 'off'}"></i><b>${esc(m.n)}</b><span class="cap">${joined ? `${plural(+l.n || 0, 'set')}${l.ex ? ` · ${esc(l.ex)} ${esc(l.last)}` : ''}` : 'invited'}</span></div>`; }).join('');
-  return `<div class="partner"><div class="pt-h cap"><b>Party · ${P.length + 1}</b>${P.length < PARTY_MAX ? '<button class="link" data-a="partyAdd">Add</button>' : ''}<button class="link" data-a="partnerEnd">Leave</button></div>${rows}</div>`;
+  return `<div class="partner"><div class="pt-h cap"><b>Party · ${P.length + 1}</b>${P.length < PARTY_MAX ? '<button class="link" data-a="partyAdd">Add</button>' : ''}<button class="link" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">${A.turns ? 'Turns on' : 'Take turns'}</button><button class="link" data-a="partnerEnd">Leave</button></div>${turnLine()}${rows}</div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
 function partyAddSheet() {
@@ -3461,7 +3504,7 @@ function startWorkout(splitId, date, practice) {
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
-  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) A.party = PARTY_NEXT.slice(0, PARTY_MAX); }
+  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) { A.party = PARTY_NEXT.slice(0, PARTY_MAX); A.partyHost = PARTY_HOST_NEXT || (USER && USER.id); PARTY_HOST_NEXT = null; } }
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
 }
@@ -3869,14 +3912,15 @@ function logSet(ei, si) {
     const secs = restFor(e.name);
     const inSS = e.ss && A.ex[ei + 1];
     const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
-    if (!left) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    const tsNow = A.turns && turnState(); // taking turns: your friend's set is your rest, so no timer
+    if (!left || (tsNow && tsNow.now)) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA(); snapMaybe();
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 600);
     const row = $(`#row-${ei}-${si}`); if (row) row.classList.add('pop');
     if (s.t !== 'warm' && s.r > 0) {
       if (!pr.length && !ghostCheck(e, si, s)) celebrate(setVerdict(s.r, repRange(e.name)));
-      goldenCheck(s); if (partyIds().length) statSync();
+      goldenCheck(s); if (partyIds().length) { statSync(); turnWatch(true); }
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
@@ -3885,7 +3929,7 @@ function logSet(ei, si) {
       }
     }
     if (pr.length) { buzz([20, 40, 60]); celebrate({ k: 'amazing', title: 'New PR', sub: `${e.name}: ${setStr(s)}`, note: pr.join(', ') === 'e1RM' ? 'Best estimated 1-rep max' : pr.join(', '), bits: 40 }); const r2 = $(`#row-${ei}-${si} .check`); if (r2) r2.classList.add('glow'); }
-  } else touchA();
+  } else { touchA(); if (partyIds().length) { statSync(); turnWatch(); } } // undo: the turn moves back
 }
 function summaryData() {
   const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t, ...(s.rpe ? { rpe: s.rpe } : {}) })), ...(e.ss ? { ss: 1 } : {}) })).filter(e => e.sets.length);
@@ -5960,7 +6004,9 @@ const ACT = {
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
   idQR: () => qrSheet(),
   joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others, l); },
-  partnerEnd: () => { if (A) { delete A.party; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
+  turnsToggle: () => { if (!A) return; A.turns = !A.turns; delete A.turnSkip; TURN_WAS = null; touchA(); statSync(); renderWorkout(); toast(A.turns ? 'Taking turns. Friends on the same lift go one after another.' : 'Turns off'); },
+  turnSkip: el => { if (!A) return; const ts = turnState(); if (!ts || !ts.now || ts.now.id !== el.dataset.id) return; const k = A.turnSkip && A.turnSkip.cur === ts.lift ? A.turnSkip.k : {}; k[ts.now.id] = (k[ts.now.id] || 0) + 1; A.turnSkip = { cur: ts.lift, k }; touchA(); turnWatch(); renderWorkout(); },
+  partnerEnd: () => { if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),
   gymBoardOn: el => { S.profile.gymBoard = el.checked; persist('jd/meta'); statSync(); toast(el.checked ? 'Your name shows on your gym’s board' : 'You show as “A member”'); },

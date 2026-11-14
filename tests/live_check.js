@@ -10,7 +10,7 @@ const mk = new Function('env', `
   const gymRpc = async n => { calls.push(n); return env.rows[n]; };
   const setTimeout = (f, ms) => { timers.push(ms); return 1; }, clearTimeout = () => {};
   const toast = () => {}, rerender = () => {}, esc = x => x, statSync = () => sent.push(1);
-  const partyIds = () => env.party, liveOf = () => null, lvParty = () => [];
+  const partyIds = () => env.party, liveOf = () => null, lvParty = () => [], A = null, turnWatch = () => {};
   ${body}
   return { poll: inboxPoll, st: () => ({ FRIENDS, calls, timers, sent, FR_FULL_AT }), set: v => { FR_FULL_AT = v.full ?? FR_FULL_AT; STAT_AT = v.statAt ?? STAT_AT; } };`);
 const full = [{ id: 'a', photo: 'P', card: { n: 'Mikey' }, stat: { k: 1 } }];
