@@ -1221,8 +1221,11 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v189';
+const NEWS_ID = '2026-11-v190';
 const NEWS = [
+  ['Workout settings', 'Tap the gear at the top of a workout to change sounds, rest time, units and more without leaving it.'],
+  ['Bigger text', 'Me → Look → Text size makes all the writing bigger. It’s also in workout settings.'],
+  ['Easier to tap', 'Small buttons have bigger tap areas, Finish is also at the bottom of a workout, and grey text gets darker when your phone’s Increase Contrast is on.'],
   ['Big view', 'Turn your phone sideways during a workout, or tap the expand button at the top, to see your rest time, whose turn it is or your next set in giant numbers you can read from the bench.'],
   ['This day last month', 'On days you trained a month or a year ago, Today shows that workout. Tap it to see what you did.'],
   ['Locker note', 'Tap the note line at the top of a workout to jot your locker number or parking spot. It’s deleted when you finish.'],
@@ -2375,6 +2378,7 @@ function setBar(col) {
   const bg = document.getElementById('bg'); if (bg && !bg.querySelector('.topfade')) { const f = document.createElement('div'); f.className = 'topfade'; bg.appendChild(f); }
 }
 function applyTheme(k = theme()) {
+  applyTextSize();
   const t = THEMES.find(x => x.k === k) || THEMES[0];
   if (t.k === 'climb') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t.k;
   setBar(t.bar);
@@ -3012,6 +3016,7 @@ function meParts() {
   </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your iPhone is on silent: flip the switch on the side (or turn off Silent Mode in Control Centre) to hear them. iPhone doesn’t let websites play sounds on silent without pausing your music.</div></section>
 `,
     look: `
+  <section><div class="sgh">Text size</div><div class="sgrp">${srow('Text size', textSizeSeg(), 'Makes all the writing in the app bigger')}</div></section>
   <section><div class="sgh">Theme</div><div class="sgrp pad">
     <div class="themes">${THEMES.map(t => `<button class="theme-opt ${theme() === t.k ? 'on' : ''}" data-a="theme" data-k="${t.k}"><i style="background:${t.sw}"></i>${t.name}</button>`).join('')}</div>
   </div></section>
@@ -3675,13 +3680,14 @@ function renderWorkout() {
   const allIn = totalSets && doneSets === totalSets;
   el.innerHTML = resolveVars(`<div class="wk-head"><div class="row wk-top"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
       <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · ${dvol(dv)} ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
-      <button class="icon-btn far-btn" data-a="farView" aria-label="Big view" title="Big view">${IC.expand}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
-    <button class="wk-note${A.locker ? ' on' : ''}" data-a="lockerNote">${IC.key}<span class="ell">${A.locker ? esc(A.locker) : 'Locker or parking note'}</span></button>
+      <button class="icon-btn far-btn" data-a="farView" aria-label="Big view" title="Big view">${IC.expand}</button><button class="icon-btn far-btn" data-a="wkSettings" aria-label="Workout settings" title="Workout settings">${IC.gear}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
+    ${A.locker ? `<button class="wk-note on" data-a="lockerNote">${IC.key}<span class="ell">${esc(A.locker)}</span></button>` : ''}
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
     ${GAME_ON ? partnerStrip() : ''}
   </div>
   <div class="wk-body">${A.ex.map(exCardHTML).join('')}
     <button class="btn block" data-a="wkAddEx">Add exercise</button>
+    <button class="btn block ${allIn ? 'primary' : ''}" data-a="finish">Finish workout</button>
     <button class="self-c c-neg link" data-a="wkDiscard">Discard workout</button>
     ${GAME_ON && A.turns ? '<div class="pt-dock-space"></div>' : ''}
   </div>
@@ -3716,6 +3722,32 @@ function farHTML() {
   else { lbl = 'All sets done'; big = '✓'; sub = 'Tap Finish when you’re ready'; }
   return `<button class="far-view${cls}" data-a="farView" aria-label="Back to your workout"><span class="far-in"><span class="far-lbl">${lbl}</span><span class="far-big num">${big}</span>${sub ? `<span class="far-sub">${sub}</span>` : ''}${A.locker ? `<span class="far-note">${esc(A.locker)}</span>` : ''}</span></button>`;
 }
+// Workout settings (v190, Job 14 Nov): what you'd change mid-workout without leaving it. The rarer ones sit under More.
+const TEXT_SIZES = [[1, 'Normal'], [1.12, 'Large'], [1.25, 'Larger']];
+const textSizeSeg = () => `<div class="seg">${TEXT_SIZES.map(([v, n]) => `<button class="${(S.profile.ts || 1) === v ? 'on' : ''}" data-a="textSize" data-k="${v}">${n}</button>`).join('')}</div>`;
+function wkSettings() {
+  const body = () => { const p = S.profile, rest = p.defaultRest || 300;
+    return `<div class="stack"><h2>Workout settings</h2><div class="sgrp">
+    ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
+    <label class="xr"><span class="grow">Rest between sets<span class="s">Lifts with their own rest keep it</span></span><select class="xr-in" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(rest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === rest ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
+    ${srow('Start rest automatically', swi(!p.noAutoRest, 'pset', 'data-f="noAutoRest"'))}
+    ${HOSTED ? srow('Notify when rest ends', swi(!!p.restPush && pushReady(), 'restPush')) : ''}
+    ${srow('Units', `<div class="seg w140"><button class="${U() === 'kg' ? 'on' : ''}" data-a="unit" data-k="kg">kg</button><button class="${U() === 'lb' ? 'on' : ''}" data-a="unit" data-k="lb">lb</button></div>`)}
+    ${srow('Keep screen awake', swi(!p.noWake, 'pset', 'data-f="noWake"'))}
+    <button class="xr" data-a="lockerNote"><span class="grow">Locker or parking note<span class="s">${A && A.locker ? esc(A.locker) : 'Deleted when you finish'}</span></span>${I.right}</button>
+    </div><details class="wks-more"><summary>More</summary><div class="sgrp">
+    ${srow('Today’s targets', swi(!p.noTargets, 'pset', 'data-f="noTargets"'))}
+    ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'))}
+    ${srow('Tap kg to open', `<div class="seg"><button class="${UI.kgPad ? '' : 'on'}" data-a="kgPadSet" data-k="0">Plates</button><button class="${UI.kgPad ? 'on' : ''}" data-a="kgPadSet" data-k="1">Keypad</button></div>`)}
+    ${srow('Text size', textSizeSeg())}
+    </div></details><button class="btn block" data-a="closeSheet">Done</button></div>`; };
+  openSheet(body(), { label: 'Workout settings', mount: b => {
+    b.addEventListener('click', ev => { if (ev.target.closest('[data-a="lockerNote"],[data-a="closeSheet"],summary')) return;
+      setTimeout(() => { if (S.profile.noWake && wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+        if (!b.isConnected) return; const open = b.querySelector('details').open; b.innerHTML = body(); b.querySelector('details').open = open; }, 0); });
+  } });
+}
+const applyTextSize = () => document.documentElement.style.setProperty('--ts', String((S && S.profile && S.profile.ts) || 1));
 function lockerSheet() {
   if (!A) return;
   const sh = openSheet(`<div class="stack"><h2>Locker or parking note</h2><input class="input" id="lk-in" maxlength="40" placeholder="Locker 112 · P2 blue" value="${esc(A.locker || '')}" autocomplete="off"><p class="cap m0">Shows at the top of this workout. It’s deleted when you finish.</p><button class="btn primary block" id="lk-ok">Save</button>${A.locker ? '<button class="btn ghost block" id="lk-del">Clear</button>' : ''}</div>`, { label: 'Locker or parking note', mount: b => {
@@ -6067,6 +6099,9 @@ const ACT = {
   minWk: () => minimizeWk(),
   farView: () => { FAR = !FAR; renderWorkout(); },
   lockerNote: () => lockerSheet(),
+  wkSettings: () => wkSettings(),
+  kgPadSet: el => { UI.kgPad = el.dataset.k === '1'; lsSave(); },
+  textSize: el => { const v = +el.dataset.k; if (!TEXT_SIZES.some(([x]) => x === v)) return; if (v === 1) delete S.profile.ts; else S.profile.ts = v; persist('jd/meta'); applyTextSize(); rerender(); },
   finish: () => {
     const work = A.ex.flatMap(e => e.sets.filter(s => s.t !== 'warm')), left = work.filter(s => !s.done).length;
     const go = () => { A.view = 'summary'; touchA(); };
