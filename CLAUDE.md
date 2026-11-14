@@ -64,7 +64,7 @@ App icon: flat black, white shirt and tie, gold ribbon and medal with a check. A
 - 10+ preset plans (PPL, UL, Full body A/B, Anterior/Posterior, Torso/Limbs, PHUL, PPL+UL, Arnold, Bro). Splits share by link.
 - Rotation: next up is the split after the last one done; saving the rotation restarts it from the first split.
 - Plate loader opens first on every kg box (machines too), with a Dial/keypad switch.
-- After the last set of each lift, the "Exercise done" pop-up adds a theme-voiced wipe-down line (7 s, tap to close).
+- After the last set of each lift, the "Exercise done" pop-up adds a theme-voiced wipe-down line (4 s, tap to close; v178: one pop-up or toast at a time, cleared on page change, toasts max 4 s unless Undo).
 
 ## Game layer (v162–v165, Job 13 Nov)
 GAME_ON in app.js turns it all off (Job plans to drop it from the App Store build). XP/tiers/stamps/lift cards/golden set/seasons are computed on the phone; friend features ride on jobdone_cards.stat.g and stat.lv (train together); gym board, gym vs gym and crews use supabase/gym_game.sql. No purple anywhere in game UI (Boulder uses gold via --gm-acc).

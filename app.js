@@ -625,13 +625,15 @@ function endScrub(el) { const ln = el.querySelector('.scrub'); if (ln) ln.setAtt
 // ---------- toast & sheets ----------
 let toastT = null;
 let SCR_KEY = '';
-function screenChanged() { const top = NAV.stack[NAV.stack.length - 1], k = (top ? top.v : NAV.tab) + '|' + (A && A.open ? (A.view || 'log') : ''); if (k !== SCR_KEY) { SCR_KEY = k; document.querySelectorAll('.toast').forEach(t => t.remove()); } }
+function screenChanged() { const top = NAV.stack[NAV.stack.length - 1], k = (top ? top.v : NAV.tab) + '|' + (A && A.open ? (A.view || 'log') : ''); if (k !== SCR_KEY) { SCR_KEY = k; document.querySelectorAll('.toast, .cele, #coach').forEach(t => t.remove()); } }
 // undo: optional function; adds an Undo button and keeps the toast up longer (deleting is forgiving, like Mail and Photos)
 let TOAST_HOLD = 0; // a message that must not be covered by the caller's generic error right after it
 function toast(html, ms = 2600, undo) {
   if (Date.now() < TOAST_HOLD) return;
-  document.querySelectorAll('.toast').forEach(t => t.remove());
+  document.querySelectorAll('.toast, .cele').forEach(t => t.remove()); // one message at a time, newest wins (v178)
+  if (!undo) ms = Math.min(ms, 4000);
   const t = document.createElement('div'); t.className = 'toast' + (undo ? ' has-undo' : ''); t.setAttribute('role', 'status'); t.innerHTML = html;
+  t.onclick = e => { if (!e.target.closest('.toast-undo')) t.remove(); };
   if (undo) { ms = Math.max(ms, 6000); const b = document.createElement('button'); b.className = 'toast-undo'; b.textContent = 'Undo'; b.onclick = () => { t.remove(); undo(); }; t.appendChild(b); }
   document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), ms);
 }
@@ -3516,7 +3518,7 @@ function livePR(e) {
 const restSave = () => { try { localStorage.setItem(LS_KEY + ':rest', JSON.stringify(A ? REST : null)); } catch (e) {} };
 const restLoad = () => { try { const r = JSON.parse(localStorage.getItem(LS_KEY + ':rest')); return A && r && (r.paused || r.end > Date.now()) ? r : null; } catch (e) { return null; } };
 function renderWorkout() {
-  syncRestPush(); restSave();
+  syncRestPush(); restSave(); screenChanged();
   const el = $('#wk'); if (!el) return;
   if (!A || !A.open) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
@@ -3812,11 +3814,13 @@ function doneLine(w) {
   return pick(m.done[h >= 5 && h < 8 ? 'sunrise' : h >= 17 && h < 20 ? 'sunset' : h >= 20 || h < 5 ? 'night' : 'day']);
 }
 function celebrate(v, delay = 0) {
+  const key = SCR_KEY;
   setTimeout(() => {
+    if (delay && key !== SCR_KEY) return; // you left that page; don't show it somewhere it doesn't belong
     // A set verdict goes into the rest bar's first line instead of a banner over the card (review 2).
     const bar = !v.note && v.k !== 'next' && REST && $('#wk [data-rest-msg]');
     if (bar) { REST.msg = { title: v.title, sub: v.sub }; bar.innerHTML = restMsg(REST.msg); (SOUNDS[v.k] || (() => {}))(); return; }
-    document.querySelectorAll('.cele').forEach(c => c.remove());
+    document.querySelectorAll('.cele, .toast:not(.has-undo)').forEach(c => c.remove());
     const c = document.createElement('div'); c.className = 'cele cele-' + v.k; c.setAttribute('role', 'status'); if (v.ms) c.style.setProperty('--out', (v.ms - 600) + 'ms');
     c.innerHTML = `<b>${esc(v.title)}</b><span>${esc(v.sub)}</span>${v.note ? `<i>${esc(v.note)}</i>` : ''}`;
     c.onclick = () => c.remove(); // tap to close early
@@ -3860,7 +3864,7 @@ function logSet(ei, si) {
       const work = e.sets.filter(x => x.t !== 'warm'), doneN = work.filter(x => x.done).length;
       if (doneN === work.length && work.length) {
         const nx = A.ex.slice(ei + 1).find(x => x.sets.some(y => !y.done)) || A.ex.find(x => x.sets.some(y => !y.done));
-        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 7000 }, 1200);
+        celebrate({ k: 'next', title: 'Exercise done', sub: nx ? 'Next: ' + nx.name : 'Every set done. Finish when you’re ready.', note: tidyLine(e.name), bits: 0, ms: 4000 }, 1200);
         if (nx) setTimeout(() => { if (!A) return; const el = $('#ex-' + A.ex.indexOf(nx)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 1700);
       }
     }
@@ -4079,7 +4083,7 @@ function showRecap(id, fresh) {
   if (fresh) rollNums(el); else el.querySelectorAll('.fin-press').forEach(x => x.classList.remove('fin-press'));
   // Confetti is for a PR finish only (review 2, V23), so a record feels bigger than a normal day.
   if (fresh) { if (d.prs.length) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
-  if (fresh) { const m = milestoneOf(d.w); if (m) { confetti(160); celebrate({ k: 'mile', title: m[0], sub: m[1], bits: 0, ms: 5500 }, 700); } }
+  if (fresh) { const m = milestoneOf(d.w); if (m) { confetti(160); celebrate({ k: 'mile', title: m[0], sub: m[1], bits: 0, ms: 4500 }, 700); } }
 }
 // Big moments (v177): workout 1, 10, 25, 50, 100 and so on, and each year since the first workout. One loud celebration, then gone.
 const MILES = [1, 10, 25, 50, 75, 100, 150, 200, 250, 300, 365, 400, 500, 750, 1000];
