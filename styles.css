@@ -2270,10 +2270,17 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .card.nextup .card-h .eyebrow::before { display: none; }
 /* Steps label sits on the same line as Body weight (that header is 24px tall, centred) */
 .card.grp .grp-b > .eyebrow { min-height: 24px; display: flex; align-items: center; margin-top: 8px; }
-/* Boulder: the hold art moves down with Next route, so it doesn't sit behind the week summary */
-:root:not([data-theme]) .card.nextup:has(.wk-in)::before { top: 120px; }
 .card.nextup .wk-in { border-bottom-color: color-mix(in srgb, currentColor 18%, transparent); }
-/* Boulder (Job, 14 Nov): the week keeps its light panel at the top of the card, the split colour starts at Next route */
-:root:not([data-theme]) .card.nextup .wk-in { margin: -16px -16px 16px; padding: 16px; border-bottom: 0; background: #FAF8F5; color: #16151A; }
-:root:not([data-theme]) .card.nextup .wk-in .eyebrow { color: rgba(40,38,50,.8); }
-:root:not([data-theme]) .card.nextup .wk-in .cap, :root:not([data-theme]) .card.nextup .wk-in .c-text { color: #16151A; opacity: 1; }
+
+/* Boulder Next up, version A (Job, 14 Nov): the whole card is cream like the rest; the split colour is on Start and the current rotation bar */
+:root:not([data-theme]) #screen .card.nextup { background: #FAF8F5 !important; color: #16151A !important; }
+:root:not([data-theme]) .card.nextup::before { display: none !important; }
+:root:not([data-theme]) .card.nextup .eyebrow { color: rgba(40,38,50,.8) !important; }
+:root:not([data-theme]) .card.nextup .cap, :root:not([data-theme]) .card.nextup .nx-strip span { color: rgba(40,38,50,.75) !important; }
+:root:not([data-theme]) .card.nextup .wk-sum .c-text, :root:not([data-theme]) .card.nextup .nx-strip .cur { color: #16151A !important; }
+:root:not([data-theme]) .card.nextup .wk-in { border-bottom-color: rgba(40,38,50,.12); }
+:root:not([data-theme]) .card.nextup .info { background: rgba(40,38,50,.1) !important; color: #16151A !important; }
+:root:not([data-theme]) .card.nextup .btn.primary { background: var(--split) !important; color: var(--ink, #16151A) !important; }
+:root:not([data-theme]) .card.nextup .nx-strip b { background: rgba(40,38,50,.12) !important; }
+:root:not([data-theme]) .card.nextup .nx-strip .done b { background: rgba(40,38,50,.35) !important; }
+:root:not([data-theme]) .card.nextup .nx-strip .cur b { background: var(--split) !important; }
