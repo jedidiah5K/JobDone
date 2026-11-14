@@ -1221,8 +1221,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v186';
+const NEWS_ID = '2026-11-v187';
 const NEWS = [
+  ['Scan in the app', 'Friends → Add a friend now has Scan their QR. Point your camera at a friend’s code and the request sends by itself.'],
   ['Reactions in the bell', 'When a friend reacts to or comments on your workout, it shows in the bell on Today with a red number until you open it.'],
   ['Pushes for friends', 'With notifications on, you get a push when someone sends you a friend request or invites you to a party.'],
   ['No more stuck loading', 'If the connection drops, cards stop loading after 15 seconds and the gym board tries again instead of staying grey.'],
@@ -1815,7 +1816,7 @@ function qrSVG(text, px = 220) {
 }
 function qrSheet() {
   if (!ID_CODE) return toast('Your code shows once your card is saved. Try again in a moment.');
-  openSheet(`<div class="stack tc"><h2>Your friend code</h2><div class="qr-box">${qrSVG(ADD_URL(ID_CODE), 240)}</div><b class="num">${esc(idCode(ID_CODE))}</b><p class="cap m0">Your friend points their iPhone Camera at this, taps the link, then taps Send.</p><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Your friend code' });
+  openSheet(`<div class="stack tc"><h2>Your friend code</h2><div class="qr-box">${qrSVG(ADD_URL(ID_CODE), 240)}</div><b class="num">${esc(idCode(ID_CODE))}</b><p class="cap m0">Tell your friends to scan this with their camera.</p><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'Your friend code' });
 }
 // The Camera opens links in Safari, which on iPhone doesn't share the Home Screen app's sign-in, so the code is kept for a day too.
 let ADD_PENDING = (() => { try { const v = new URLSearchParams(location.search).get('add'); if (v) history.replaceState(null, '', location.pathname);
@@ -1831,11 +1832,42 @@ function addFromLink() {
 function frAddSheet(pre) {
   const qr = ID_CODE && typeof qrcode === 'function' ? qrSVG(ADD_URL(ID_CODE), 112) : '';
   const sh = openSheet(`<div class="stack af"><h2>Add a friend</h2>
-    <div class="af-me">${qr ? `<button class="af-qr" data-a="idQR" aria-label="Show my QR code bigger">${qr}</button>` : ''}<div class="af-code"><span class="eyebrow">Your code</span><b class="num">${esc(idCode(ID_CODE)) || '—'}</b><span class="cap">${qr ? 'They scan this with their iPhone camera.' : 'Share it so friends can add you.'}</span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy code</button></div></div>
+    <div class="af-me">${qr ? `<button class="af-qr" data-a="idQR" aria-label="Show my QR code bigger">${qr}</button>` : ''}<div class="af-code"><span class="eyebrow">Your code</span><b class="num">${esc(idCode(ID_CODE)) || '—'}</b><span class="cap">${qr ? 'Tell your friends to scan this with their camera.' : 'Share it so friends can add you.'}</span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy code</button></div></div>
     <div><label class="eyebrow" for="fr-code">Their code</label><div class="row g2 mt1"><input class="input grow num af-in" id="fr-code" value="${pre ? esc(pre) : ''}" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
-    <p class="cap mt1 m0">Or scan their QR with your camera. They get a request to accept.</p></div></div>`, { label: 'Add a friend', mount: b => {
+    <button class="btn block mt2 af-scan" id="fr-scan">${IC.cam}Scan their QR</button>
+    <p class="cap mt1 m0">They get a request to accept.</p></div></div>`, { label: 'Add a friend', mount: b => {
     const go = b.querySelector('#fr-go'); go.onclick = async () => { if (go.disabled) return; go.disabled = true; await friendAdd(); go.disabled = false; if (!b.querySelector('#fr-code').value) closeSheet(sh); };
+    b.querySelector('#fr-scan').onclick = () => frScan(code => { b.querySelector('#fr-code').value = code; go.click(); });
     if (pre) setTimeout(() => b.querySelector('#fr-code').focus(), 250); } });
+}
+// Scan a friend's QR inside the app (Job, 14 Nov). Safari has no QR reader for web pages, so jsQR (vendored,
+// Apache-2.0) loads on the first tap only. The camera stops as soon as a code is read or the sheet closes.
+const loadJsQR = () => window.jsQR ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = 'vendor/jsqr.js'; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+const scanCode = txt => { let v = txt.trim(); try { v = new URL(v).searchParams.get('add') || ''; } catch (e) {} return /^[A-Za-z0-9-]{4,12}$/.test(v) ? v : null; };
+async function frScan(done) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return toast('This browser can’t open the camera. Type their code instead.');
+  let stream;
+  try { await loadJsQR(); } catch (e) { return toast('Couldn’t load the scanner. Check your connection.'); }
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); }
+  catch (e) { return toast(e && e.name === 'NotAllowedError' ? 'Camera is blocked. Allow it for Job’s Done in Settings, or type their code.' : 'Couldn’t open the camera. Type their code instead.'); }
+  const stop = () => stream.getTracks().forEach(t => t.stop());
+  const sh = openSheet(`<div class="stack tc"><h2>Scan their QR</h2><div class="scan-box"><video playsinline muted autoplay></video><i class="scan-frame" aria-hidden="true"></i></div><p class="cap m0">Point at the QR on your friend’s Add a friend screen.</p><button class="btn block" data-a="closeSheet">Cancel</button></div>`, { label: 'Scan their QR', mount: b => {
+    let warned = false; const vid = b.querySelector('video'), cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+    vid.srcObject = stream; vid.play().catch(() => {});
+    const tick = () => {
+      if (!vid.isConnected) return stop(); // sheet closed
+      if (vid.readyState >= 2 && vid.videoWidth) {
+        const k = Math.min(1, 480 / vid.videoWidth); cv.width = Math.round(vid.videoWidth * k); cv.height = Math.round(vid.videoHeight * k);
+        cx.drawImage(vid, 0, 0, cv.width, cv.height);
+        const hit = window.jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'dontInvert' });
+        const code = hit && scanCode(hit.data);
+        if (code) { stop(); closeSheet(sh); return done(code); }
+        if (hit && !warned) { warned = true; toast('That QR isn’t a Job’s Done friend code.', 2500); }
+      }
+      setTimeout(() => requestAnimationFrame(tick), 120);
+    };
+    tick();
+  } });
 }
 
 function frSettings() {
