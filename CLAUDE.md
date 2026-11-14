@@ -34,7 +34,7 @@ Always build with esbuild set: web/index.html is minified, and building without 
 - Pushing to main is a live change. Work on a branch and ask Job before merging.
 
 ## Standing rules from Job
-- Nothing paid, ever. No paid Supabase/Vercel features, no domain purchase, no paid APIs. Free only.
+- Nothing paid until the store release (1 Jan 2027), except the Apple ($99/yr) and Google Play ($25) developer accounts, approved by Job 14 Nov 2026. After release Job will pay for essential services (security and the usual production stack); suggest them then. Launch plan: docs/launch-plan.md.
 - Job wants the simplest setup and hates multi-step chores. Do things for them; ask before installing tools.
 - Job changes direction often: always show screenshots of UI changes before calling them done (Playwright works). When Job sends a design for one theme, change ONLY that theme.
 - Copy: plain and human. No AI-sounding writing (stock words, "not X but Y", forced lists of three, filler). Don't make copy about Job; new users get generic wording.

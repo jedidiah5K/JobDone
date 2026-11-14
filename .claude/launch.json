@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "web", "runtimeExecutable": "python", "runtimeArgs": ["-m", "http.server", "8000", "-d", "web"], "port": 8000 },
+    { "name": "offline", "runtimeExecutable": "python", "runtimeArgs": ["-m", "http.server", "8010", "-d", "C:/Users/JEDIDI~1/AppData/Local/Temp/claude/b5485ba7335a37ef/97313d5f-4aa2-4ef0-ad67-d2b824fc5404/scratchpad/web"], "port": 8010, "autoPort": false }
+  ]
+}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ID card sample</title>
+<style>
+:root { --navy: #0D1A45; --red: #E2231A; --ink: #fff; --dim: rgba(255,255,255,.62); }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; font-family: -apple-system, system-ui, sans-serif; background: #0B1438; color: var(--ink); overflow: hidden; }
+/* the screen behind: a stand-in for Me */
+.behind { padding: 56px 16px; }
+.behind h1 { font-size: 34px; margin: 8px 0 20px; }
+.behind .row { background: #12204F; border-radius: 14px; padding: 16px; margin-bottom: 10px; color: #c9d3f5; font-size: 17px; }
+/* opening the card blurs the screen you were on */
+.scrim { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(5,10,30,.35);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.wrap { width: min(560px, 100%); perspective: 1000px; }
+.card { position: relative; width: 100%; aspect-ratio: 85.6 / 54; container-type: inline-size; transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(calc(var(--ry, 0deg) + var(--flip, 0deg))); transition: transform .5s cubic-bezier(.2,.8,.2,1); touch-action: none; cursor: grab; }
+.card.live { transition: transform .1s ease-out; }
+.face { position: absolute; inset: 0; border-radius: 4.5cqw; overflow: hidden; background: var(--navy); -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.14); }
+.back { transform: rotateY(180deg); }
+.face svg.art { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* shine that slides across as the card tilts */
+.face::after { content: ""; position: absolute; inset: -50%; pointer-events: none; mix-blend-mode: screen; opacity: .6;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.26) 47%, rgba(120,170,255,.2) 50%, rgba(255,90,90,.16) 53%, transparent 60%);
+  transform: translate(var(--sx, -10%), var(--sy, 0%)); }
+.top { position: absolute; left: 0; right: 0; top: 0; height: 14%; display: flex; align-items: center; justify-content: space-between; padding: 0 5.5%;
+  background: rgba(0,0,0,.35); font-weight: 800; letter-spacing: .2em; font-size: 2.6cqw; }
+.top b { color: var(--red); }
+.photo { position: absolute; left: 5.5%; top: 21%; width: 26%; aspect-ratio: 3 / 4; border-radius: 2cqw; overflow: hidden; border: .4cqw solid rgba(255,255,255,.3); }
+.photo svg { width: 100%; height: 100%; display: block; }
+.info { position: absolute; left: 36%; right: 5.5%; top: 20%; }
+.name { font-size: 6.4cqw; font-weight: 800; line-height: 1.05; }
+.lvl { display: inline-block; margin-top: 1.6cqw; background: var(--red); font-weight: 800; letter-spacing: .08em; font-size: 2.3cqw; padding: .9cqw 2.2cqw; border-radius: 99px; }
+.lvl + span { color: var(--dim); font-size: 2.4cqw; margin-left: 1.4cqw; }
+.grid { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; margin-top: 5cqw; }
+.grid b { display: block; font-size: 3.6cqw; }
+.grid span { color: var(--dim); font-size: 2.2cqw; }
+.foot { position: absolute; left: 0; right: 0; bottom: 0; height: 15%; display: flex; align-items: center; justify-content: space-between; padding: 0 5.5%;
+  background: rgba(226,35,26,.16); color: var(--dim); font-size: 2.3cqw; }
+.foot b { color: var(--red); font-size: 4cqw; letter-spacing: .15em; }
+.bk { position: absolute; left: 5.5%; right: 5.5%; top: 20%; }
+.bk h3 { font-size: 2.2cqw; letter-spacing: .2em; color: var(--dim); margin-bottom: 1.4cqw; }
+.bk .l { display: flex; justify-content: space-between; font-size: 3.4cqw; padding: .8cqw 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+.bk .l i { font-style: normal; color: var(--red); font-weight: 800; }
+.bk .kv { display: flex; gap: 3cqw; font-size: 3cqw; margin-top: 2.4cqw; }
+.bk .kv span { width: 20cqw; color: var(--dim); font-size: 2.2cqw; letter-spacing: .15em; padding-top: .5cqw; }
+.hint { text-align: center; color: var(--dim); font-size: 13px; margin-top: 18px; }
+.btn { display: block; margin: 12px auto 0; background: #fff; color: #111; border: 0; border-radius: 12px; padding: 12px 18px; font: 600 15px -apple-system, system-ui, sans-serif; }
+@media (prefers-reduced-motion: reduce) { .card, .card.live { transition: none; } .face::after { display: none; } }
+</style></head>
+<body>
+<div class="behind" aria-hidden="true"><div style="color:#c9d3f5;font-size:13px;letter-spacing:.1em">PROFILE</div><h1>Alex Rivera</h1>
+  <div class="row">Your ID card</div><div class="row">Friends</div><div class="row">Name</div><div class="row">Height</div><div class="row">Units</div><div class="row">Rest between sets</div></div>
+
+<div class="scrim"><div class="wrap">
+  <div class="card" id="card" role="img" aria-label="ID card for Alex Rivera. Tap to flip.">
+    <div class="face front">
+      <svg class="art" viewBox="0 0 856 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <rect width="856" height="540" fill="#0D1A45"/><circle cx="790" cy="130" r="34" fill="#F3EBD2" opacity=".2"/>
+        <g fill="#0A1336"><rect x="560" y="360" width="80" height="180"/><rect x="648" y="320" width="90" height="220"/><rect x="746" y="270" width="110" height="270"/></g>
+        <g fill="#F6C65B" opacity=".4"><rect x="580" y="390" width="10" height="14"/><rect x="670" y="350" width="10" height="14"/><rect x="700" y="420" width="10" height="14"/><rect x="770" y="300" width="10" height="14"/><rect x="810" y="390" width="10" height="14"/></g>
+        <path d="M0 76 Q 240 210 360 540" stroke="#fff" stroke-width="2" fill="none" opacity=".3"/>
+      </svg>
+      <div class="top"><span>CITY ID</span><span>JOB’S <b>DONE</b></span></div>
+      <!-- placeholder: the person's profile photo goes here -->
+      <div class="photo"><svg viewBox="0 0 90 120" aria-label="Profile photo"><rect width="90" height="120" fill="#22347A"/><circle cx="45" cy="46" r="20" fill="#8FA3D9"/><path d="M8 120 C 10 84, 80 84, 82 120Z" fill="#8FA3D9"/></svg></div>
+      <div class="info">
+        <div class="name">Alex Rivera</div>
+        <span class="lvl">ROOFTOP RUNNER</span><span>Intermediate</span>
+        <div class="grid"><div><b>2 years</b><span>training</span></div><div><b>184</b><span>workouts</span></div><div><b>Oct 2026</b><span>member since</span></div></div>
+      </div>
+      <div class="foot"><b>JD-7K4Q9X</b><span>Tap to flip</span></div>
+    </div>
+    <div class="face back">
+      <div class="top"><span>TOP LIFTS</span><span>JOB’S <b>DONE</b></span></div>
+      <div class="bk">
+        <div class="l">Chest Fly <i>70 kg × 10</i></div><div class="l">Leg Press <i>200 kg × 12</i></div><div class="l">Lat Pulldown <i>75 kg × 8</i></div>
+        <div class="kv"><span>SPLIT</span>Push / Pull / Legs · 4 days a week</div>
+        <div class="kv"><span>HOME GYM</span>Anytime Fitness · IT Park</div>
+      </div>
+      <div class="foot"><b>JD-7K4Q9X</b><span>Add me: Me → Friends</span></div>
+    </div>
+  </div>
+  <p class="hint">Tilt your phone or drag the card. Tap it to flip.</p>
+  <button class="btn" id="motion" hidden>Let the card follow your phone</button>
+</div></div>
+
+<script>
+// Tilt follows the phone once allowed (iPhone asks the first time), or a finger or mouse drag. Tap flips the card.
+const card = document.getElementById('card'), MAX = 16, reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tilt(x, y) {
+  x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y));
+  card.style.setProperty('--ry', (x * MAX).toFixed(2) + 'deg'); card.style.setProperty('--rx', (-y * MAX).toFixed(2) + 'deg');
+  card.style.setProperty('--sx', (x * 30 - 10).toFixed(1) + '%'); card.style.setProperty('--sy', (y * 30).toFixed(1) + '%');
+}
+let base = null;
+const onOrient = e => { if (e.beta == null) return; if (!base) base = { b: e.beta, g: e.gamma }; card.classList.add('live'); tilt((e.gamma - base.g) / 22, (e.beta - base.b) / 22); };
+if (!reduce) {
+  const D = window.DeviceOrientationEvent;
+  if (D && typeof D.requestPermission === 'function') {
+    const b = document.getElementById('motion'); b.hidden = false;
+    b.onclick = () => D.requestPermission().then(s => { if (s === 'granted') { addEventListener('deviceorientation', onOrient); b.hidden = true; } }).catch(() => {});
+  } else if (D) addEventListener('deviceorientation', onOrient);
+}
+let drag = null, moved = 0, flipped = false;
+card.addEventListener('pointerdown', e => { drag = card.getBoundingClientRect(); moved = 0; card.classList.add('live'); card.setPointerCapture(e.pointerId); });
+card.addEventListener('pointermove', e => { if (!drag || reduce) return; moved++; tilt(((e.clientX - drag.left) / drag.width - .5) * 2, ((e.clientY - drag.top) / drag.height - .5) * 2); });
+card.addEventListener('pointerup', () => { card.classList.remove('live'); if (moved < 4) { flipped = !flipped; card.style.setProperty('--flip', flipped ? '180deg' : '0deg'); } drag = null; base = null; tilt(0, 0); });
+card.addEventListener('pointercancel', () => { drag = null; card.classList.remove('live'); tilt(0, 0); });
+</script>
+</body></html>
