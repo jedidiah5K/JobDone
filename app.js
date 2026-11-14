@@ -3009,7 +3009,7 @@ function meParts() {
   </div></section>
   <section><div class="sgh">About</div><div class="sgrp">
     ${slink('Send feedback or report a bug', 'feedback')}
-    ${p.owner && HOSTED && USER ? slink('Inbox', 'fbInbox') : ''}
+    ${p.owner && HOSTED && USER ? slink('Admin', 'admin') + slink('Inbox', 'fbInbox') : ''}
     <a class="xr" href="privacy.html" target="_blank" rel="noopener"><span class="grow">Privacy Policy</span>${I.right}</a>
     <a class="xr" href="terms.html" target="_blank" rel="noopener"><span class="grow">Terms of Use</span>${I.right}</a>
     ${HOSTED && USER ? slink('Delete account', 'delAccount', 'danger') : ''}
@@ -5981,6 +5981,7 @@ const ACT = {
   a2hs: () => openInstallGuide(false),
   feedback: () => openFeedback(),
   fbInbox: () => openInbox(),
+  admin: () => openAdmin(),
   delAccount: () => openDeleteAccount(),
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
@@ -6189,6 +6190,34 @@ function openFeedback() {
       if (error) { btn.disabled = false; toast('Couldn’t send it. Check your connection and try again.'); return; }
       closeSheet(sh); toast('Thanks! Feedback sent.');
     };
+  } });
+}
+
+// Admin (owner only, v183): counts from jobdone_admin_stats (supabase/admin.sql). The server checks it's the owner.
+const admHTML = d => {
+  if (d === null) return skCard(2) + skCard(3);
+  if (!d) return '<p class="cap m0">Couldn’t load the numbers. Check your connection.</p>';
+  const n = x => (+x || 0).toLocaleString(), pl = (x, w) => `${n(x)} ${w}${+x === 1 ? '' : 's'}`;
+  const days = d.days || [], max = Math.max(1, ...days), dn = i => new Date(Date.now() - (6 - i) * 864e5).toLocaleDateString('en', { weekday: 'short' });
+  const row = (t, sub, a) => a ? `<button class="xr" data-a="${a}"><span class="grow">${t}<span class="s">${sub}</span></span><span class="cap">Open</span></button>` : `<div class="xr"><span class="grow">${t}<span class="s">${sub}</span></span></div>`;
+  const ago = d.backupAt ? new Date(d.backupAt) : null, mb = (+d.dbBytes || 0) / 1048576;
+  return `<div class="adm-k"><div class="card"><div class="eyebrow">Accounts</div><b>${n(d.accounts)}</b><span class="cap">${n(d.new7)} new this week</span></div>
+    <div class="card"><div class="eyebrow">Active this week</div><b>${n(d.active7)}</b><span class="cap">${n(d.activeToday)} today · ${n(d.signin7)} signed in</span></div></div>
+  <div class="card"><div class="adm-h"><div class="eyebrow">People training · last 7 days</div><span class="cap">today ${n(days[6])}</span></div>
+    <div class="adm-bars" role="img" aria-label="People training each day: ${days.join(', ')}">${days.map((v, i) => `<i class="${i === 6 ? 'on' : ''}" style="height:${Math.max(6, v / max * 100)}%"></i>`).join('')}</div>
+    <div class="adm-h cap"><span>${dn(0)}</span><span>${dn(6)}</span></div></div>
+  <div class="sgrp">${row('Friends and posts', `${pl(d.friendships, 'friendship')} · ${pl(d.posts48, 'post')} in the last 48 h`)}${row('Parties', `${n(d.parties7)} this week · ${pl(d.partyPeople7, 'person').replace('persons', 'people')}`)}</div>
+  <div class="sgrp">${row('Feedback', +d.feedback7 ? `${n(d.feedback7)} new this week` : 'Nothing new this week', 'fbInbox')}${row('Reports', +d.reports ? `${n(d.reports)} waiting` : 'None', 'fbInbox')}</div>
+  <section><div class="sgh">Health</div><div class="sgrp">
+    ${row('Errors', +d.errors7 ? `${n(d.errors7)} this week${d.lastError ? ` · “${esc(d.lastError)}”` : ''}` : 'None this week')}
+    ${row('Backups', ago ? `Last one ${ago.toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} · ${pl(d.backupUsers, 'account')}` : 'None yet')}
+    ${row('Database', `${mb.toFixed(0)} MB used of 500 MB`)}
+  </div></section>`;
+};
+function openAdmin() {
+  openSheet(`<div class="stack"><div class="adm-h"><h2>Admin</h2><span class="cap">only you see this</span></div><div id="adm" class="stack">${admHTML(null)}</div></div>`, { label: 'Admin', mount: async b => {
+    let d; try { d = await gymRpc('jobdone_admin_stats', {}); } catch (e) { d = false; }
+    const el = b.querySelector('#adm'); if (el) el.innerHTML = admHTML(d);
   } });
 }
 

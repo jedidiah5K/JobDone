@@ -2323,3 +2323,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #wk .tgt-line { display: flex; align-items: center; gap: 6px; max-width: 100%; }
 #wk .tgt-line .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #wk .tgt-line .info { flex: none; }
+
+/* Admin sheet (owner only, v183) */
+.adm-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.adm-k { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.adm-k .card { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.adm-k b { font: 700 32px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.adm-bars { display: flex; align-items: flex-end; gap: 6px; height: 56px; margin: var(--s3) 0 var(--s2); }
+.adm-bars i { flex: 1; border-radius: 6px; background: color-mix(in srgb, var(--text) 20%, transparent); }
+.adm-bars i.on { background: var(--text); }
