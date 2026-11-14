@@ -2432,3 +2432,13 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .mh32::after { inset: -6px -3px; }
 .xr .seg:not(.w140) { flex: none; }
 .xr .seg:not(.w140) button { padding: 0 10px; white-space: nowrap; min-height: 36px; }
+/* v191: include-the-bar tick and bar types in the plate loader */
+.pl-bars { display: flex; flex-direction: column; gap: 8px; }
+.pl-inc { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-weight: 600; align-self: flex-start; }
+.pl-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--muted); display: grid; place-items: center; flex: none; }
+.pl-inc[aria-checked="true"] .pl-box { background: var(--accent); border-color: var(--accent); }
+.pl-inc[aria-checked="true"] .pl-box::after { content: ''; width: 10px; height: 5px; border: 2px solid var(--accent-ink, #fff); border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+.pl-barlist[hidden] { display: none; }
+.pv-n { display: block; max-width: 84px; margin: 1px auto 0; font-size: calc(10px * var(--ts, 1)); line-height: calc(13px * var(--ts, 1)); color: var(--text2); font-weight: 500; }
+.pv-n.me { color: var(--accent); }
+.st-note { cursor: default; }

@@ -808,8 +808,15 @@ function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger 
 }
 
 // ---------- render shell ----------
+// Home Screen shortcuts (v191): long-press the icon for Start workout or Log weight (manifest "shortcuts", ?go=).
+let GO = (() => { try { const g = new URLSearchParams(location.search).get('go'); if (g) history.replaceState(null, '', location.pathname); return g === 'start' || g === 'weigh' ? g : null; } catch (e) { return null; } })();
+function goShortcut() {
+  if (!GO || !ready || !S || !S.profile || !S.profile.onboarded || DEMO) return;
+  const g = GO; GO = null;
+  setTimeout(() => { if (g === 'start') { if (A) openWk(); else openStart(); } else openWeighIn(today()); }, 400);
+}
 function render() {
-  addFromLink();
+  addFromLink(); goShortcut();
   if (!ready) return;
   syncRestPush();
   // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
@@ -3635,10 +3642,13 @@ const SET_TYPES = [['warm', 'W', 'Warm-up', 'A lighter set to get ready. It isn�
 function setTypeSheet(ei, si) {
   const pick = ei != null && A && A.ex[ei] && A.ex[ei].sets[si], e = pick && A.ex[ei], cur = pick ? A.ex[ei].sets[si].t || 'work' : null;
   const sh = openSheet(`<div class="stack"><h2>${pick ? 'Set type' : 'Set types'}</h2><div class="list st-list">${SET_TYPES.map(([k, l, n, d]) => `<${pick ? 'button' : 'div'} class="li st-row${cur === k ? ' on' : ''}" ${pick ? `data-st="${k}"` : ''}><b class="setno ${k}">${k === 'work' && pick ? si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length : l}</b><div class="grow"><div class="t">${n}</div><div class="s">${d}</div></div>${cur === k ? I.check : ''}</${pick ? 'button' : 'div'}>`).join('')}
+    ${pick ? `<div class="li st-note"><label class="grow"><span class="t">Note for this set</span><input class="input mt1" id="st-note" maxlength="40" placeholder="Seat 4 · left shoulder tight" value="${esc(e.sets[si].n || '')}" autocomplete="off"></label></div>` : ''}
     ${pick ? `<button class="li st-row${e.sets[si].sp ? ' on' : ''}" data-st="sp"><b class="setno sp">S</b><div class="grow"><div class="t">Spotted</div><div class="s">A friend helped with the last reps. It counts in your volume, not as a PR.</div></div>${e.sets[si].sp ? I.check : ''}</button>` : `<div class="li st-row"><b class="setno sp">S</b><div class="grow"><div class="t">Spotted</div><div class="s">Tap a set number and pick Spotted when a friend helped. It counts in your volume, not as a PR.</div></div></div>`}
     ${pick && e.sets.length > 1 ? `<button class="li st-row st-del" data-st="del"><b class="setno">${I.x}</b><div class="grow"><div class="t">Remove set</div></div></button>` : ''}</div></div>`, { label: 'Set types', mount: b => {
     if (!pick) return;
-    b.onclick = ev => { const r = ev.target.closest('[data-st]'); if (!r) return; closeSheet(sh);
+    const ni = b.querySelector('#st-note'); ni.onchange = () => { const st = A.ex[ei] && A.ex[ei].sets[si]; if (!st) return; const v = ni.value.trim().replace(/\s+/g, ' ').slice(0, 40); if (v) st.n = v; else delete st.n; touchA(); };
+    ni.onkeydown = ev => { if (ev.key === 'Enter') { ni.blur(); closeSheet(sh); } };
+    b.onclick = ev => { if (ev.target.closest('.st-note')) return; const r = ev.target.closest('[data-st]'); if (!r) return; closeSheet(sh);
       if (r.dataset.st === 'del') return ACT.delSet({ dataset: { e: ei, s: si } });
       if (r.dataset.st === 'sp') { const st = A.ex[ei].sets[si]; if (st.sp) delete st.sp; else st.sp = 1; return touchA(); }
       A.ex[ei].sets[si].t = r.dataset.st; touchA(); };
@@ -3757,6 +3767,23 @@ function lockerSheet() {
     setTimeout(() => inp.focus(), 250);
   } });
 }
+// Same as last time (v191): one tap fills every set with last session's numbers (warm-ups with warm-ups).
+const lastRows = last => last.sets.filter(x => x.w != null || x.r != null);
+const sameDiff = (e, last) => { const ls = lastRows(last); return ls.length && (ls.length !== e.sets.length || ls.some((x, i) => !e.sets[i] || e.sets[i].w !== x.w || e.sets[i].r !== x.r)); };
+function sameAsLast(ei) {
+  const e = A.ex[ei], last = lastSession(e.name); if (!last) return;
+  const ls = lastRows(last); if (!ls.length || e.sets.some(x => x.done)) return;
+  e.sets = ls.map((x, i) => ({ ...(e.sets[i] || {}), w: x.w, r: x.r, t: x.t || 'work', done: false, ed: true, tg: false }));
+  touchA(); toast('Filled in from last time');
+}
+// Time per lift on the finish page (v191): from the end of the previous lift to the last set of this one, plus your average rest.
+function liftTimes() {
+  const done = A.ex.map(e => ({ n: e.name, at: e.sets.filter(x => x.done && x.at).map(x => x.at) })).filter(x => x.at.length);
+  if (!done.length) return null;
+  let prev = A.start; const rows = done.sort((a, b) => Math.max(...a.at) - Math.max(...b.at)).map(x => { const end = Math.max(...x.at), m = Math.max(1, Math.round((end - prev) / 6e4)); prev = end; return [baseName(x.n), m]; });
+  const gaps = done.flatMap(x => x.at.sort((a, b) => a - b).slice(1).map((t, i) => t - x.at[i])).filter(g => g > 5e3 && g < 20 * 6e4);
+  return { rows, rest: gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length / 1000) : 0 };
+}
 // The set to do next gets a ring on its tick (Job, 4 Nov): the next one in the lift you just ticked, else the next lift with sets left.
 let UPNEXT = null;
 function upNext() {
@@ -3791,12 +3818,12 @@ function exCardHTML(e, ei) {
     <table class="mt2 sets"><thead><tr><th>Set<button class="set-i" data-a="setInfo" aria-label="What the set types mean">i</button></th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
-      <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
+      <td class="prev">${pv ? setStr(pv) : '—'}${pv && pv.n ? `<small class="pv-n ell">${esc(pv.n)}</small>` : ''}${s.n ? `<small class="pv-n me ell">${esc(s.n)}</small>` : ''}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight">${s.w == null ? '–' : dw(s.w)}</button></td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}${s.sp ? '<small class="sp-v">spotted</small>' : ''}</button></td>
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
-    <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 && ix().ws.length < 5 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
+    <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${last && !dsets.length && sameDiff(e, last) ? `<button class="link add-set" data-a="sameLast" data-e="${ei}">Same as last time</button>` : ''}${e.sets.length > 1 && ix().ws.length < 5 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
     ${cmp}`}
   </section>`;
 }
@@ -4085,7 +4112,7 @@ function logSet(ei, si) {
   } else { touchA(); if (partyIds().length) { statSync(); turnWatch(); } } // undo: the turn moves back
 }
 function summaryData() {
-  const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t, ...(s.rpe ? { rpe: s.rpe } : {}), ...(s.sp ? { sp: 1 } : {}) })), ...(e.ss ? { ss: 1 } : {}) })).filter(e => e.sets.length);
+  const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t, ...(s.rpe ? { rpe: s.rpe } : {}), ...(s.sp ? { sp: 1 } : {}), ...(s.n ? { n: String(s.n).slice(0, 40) } : {}) })), ...(e.ss ? { ss: 1 } : {}) })).filter(e => e.sets.length);
   const rows = ex.map(e => {
     const last = lastSession(e.name); const b = clone(ix().best[e.name] || emptyBest());
     const types = new Set(); e.sets.forEach(s => { prTypes(s, b).forEach(t => types.add(t)); applyBest(s, b); });
@@ -4101,6 +4128,7 @@ function summaryHTML() {
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
+    ${(() => { const lt = liftTimes(); return lt && lt.rows.length > 1 ? `<div class="card"><div class="card-h"><span class="eyebrow">Time per lift</span>${lt.rest ? `<span class="cap num">avg rest ${clock(lt.rest)}</span>` : ''}</div><div class="list">${lt.rows.map(([n, m]) => `<div class="li"><div class="grow t ell">${esc(n)}</div><span class="num cap">${m} min</span></div>`).join('')}</div></div>` : ''; })()}
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
     <div class="field"><span class="lbl">Energy <span class="cap">1 drained · 5 strong</span></span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${A.energy === n ? 'on' : ''}" data-a="energy" data-k="${n}">${n}</button>`).join('')}</div></div>
     ${changed ? `<label class="card tight row between" for="sum-upd"><span>Update the ${esc(sp.name)} split with today’s exercises</span><input type="checkbox" id="sum-upd" data-in="sumUpd" ${A.updSplit ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)"></label>` : ''}
@@ -4926,12 +4954,25 @@ const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 1
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, machine: ['machine', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: ['machine', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
+// Bars (v191, Job 14 Nov): "Include the bar" plus which bar, remembered per lift. Curls and skull crushers start on the
+// EZ bar, anything named trap/hex bar on the trap bar, the rest on an Olympic bar. Machines and cables never have one.
+const BARS = [['oly', 'Olympic', 20, 45], ['womens', 'Women’s', 15, 35], ['ez', 'EZ curl', 10, 25], ['trap', 'Trap bar', 25, 55]];
+const barKg = k => { const b = BARS.find(x => x[0] === k); return b ? (U() === 'lb' ? b[3] : b[2]) : 0; };
+const barDefault = n => /\b(EZ|Preacher|Skull|Spider|Reverse Curl)\b/i.test(n) ? 'ez' : /\b(Trap|Hex) Bar\b/i.test(n) ? 'trap' : 'oly';
+function barFor(name) { // a BARS key, or 'none' for plates only
+  const n = name && baseName(name), by = S.profile.barBy || {};
+  if (n && by[n]) return by[n];
+  const g = S.profile.barW; if (g === 0) return 'none'; // plates-only accounts (Job's) keep that everywhere
+  if (!n && g === 15) return 'womens'; if (!n && g === 10) return 'ez';
+  return n ? barDefault(n) : 'oly';
+}
+// Plates your gym has (v191): untick the ones it doesn't, and the loader only uses the rest.
+const platesHave = () => { const all = PLATES[U()], h = (S.profile.plHave || {})[U()]; const f = Array.isArray(h) ? all.filter(x => h.includes(x)) : all; return f.length ? f : all; };
 function openPlates(target, onUse, o = {}) {
-  const den = PLATES[U()], bars = U() === 'lb' ? [45, 35, 25, 0] : [20, 15, 10, 0];
-  let bar = S.profile.barW != null ? S.profile.barW : (U() === 'lb' ? 45 : 20); if (U() === 'lb' && S.profile.barW === 0) bar = 0;
-  if (o.machine) bar = 0; // machines and cables have no bar: plates only
+  let den = platesHave(), barK = o.machine ? 'none' : barFor(o.ex), lastBar = barK === 'none' ? barFor(null) === 'none' ? 'oly' : barFor(null) : barK;
+  let bar = barKg(barK);
   let side = [], fresh = -1;
   const total = () => Math.round((bar + 2 * side.reduce((a, b) => a + b, 0)) * 1000) / 1000;
   const auto = t => { side = []; let r = Math.max(0, (t - bar) / 2); for (const p of den) while (r >= p - 1e-9) { side.push(p); r = Math.round((r - p) * 1000) / 1000; } return r; };
@@ -4946,15 +4987,19 @@ function openPlates(target, onUse, o = {}) {
       out += `<g class="pl R${nw}" data-i="${i}"><rect x="${xR}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xR + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
       out += `<g class="pl L${nw}" data-i="${i}"><rect x="${xL - w}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xL - w + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
       xR += w + 2 * k; xL -= w + 2 * k; });
-    return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/><rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/><rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
+    const mid = barK === 'ez' ? `<path d="M${cx - 60} ${cy} l15 -6 l15 12 l15 -12 l15 12 l15 -12 l15 12 l15 -12 l15 6" fill="none" stroke="#7E848C" stroke-width="7" stroke-linejoin="round"/>`
+      : barK === 'trap' ? `<path d="M${cx - 56} ${cy} l14 -30 h84 l14 30 l-14 30 h-84z" fill="none" stroke="#7E848C" stroke-width="6" stroke-linejoin="round"/><rect x="${cx - 26}" y="${cy - 30}" width="6" height="60" rx="3" fill="#6B7178"/><rect x="${cx + 20}" y="${cy - 30}" width="6" height="60" rx="3" fill="#6B7178"/>`
+      : `<rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/>${mid}<rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
   };
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
   const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
     <div class="cap" id="pl-msg"></div>
+    ${o.machine ? '' : `<div class="pl-bars"><button class="pl-inc" id="pl-inc" role="checkbox" aria-checked="${bar ? 'true' : 'false'}"><i class="pl-box"></i>Include the bar</button><div class="chips pl-barlist" id="pl-barlist" ${bar ? '' : 'hidden'}>${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} ${barKg(k)}</button>`).join('')}</div></div>`}
     <div class="bar-wrap" id="pl-bar"></div>
     <div class="plate-tray" id="pl-tray">${tray()}</div>
-    <details class="pl-more"><summary class="link">Bar, custom plates, load a total</summary><div class="g3 stack mt3">
-    <div class="field"><span class="lbl">Bar</span><div class="seg" id="pl-barw">${bars.map(b => `<button data-b="${b}" class="${b === bar ? 'on' : ''}">${b ? b + ' ' + U() : 'Plates only'}</button>`).join('')}</div></div>
+    <details class="pl-more"><summary class="link">Plates your gym has, custom plates, load a total</summary><div class="g3 stack mt3">
+    <div class="field"><span class="lbl">Plates your gym has</span><div class="chips" id="pl-have">${PLATES[U()].map(x => `<button class="chip${den.includes(x) ? ' on' : ''}" data-hv="${x}" aria-pressed="${den.includes(x)}">${trim(x)}</button>`).join('')}</div></div>
     <div class="g2 row"><input class="flex1 input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})"><button class="btn" id="pl-cadd">Add plate</button></div>
     <div class="g2 row"><input class="flex1 input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}"><button class="btn" id="pl-auto">Load it</button></div></div></details>
     ${onUse ? `<div class="g2 row">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Dial / keypad</button>` : ''}<button class="flex1 btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
@@ -4969,7 +5014,18 @@ function openPlates(target, onUse, o = {}) {
     draw();
     b.querySelector('#pl-bar').onclick = ev => { const g = ev.target.closest('.pl'); if (!g) return; side.splice(+g.dataset.i, 1); left = 0; buzz(5); draw(); };
     b.querySelector('#pl-clear').onclick = () => { side = []; left = 0; draw(); };
-    b.querySelector('#pl-barw').onclick = ev => { const x = ev.target.closest('[data-b]'); if (!x) return; bar = +x.dataset.b; if (!o.machine) { S.profile.barW = bar; persist('jd/meta'); } b.querySelectorAll('#pl-barw button').forEach(y => y.classList.toggle('on', y === x)); draw(); };
+    const setBar = k => { barK = k; bar = barKg(k); if (k !== 'none') lastBar = k;
+      if (o.ex) S.profile.barBy = { ...(S.profile.barBy || {}), [baseName(o.ex)]: k }; else S.profile.barW = bar;
+      persist('jd/meta'); const inc = b.querySelector('#pl-inc'), list = b.querySelector('#pl-barlist');
+      if (inc) inc.setAttribute('aria-checked', bar ? 'true' : 'false'); if (list) { list.hidden = !bar; list.querySelectorAll('[data-bk]').forEach(y => { y.classList.toggle('on', y.dataset.bk === k); y.setAttribute('aria-pressed', y.dataset.bk === k); }); }
+      draw(); };
+    const inc = b.querySelector('#pl-inc'); if (inc) inc.onclick = () => setBar(bar ? 'none' : lastBar);
+    const bl = b.querySelector('#pl-barlist'); if (bl) bl.onclick = ev => { const x = ev.target.closest('[data-bk]'); if (x) setBar(x.dataset.bk); };
+    b.querySelector('#pl-have').onclick = ev => { const x = ev.target.closest('[data-hv]'); if (!x) return; const v = +x.dataset.hv, cur = new Set(den);
+      if (cur.has(v)) { if (cur.size === 1) return toast('Keep at least one plate'); cur.delete(v); } else cur.add(v);
+      S.profile.plHave = { ...(S.profile.plHave || {}), [U()]: PLATES[U()].filter(y => cur.has(y)) }; persist('jd/meta'); den = platesHave();
+      b.querySelectorAll('#pl-have [data-hv]').forEach(y => { const on = den.includes(+y.dataset.hv); y.classList.toggle('on', on); y.setAttribute('aria-pressed', on); });
+      b.querySelector('#pl-tray').innerHTML = tray(); if (target) { left = auto(total() > bar ? total() : target); draw(); } };
     b.querySelector('#pl-auto').onclick = () => { const t = parseFloat(b.querySelector('#pl-t').value); if (!(t >= 0)) return; left = auto(t); fresh = -2; draw(); b.querySelectorAll('#pl-bar .pl').forEach((g, i) => { g.classList.add('new'); g.style.animationDelay = (Math.floor(i / 2) * .09) + 's'; }); side.forEach((p, i) => clank(p / 25, i * .09)); };
     b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
     const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { closeSheet(sh); onUse(total()); };
@@ -6100,6 +6156,7 @@ const ACT = {
   farView: () => { FAR = !FAR; renderWorkout(); },
   lockerNote: () => lockerSheet(),
   wkSettings: () => wkSettings(),
+  sameLast: el => sameAsLast(+el.dataset.e),
   kgPadSet: el => { UI.kgPad = el.dataset.k === '1'; lsSave(); },
   textSize: el => { const v = +el.dataset.k; if (!TEXT_SIZES.some(([x]) => x === v)) return; if (v === 1) delete S.profile.ts; else S.profile.ts = v; persist('jd/meta'); applyTextSize(); rerender(); },
   finish: () => {
