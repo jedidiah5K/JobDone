@@ -124,7 +124,8 @@ begin
         'push', exists (select 1 from jobdone_push_subs p where p.user_id = u.id),
         'fr', (select count(*) from jobdone_friends f where f.user_id = u.id),
         'gym', coalesce(c.at_gym is not null and c.at_since > now() - interval '4 hours', false)) x
-      from auth.users u left join jobdone_cards c on c.user_id = u.id left join seen s on s.user_id = u.id) y),
+      from auth.users u left join jobdone_cards c on c.user_id = u.id left join seen s on s.user_id = u.id) y)
+  ) || jsonb_build_object( -- split in two: Postgres caps a function call at 100 arguments
     -- social
     'friendships', (select count(distinct (least(user_id, friend_id), greatest(user_id, friend_id))) from jobdone_friends),
     'requestsPending', (select count(*) from jobdone_friend_requests),

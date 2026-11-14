@@ -1,11 +1,13 @@
 # Builds two versions from the same source:
 #   web/               the installable website (Supabase accounts, home-screen app); also zipped to dist/jobdone-web.zip
 #   dist/jobdone.html  the Claude artifact, only when the private personal/ seed folder is present
-import os, shutil, subprocess, sys, zipfile
+import os, re, shutil, subprocess, sys, zipfile
 here = os.path.dirname(os.path.abspath(__file__))
 seed_script = os.path.join(here, 'personal', 'build_seed.py')
 seed = subprocess.check_output([sys.executable, seed_script, os.path.join(here, '..', 'prompts', 'workout-log-may-oct-2026.csv')]).decode() if os.path.exists(seed_script) else None
 src_js = open(os.path.join(here, 'app.js'), encoding='utf-8').read()
+# Error notes carry the release (the service worker cache name, e.g. v185) instead of a hand-kept date.
+src_js = src_js.replace("const APP_VER = '2026.10.17';", "const APP_VER = '%s';" % re.search(r"jobdone-(v\d+)", open(os.path.join(here, 'web-src', 'sw.js'), encoding='utf-8').read()).group(1), 1)
 css = open(os.path.join(here, 'styles.css'), encoding='utf-8').read()
 import base64
 css = css.replace('/*FONT*/', '')  # Oct 2026: system font (SF Pro on iPhone) instead of the rounded Nunito

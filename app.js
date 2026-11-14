@@ -1141,9 +1141,9 @@ const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.tex
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#screen .wk-card'), t: 'Your week', d: 'Each day you train gets marked. Hit your weekly target to keep the streak going.' },
-  { tab: 'today', el: () => tq('#screen .bell-btn'), t: 'Notifications', d: 'Friend requests and invites to train together land here. The red number is how many are new.' },
+  { tab: 'today', el: () => tq('#screen .bell-btn'), t: 'Notifications', d: 'Friend requests, party invites, and reactions and comments on your posts land here. The red number is how many are new.' },
   { tab: 'friends', el: () => tq('#screen [data-a="partyAdd"]') || tq('#screen [data-a="frAddSheet"]'), t: () => tq('#screen [data-a="partyAdd"]') ? 'Train together' : 'Add friends',
-    d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start. They get a Join button and you see each other’s sets live.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
+    d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start a party. They get a push and a Join button, you see each other’s sets live, and Take turns tells you whose set is next.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
   { tab: 'friends', el: () => tq('#screen .fr-faces'), t: 'Your friends', d: 'A green ring means they’re at the gym now. Tap a face to see their card, compare or nudge them.' },
   { tab: 'me', el: () => tq('#screen [data-a="rewards"]'), t: 'Card and rewards', d: 'Your XP, card tier, passport stamps, lift cards and season. Share any of them as a Story.' },
   { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
@@ -1221,8 +1221,11 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v182';
+const NEWS_ID = '2026-11-v186';
 const NEWS = [
+  ['Reactions in the bell', 'When a friend reacts to or comments on your workout, it shows in the bell on Today with a red number until you open it.'],
+  ['Pushes for friends', 'With notifications on, you get a push when someone sends you a friend request or invites you to a party.'],
+  ['No more stuck loading', 'If the connection drops, cards stop loading after 15 seconds and the gym board tries again instead of staying grey.'],
   ['Tidier workout screen', 'Your party is one small line at the top. Tap it to see everyone’s last set. When you take turns, whose go it is sits in a bar at the bottom.'],
   ['Take turns', 'Sharing a machine? In a party, tap Take turns. When you’re both on the same lift, the app says whose go it is and tells you when it’s yours. Forgot to tick? Your friend can tap Skip.'],
   ['Faster parties', 'When you train together, your friends’ sets now update every 15 seconds, and a long break between sets no longer drops you out of the party.'],
@@ -1578,27 +1581,39 @@ function reqsCard() {
   return `<div class="card inbox-card"><div class="eyebrow">${rin.length > 1 ? rin.length + ' friend requests' : 'Friend request'}</div><div class="list">${rin.map(r => `<div class="li fr-req">${face(r.n || '?', null, 'mono')}<div class="grow"><div class="t ell">${esc(r.n || 'Someone')}</div><div class="s">wants to be friends</div><div class="row g2 mt2"><button class="btn sm primary" data-a="frYes" data-k="${esc(r.id)}">Accept</button><button class="btn sm ghost" data-a="frNo" data-k="${esc(r.id)}">Decline</button></div></div></div>`).join('')}</div></div>`;
 }
 // Bell on Today (Job, 13 Nov): friend requests and party invites in one place, with a count.
-const inboxCount = () => !HOSTED || !USER ? 0 : (REQS || []).filter(r => r.dir === 'in').length + (GAME_ON && joinBanner() ? 1 : 0);
+// v186: reactions and comments on your posts (last 48 h) also land in the bell. Seen keys are kept on the phone.
+let ACTS = [], ACT_AT = 0;
+const actSeen = () => new Set(lsGet('acts', []));
+const actNew = () => { const s = actSeen(); return (ACTS || []).filter(a => !s.has(a.k)); };
+const actMarkSeen = () => { if (actNew().length) { lsSet('acts', (ACTS || []).map(a => a.k)); rerender(); } };
+const actLine = a => a.kind === 'react' ? `reacted ${esc(a.r || '')} to your workout` : `commented: “${esc(a.body || '')}”`;
+function actsCard() {
+  if (!ACTS || !ACTS.length) return ''; const fresh = new Set(actNew().map(a => a.k));
+  return `<div class="card inbox-card"><div class="eyebrow">On your posts</div><div class="list">${ACTS.slice(0, 20).map(a => `<div class="li${fresh.has(a.k) ? ' act-new' : ''}">${face(a.n || '?', null, 'mono')}<div class="grow"><div class="t ell">${esc(a.n || 'A friend')}</div><div class="s">${actLine(a)}</div></div></div>`).join('')}</div></div>`;
+}
+const inboxCount = () => !HOSTED || !USER ? 0 : (REQS || []).filter(r => r.dir === 'in').length + (GAME_ON && joinBanner() ? 1 : 0) + actNew().length;
 const bellBtn = () => { if (!HOSTED || !USER || DEMO) return ''; const n = inboxCount();
   return `<button class="icon-btn bell-btn" data-a="inbox" aria-label="Notifications${n ? ', ' + n + ' new' : ''}" title="Notifications">${IC.bell}${n ? `<b class="bell-n num">${n > 9 ? '9+' : n}</b>` : ''}</button>`; };
 function inboxSheet() {
-  const body = inboxHTML();
-  openSheet(`<div class="stack inbox-sh"><h2>Notifications</h2>${body || '<div class="empty">Nothing new. Friend requests and party invites show up here.</div>'}</div>`, { label: 'Notifications', mount: (b, sh) => {
+  const body = inboxHTML(); setTimeout(actMarkSeen, 0);
+  openSheet(`<div class="stack inbox-sh"><h2>Notifications</h2>${body || '<div class="empty">Nothing new. Friend requests, party invites and reactions to your posts show up here.</div>'}</div>`, { label: 'Notifications', mount: (b, sh) => {
     b.addEventListener('click', e => { if (e.target.closest('[data-a="frYes"],[data-a="frNo"],[data-a="joinFriend"]')) setTimeout(() => closeSheet(sh), 0); });
   } });
 }
-const inboxHTML = () => (GAME_ON ? joinBanner() : '') + reqsCard();
+const inboxHTML = () => (GAME_ON ? joinBanner() : '') + reqsCard() + actsCard();
 // Check for new requests and party invites every minute while the app is open, and right away when it comes back
 // to the front. Two small calls; stops when signed out or in the background. New ones get a toast once.
 // v180: the refresh uses jobdone_friends_live (no photos, a few KB); names and photos reload every 10 minutes or when
 // someone is added or removed. Every 15 s while you're in a party or invited to one, every minute otherwise.
 let INBOX_ON = false, INBOX_T = 0, INBOX_SEEN = null, FR_FULL_AT = 0, STAT_AT = 0;
-const inboxSig = () => JSON.stringify([(FRIENDS || []).map(x => [x.id, x.stat, x.at_gym, x.nudged_me, !!x.photo, x.card]), REQS]);
+const inboxSig = () => JSON.stringify([(FRIENDS || []).map(x => [x.id, x.stat, x.at_gym, x.nudged_me, !!x.photo, x.card]), REQS, (ACTS || []).map(a => a.k)]);
 const partyLive = () => partyIds().length > 0 || (Array.isArray(FRIENDS) && !!USER && FRIENDS.some(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id); }));
 async function inboxPoll() {
   clearTimeout(INBOX_T); if (!HOSTED || !USER || document.hidden) return;
   const full = !Array.isArray(FRIENDS) || Date.now() - FR_FULL_AT > 600e3, was = inboxSig();
-  const [f, r] = await Promise.allSettled([gymRpc(full ? 'jobdone_friends_list' : 'jobdone_friends_live'), gymRpc('jobdone_friend_requests')]);
+  const actDue = Date.now() - ACT_AT > 55e3; // once a minute even when the party poll runs faster
+  const [f, r, ac] = await Promise.allSettled([gymRpc(full ? 'jobdone_friends_list' : 'jobdone_friends_live'), gymRpc('jobdone_friend_requests'), actDue ? gymRpc('jobdone_activity') : Promise.resolve(null)]);
+  if (actDue && ac.status === 'fulfilled') { ACTS = ac.value || []; ACT_AT = Date.now(); }
   if (f.status === 'fulfilled') { const rows = f.value || [];
     if (full) { FRIENDS = rows; FR_FULL_AT = Date.now(); }
     else { const by = new Map((FRIENDS || []).map(x => [x.id, x])); if (rows.length !== by.size || rows.some(x => !by.has(x.id))) FR_FULL_AT = 0; // someone added or removed: full reload next
@@ -1608,6 +1623,7 @@ async function inboxPoll() {
   const now = [];
   (REQS || []).filter(x => x.dir === 'in').forEach(x => now.push(['r' + x.id, `${x.n || 'Someone'} sent you a friend request`]));
   if (GAME_ON) (FRIENDS || []).forEach(x => { const l = liveOf(x); if (l && lvParty(l).includes(USER.id) && !partyIds().includes(x.id)) now.push(['p' + x.id, `${((x.card || {}).n || 'A friend').split(' ')[0]} invited you to train together`]); });
+  actNew().forEach(a => now.push([a.k, `${a.n || 'A friend'} ${a.kind === 'react' ? 'reacted to your workout' : 'commented on your workout'}`]));
   const fresh = INBOX_SEEN ? now.filter(([k]) => !INBOX_SEEN.has(k)) : [];
   INBOX_SEEN = new Set(now.map(([k]) => k));
   if (fresh.length) toast(esc(fresh[0][1]) + (fresh.length > 1 ? ` and ${fresh.length - 1} more` : ''), 4000);
@@ -2424,9 +2440,9 @@ function viewToday() {
     <div class="week">${strip}</div>${restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
     ${(() => { const rot = S.rotation.map(splitById).filter(Boolean), ri = nx ? rot.indexOf(nx) : -1; // review 2: lifts in one line, a rotation strip, "Start workout"
       return `<div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span>${ri >= 0 && rot.length > 1 ? `<span class="cap num">${ri + 1} of ${rot.length}</span>` : ''}</div>
-    ${nx ? `<div class="hero nx-name"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt1 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
+    ${nx ? `<div class="hero nx-name"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt1 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : ix().ws.length ? 'not done yet' : 'your plan is ready'}</div>
       ${rot.length > 1 ? `<button class="nx-strip" data-a="tab" data-k="splits" aria-label="Rotation: ${esc(rot.map(s => s.name).join(', '))}. Open splits">${rot.map((s, i) => `<span class="ell${i < ri ? ' done' : i === ri ? ' cur' : ''}"><b></b>${esc(s.name)}</span>`).join('')}</button>` : ''}
-      ${A && A.splitId === nx.id ? `<button class="mt4 btn primary block" data-a="resume">Resume workout</button>` : `<button class="mt4 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start workout</button>`}`
+      ${A && A.splitId === nx.id ? `<button class="mt4 btn primary block" data-a="resume">Resume workout</button>` : `<button class="mt4 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>${ix().ws.length ? 'Start workout' : 'Start your first workout'}</button>`}`
       : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}`; })()}
   </div>`}
   ${past ? '' : frStrip()}
@@ -5603,7 +5619,7 @@ function obTour() {
     ['Beat last time, every time', 'A target for each lift and a message after every set. Rest starts by itself.', shot('rest', 'The rest timer after a set')],
     ['Watch yourself get stronger', 'PRs, a monthly report card and a weight vs strength chart show what is working.', shot('chart', 'Weight vs strength chart')],
     ['Show it off', 'When you finish you see what you beat, your PRs, and a recap card to share or post.', shot('done', 'The finish page')],
-    ['Train with friends', 'Scan a friend’s QR to add them, train together and see each other’s sets live, and start a crew. Your workouts show up in their feed.',
+    ['Train with friends', 'Scan a friend’s QR to add them. Start a party of up to 6 and see each other’s sets live, or take turns on one machine. Your workouts show up in their feed.',
       mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Training with Sam · 7 sets</div><div class="m-pill"><i class="m-dot"></i>Ria · trained Pull · 3 of 4</div><div class="m-cap">12 weeks in a row together</div>`)],
     ['Level up your card', 'Sets, PRs and full weeks earn XP. Your ID card goes from Bronze to Gold, Holo and a Black card, and you collect stamps and a card for each lift.',
       mock('m-off', `<div class="m-pill"><i class="m-dot"></i>Gold · 16,300 XP</div><div class="m-pill"><i class="m-dot"></i>Stamp: 5 AM club</div><div class="m-cap">Top of your gym this week gets the crown</div>`)],
