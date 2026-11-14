@@ -1000,7 +1000,7 @@ function gymFind() {
         + `<button class="link" data-new="">Not one of these? Add a new gym</button>`;
     };
     q.oninput = () => { clearTimeout(t); const v = q.value.trim(); if (v.length < 2) { out.textContent = 'Type at least 2 letters.'; return; }
-      t = setTimeout(async () => { const my = ++n; out.innerHTML = '<div class="gym-sk" style="height:120px"></div>'; try { let rows = await gymRpc('jobdone_gym_search', { q: v }) || [], guess = false;
+      t = setTimeout(async () => { const my = ++n; out.innerHTML = skRows(3); try { let rows = await gymRpc('jobdone_gym_search', { q: v }) || [], guess = false;
           // No hit? Typo (Job, 5 Nov): "anytme fitnes" → search by the first letters, keep the close matches
           if (!rows.length && v.length >= 4) { const w = fzWords(v).sort((a, b) => b.length - a.length)[0] || ''; if (w.length >= 3) { rows = (await gymRpc('jobdone_gym_search', { q: w.slice(0, 3) }) || []).filter(r => fuzzy(r.brand + ' ' + (r.branch || ''), v)); guess = rows.length > 0; } }
           if (my === n) { draw(rows, v); if (guess) out.insertAdjacentHTML('afterbegin', '<div class="grp">Did you mean</div>'); } } catch (e) { if (my === n) out.textContent = 'Couldn’t search. Check your connection.'; } }, 250); };
@@ -1138,6 +1138,7 @@ const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.tex
 const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
   { tab: 'today', el: () => tq('#screen .wk-card'), t: 'Your week', d: 'Each day you train gets marked. Hit your weekly target to keep the streak going.' },
+  { tab: 'today', el: () => tq('#screen .bell-btn'), t: 'Notifications', d: 'Friend requests and invites to train together land here. The red number is how many are new.' },
   { tab: 'friends', el: () => tq('#screen [data-a="partyAdd"]') || tq('#screen [data-a="frAddSheet"]'), t: () => tq('#screen [data-a="partyAdd"]') ? 'Train together' : 'Add friends',
     d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start. They get a Join button and you see each other’s sets live.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
   { tab: 'friends', el: () => tq('#screen .fr-faces'), t: 'Your friends', d: 'A green ring means they’re at the gym now. Tap a face to see their card, compare or nudge them.' },
@@ -1217,41 +1218,15 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v170';
+const NEWS_ID = '2026-11-v177';
 const NEWS = [
-  ['Routines for anywhere', 'New split now asks where you’re training: gym, at home, dumbbells only, bodyweight, travel, or cardio and HIIT. Each has ready-made routines.'],
-  ['Train together', 'Open a friend’s card and tap Train together, then Add more friends for a party of up to 6. They get a Join button, and everyone sees each other’s sets as you go.'],
-  ['Your gym’s board', 'The gym page now crowns whoever earned the most XP there this week, shows Regulars and Local Legends, who owns each machine, and how your gym ranks against others this month. Your name only shows if you turn it on.'],
-  ['Crews and seasons', 'Start a crew with 2 to 5 friends in Friends. Seasons last 8 weeks and everyone starts from zero together; see yours in Card and rewards.'],
-  ['Add friends by QR', 'Your card has a QR code. A friend points their Camera at it and the code fills in for them.'],
-  ['You and your friends', 'Open a friend’s card and tap You and them: your duo streak, a shared 30-set mission each week, a face-off on this month’s stats, and how well your training matches.'],
-  ['Spotter points', 'Every friend who reacts to or comments on your post gives you 5 XP. Being a good gym friend pays.'],
-  ['Card and rewards', 'Me → Card and rewards. Earn XP for sets, PRs and full weeks, and your card goes from Bronze to Silver, Gold, Holo and, after a year, the Black card. Its edge glows brighter for every week in a row.'],
-  ['Passport and lift cards', 'Collect stamps like the 5 AM club and Comeback, and get a card for each lift you log often. Cards get rarer as your lift grows. Share any of them.'],
-  ['Golden set and ghost race', 'One random set each week is golden and gives bonus XP. Beat a set from last time and you pass your ghost.'],
-  ['Your year so far', 'A recap of your year that updates every week, plus before and after and milestone posters, all sized for Stories.'],
-  ['Crop your photos', 'When you add a photo to a post, drag it and pinch to zoom so it fits the frame the way you want.'],
-  ['Shorter feed posts', 'Posts show the first 3 lifts. Tap See more for the rest.'],
-  ['Tidier share card', 'The lifts on your share card now sit in a drop-down, so the card and the Share button stay in view.'],
-  ['Insights', 'A new tab in Progress: workouts, sets, volume, workout length and PRs against the period before, a body heat map of the muscles you trained, your push, pull and legs balance, strength change per lift, and the days and times you train.'],
-  ['A new first-time setup', 'New people now answer a few questions, watch their plan get built and see what they get, then create their account as the last step. Their answers go straight into the new account.'],
-  ['A hands-on tour', 'The tour now walks you through a sample lift: load the plates, add reps, finish, save and post. Nothing from it is saved.'],
-  ['Posting just works', 'Posting a workout or a photo turns on your friend card for you, so there is no extra switch to find first.'],
-  ['Import from other apps, up front', 'Coming from Strong, Hevy or another app? The CSV import now sits at the top of the plan step, so it is easy to find.'],
-  ['A new exercise picker', 'Search, then filter by equipment or muscle. Each exercise shows the muscle it works, and the i explains how to do it.'],
-  ['More calisthenics', 'Pistol squats, muscle-ups, L-sits, handstand push-ups, dragon flags and more.'],
-  ['Set types', 'Tap a set number to make it a warm-up, a set to failure or a drop set. The i next to Set explains each one.'],
-  ['Your theme on the strength chart', 'Progress → Strength fills the gap between your two lines with your theme: a web, scan lines, ridges or a climbing wall.'],
-  ['Save stays in reach', 'On long lists the Save or Done button stays at the bottom of the screen.'],
-  ['Rest time on the big button', 'Leave the workout screen while resting and the big button shows the time left, with a ring that runs down. Tap it to go back.'],
-  ['Swipe to delete a set', 'Swipe a set left and it slides over to show Delete. Swipe all the way to delete it in one go.'],
-  ['A slimmer rest timer', 'Rest now sits in a thin bar at the bottom with a small hourglass by the time. Tap the time to pause. How the set went shows in the same bar.'],
-  ['Targets follow your plan', 'Next time’s weight and reps use the rep range in your split, so 12 reps on an 8 to 12 plan means add weight. A range set in Me still wins.'],
-  ['Cleaner Today and finish page', 'Today has one Start workout button and weight next to steps. The finish page leads with your numbers and says which old set each PR beat.'],
-  ['Block and report', 'Block someone from ⋯ on their post or from their card. Report a post or a comment. Unblock in Friends → ⚙ → Blocked people.'],
-  ['Safer syncing', 'Two phones on one account no longer overwrite each other. A workout finished with no signal stays put, and sign-out waits until your sets are saved.'],
-  ['Better imports', 'Hevy and Strong files keep the right dates and units, and two workouts on the same day stay separate.'],
-  ['Machines start empty', 'The plate loader on machines and cables starts at 0 with no bar.'],
+  ['Notifications', 'Tap the bell at the top of Today to see friend requests and invites to train together. The red number shows how many are new, and they check for new ones every minute.'],
+  ['Join the same workout', 'When a friend invites you to train together and you tap Join, you start their workout with the same lifts. If you’d already started but haven’t ticked a set, it switches over.'],
+  ['Train together from Friends', 'The Train together button on Friends lets you pick several friends at once, with their faces in a grid.'],
+  ['Big moments', 'Your 1st, 10th, 50th and 100th workouts, and every year since your first, now get their own celebration.'],
+  ['Cleaner screens', 'Add a friend, Steps, Feedback, Swap, Weigh-in and Me were redone so they’re quicker to read. Pop-ups have a pull handle at the top.'],
+  ['Smoother loading', 'Friends, the feed, your gym’s board and crews show grey outlines of what’s coming instead of a blank space.'],
+  ['A new tour', 'The tour now covers notifications and friends too. Find it in Me → Help and about.'],
 ];
 function whatsNew() {
   const p = S && S.profile;
@@ -1662,6 +1637,11 @@ function frStatus(f) {
 }
 // Weeks in a row you've both hit your own number. Their count is only trusted if they've opened the app since last week.
 const frStreak = f => { const s = f.stat; return s && s.w >= addDays(mondayOf(frToday(s)), -7) ? Math.min(myStat().k, +s.k || 0) : 0; };
+// Skeletons (v177): grey shapes that match what's coming, so nothing jumps when it lands.
+const skLine = (w = '100%', h = 12) => `<i class="sk" style="width:${w};height:${h}px"></i>`;
+const skRows = n => Array.from({ length: n }, (_, i) => `<div class="sk-row"><i class="sk sk-dot"></i><span class="grow">${skLine(['55%', '42%', '64%'][i % 3])}${skLine('32%', 10)}</span></div>`).join('');
+const skCard = (n = 3) => `<div class="card" aria-busy="true" aria-label="Loading">${skLine('28%', 10)}${skRows(n)}</div>`;
+const skPost = () => `<div class="card" aria-busy="true" aria-label="Loading">${skRows(1)}<i class="sk" style="height:200px;margin-top:10px"></i></div>`;
 let FEED = null, FR_AT = 0; const NUDGED = {};
 // Tab taps reuse friends and feed for 2 minutes (each load is every friend's photo); pull-down and Refresh always reload.
 const frExpire = () => { if (Date.now() - FR_AT > 120e3) { FR_AT = Date.now(); FRIENDS = null; FEED = null; } };
@@ -1779,13 +1759,13 @@ function viewFriends() {
     ${inboxHTML()}
     ${list.length ? frFaces(list) : ''}
     ${HOSTED && USER && !DEMO && !SO().off ? `<button class="card fr-share" data-a="snap">${myFace()}<span class="grow">Share a story</span><span class="fr-cam">${IC.cam}</span></button>` : ''}
-    ${FEED === undefined ? '<div class="gym-sk" style="height:320px"></div>' : posts.length ? posts.map(postHTML).join('') : list.length ? '<div class="empty fr-empty">Nothing from the last 24 hours yet. Finish a workout and it shows up here.</div>' : frSwap()}
+    ${FEED === undefined ? skPost() + skPost() : posts.length ? posts.map(postHTML).join('') : list.length ? '<div class="empty fr-empty">Nothing from the last 24 hours yet. Finish a workout and it shows up here.</div>' : frSwap()}
   </div>`;
   return `${head}
     ${inboxHTML()}
     ${A && !A.practice && list.length ? (A.atGym ? `<div class="card row between g3"><span class="row g2"><i class="live-dot"></i><span>Friends can see you’re at ${esc(atGymWhere())}</span></span><button class="btn sm" data-a="atGymOff">Stop</button></div>`
       : `<button class="btn block" data-a="atGymOn">Tell friends I’m at the gym</button>`) : ''}
-    ${FRIENDS === undefined ? '<div class="gym-sk" style="height:120px"></div>' : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : frSwap()}
+    ${FRIENDS === undefined ? skCard(3) : list.length ? `<div class="card"><div class="eyebrow">Today</div><div class="list">${list.map(frRow).join('')}</div></div>` : frSwap()}
     ${GAME_ON && list.length ? crewsHTML() : ''}
     ${rout.length ? `<div class="card"><div class="eyebrow">Waiting for them</div><div class="list">${rout.map(r => req(r, `<button class="btn sm ghost" data-a="frCancel" data-k="${esc(r.id)}">Cancel</button>`)).join('')}</div></div>` : ''}
   </div>`;
@@ -1833,7 +1813,7 @@ function frSettings() {
 // Blocked people, with Unblock. Unblocking doesn't make you friends again; they'd need your code.
 async function blockedList() {
   let list = null;
-  const html = () => `<div class="stack"><h2>Blocked people</h2>${list === null ? '<div class="gym-sk" style="height:88px"></div>' : list === false ? '<p class="cap m0">Couldn’t load the list. Check your connection.</p>' : list.length ? `<div class="list">${list.map(x => `<div class="li"><div class="grow"><div class="t ell">${esc(x.n || 'Someone')}</div><div class="s">Blocked ${esc(fmtDate(String(x.at).slice(0, 10)))}</div></div><button class="btn sm" data-ub="${esc(x.id)}">Unblock</button></div>`).join('')}</div>` : '<p class="cap m0">You haven’t blocked anyone.</p>'}
+  const html = () => `<div class="stack"><h2>Blocked people</h2>${list === null ? skRows(2) : list === false ? '<p class="cap m0">Couldn’t load the list. Check your connection.</p>' : list.length ? `<div class="list">${list.map(x => `<div class="li"><div class="grow"><div class="t ell">${esc(x.n || 'Someone')}</div><div class="s">Blocked ${esc(fmtDate(String(x.at).slice(0, 10)))}</div></div><button class="btn sm" data-ub="${esc(x.id)}">Unblock</button></div>`).join('')}</div>` : '<p class="cap m0">You haven’t blocked anyone.</p>'}
     <p class="cap m0">Unblocking doesn’t add them back. They’d need your code again.</p><button class="btn block" data-a="closeSheet">Done</button></div>`;
   const sh = openSheet(html(), { label: 'Blocked people', mount: b => {
     const wire = () => b.querySelectorAll('[data-ub]').forEach(x => x.onclick = async () => { x.disabled = true;
@@ -3379,7 +3359,7 @@ function gymGameHTML() {
   if (!GAME_ON || !gymOn()) return '';
   const g = gymCur(); if (!g) return '';
   if (GBOARD === null) { gymBoardLoad(g.gym_id); return ''; }
-  if (GBOARD === undefined) return `<div class="card"><div class="sk sk-line"></div><div class="sk sk-line"></div></div>`;
+  if (GBOARD === undefined) return skCard(4);
   if (GBOARD === 'off') return '';
   const rows = GBOARD.filter(r => r.wx > 0), top = rows[0], who = r => r.n ? esc(r.n) : 'A member';
   const own = {}; for (const r of GBOARD) if (r.n && r.mc) for (const [k, v] of Object.entries(r.mc)) if (+v >= 3 && (!own[k] || +v > own[k].v)) own[k] = { v: +v, n: r.n };
@@ -3403,8 +3383,9 @@ const embSVG = (k, s = 22) => `<svg viewBox="0 0 24 24" width="${s}" height="${s
 async function crewsLoad() { CREWS = undefined; try { CREWS = await gymRpc('jobdone_crew_mine') || []; } catch (e) { CREWS = 'off'; } rerender(); }
 function crewsHTML() {
   if (!GAME_ON || !HOSTED || !USER) return '';
-  if (CREWS === null) { crewsLoad(); return ''; }
-  if (CREWS === undefined || CREWS === 'off') return '';
+  if (CREWS === null) { crewsLoad(); return skCard(1); }
+  if (CREWS === undefined) return skCard(1);
+  if (CREWS === 'off') return '';
   const wk = mondayOf(today());
   return `<div class="card"><div class="card-h"><span class="eyebrow">Crews</span><button class="cap mh32" data-a="crewNew">New crew</button></div>
     ${CREWS.length ? CREWS.map(c => { const ms = c.members || [], inn = ms.filter(m => m.in), sets = inn.reduce((a, m) => a + (m.w === wk && m.g ? +m.g.ss || 0 : 0), 0), xp = inn.reduce((a, m) => a + (m.g ? +m.g.wx || 0 : 0), 0);
@@ -4098,6 +4079,18 @@ function showRecap(id, fresh) {
   if (fresh) rollNums(el); else el.querySelectorAll('.fin-press').forEach(x => x.classList.remove('fin-press'));
   // Confetti is for a PR finish only (review 2, V23), so a record feels bigger than a normal day.
   if (fresh) { if (d.prs.length) confetti(110); try { SOUNDS.amazing(); } catch (e) {} }
+  if (fresh) { const m = milestoneOf(d.w); if (m) { confetti(160); celebrate({ k: 'mile', title: m[0], sub: m[1], bits: 0, ms: 5500 }, 700); } }
+}
+// Big moments (v177): workout 1, 10, 25, 50, 100 and so on, and each year since the first workout. One loud celebration, then gone.
+const MILES = [1, 10, 25, 50, 75, 100, 150, 200, 250, 300, 365, 400, 500, 750, 1000];
+const MILE_LINE = { 1: 'Day one. Everything counts from here.', 10: 'Double digits.', 25: 'A quarter of the way to 100.', 50: 'Fifty sessions. That’s a habit now.', 100: 'Triple digits. Not many get this far.', 365: 'A workout for every day of a year.', 1000: 'A thousand. Take a bow.' };
+function milestoneOf(w) {
+  const ws = ix().ws.filter(x => !x.skipped).map(x => x.date).sort(), n = ws.length;
+  const first = ws[0], prev = ws[n - 2], yrs = d => d && first ? Math.floor((new Date(d) - new Date(first)) / 31557600000) : 0;
+  const y = yrs(w.date);
+  if (y >= 1 && yrs(prev) < y) return [y === 1 ? 'One year of training' : `${y} years of training`, `Since your first workout on ${fmtDate(first, { y: true })}.`];
+  if (MILES.includes(n)) return [n === 1 ? 'First workout logged' : `${n} workouts`, MILE_LINE[n] || 'Another big number on the board.'];
+  return null;
 }
 // Draw the recap as a 1080x1350 share card. Each theme has its own card (Job, 16 Oct):
 // Agent = mission debrief, Skyline = night patrol comic, Summit = summit log with an elevation profile, Boulder = route tag on the wall.
@@ -4686,7 +4679,7 @@ function shrink(file, max = 720) {
 }
 async function openPhotos() {
   if (!DB) { toast('Sign in to keep progress photos in your account.'); return; }
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Progress photos · optional</div><div id="ph-body" class="cap">Loading…</div>
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Progress photos · optional</div><div id="ph-body" class="cap"><div class="sk-grid">${'<i class="sk"></i>'.repeat(6)}</div></div>
     <label class="btn primary block" for="ph-in">Add a photo</label><input type="file" id="ph-in" accept="image/*" hidden>
     <div class="cap">Photos are private to your account. Same spot, same light and same pose make the comparison fair.</div></div>`, { label: 'Progress photos', mount: async b => {
     const draw = () => {
@@ -6122,7 +6115,7 @@ function openFeedback() {
 }
 
 async function openInbox() {
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">Inbox</div><div id="ib-r"></div><div><div class="eyebrow mb1">Feedback</div><div id="ib" class="cap">Loading…</div></div></div>`, { label: 'Inbox', mount: async b => {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Inbox</div><div id="ib-r"></div><div><div class="eyebrow mb1">Feedback</div><div id="ib" class="cap">${skRows(3)}</div></div></div>`, { label: 'Inbox', mount: async b => {
     // Reports (supabase/reports.sql). Missing until that SQL runs; then this section just stays empty.
     const reps = async () => {
       let r; try { r = await gymRpc('jobdone_reports_inbox', {}); } catch (e) { return; }

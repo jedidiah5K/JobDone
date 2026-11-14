@@ -1233,7 +1233,7 @@ body:has(.sheet-wrap) #tour { visibility: hidden; } /* the plate loader or keypa
 .gym-beta { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; vertical-align: 1px; }
 .gym-wait { outline: 1.5px dashed color-mix(in srgb, var(--text) 35%, transparent); outline-offset: -2px; border-radius: 12px; }
 .gym-chips { flex-wrap: wrap; overflow: visible; }
-.gym-sk { display: block; border-radius: var(--r2); background: var(--raised); animation: gymPulse 1.2s ease-in-out infinite alternate; }
+.gym-sk { display: block; border-radius: var(--r2); background: linear-gradient(90deg, var(--raised) 0%, color-mix(in srgb, var(--text) 10%, transparent) 50%, var(--raised) 100%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
 @keyframes gymPulse { to { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .gym-sk { animation: none; } }
 /* Feel (Job's not-AI-made guide, 4 Nov): buttons shrink a little when pressed; small buttons get a 44 px tap area */
@@ -2246,3 +2246,17 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Bell uses the same round plate as the Friends header buttons */
 .top .bell-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; border: 0; background: color-mix(in srgb, var(--surface-solid, var(--surface)) 82%, transparent); color: var(--text); box-shadow: 0 0 0 .5px var(--edge); }
 :root[data-theme="spidey"] .top .bell-btn, :root[data-theme="mono"] .top .bell-btn { background: rgba(10,18,48,.55); color: #fff; }
+
+/* Skeletons (v177): same shimmer as the startup screen, shaped like the rows and posts they stand in for */
+.sk { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--raised) 0%, color-mix(in srgb, var(--text) 10%, transparent) 50%, var(--raised) 100%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+.sk-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.sk-row .grow { display: flex; flex-direction: column; gap: 8px; }
+.sk-dot { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.card > .sk:first-child { margin-bottom: 4px; }
+.sk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sk-grid .sk { aspect-ratio: 3 / 4; }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+/* Milestones (v177): the one big moment. Centred, bigger type, accent edge; tap to close. */
+.cele.cele-mile { top: 34%; width: min(320px, calc(100% - 48px)); padding: 26px 22px 22px; gap: 6px; border-top-color: var(--accent); border-top-width: 3px; }
+.cele.cele-mile b { font-size: 34px; line-height: 38px; }
+.cele.cele-mile span { font-size: 16px; line-height: 22px; }
