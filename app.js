@@ -836,7 +836,7 @@ function render() {
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, rewards: viewRewards, friends: viewFriends, set: viewSet })[top.v](top) : ({ today: viewToday, splits: viewSplits, friends: viewFriends, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, rewards: viewRewards, friends: viewFriends, set: viewSet, admin: viewAdmin })[top.v](top) : ({ today: viewToday, splits: viewSplits, friends: viewFriends, progress: viewProgress, me: viewMe })[NAV.tab]();
   try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
   try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
@@ -3376,7 +3376,7 @@ function partyAddSheet() {
   const sh = openSheet(`<div class="pt-sheet"><div class="pt-hd"><div><h2>${esc(title)}</h2><p class="cap m0">${esc(sub)}</p></div><span class="pt-count num" id="pt-count">${have.length + 1} of ${PARTY_MAX + 1}</span></div>
     <div class="pt-line" id="pt-line" aria-hidden="true">${lineup()}</div>
     <div class="pt-grid" role="group" aria-label="Friends">${fr.map(f => { const c = f.card || {}, st = frStatus(f), on = ['gym', 'done', 'rest'].includes(st.c);
-      return `<button class="pt-pick" data-pa="${esc(f.id)}" aria-pressed="false"><span class="pt-av">${face(c.n, c.hidden ? null : f.photo, c.t)}<i class="pt-ok" aria-hidden="true"></i>${on ? `<i class="pt-st ${st.c}" aria-hidden="true"></i>` : ''}</span><b>${first(f)}</b>${on ? `<span class="cap">${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : 'Resting'}</span>` : ''}</button>`; }).join('')}</div>
+      return `<button class="pt-pick" data-pa="${esc(f.id)}" aria-pressed="false"><span class="pt-pav">${face(c.n, c.hidden ? null : f.photo, c.t)}<i class="pt-ok" aria-hidden="true"></i>${on ? `<i class="pt-st ${st.c}" aria-hidden="true"></i>` : ''}</span><b>${first(f)}</b>${on ? `<span class="cap">${st.c === 'gym' ? 'At the gym' : st.c === 'done' ? 'Trained' : 'Resting'}</span>` : ''}</button>`; }).join('')}</div>
     <button class="btn primary block" id="pa-go" disabled>Pick at least one</button></div>`, { label: title, mount: b => {
     const go = b.querySelector('#pa-go'), line = b.querySelector('#pt-line'), cnt = b.querySelector('#pt-count');
     b.addEventListener('click', e => {
@@ -5981,7 +5981,8 @@ const ACT = {
   a2hs: () => openInstallGuide(false),
   feedback: () => openFeedback(),
   fbInbox: () => openInbox(),
-  admin: () => openAdmin(),
+  admin: () => go({ v: 'admin' }),
+  admRefresh: () => { ADM.at = 0; admLoad(); },
   delAccount: () => openDeleteAccount(),
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
@@ -6193,32 +6194,65 @@ function openFeedback() {
   } });
 }
 
-// Admin (owner only, v183): counts from jobdone_admin_stats (supabase/admin.sql). The server checks it's the owner.
-const admHTML = d => {
-  if (d === null) return skCard(2) + skCard(3);
-  if (!d) return '<p class="cap m0">Couldn’t load the numbers. Check your connection.</p>';
-  const n = x => (+x || 0).toLocaleString(), pl = (x, w) => `${n(x)} ${w}${+x === 1 ? '' : 's'}`;
-  const days = d.days || [], max = Math.max(1, ...days), dn = i => new Date(Date.now() - (6 - i) * 864e5).toLocaleDateString('en', { weekday: 'short' });
-  const row = (t, sub, a) => a ? `<button class="xr" data-a="${a}"><span class="grow">${t}<span class="s">${sub}</span></span><span class="cap">Open</span></button>` : `<div class="xr"><span class="grow">${t}<span class="s">${sub}</span></span></div>`;
-  const ago = d.backupAt ? new Date(d.backupAt) : null, mb = (+d.dbBytes || 0) / 1048576;
-  return `<div class="adm-k"><div class="card"><div class="eyebrow">Accounts</div><b>${n(d.accounts)}</b><span class="cap">${n(d.new7)} new this week</span></div>
-    <div class="card"><div class="eyebrow">Active this week</div><b>${n(d.active7)}</b><span class="cap">${n(d.activeToday)} today · ${n(d.signin7)} signed in</span></div></div>
-  <div class="card"><div class="adm-h"><div class="eyebrow">People training · last 7 days</div><span class="cap">today ${n(days[6])}</span></div>
-    <div class="adm-bars" role="img" aria-label="People training each day: ${days.join(', ')}">${days.map((v, i) => `<i class="${i === 6 ? 'on' : ''}" style="height:${Math.max(6, v / max * 100)}%"></i>`).join('')}</div>
-    <div class="adm-h cap"><span>${dn(0)}</span><span>${dn(6)}</span></div></div>
-  <div class="sgrp">${row('Friends and posts', `${pl(d.friendships, 'friendship')} · ${pl(d.posts48, 'post')} in the last 48 h`)}${row('Parties', `${n(d.parties7)} this week · ${pl(d.partyPeople7, 'person').replace('persons', 'people')}`)}</div>
-  <div class="sgrp">${row('Feedback', +d.feedback7 ? `${n(d.feedback7)} new this week` : 'Nothing new this week', 'fbInbox')}${row('Reports', +d.reports ? `${n(d.reports)} waiting` : 'None', 'fbInbox')}</div>
-  <section><div class="sgh">Health</div><div class="sgrp">
-    ${row('Errors', +d.errors7 ? `${n(d.errors7)} this week${d.lastError ? ` · “${esc(d.lastError)}”` : ''}` : 'None this week')}
-    ${row('Backups', ago ? `Last one ${ago.toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} · ${pl(d.backupUsers, 'account')}` : 'None yet')}
-    ${row('Database', `${mb.toFixed(0)} MB used of 500 MB`)}
-  </div></section>`;
-};
-function openAdmin() {
-  openSheet(`<div class="stack"><div class="adm-h"><h2>Admin</h2><span class="cap">only you see this</span></div><div id="adm" class="stack">${admHTML(null)}</div></div>`, { label: 'Admin', mount: async b => {
-    let d; try { d = await gymRpc('jobdone_admin_stats', {}); } catch (e) { d = false; }
-    const el = b.querySelector('#adm'); if (el) el.innerHTML = admHTML(d);
-  } });
+// Admin (owner only, v183; full page v184, Job 14 Nov): everything from jobdone_admin_stats (supabase/admin.sql),
+// refreshed every minute while open. The server checks it's the owner. Own dark look, not the app theme (Job asked).
+let ADM = { d: null, at: 0, busy: false };
+const admN = x => (+x || 0).toLocaleString('en');
+const admAgo = ts => { if (!ts) return 'never'; const s = Math.max(0, (Date.now() - new Date(ts)) / 1000); return s < 90 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
+const admDay = ts => ts ? new Date(ts).toLocaleDateString('en', { day: 'numeric', month: 'short' }) : '—';
+const admTile = (v, l, sub, cls = '') => `<div class="ax-t ${cls}"><b>${v}</b><span>${l}</span>${sub ? `<i>${sub}</i>` : ''}</div>`;
+const admBars = (vals, labels, hi) => { const m = Math.max(1, ...vals); return `<div class="ax-bars">${vals.map((v, i) => `<div class="${i === hi ? 'on' : ''}"><em>${v || ''}</em><i style="height:${v ? Math.max(3, Math.round(v / m * 46)) : 0}px"></i><span>${labels[i] || ''}</span></div>`).join('')}</div>`; };
+const admList = (rows, max) => rows.length ? `<div class="ax-ls">${rows.map(r => `<div><span>${esc(r.n)}</span><i style="width:${r.c / max * 100}%"></i><b>${admN(r.c)}</b></div>`).join('')}</div>` : '<p class="ax-dim">Nothing yet.</p>';
+const admSec = (t, body) => `<section class="ax-s"><h3>${t}</h3>${body}</section>`;
+function admBody(d) {
+  if (d === null) return `<div class="ax-s">${skRows(4)}</div><div class="ax-s">${skRows(4)}</div>`;
+  if (!d) return '<p class="ax-dim">Couldn’t load the numbers. Check your connection, it tries again in a minute.</p>';
+  const td = d.today || {}, us = d.users || [], d14 = d.days14 || [], thN = k => ((THEMES.find(t => t.k === k) || {}).name || k || '—');
+  const st = u => u.now ? `<b class="g">Working out · ${esc(u.now)}</b>` : u.gym ? '<b class="g">At the gym</b>' : u.on ? '<b class="g">Online</b>' : `Seen ${admAgo(u.seen)}`;
+  const dot = u => u.on || u.now ? 'on' : u.seen && Date.now() - new Date(u.seen) < 36e5 ? 'warm' : '';
+  const people = `<div class="ax-ppl">${us.map(u => `<div class="ax-p"><i class="ax-dot ${dot(u)}"></i><div class="ax-pm"><div class="ax-pn"><b>${esc(u.n)}</b><span>${st(u)}</span></div>
+    <div class="ax-pe">${esc(u.e || '')}</div><div class="ax-pt">Joined ${admDay(u.joined)} · ${esc(thN(u.th))} · ${u.fr} friend${u.fr === 1 ? '' : 's'}${u.push ? ' · alerts on' : ''}${u.last ? ' · last workout ' + admDay(u.last) : ''}</div></div>
+    <div class="ax-pw"><b>${admN(u.w7)}</b><span>7 d</span><em>${admN(u.w30)} / ${admN(u.wAll)}</em></div></div>`).join('')}</div>`;
+  const live = (d.liveWorkouts || []).map(w => `<div class="ax-row"><span>${esc(w.n)}</span><span>${esc(w.split || 'Workout')} · ${admN(w.mins)} min</span></div>`).join('');
+  const dl = d14.map((x, i) => i % 2 ? '' : new Date(x.d + 'T00:00').toLocaleDateString('en', { day: 'numeric' }));
+  const lifts = d.topLifts7 || [], splits = d.topSplits30 || [], mb = (+d.dbBytes || 0) / 1048576;
+  const cron = (d.cron || []).map(c => `<div class="ax-row"><span>${esc(c.n.replace('jobdone-', ''))}</span><span class="${c.fails24 ? 'r' : c.ok === false ? 'r' : ''}">${c.last ? admAgo(c.last) : 'not run'}${c.fails24 ? ` · ${c.fails24} failed today` : c.ok === false ? ' · failed' : ''}</span></div>`).join('');
+  const errs = (d.errorsLast || []).map(e => `<div class="ax-er"><span>${admAgo(e.at)}${e.v ? ' · ' + esc(e.v) : ''}</span>${esc(e.m || '')}</div>`).join('');
+  const fbs = (d.feedbackLast || []).map(f => `<div class="ax-er"><span>${admAgo(f.at)}</span>${esc(f.b || '')}</div>`).join('');
+  const themes = Object.entries(d.themes || {}).sort((a, b) => b[1] - a[1]).map(([k, c]) => ({ n: thN(k), c }));
+  return admSec('Right now', `<div class="ax-g4">${admTile(admN(d.online), 'Online', 'app open')}${admTile(admN((d.liveWorkouts || []).length), 'Training')}${admTile(admN((d.atGym || []).length), 'At the gym')}${admTile(d.lastActivity ? agoShort(d.lastActivity).replace(/^1m$/, 'now') : '—', 'Last activity')}</div>${live ? `<div class="ax-box">${live}</div>` : ''}${d.restQueued ? `<p class="ax-dim">${admN(d.restQueued)} rest alert${d.restQueued === 1 ? '' : 's'} queued</p>` : ''}`)
+  + admSec('Today', `<div class="ax-g4">${admTile(admN(td.workouts), 'Workouts')}${admTile(admN(td.people), 'Trained')}${admTile(admN(td.sets), 'Sets')}${admTile(admN(td.volume), 'kg lifted')}${admTile(admN(td.active), 'Opened app')}${admTile(admN(td.signups), 'Sign-ups')}${admTile(admN(td.posts), 'Posts')}${admTile(admN(td.comments), 'Comments')}${admTile(admN(td.nudges), 'Nudges')}${admTile(admN(td.reminders), 'Reminders')}${admTile(admN(td.restPushes), 'Rest alerts', '', 'w2')}</div>`)
+  + admSec(`People · ${admN(us.length)}`, people)
+  + admSec('Growth', `<div class="ax-g4">${admTile(admN(d.accounts), 'Accounts', `+${admN(d.new7)} this week · +${admN(d.new30)} in 30 d`, 'w2')}${admTile(admN(d.active7), 'Active 7 d', `${admN(d.active30)} in 30 d`)}${admTile(admN(d.trained7), 'Trained 7 d', `${admN(d.trained30)} in 30 d`)}${admTile(admN(d.signin7), 'Signed in 7 d')}${admTile(admN(d.neverTrained), 'Never trained')}${admTile(admN(d.signupAttempts24), 'Sign-up tries 24 h', '', 'w2')}</div>
+    <div class="ax-cap">Workouts per day · 14 days</div>${admBars(d14.map(x => x.w), dl, d14.length - 1)}<div class="ax-cap">People training per day</div>${admBars(d14.map(x => x.p), dl, d14.length - 1)}<div class="ax-cap">Sign-ups per day</div>${admBars(d14.map(x => x.s), dl, d14.length - 1)}`)
+  + admSec('Training', `<div class="ax-g4">${admTile(admN(d.workouts7), 'Workouts 7 d', `${admN(d.workouts30)} in 30 d`)}${admTile(admN(d.workoutsAll), 'All time')}${admTile(d.avgMins7 != null ? admN(d.avgMins7) + 'm' : '—', 'Avg length')}${admTile(d.avgSets7 != null ? d.avgSets7 : '—', 'Avg sets')}${admTile(admN(d.setsAll), 'Sets all time')}${admTile(admN(Math.round((+d.volumeAll || 0) / 1000)) + ' t', 'Lifted all time')}${admTile(admN(d.parties7), 'Party workouts 7 d', `${admN(d.partyPeople7)} people`, 'w2')}</div>
+    <div class="ax-cap">When people start (last 30 days, Manila time)</div>${admBars(d.hours30 || [], (d.hours30 || []).map((_, h) => h % 6 ? '' : h + ':00'), -1)}
+    <div class="ax-cap">Top lifts this week (sets)</div>${admList(lifts, Math.max(1, ...lifts.map(x => x.c)))}<div class="ax-cap">Top splits · 30 days</div>${admList(splits, Math.max(1, ...splits.map(x => x.c)))}<div class="ax-cap">Themes</div>${admList(themes, Math.max(1, ...themes.map(x => x.c)))}`)
+  + admSec('Friends and social', `<div class="ax-g4">${admTile(admN(d.friendships), 'Friendships')}${admTile(admN(d.requestsPending), 'Requests waiting')}${admTile(admN(d.posts48), 'Posts 48 h', `${admN(d.posts7)} in 7 d`)}${admTile(admN(d.comments7), 'Comments 7 d')}${admTile(admN(d.reacts), 'Reactions')}${admTile(admN(d.nudges7), 'Nudges 7 d')}${admTile(admN(d.crews), 'Crews')}${admTile(admN(d.gyms), 'Gyms', `${admN(d.gymMembers)} members`)}</div>`)
+  + admSec('Notifications', `<div class="ax-g4">${admTile(admN(d.pushPeople), 'Alerts on', `${admN(d.pushDevices)} devices`)}${admTile(admN(d.restSent24), 'Rest alerts 24 h')}${admTile(admN(d.remindOn), 'Daily reminder on')}${admTile(admN(d.restQueued), 'Queued now')}</div>`)
+  + admSec('Feedback and reports', `<div class="ax-g4">${admTile(admN(d.feedback7), 'Feedback 7 d')}${admTile(admN(d.reports), 'Reports open', '', +d.reports ? 'warn' : '')}${admTile(admN(d.suspended), 'Suspended')}${admTile(admN(d.hiddenPosts), 'Hidden posts')}</div>${fbs ? `<div class="ax-box">${fbs}</div>` : ''}<button class="ax-btn" data-a="fbInbox">Open inbox</button>`)
+  + admSec('Health', `<div class="ax-g4">${admTile(admN(d.errors24), 'Errors 24 h', '', +d.errors24 ? 'warn' : '')}${admTile(admN(d.errors7), 'Errors 7 d')}${admTile(d.backupAt ? agoShort(d.backupAt) + ' ago' : 'none', 'Last backup', `${admN(d.backupUsers)} accounts`)}${admTile(mb.toFixed(0) + ' MB', 'Database', 'of 500 MB free')}</div>
+    <div class="ax-meter"><i style="width:${Math.min(100, mb / 5)}%"></i></div>${errs ? `<div class="ax-cap">Latest errors</div><div class="ax-box">${errs}</div>` : ''}
+    <div class="ax-cap">Scheduled jobs</div><div class="ax-box">${cron}</div>
+    <div class="ax-cap">Biggest tables</div><div class="ax-box">${(d.tables || []).map(x => `<div class="ax-row"><span>${esc(x.n)}</span><span>${(x.b / 1048576).toFixed(1)} MB</span></div>`).join('')}</div>`)
+  + '<p class="ax-dim">Names, emails and activity only. Body weight, photos, notes and measurements stay private.</p>';
+}
+async function admLoad() {
+  if (ADM.busy) return; ADM.busy = true;
+  try { ADM.d = await gymRpc('jobdone_admin_stats', {}); ADM.at = Date.now(); } catch (e) { if (!ADM.d) ADM.d = false; ADM.at = Date.now(); }
+  ADM.busy = false;
+  const el = $('#ax-body'); if (el) el.innerHTML = admBody(ADM.d);
+}
+let ADM_T = null;
+function admTick() { // every second while the page is open: the "updated" line, and a new fetch each minute
+  const el = $('#ax-up'); if (!el) { clearInterval(ADM_T); ADM_T = null; return; }
+  if (!document.hidden && Date.now() - ADM.at > 60000) admLoad();
+  el.textContent = ADM.busy ? 'Updating…' : ADM.at ? `Updated ${Math.round((Date.now() - ADM.at) / 1000)} s ago · every minute` : '';
+}
+function viewAdmin() {
+  if (!ADM_T) ADM_T = setInterval(admTick, 1000);
+  if (Date.now() - ADM.at > 60000) setTimeout(admLoad);
+  return `<div class="stack admx">${backBtn('Me')}<div class="ax-hd"><div><h1>Admin</h1><span id="ax-up" class="ax-dim"></span></div><button class="ax-btn" data-a="admRefresh">Refresh</button></div><div id="ax-body">${admBody(ADM.d)}</div></div>`;
 }
 
 async function openInbox() {

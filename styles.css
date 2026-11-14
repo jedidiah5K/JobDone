@@ -2172,8 +2172,8 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pt-pick:active { transform: scale(.96); }
 .pt-pick b { font-size: 13px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 6px; }
 .pt-pick .cap { font-size: 11px; line-height: 14px; }
-.pt-av { position: relative; display: block; }
-.pt-av .av { width: 48px; height: 48px; font-size: 19px; transition: box-shadow .15s; }
+.pt-pav { position: relative; display: block; }
+.pt-pav .av { display: grid; width: 48px; height: 48px; font-size: 19px; transition: box-shadow .15s; }
 .pt-ok { position: absolute; right: -3px; bottom: -2px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2.5px var(--raised); transform: scale(0); transition: transform .18s var(--ease); }
 .pt-ok::after { content: ""; position: absolute; left: 6px; top: 6px; width: 8px; height: 4px; border: 2px solid var(--accent-ink, #fff); border-top: 0; border-right: 0; transform: rotate(-45deg); }
 .pt-st { position: absolute; left: 0; top: 1px; width: 12px; height: 12px; border-radius: 50%; background: var(--pos, #2FB463); box-shadow: 0 0 0 2.5px var(--raised); }
@@ -2324,11 +2324,48 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #wk .tgt-line .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #wk .tgt-line .info { flex: none; }
 
-/* Admin sheet (owner only, v183) */
-.adm-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
-.adm-k { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
-.adm-k .card { display: flex; flex-direction: column; gap: 4px; margin: 0; }
-.adm-k b { font: 700 32px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
-.adm-bars { display: flex; align-items: flex-end; gap: 6px; height: 56px; margin: var(--s3) 0 var(--s2); }
-.adm-bars i { flex: 1; border-radius: 6px; background: color-mix(in srgb, var(--text) 20%, transparent); }
-.adm-bars i.on { background: var(--text); }
+/* Admin page (owner only, v184): its own dark dashboard look in every theme */
+.admx { --ax-bg: #0E1013; --ax-card: #171A1F; --ax-line: #262A31; --ax-tx: #E8EAED; --ax-dim: #8B919A; --ax-g: #3FBF6F; --ax-a: #E0A526; --ax-r: #E5534B; --ax-b: #5AA9E6;
+  background: var(--ax-bg); color: var(--ax-tx); margin: 0 calc(var(--s4) * -1); padding: var(--s4); min-height: 100vh; font-variant-numeric: tabular-nums; }
+.admx .back, .admx h1 { color: var(--ax-tx); }
+.ax-hd { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.ax-hd h1 { margin: 0; font-size: 30px; }
+.ax-dim { color: var(--ax-dim); font-size: 12px; margin: 6px 0 0; display: block; }
+.ax-btn { background: var(--ax-card); color: var(--ax-tx); border: 1px solid var(--ax-line); border-radius: 10px; padding: 8px 12px; font: 600 13px var(--font); }
+.ax-btn:active { transform: scale(.97); }
+.ax-s { background: var(--ax-card); border: 1px solid var(--ax-line); border-radius: 14px; padding: 14px; }
+.ax-s h3 { margin: 0 0 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ax-dim); font-weight: 700; }
+.ax-g4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--ax-line); border: 1px solid var(--ax-line); border-radius: 10px; overflow: hidden; }
+.ax-t { background: var(--ax-card); padding: 9px 8px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ax-t.w2 { grid-column: span 2; }
+.ax-t b { font-size: 19px; line-height: 1.15; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ax-t span { font-size: 11px; color: var(--ax-dim); }
+.ax-t i { font-style: normal; font-size: 10.5px; color: var(--ax-dim); opacity: .8; }
+.ax-t.warn b { color: var(--ax-a); }
+.ax-cap { font-size: 11px; color: var(--ax-dim); margin: 14px 0 6px; }
+.ax-box { border: 1px solid var(--ax-line); border-radius: 10px; margin-top: 8px; }
+.ax-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; font-size: 13px; border-top: 1px solid var(--ax-line); }
+.ax-row:first-child, .ax-er:first-child { border-top: 0; }
+.ax-row span:last-child { color: var(--ax-dim); text-align: right; } .ax-row .r { color: var(--ax-r) !important; }
+.ax-er { padding: 8px 10px; font-size: 12.5px; border-top: 1px solid var(--ax-line); overflow-wrap: anywhere; }
+.ax-er span { display: block; font-size: 11px; color: var(--ax-dim); }
+.ax-bars { display: flex; align-items: flex-end; gap: 3px; height: 74px; }
+.ax-bars > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+.ax-bars em { font-style: normal; font-size: 9.5px; color: var(--ax-dim); height: 12px; }
+.ax-bars i { width: 100%; border-radius: 3px 3px 0 0; background: #3A4049; }
+.ax-bars .on i { background: var(--ax-b); }
+.ax-bars span { font-size: 9.5px; color: var(--ax-dim); height: 13px; margin-top: 3px; white-space: nowrap; }
+.ax-ls > div { display: grid; grid-template-columns: 1fr auto; position: relative; font-size: 13px; padding: 5px 8px; border-radius: 6px; overflow: hidden; }
+.ax-ls > div i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(90, 169, 230, .16); }
+.ax-ls span, .ax-ls b { position: relative; } .ax-ls b { font-weight: 600; }
+.ax-meter { height: 6px; border-radius: 3px; background: #2A2F36; margin-top: 10px; overflow: hidden; } .ax-meter i { display: block; height: 100%; background: var(--ax-g); }
+.ax-ppl { border: 1px solid var(--ax-line); border-radius: 10px; }
+.ax-p { display: flex; gap: 10px; padding: 10px; border-top: 1px solid var(--ax-line); align-items: flex-start; }
+.ax-p:first-child { border-top: 0; }
+.ax-dot { width: 9px; height: 9px; border-radius: 50%; background: #4A5059; flex: none; margin-top: 6px; }
+.ax-dot.on { background: var(--ax-g); box-shadow: 0 0 0 3px rgba(63, 191, 111, .2); } .ax-dot.warm { background: var(--ax-a); }
+.ax-pm { flex: 1; min-width: 0; }
+.ax-pn { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; } .ax-pn b { font-size: 15px; } .ax-pn span { font-size: 12px; color: var(--ax-dim); } .ax-pn .g { color: var(--ax-g); font-weight: 600; font-size: 12px; }
+.ax-pe { font-size: 12px; color: var(--ax-b); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-pt { font-size: 11px; color: var(--ax-dim); margin-top: 2px; }
+.ax-pw { text-align: right; flex: none; display: flex; flex-direction: column; } .ax-pw b { font-size: 17px; } .ax-pw span, .ax-pw em { font-size: 10.5px; color: var(--ax-dim); font-style: normal; }
