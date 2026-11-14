@@ -1220,8 +1220,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v177';
+const NEWS_ID = '2026-11-v179';
 const NEWS = [
+  ['A tidier Today', 'Your week now sits at the top of the Next up card, and your last session and newest PRs share one Recently card. Less scrolling to get to Start.'],
+  ['Pop-ups behave', 'Only one message shows at a time, they go away when you change page, and you can tap one to close it.'],
   ['Notifications', 'Tap the bell at the top of Today to see friend requests and invites to train together. The red number shows how many are new, and they check for new ones every minute.'],
   ['Join the same workout', 'When a friend invites you to train together and you tap Join, you start their workout with the same lifts. If you’d already started but haven’t ticked a set, it switches over.'],
   ['Train together from Friends', 'The Train together button on Friends lets you pick several friends at once, with their faces in a grid.'],
@@ -2400,19 +2402,19 @@ function viewToday() {
   ${past ? `<div class="top"><div><div class="eyebrow">${esc(longDay(t).split(',')[0])} · ${esc((n => n === 1 ? 'Yesterday' : n + ' days ago')(daysBetween(t, T)))}</div><h1>${esc(fmtDate(t))}</h1></div><button class="btn sm" data-a="viewDay" data-k="">Today</button></div>` : `<div class="top"><div class="grow"><div class="eyebrow">${esc(longDay(t))}</div><h1 class="hi-h">${greeting()}, ${esc(p.name)}</h1></div>${bellBtn()}</div>`}
   ${A ? `<button class="tl card row between" data-a="resume" style="border-color:var(--text2)"><div><div class="eyebrow">In progress</div><h3 class="mt1">${esc(A.splitName)} · started ${hm(A.start)} · <span class="num" data-elapsed>${fmtDur(Date.now() - A.start)}</span></h3></div><span class="btn sm primary">Resume</span></button>` : ''}
   ${past ? `<div class="card"><div class="card-h"><span class="eyebrow">${ws === mondayOf(T) ? 'This week' : 'That week'}</span>${datePick(t)}</div>
-    <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">week of ${esc(fmtDate(ws))}</span></div>`
-    : `<div class="card wk-card"><div class="card-h"><span class="eyebrow">This week</span><span class="cap wk-sum"><b class="c-text num">${done} of ${p.weeklyTarget}</b> · ${esc(streakText())}</span></div>`}
-    <div class="week">${strip}</div>${past ? '' : restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
-  ${past ? '' : (GAME_ON ? joinBanner() : '') + frStrip()}
+    <div class="row between mt1"><div><span class="mid">${done}</span><span class="unit">/ ${p.weeklyTarget} workouts</span></div><span class="cap">week of ${esc(fmtDate(ws))}</span></div><div class="week">${strip}</div></div>` : ''}
+  ${past ? '' : GAME_ON ? joinBanner() : ''}
   ${past ? dayWorkoutCard(t) : `<div class="card nextup" style="--split:${nx ? nx.color : 'var(--accent)'};--ink:${nx ? inkOn(nx.color) : '#fff'}">
+    <div class="wk-card wk-in"><div class="card-h"><span class="eyebrow">This week</span><span class="cap wk-sum"><b class="c-text num">${done} of ${p.weeklyTarget}</b> · ${esc(streakText())}</span></div>
+    <div class="week">${strip}</div>${restWeekLine(ws, done) + restDayLine(T, Object.values(S.workouts).some(w => w.date === T && !w.skipped))}</div>
     ${(() => { const rot = S.rotation.map(splitById).filter(Boolean), ri = nx ? rot.indexOf(nx) : -1; // review 2: lifts in one line, a rotation strip, "Start workout"
       return `<div class="card-h"><span class="eyebrow nx-lbl">${nextLbl()} ${infoBtn('rotation')}</span>${ri >= 0 && rot.length > 1 ? `<span class="cap num">${ri + 1} of ${rot.length}</span>` : ''}</div>
     ${nx ? `<div class="hero nx-name"><i class="sdot" style="background:${nx.color}"></i>${esc(nx.name)}</div><div class="mt1 cap">${plural(nx.ex.length, 'exercise')} · ${lastNx ? 'last done ' + relDay(lastNx.date) : 'not done yet'}</div>
-      ${nx.ex.length ? `<div class="nx-lifts ell">${esc(mergeLR(nx.ex, () => '').map(r => r.name).join(' · '))}</div>` : ''}
       ${rot.length > 1 ? `<button class="nx-strip" data-a="tab" data-k="splits" aria-label="Rotation: ${esc(rot.map(s => s.name).join(', '))}. Open splits">${rot.map((s, i) => `<span class="ell${i < ri ? ' done' : i === ri ? ' cur' : ''}"><b></b>${esc(s.name)}</span>`).join('')}</button>` : ''}
       ${A && A.splitId === nx.id ? `<button class="mt4 btn primary block" data-a="resume">Resume workout</button>` : `<button class="mt4 btn primary block" data-a="startSplit" data-id="${nx.id}" ${A ? 'disabled' : ''}>Start workout</button>`}`
       : `<div class="empty">No splits yet.</div><button class="mt3 btn primary block" data-a="tab" data-k="splits">Make a split</button>`}`; })()}
   </div>`}
+  ${past ? '' : frStrip()}
   ${past ? '' : gymCardHTML()}
   <div class="card grp bw2"><button class="tl grp-a" data-a="weigh" data-k="${t}" aria-label="Body weight${lw ? ' ' + bw(lw.w) + ' ' + U() : ''}. ${past ? 'Tap to add' : loggedToday ? 'Logged today' : 'Tap to weigh in'}">
     <div class="card-h"><span class="eyebrow">Body weight</span><span class="cap">${loggedToday ? (past ? 'that day' : 'today') : lw ? (past ? esc(fmtDate(lw.d)) : relDay(lw.d)) : 'tap to add'}</span></div>
@@ -2426,12 +2428,14 @@ function viewToday() {
     <b class="num st-n">${n0(steps)}</b><span class="cap">of ${n0(goal)}</span>
   </button>
   </div>
-  ${past ? '' : (() => { const tw = Object.values(S.workouts).filter(w => w.date === T && !w.skipped).sort(sortW).pop(), lw2 = tw || Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); if (!lw2) return '';
+  ${past ? '' : (() => { const lsHTML = (() => { const tw = Object.values(S.workouts).filter(w => w.date === T && !w.skipped).sort(sortW).pop(), lw2 = tw || Object.values(S.workouts).filter(w => !w.skipped && w.date < T).sort(sortW).pop(); if (!lw2) return '';
     // Last session as one row (review 2): tap for the recap. Editing it lives on that day (tap its mark in the week).
     const sp = wSplit(lw2), sets = lw2.ex.reduce((a, e) => a + e.sets.filter(x => x.done !== false && x.t !== 'warm').length, 0);
-    return `<div class="card last-row"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })()}
+    return `<div class="last-row lr-in"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })();
+    if (!lsHTML && !prs.length) return '';
+    return `<div class="card recent-card"><div class="card-h"><span class="eyebrow">Recently</span>${prs.length ? '<button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button>' : ''}</div>${lsHTML}${prs.slice(0, 2).map(prRow).join('')}</div>`; })()}
   ${past ? '' : goalsCard() + reportCard()}
-  ${prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">${past ? 'PRs that day' : 'Latest PRs'}</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
+  ${past && prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">PRs that day</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
 // Rest week (23 Oct): sick or away, the weekly streak holds. Apple added Pause Rings and Duolingo has streak freezes for the same reason.

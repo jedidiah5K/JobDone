@@ -2260,3 +2260,20 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .cele.cele-mile { top: 34%; width: min(320px, calc(100% - 48px)); padding: 26px 22px 22px; gap: 6px; border-top-color: var(--accent); border-top-width: 3px; }
 .cele.cele-mile b { font-size: 34px; line-height: 38px; }
 .cele.cele-mile span { font-size: 16px; line-height: 22px; }
+
+/* Tidier Today (v179): the week sits at the top of the Next up card, last session and PRs share one Recently card */
+.card.nextup .wk-in { padding-bottom: var(--s4); margin-bottom: var(--s4); border-bottom: 1px solid var(--border); }
+.card.nextup .wk-in .card-h .eyebrow::before { display: none; }
+.card.nextup .wk-in .eyebrow { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.recent-card .last-row.lr-in { display: flex; align-items: center; gap: 12px; padding: 4px 0 12px; border-bottom: 1px solid var(--border); }
+/* Labels line up on the left edge (no split dot before Next up; the rotation bar already shows the colour) */
+.card.nextup .card-h .eyebrow::before { display: none; }
+/* Steps label sits on the same line as Body weight (that header is 24px tall, centred) */
+.card.grp .grp-b > .eyebrow { min-height: 24px; display: flex; align-items: center; margin-top: 8px; }
+/* Boulder: the hold art moves down with Next route, so it doesn't sit behind the week summary */
+:root:not([data-theme]) .card.nextup:has(.wk-in)::before { top: 120px; }
+.card.nextup .wk-in { border-bottom-color: color-mix(in srgb, currentColor 18%, transparent); }
+/* Boulder (Job, 14 Nov): the week keeps its light panel at the top of the card, the split colour starts at Next route */
+:root:not([data-theme]) .card.nextup .wk-in { margin: -16px -16px 16px; padding: 16px; border-bottom: 0; background: #FAF8F5; color: #16151A; }
+:root:not([data-theme]) .card.nextup .wk-in .eyebrow { color: rgba(40,38,50,.8); }
+:root:not([data-theme]) .card.nextup .wk-in .cap, :root:not([data-theme]) .card.nextup .wk-in .c-text { color: #16151A; opacity: 1; }
