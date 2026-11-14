@@ -1,0 +1,8 @@
+# Dependabot (Job, 14 Nov 2026): weekly checks for the GitHub Actions used by .github/workflows.
+# The app's libraries are copied into web-src/vendor by hand, so npm isn't watched here.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
