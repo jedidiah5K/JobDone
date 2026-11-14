@@ -1228,8 +1228,16 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v190';
+const NEWS_ID = '2026-11-v191';
 const NEWS = [
+  ['Pick your bar', 'The plate loader has an Include the bar tick and a choice of bar: Olympic, women’s, EZ curl or trap bar. Each lift remembers its own, curls start on the EZ bar, and you can set each bar’s weight to match your gym.'],
+  ['Plates your gym has', 'In the plate loader, untick the plates your gym doesn’t have and it only loads the rest.'],
+  ['Same as last time', 'One tap on an exercise fills every set with last session’s numbers.'],
+  ['Set notes', 'Tap a set number to add a note like “seat 4”. It shows under Previous next time.'],
+  ['Time per lift', 'The finish page shows how long each exercise took and your average rest.'],
+  ['Wrapped', 'From 26 December, Today has your year as one picture to share: workouts, kg lifted, your longest streak and every day you trained.'],
+  ['New year tracker', 'All January, Today shows how your year is going against your weekly target.'],
+  ['Shortcuts', 'On Android, long-press the app icon for Start workout or Log weight.'],
   ['Workout settings', 'Tap the gear at the top of a workout to change sounds, rest time, units and more without leaving it.'],
   ['Bigger text', 'Me → Look → Text size makes all the writing bigger. It’s also in workout settings.'],
   ['Easier to tap', 'Small buttons have bigger tap areas, Finish is also at the bottom of a workout, and grey text gets darker when your phone’s Increase Contrast is on.'],
@@ -2516,7 +2524,7 @@ function viewToday() {
     return `<div class="last-row lr-in"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })();
     if (!lsHTML && !prs.length) return '';
     return `<div class="card recent-card"><div class="card-h"><span class="eyebrow">Recently</span>${prs.length ? '<button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button>' : ''}</div>${lsHTML}${prs.slice(0, 2).map(prRow).join('')}</div>`; })()}
-  ${past ? '' : agoCard() + goalsCard() + reportCard()}
+  ${past ? '' : newYearCards() + agoCard() + goalsCard() + reportCard()}
   ${past && prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">PRs that day</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -2743,7 +2751,7 @@ function insWindow(from, to) { // workouts and totals from `from` (inclusive) to
 }
 function progInsights() {
   howtoFor(''); // loads the body map outlines once
-  const all = ix().ws.filter(w => !w.skipped); if (!all.length) return '<div class="card"><div class="empty">Insights appear after your first workout.</div></div>';
+  const all = ix().ws.filter(w => !w.skipped); if (!all.length) return '<div class="card"><div class="empty">Insights appear after your first workout.</div><button class="mt3 btn primary block" data-a="start">Start a workout</button></div>';
   const t = today(), end = addDays(t, 1), key = IRANGES[NAV.irange] != null ? NAV.irange : '3M', len = IRANGES[key] || Math.max(7, daysBetween(all[0].date, t) + 1);
   const from = addDays(end, -len), cur = insWindow(from, end), prev = IRANGES[key] ? (p => p.ws.length ? p : null)(insWindow(addDays(from, -len), from)) : null, wk = len / 7; // no earlier workouts: no comparison
   const avgMin = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -2818,7 +2826,7 @@ function progHistory() {
   <div class="card"><div class="card-h"><span class="eyebrow">Monthly reports</span><span class="cap">tap to open and share</span></div><div class="list">${rm.slice(0, 6).map(m => `<button class="li" data-a="month" data-k="${m}"><div class="grow"><div class="t">${esc(monthName(m))}</div><div class="s">${plural(ix().ws.filter(w => !w.skipped && ymOf(w.date) === m).length, 'workout')}</div></div>${I.right}</button>`).join('')}</div></div>
   <div class="card"><div class="card-h"><span class="eyebrow">Training days</span><span class="cap">${plural(trained, 'workout')} since ${fmtDate(start)}</span></div><div class="heat" aria-label="Calendar of training days">${cells}</div>
   <div class="mt2 legend"><span><i style="background:var(--accent);height:8px;width:8px;border-radius:2px"></i>Heavier day</span><span><i style="background:color-mix(in srgb, var(--accent) 28%, transparent);height:8px;width:8px;border-radius:2px"></i>Lighter day</span><span><i style="box-shadow:inset 0 0 0 1.5px var(--neg);height:8px;width:8px;border-radius:2px"></i>Skipped</span></div></div>
-  ${list || '<div class="empty">No workouts yet.</div>'}`;
+  ${list || '<div class="card"><div class="empty">No workouts yet. Each one you finish lands here.</div><button class="mt3 btn primary block" data-a="start">Start a workout</button></div>'}`;
 }
 
 // ---------- exercise detail ----------
@@ -3247,12 +3255,52 @@ function wrappedData(year = today().slice(0, 4)) {
     for (const e of w.ex) { const b = baseName(e.name); cnt[b] = (cnt[b] || 0) + 1; for (const s of e.sets) if (validSet(s) && (!heavy || s.w > heavy.s.w)) heavy = { s, n: b }; } });
   const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0], bm = Object.entries(mon).sort((a, b) => b[1] - a[1])[0], bd = Object.entries(day).sort((a, b) => b[1] - a[1])[0];
   const prs = ix().prs.filter(p => p.date.startsWith(year)).length;
-  return { year, n: ws.length, vol, top: top && top[0], topN: top && top[1], heavy, month: MON[+bm[0] - 1], monthN: bm[1], day: WD[bd[0]], prs };
+  const days = new Set(ws.map(w => w.date)), wk = [...new Set(ws.map(w => mondayOf(w.date)))].sort(), rest = new Set(S.profile.restWeeks || []);
+  let best = 0, run = 0, prev = null; // longest run of weeks with a workout (rest weeks bridge, like the streak)
+  for (const m of wk) { if (prev) { let q = addDays(prev, 7); while (q < m && rest.has(q)) q = addDays(q, 7); run = q === m ? run + 1 : 1; } else run = 1; best = Math.max(best, run); prev = m; }
+  return { year, n: ws.length, vol, top: top && top[0], topN: top && top[1], heavy, month: MON[+bm[0] - 1], monthN: bm[1], day: WD[bd[0]], prs, days, streak: best };
 }
-function openWrapped() {
-  const d = wrappedData(); if (!d) return toast('Log a workout this year first.');
-  const rows = [['Workouts', d.n], ['Total lifted', `${n0(d.vol)} ${U()}`], ['', heavyLine(d.vol)], ['Top lift', `${d.top} · ${plural(d.topN, 'session')}`], d.heavy ? ['Heaviest set', `${d.heavy.n} · ${setStr(d.heavy.s)}`] : null, ['Busiest month', `${d.month} · ${plural(d.monthN, 'workout')}`], ['Favourite day', d.day], ['PRs', d.prs]].filter(Boolean);
-  previewShare(gameCanvas(`${d.year} so far`, 'Your year in the gym', rows.filter(r => r[0]).concat(rows.filter(r => !r[0]).map(r => ['That’s like', r[1]]))), `jobdone-${d.year}.png`, 'Your year so far');
+// Wrapped (v191, Job 14 Nov): the year as one Story picture in the theme's colours: big numbers in two columns and a
+// grid of every day you trained. Shows on Today from 26 December to 7 January, and any time under Rewards → Share.
+const wrapYear = (t = today()) => t.slice(5) >= '12-26' ? t.slice(0, 4) : t.slice(5) <= '01-07' ? String(+t.slice(0, 4) - 1) : t.slice(0, 4);
+function wrappedCanvas(d, done) {
+  const L = ID_LOOK[theme()] || ID_LOOK.mono, W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), F = (sz, w = 800) => `${w} ${sz}px ${L.font}`;
+  g.fillStyle = L.bg; g.fillRect(0, 0, W, H); g.fillStyle = L.acc; g.fillRect(0, 0, W, 18);
+  g.fillStyle = L.acc; g.font = F(34); g.fillText((done ? 'Your year in the gym' : 'Your year so far').toUpperCase(), 90, 200);
+  g.fillStyle = L.ink; g.font = F(150); g.fillText(done ? `Your ${d.year}` : `${d.year} so far`, 84, 350);
+  const stats = [['Workouts', n0(d.n)], ['Lifted', `${n0(d.vol)} ${U()}`], ['Longest streak', plural(d.streak, 'week')], ['PRs', n0(d.prs)], ['Top lift', d.top || '—'], ['Favourite day', d.day]];
+  stats.forEach(([k, v], i) => { const x = 90 + (i % 2) * 470, y = 470 + Math.floor(i / 2) * 200; g.fillStyle = L.dim; g.font = F(32, 600); g.fillText(k, x, y);
+    g.fillStyle = L.ink; let sz = 78; g.font = F(sz); while (g.measureText(v).width > 430 && sz > 40) { sz -= 4; g.font = F(sz); } g.fillText(v, x, y + 86); });
+  if (d.heavy) { g.fillStyle = L.dim; g.font = F(32, 600); g.fillText('Heaviest set', 90, 1100); g.fillStyle = L.ink; g.font = F(56); g.fillText(`${d.heavy.n} · ${setStr(d.heavy.s)}`.slice(0, 34), 90, 1170); }
+  // every day of the year: 53 columns of weeks, Monday on top
+  const y0 = 1250, cs = 16, gap = 2.6, x0 = (W - 53 * (cs + gap)) / 2, jan1 = d.year + '-01-01', m0 = mondayOf(jan1);
+  for (let i = 0; i < 53 * 7; i++) { const day = addDays(m0, i); if (!day.startsWith(d.year)) continue; const col = Math.floor(i / 7), row = i % 7;
+    g.fillStyle = d.days.has(day) ? L.acc : L.band; g.globalAlpha = d.days.has(day) ? 1 : .9; g.beginPath(); g.roundRect ? g.roundRect(x0 + col * (cs + gap), y0 + row * (cs + gap), cs, cs, 3) : g.rect(x0 + col * (cs + gap), y0 + row * (cs + gap), cs, cs); g.fill(); }
+  g.globalAlpha = 1; g.fillStyle = L.dim; g.font = F(30, 600); g.fillText(`${plural(d.days.size, 'day')} trained`, x0, y0 + 7 * (cs + gap) + 50);
+  g.fillStyle = L.ink; g.font = F(40, 700); for (const [i, ln] of wrapCanvas(g, heavyLine(d.vol), W - 180).slice(0, 2).entries()) g.fillText(ln, 90, 1560 + i * 52);
+  g.fillStyle = L.acc; g.font = F(40); g.fillText('JOB’S DONE', 90, H - 130); g.fillStyle = L.dim; g.font = F(30, 600); g.fillText('jobdone-peach.vercel.app', 90, H - 80);
+  return c;
+}
+function openWrapped(year) {
+  const y = year || wrapYear(), d = wrappedData(y); if (!d) return toast('Log a workout this year first.');
+  const done = y < today().slice(0, 4) || today().slice(5) >= '12-26';
+  previewShare(wrappedCanvas(d, done), `jobdone-${y}.png`, done ? `Your ${y}` : 'Your year so far');
+}
+// Resolution tracker (v191): all of January, how the new year is going against your weekly target. Quitter's Day
+// (the second Friday of January) gets its own line. Counts only; no advice.
+const quitDay = y => { const d = parseYmd(y + '-01-01'); const k = (5 - d.getDay() + 7) % 7; return addDays(y + '-01-01', k + 7); };
+function newYearCards(t = today()) {
+  let out = '';
+  const wy = wrapYear(t);
+  if ((t.slice(5) >= '12-26' || t.slice(5) <= '01-07') && wrappedData(wy)) out += `<button class="card tl ny-card" data-a="wrapped" data-k="${wy}"><div class="row between"><div><div class="eyebrow">Wrapped</div><div class="mt1 f17 fw6">Your ${wy} in the gym</div><div class="cap">Workouts, kg lifted, your streak and every day you trained</div></div>${I.right}</div></button>`;
+  if (t.slice(5, 7) === '01') {
+    const y = t.slice(0, 4), n = ix().ws.filter(w => !w.skipped && w.date.startsWith(y) && w.date <= t).length, day = daysBetween(y + '-01-01', t) + 1;
+    const plan = Math.max(1, Math.round((S.profile.weeklyTarget || 4) * day / 7));
+    const line = t === quitDay(y) ? (n ? 'Still going. Today is the day most people quit.' : 'Today is the day most people quit. One workout and you’re not most people.') : n >= plan ? 'Right on track.' : `Day ${day} of ${y}.`;
+    out += `<div class="card ny-card"><div class="eyebrow">${y} so far</div><div class="row between mt1"><div><span class="mid num">${n}</span><span class="unit">/ ${plan} planned</span></div><span class="cap">${plural(S.profile.weeklyTarget || 4, 'workout')} a week</span></div><div class="cap mt1">${line}</div></div>`;
+  }
+  return out;
 }
 function openBeforeAfter() {
   const ws = ix().ws.filter(w => !w.skipped); if (ws.length < 4) return toast('Log a few more workouts first.');
@@ -3689,8 +3737,8 @@ function renderWorkout() {
   // One-line header (review 2): title with an ellipsis, then sets · kg · time, and a quiet Finish until every set is ticked.
   const allIn = totalSets && doneSets === totalSets;
   el.innerHTML = resolveVars(`<div class="wk-head"><div class="row wk-top"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · ${dvol(dv)} ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
-      <button class="icon-btn far-btn" data-a="farView" aria-label="Big view" title="Big view">${IC.expand}</button><button class="icon-btn far-btn" data-a="wkSettings" aria-label="Workout settings" title="Workout settings">${IC.gear}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
+      <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · <span data-roll="${dv}">${dvol(dv)}</span> ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
+      <button class="icon-btn far-btn" data-a="wkSettings" aria-label="Workout settings" title="Workout settings">${IC.gear}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
     ${A.locker ? `<button class="wk-note on" data-a="lockerNote">${IC.key}<span class="ell">${esc(A.locker)}</span></button>` : ''}
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
     ${GAME_ON ? partnerStrip() : ''}
@@ -3704,6 +3752,7 @@ function renderWorkout() {
   ${REST ? restHTML() : ''}${GAME_ON ? turnDock() : ''}${farHTML()}`);
   el.classList.toggle('far', FAR);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
+  const rl = el.querySelector('[data-roll]'); if (rl) { const to = +rl.dataset.roll, from = ROLL_FROM; ROLL_FROM = to; if (from != null && from !== to && !reduceMotion()) rollNum(rl, from, to, dvol); }
   const rp = hadPop && el.querySelector('.restbar'); if (rp) rp.style.animation = 'none';
 }
 // This day last month and last year (v189, Job 14 Nov). Only shows on days with a match; tap for that workout's recap.
@@ -3737,7 +3786,7 @@ const TEXT_SIZES = [[1, 'Normal'], [1.12, 'Large'], [1.25, 'Larger']];
 const textSizeSeg = () => `<div class="seg">${TEXT_SIZES.map(([v, n]) => `<button class="${(S.profile.ts || 1) === v ? 'on' : ''}" data-a="textSize" data-k="${v}">${n}</button>`).join('')}</div>`;
 function wkSettings() {
   const body = () => { const p = S.profile, rest = p.defaultRest || 300;
-    return `<div class="stack"><h2>Workout settings</h2><div class="sgrp">
+    return `<div class="stack"><h2>Workout settings</h2><button class="btn block far-open" data-a="farOpen">${IC.expand}Big view<span class="cap">Giant numbers you can read from the bench. Or turn your phone sideways.</span></button><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
     <label class="xr"><span class="grow">Rest between sets<span class="s">Lifts with their own rest keep it</span></span><select class="xr-in" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(rest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === rest ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow('Start rest automatically', swi(!p.noAutoRest, 'pset', 'data-f="noAutoRest"'))}
@@ -3752,7 +3801,7 @@ function wkSettings() {
     ${srow('Text size', textSizeSeg())}
     </div></details><button class="btn block" data-a="closeSheet">Done</button></div>`; };
   openSheet(body(), { label: 'Workout settings', mount: b => {
-    b.addEventListener('click', ev => { if (ev.target.closest('[data-a="lockerNote"],[data-a="closeSheet"],summary')) return;
+    b.addEventListener('click', ev => { if (ev.target.closest('[data-a="lockerNote"],[data-a="closeSheet"],[data-a="farOpen"],summary')) return;
       setTimeout(() => { if (S.profile.noWake && wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
         if (!b.isConnected) return; const open = b.querySelector('details').open; b.innerHTML = body(); b.querySelector('details').open = open; }, 0); });
   } });
@@ -3784,6 +3833,10 @@ function liftTimes() {
   const gaps = done.flatMap(x => x.at.sort((a, b) => a - b).slice(1).map((t, i) => t - x.at[i])).filter(g => g > 5e3 && g < 20 * 6e4);
   return { rows, rest: gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length / 1000) : 0 };
 }
+// Rolling numbers (v191): a changed value counts to its new number instead of jumping.
+let ROLL_FROM = null;
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function rollNum(el, from, to, fmt, ms = 220) { const t0 = performance.now(); const step = now => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); if (!el.isConnected) return; el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
 // The set to do next gets a ring on its tick (Job, 4 Nov): the next one in the lift you just ticked, else the next lift with sets left.
 let UPNEXT = null;
 function upNext() {
@@ -3819,9 +3872,9 @@ function exCardHTML(e, ei) {
     ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
       <td class="prev">${pv ? setStr(pv) : '—'}${pv && pv.n ? `<small class="pv-n ell">${esc(pv.n)}</small>` : ''}${s.n ? `<small class="pv-n me ell">${esc(s.n)}</small>` : ''}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
-      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight">${s.w == null ? '–' : dw(s.w)}</button></td>
-      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}${s.sp ? '<small class="sp-v">spotted</small>' : ''}</button></td>
-      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
+      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight, set ${lbl}: ${s.w == null ? 'empty' : dw(s.w) + ' ' + U()}">${s.w == null ? '–' : dw(s.w)}</button></td>
+      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps, set ${lbl}: ${s.r == null ? 'empty' : s.r}">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}${s.sp ? '<small class="sp-v">spotted</small>' : ''}</button></td>
+      <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo' : 'Log'} ${esc(baseName(e.name))} set ${lbl}${s.w != null ? ', ' + dw(s.w) + ' ' + U() : ''}${s.r != null ? ', ' + s.r + ' reps' : ''}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${last && !dsets.length && sameDiff(e, last) ? `<button class="link add-set" data-a="sameLast" data-e="${ei}">Same as last time</button>` : ''}${e.sets.length > 1 && ix().ws.length < 5 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
     ${cmp}`}
@@ -4958,8 +5011,9 @@ function openSetPlates(ei, si) {
 }
 // Bars (v191, Job 14 Nov): "Include the bar" plus which bar, remembered per lift. Curls and skull crushers start on the
 // EZ bar, anything named trap/hex bar on the trap bar, the rest on an Olympic bar. Machines and cables never have one.
-const BARS = [['oly', 'Olympic', 20, 45], ['womens', 'Women’s', 15, 35], ['ez', 'EZ curl', 10, 25], ['trap', 'Trap bar', 25, 55]];
-const barKg = k => { const b = BARS.find(x => x[0] === k); return b ? (U() === 'lb' ? b[3] : b[2]) : 0; };
+// EZ bars are usually about 11 kg (Job, 14 Nov); every bar's weight can be changed to match your gym's (profile.barKgs).
+const BARS = [['oly', 'Olympic', 20, 45], ['womens', 'Women’s', 15, 35], ['ez', 'EZ curl', 11, 25], ['trap', 'Trap bar', 25, 55]];
+const barKg = k => { const b = BARS.find(x => x[0] === k); if (!b) return 0; const o = ((S.profile.barKgs || {})[U()] || {})[k]; return o > 0 ? o : (U() === 'lb' ? b[3] : b[2]); };
 const barDefault = n => /\b(EZ|Preacher|Skull|Spider|Reverse Curl)\b/i.test(n) ? 'ez' : /\b(Trap|Hex) Bar\b/i.test(n) ? 'trap' : 'oly';
 function barFor(name) { // a BARS key, or 'none' for plates only
   const n = name && baseName(name), by = S.profile.barBy || {};
@@ -4995,7 +5049,7 @@ function openPlates(target, onUse, o = {}) {
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
   const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
     <div class="cap" id="pl-msg"></div>
-    ${o.machine ? '' : `<div class="pl-bars"><button class="pl-inc" id="pl-inc" role="checkbox" aria-checked="${bar ? 'true' : 'false'}"><i class="pl-box"></i>Include the bar</button><div class="chips pl-barlist" id="pl-barlist" ${bar ? '' : 'hidden'}>${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} ${barKg(k)}</button>`).join('')}</div></div>`}
+    ${o.machine ? '' : `<div class="pl-bars"><button class="pl-inc" id="pl-inc" role="checkbox" aria-checked="${bar ? 'true' : 'false'}"><i class="pl-box"></i>Include the bar</button><div class="chips pl-barlist" id="pl-barlist" ${bar ? '' : 'hidden'}>${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} <span class="num">${trim(barKg(k))}</span></button>`).join('')}</div><label class="pl-bw" ${bar ? '' : 'hidden'}>This bar weighs <input class="input num" id="pl-bw" inputmode="decimal" value="${trim(bar)}" aria-label="Bar weight in ${U()}"> ${U()}</label></div>`}
     <div class="bar-wrap" id="pl-bar"></div>
     <div class="plate-tray" id="pl-tray">${tray()}</div>
     <details class="pl-more"><summary class="link">Plates your gym has, custom plates, load a total</summary><div class="g3 stack mt3">
@@ -5017,9 +5071,13 @@ function openPlates(target, onUse, o = {}) {
     const setBar = k => { barK = k; bar = barKg(k); if (k !== 'none') lastBar = k;
       if (o.ex) S.profile.barBy = { ...(S.profile.barBy || {}), [baseName(o.ex)]: k }; else S.profile.barW = bar;
       persist('jd/meta'); const inc = b.querySelector('#pl-inc'), list = b.querySelector('#pl-barlist');
+      const bw = b.querySelector('#pl-bw'); if (bw) { bw.value = trim(bar); bw.closest('.pl-bw').hidden = !bar; }
       if (inc) inc.setAttribute('aria-checked', bar ? 'true' : 'false'); if (list) { list.hidden = !bar; list.querySelectorAll('[data-bk]').forEach(y => { y.classList.toggle('on', y.dataset.bk === k); y.setAttribute('aria-pressed', y.dataset.bk === k); }); }
       draw(); };
     const inc = b.querySelector('#pl-inc'); if (inc) inc.onclick = () => setBar(bar ? 'none' : lastBar);
+    const bwIn = b.querySelector('#pl-bw'); if (bwIn) bwIn.onchange = () => { const v = parseFloat(bwIn.value); if (!(v > 0 && v < 60) || barK === 'none') { bwIn.value = trim(bar); return toast('Enter the bar’s weight'); }
+      const all = { ...(S.profile.barKgs || {}) }; all[U()] = { ...(all[U()] || {}), [barK]: Math.round(v * 100) / 100 }; S.profile.barKgs = all; persist('jd/meta'); bar = barKg(barK);
+      const chip = b.querySelector(`[data-bk="${barK}"] .num`); if (chip) chip.textContent = trim(bar); draw(); };
     const bl = b.querySelector('#pl-barlist'); if (bl) bl.onclick = ev => { const x = ev.target.closest('[data-bk]'); if (x) setBar(x.dataset.bk); };
     b.querySelector('#pl-have').onclick = ev => { const x = ev.target.closest('[data-hv]'); if (!x) return; const v = +x.dataset.hv, cur = new Set(den);
       if (cur.has(v)) { if (cur.size === 1) return toast('Keep at least one plate'); cur.delete(v); } else cur.add(v);
@@ -6154,6 +6212,7 @@ const ACT = {
   // workout
   minWk: () => minimizeWk(),
   farView: () => { FAR = !FAR; renderWorkout(); },
+  farOpen: () => { while (SHEETS.length) closeSheet(); FAR = true; renderWorkout(); },
   lockerNote: () => lockerSheet(),
   wkSettings: () => wkSettings(),
   sameLast: el => sameAsLast(+el.dataset.e),
@@ -6234,7 +6293,7 @@ const ACT = {
   crewNo: async el => { try { await gymRpc('jobdone_crew_answer', { p_crew: el.dataset.id, p_yes: false }); crewsLoad(); } catch (e) { toast('Couldn’t answer. Try again.'); } },
   crewLeave: el => confirmSheet({ title: 'Leave this crew?', body: 'You can be invited back later.', ok: 'Leave', danger: true, key: false, onOk: async () => { try { await gymRpc('jobdone_crew_leave', { p_crew: el.dataset.id }); crewsLoad(); } catch (e) { toast('Couldn’t leave. Try again.'); } } }),
   liftCard: el => openLiftCard(el.dataset.k),
-  wrapped: () => openWrapped(),
+  wrapped: el => openWrapped(el && el.dataset && el.dataset.k),
   beforeAfter: () => openBeforeAfter(),
   poster: el => openPoster(el.dataset.k),
   friends: () => { idTurnOn(); NAV.tab = 'friends'; NAV.stack = []; frExpire(); render(); },

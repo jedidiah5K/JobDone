@@ -2442,3 +2442,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pv-n { display: block; max-width: 84px; margin: 1px auto 0; font-size: calc(10px * var(--ts, 1)); line-height: calc(13px * var(--ts, 1)); color: var(--text2); font-weight: 500; }
 .pv-n.me { color: var(--accent); }
 .st-note { cursor: default; }
+.far-open { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; text-align: left; justify-items: start; align-items: center; padding: 12px 14px; }
+.far-open svg { width: 22px; height: 22px; grid-row: span 2; }
+.far-open .cap { grid-column: 2; font-weight: 400; }
+.pl-bw { display: flex; align-items: center; gap: 8px; color: var(--text2); font-size: calc(14px * var(--ts, 1)); }
+.pl-bw[hidden] { display: none; }
+.pl-bw .input { width: 72px; min-height: 40px; text-align: center; }
