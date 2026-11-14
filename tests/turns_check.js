@@ -31,4 +31,11 @@ ts = run(me(0), [fr('mk', 0)]); assert.ok(ts.mine, 'after an undo it is yours ag
 ts = run(me(1), []); assert.ok(ts.waiting, 'someone who left drops out');
 // warm-ups don't count
 const w = me(0); w.ex[0].sets.unshift({ done: true, t: 'warm', r: 10 }); ts = run(w, [fr('mk', 0)]); assert.ok(ts.mine, 'warm-ups are not turns');
+// No rush (v188): the host sets it; friends follow the host's shared flag
+const nr = pick('const partyHostId', 'let TURN_WAS');
+const rush = (A, USER, friends) => new Function('A', 'USER', 'FRIENDS', 'liveOf', nr + '; return noRush();')(A, USER, friends, f => f && f.lv);
+assert.strictEqual(rush({ turns: true, calm: true }, { id: 'me' }, []), true, 'host with No rush on');
+assert.strictEqual(rush({ turns: false, calm: true }, { id: 'me' }, []), false, 'needs Take turns');
+assert.strictEqual(rush({ turns: true, partyHost: 'h' }, { id: 'me' }, [{ id: 'h', lv: { nr: 1 } }]), true, 'guest follows host');
+assert.strictEqual(rush({ turns: true, partyHost: 'h', calm: true }, { id: 'me' }, [{ id: 'h', lv: { nr: 0 } }]), false, 'guest cannot set it');
 console.log('turns check: ok');

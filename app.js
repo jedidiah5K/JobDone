@@ -1143,7 +1143,7 @@ const TOUR_STEPS = [
   { tab: 'today', el: () => tq('#screen .wk-card'), t: 'Your week', d: 'Each day you train gets marked. Hit your weekly target to keep the streak going.' },
   { tab: 'today', el: () => tq('#screen .bell-btn'), t: 'Notifications', d: 'Friend requests, party invites, and reactions and comments on your posts land here. The red number is how many are new.' },
   { tab: 'friends', el: () => tq('#screen [data-a="partyAdd"]') || tq('#screen [data-a="frAddSheet"]'), t: () => tq('#screen [data-a="partyAdd"]') ? 'Train together' : 'Add friends',
-    d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start a party. They get a push and a Join button, you see each other’s sets live, and Take turns tells you whose set is next.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
+    d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start a party. They get a push and a Join button, you see each other’s sets live, and Take turns tells you whose set is next. No rush drops the rest timer when you’d rather talk.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
   { tab: 'friends', el: () => tq('#screen .fr-faces'), t: 'Your friends', d: 'A green ring means they’re at the gym now. Tap a face to see their card, compare or nudge them.' },
   { tab: 'me', el: () => tq('#screen [data-a="rewards"]'), t: 'Card and rewards', d: 'Your XP, card tier, passport stamps, lift cards and season. Share any of them as a Story.' },
   { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
@@ -1221,8 +1221,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v187';
+const NEWS_ID = '2026-11-v188';
 const NEWS = [
+  ['No rush', 'Training with friends and chatting between sets? In a party with Take turns on, tap No rush. No rest timer and no pings, just whose turn it is and one soft sound when it’s yours. Whoever started the party sets it for everyone.'],
   ['Scan in the app', 'Friends → Add a friend now has Scan their QR. Point your camera at a friend’s code and the request sends by itself.'],
   ['Reactions in the bell', 'When a friend reacts to or comments on your workout, it shows in the bell on Today with a red number until you open it.'],
   ['Pushes for friends', 'With notifications on, you get a push when someone sends you a friend request or invites you to a party.'],
@@ -3346,7 +3347,7 @@ function liveStat() {
   const done = A.ex.flatMap(e => e.sets.filter(s => s.done && s.t !== 'warm').map(s => ({ e: e.name, s, at: s.at || 0 }))).sort((a, b) => b.at - a.at)[0];
   const xs = A.ex.map(e => baseName(e.name).slice(0, 26)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 10);
   const ti = myTurnInfo();
-  return { party: ids, with: ids[0], xs, tt: A.turns ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+  return { party: ids, with: ids[0], xs, tt: A.turns ? 1 : 0, nr: A.turns && A.calm ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
 }
 // ---------- Taking turns (v181, Job 14 Nov) ----------
 // Everyone in the party with Taking turns on who is on the same lift goes in order: the host first, then the rest.
@@ -3369,15 +3370,25 @@ function turnState() {
   const next = turnPick(ppl.map(x => x === now ? { ...x, c: x.c + 1 } : x));
   return { lift: me.cur, now, next: next && next.id !== now.id ? next : null, mine: now.id === USER.id, ppl };
 }
+// No rush (Job, 14 Nov): for a joint session where you talk between sets. Whoever started the party sets it and
+// everyone follows: no rest timer, no buzz, pop-up or push when it's your turn, just one soft sound and the bar.
+const partyHostId = () => A && (A.partyHost || (USER && USER.id));
+function noRush() {
+  if (!A || !A.turns || !USER) return false;
+  if (partyHostId() === USER.id) return !!A.calm;
+  const l = liveOf((FRIENDS || []).find(x => x.id === A.partyHost)); return !!(l && l.nr);
+}
 let TURN_WAS = null;
 // Called after every refresh and every tick: says "Your turn" when it comes back to you, and pings the next person.
 function turnWatch(ticked) {
   const ts = turnState(), was = TURN_WAS; TURN_WAS = ts && ts.now ? { id: ts.now.id, lift: ts.lift } : null;
   if (!ts || !ts.now) return;
   if (ts.mine && was && was.id !== USER.id && was.lift === ts.lift) {
-    REST = null; try { SOUNDS.rest(); } catch (e) {} buzz([30, 60, 30]); toast(`Your turn · ${esc(ts.lift)}`); if (A && A.open) renderWorkout();
+    REST = null; try { SOUNDS.rest(); } catch (e) {}
+    if (!noRush()) { buzz([30, 60, 30]); toast(`Your turn · ${esc(ts.lift)}`); }
+    if (A && A.open) renderWorkout();
   }
-  if (ticked && !ts.mine && HOSTED && USER && !DEMO) gymRpc('jobdone_turn_ping', { p_to: ts.now.id }).catch(() => {}); // a push for a locked phone
+  if (ticked && !ts.mine && !noRush() && HOSTED && USER && !DEMO) gymRpc('jobdone_turn_ping', { p_to: ts.now.id }).catch(() => {}); // a push for a locked phone
 }
 // The order from whoever is up now: pick, count their set, pick again (so set counts and ties play out the same way)
 function turnQueue(ts) { let ppl = ts.ppl.map(x => ({ ...x })); const out = []; for (let i = 0; i < ppl.length * 2 && out.length < ppl.length; i++) { const n = turnPick(ppl); if (!n) break; if (!out.some(x => x.id === n.id)) out.push(n); n.c++; } return out; }
@@ -3388,7 +3399,7 @@ function turnDock() {
   const ts = turnState(); if (!ts || ts.waiting || !ts.now) return '';
   const q = turnQueue(ts), me = ts.ppl.find(x => x.id === USER.id), setNo = me ? Math.min(me.c + 1, me.t) : 0;
   const after = q.slice(1).map(x => x.id === USER.id ? 'you' : esc(x.n));
-  return `<div class="pt-dock${ts.mine ? ' me' : ''}${REST ? ' up' : ''}" role="status"><span class="pt-av now big">${ts.mine ? 'You' : pInit(ts.now.n)}</span><span class="t"><b>${ts.mine ? 'Your turn' : esc(ts.now.n) + '’s turn'}</b><span class="cap">${esc(ts.lift)}${ts.mine && me ? ` · set ${setNo} of ${me.t}` : ''}${after.length ? ' · then ' + after.join(', then ') : ''}</span></span>${ts.mine ? '' : `<button class="btn sm" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button>`}</div>`;
+  return `<div class="pt-dock${ts.mine ? ' me' : ''}${REST ? ' up' : ''}" role="status"><span class="pt-av now big">${ts.mine ? 'You' : pInit(ts.now.n)}</span><span class="t"><b>${ts.mine ? 'Your turn' : esc(ts.now.n) + '’s turn'}</b><span class="cap">${noRush() ? 'No rush · ' : ''}${esc(ts.lift)}${ts.mine && me ? ` · set ${setNo} of ${me.t}` : ''}${after.length ? ' · then ' + after.join(', then ') : ''}</span></span>${ts.mine ? '' : `<button class="btn sm" data-a="turnSkip" data-id="${esc(ts.now.id)}">Skip</button>`}</div>`;
 }
 const liveOf = f => { const l = f && f.stat && f.stat.lv; return l && (l.party || l.with) && Date.now() - (+l.at || 0) < 45 * 6e4 ? l : null; };
 const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
@@ -3405,10 +3416,10 @@ function partnerStrip() {
   const info = P.map(m => { const f = (FRIENDS || []).find(x => x.id === m.id), l = liveOf(f); return { m, l, joined: !!(l && USER && lvParty(l).includes(USER.id)) }; });
   const ts = A.turns ? turnState() : null;
   const faces = info.slice(0, 4).map(x => `<span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>`).join('');
-  const sum = `Party of ${P.length + 1}${A.turns ? ts && ts.waiting ? ' · turns on, waiting' : ' · turns on' : ''}`;
+  const sum = `Party of ${P.length + 1}${A.turns ? ts && ts.waiting ? ' · turns on, waiting' : noRush() ? ' · turns, no rush' : ' · turns on' : ''}`;
   const open = A.partyOpen ? `<div class="pt-open"><div class="pt-chips">${info.map(x => `<span class="pt-chip2"><span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>${esc(x.m.n)} ${x.joined ? (x.l.last ? `<b class="num">${esc(x.l.last)}</b>` : `<span class="cap">${plural(+x.l.n || 0, 'set')}</span>`) : '<span class="cap">invited</span>'}</span>`).join('')}</div>
     ${ts && ts.waiting ? `<div class="cap pt-wait">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>` : ''}
-    <div class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill quiet" data-a="partnerEnd">Leave</button></div></div>` : '';
+    <div class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button>${A.turns && partyHostId() === USER.id ? `<button class="pt-pill${A.calm ? ' on' : ''}" data-a="noRush" aria-pressed="${A.calm ? 'true' : 'false'}">No rush</button>` : ''}<button class="pt-pill quiet" data-a="partnerEnd">Leave</button></div></div>` : '';
   return `<div class="partner"><button class="pt-sum" data-a="partyFold" aria-expanded="${A.partyOpen ? 'true' : 'false'}"><span class="pt-faces">${faces}</span><span class="cap">${sum}</span><i class="pt-chev">${I.down}</i></button>${open}</div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
@@ -3976,7 +3987,7 @@ function logSet(ei, si) {
     const inSS = e.ss && A.ex[ei + 1];
     const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
     const tsNow = A.turns && turnState(); // taking turns: your friend's set is your rest, so no timer
-    if (!left || (tsNow && tsNow.now)) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    if (!left || (tsNow && tsNow.now) || noRush()) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA(); snapMaybe();
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 600);
@@ -6070,6 +6081,7 @@ const ACT = {
   idQR: () => qrSheet(),
   joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others, l); },
   partyFold: () => { if (!A) return; A.partyOpen = !A.partyOpen; touchA(); renderWorkout(); },
+  noRush: () => { if (!A || !A.turns) return; A.calm = !A.calm; if (A.calm) REST = null; touchA(); statSync(); renderWorkout(); toast(A.calm ? 'No rush. No rest timer and no pings, just whose turn it is.' : 'No rush off'); },
   turnsToggle: () => { if (!A) return; A.turns = !A.turns; delete A.turnSkip; TURN_WAS = null; touchA(); statSync(); renderWorkout(); toast(A.turns ? 'Taking turns. Friends on the same lift go one after another.' : 'Turns off'); },
   turnSkip: el => { if (!A) return; const ts = turnState(); if (!ts || !ts.now || ts.now.id !== el.dataset.id) return; const k = A.turnSkip && A.turnSkip.cur === ts.lift ? A.turnSkip.k : {}; k[ts.now.id] = (k[ts.now.id] || 0) + 1; A.turnSkip = { cur: ts.lift, k }; touchA(); turnWatch(); renderWorkout(); },
   partnerEnd: () => { if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
