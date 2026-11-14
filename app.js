@@ -917,7 +917,8 @@ const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id ===
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
 const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your connection and try again.' : m; };
 const gymErr = e => toast(esc(gymMsg(e)));
-async function gymRpc(fn, args) { const { data, error } = await SB.rpc(fn, args || {});
+// 15 s cap: iOS can freeze a request when the app goes to the background, and a stalled call left skeletons up forever (v185).
+async function gymRpc(fn, args) { let tm; const { data, error } = await Promise.race([SB.rpc(fn, args || {}), new Promise(ok => { tm = setTimeout(() => ok({ error: { message: 'Timed out' } }), 15000); })]).finally(() => clearTimeout(tm));
   if (error && error.message === 'Suspended') { toast('Your account can’t post or comment for now.', 4000); TOAST_HOLD = Date.now() + 4000; }
   if (error) throw new Error(error.message); return data; }
 let gymBusy = null;
@@ -3419,17 +3420,20 @@ function gymStatBits() {
   return { gym: gid, lc: gymRegular(gid).lc, mc: top, gb: !!S.profile.gymBoard };
 }
 // ---------- Gym page: king or queen of the week, Regulars, machine owners, gym vs gym. Needs supabase/gym_game.sql.
-let GBOARD = null, GRANKS = null;
+let GBOARD = null, GRANKS = null, GBOARD_GYM = null;
 async function gymBoardLoad(gid) {
-  GBOARD = undefined; GRANKS = undefined;
+  GBOARD = undefined; GRANKS = undefined; GBOARD_GYM = gid;
   const [b, r] = await Promise.allSettled([gymRpc('jobdone_gym_board', { g: gid }), gymRpc('jobdone_gym_ranks')]);
-  GBOARD = b.status === 'fulfilled' ? b.value || [] : 'off'; GRANKS = r.status === 'fulfilled' ? r.value || [] : 'off'; rerender();
+  if (GBOARD_GYM !== gid) return; // switched branch while this was loading
+  GBOARD = b.status === 'fulfilled' ? b.value || [] : 'off'; GRANKS = r.status === 'fulfilled' ? r.value || [] : 'off';
+  if (GBOARD === 'off') setTimeout(() => { if (GBOARD === 'off' && GBOARD_GYM === gid) GBOARD = null; }, 60000); // try again next time the page draws
+  rerender();
 }
 const ROYAL = { mono: ['Top agent', 'Top agent'], cliffs: ['King of the hill', 'Queen of the hill'], climb: ['Wall king', 'Wall queen'], spidey: ['King of the city', 'Queen of the city'] };
 function gymGameHTML() {
   if (!GAME_ON || !gymOn()) return '';
   const g = gymCur(); if (!g) return '';
-  if (GBOARD === null) { gymBoardLoad(g.gym_id); return ''; }
+  if (GBOARD === null || GBOARD_GYM !== g.gym_id) { gymBoardLoad(g.gym_id); return skCard(4); }
   if (GBOARD === undefined) return skCard(4);
   if (GBOARD === 'off') return '';
   const rows = GBOARD.filter(r => r.wx > 0), top = rows[0], who = r => r.n ? esc(r.n) : 'A member';
