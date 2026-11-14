@@ -169,7 +169,7 @@ function remindRows(p) {
   const r = p.remind || {}, on = !!r.on && pushReady(), days = r.days || [0, 1, 2, 3, 4, 5, 6];
   const row = srow('Daily workout reminder', swi(on, 'remind'), pushReady() ? (on ? 'Only on days you haven’t trained by then. Never on a rest week' : 'A ping at your time if you haven’t trained that day') : 'Add Job’s Done to your Home Screen first, then turn this on');
   if (!on) return row;
-  return row + `<label class="xr"><span class="grow">Remind me at</span><input class="xr-in" type="time" id="set-remind" data-in="remindAt" value="${esc(r.at || '18:00')}"></label>
+  return row + `<label class="xr"><span class="grow">Gym bag</span><input class="xr-in" id="set-bag" data-in="remindBag" maxlength="60" placeholder="Shoes, towel, belt" value="${esc(r.bag || '')}"></label><label class="xr"><span class="grow">Remind me at</span><input class="xr-in" type="time" id="set-remind" data-in="remindAt" value="${esc(r.at || '18:00')}"></label>
     <div class="xr remind-days"><span class="grow">Days</span><div class="rdays">${REMIND_DAYS.map((d, i) => `<button class="rday ${days.includes(i) ? 'on' : ''}" data-a="remindDay" data-k="${i}" aria-pressed="${days.includes(i)}" aria-label="${REMIND_NAMES[i]}">${d}</button>`).join('')}</div></div>`;
 }
 let S = null;        // persisted app state
@@ -362,7 +362,7 @@ function maxE1(sets) { let m = 0; for (const s of sets) if (validSet(s)) m = Mat
 // pr:start
 const emptyBest = () => ({ maxW: 0, e1: 0, vol: 0, rep: {}, n: 0 });
 function prTypes(s, b) {
-  if (!validSet(s) || !b || b.n === 0) return [];
+  if (!validSet(s) || s.sp || !b || b.n === 0) return []; // spotted sets (v189) aren't clean PRs
   const t = [];
   if (s.w > b.maxW + 1e-9 && s.r >= (b.rep[b.maxW] || 0)) t.push('Heaviest'); // heavier AND at least as many reps as your old heaviest set
   if (e1(s) > b.e1 + 0.05) t.push('e1RM');
@@ -370,7 +370,7 @@ function prTypes(s, b) {
   return t;
 }
 function applyBest(s, b) {
-  if (!validSet(s)) return;
+  if (!validSet(s) || s.sp) return;
   b.maxW = Math.max(b.maxW, s.w); b.e1 = Math.max(b.e1, e1(s)); b.vol = Math.max(b.vol, s.w * s.r);
   b.rep[s.w] = Math.max(b.rep[s.w] || 0, s.r);
 }
@@ -1221,8 +1221,13 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v188';
+const NEWS_ID = '2026-11-v189';
 const NEWS = [
+  ['Big view', 'Turn your phone sideways during a workout, or tap the expand button at the top, to see your rest time, whose turn it is or your next set in giant numbers you can read from the bench.'],
+  ['This day last month', 'On days you trained a month or a year ago, Today shows that workout. Tap it to see what you did.'],
+  ['Locker note', 'Tap the note line at the top of a workout to jot your locker number or parking spot. It’s deleted when you finish.'],
+  ['Spotted sets', 'Tap a set number and pick Spotted when a friend helped with the last reps. It counts in your volume, not as a PR.'],
+  ['Gym bag', 'Add a bag list under Me → Daily workout reminder and it comes with the reminder, so you don’t forget your shoes.'],
   ['No rush', 'Training with friends and chatting between sets? In a party with Take turns on, tap No rush. No rest timer and no pings, just whose turn it is and one soft sound when it’s yours. Whoever started the party sets it for everyone.'],
   ['Scan in the app', 'Friends → Add a friend now has Scan their QR. Point your camera at a friend’s code and the request sends by itself.'],
   ['Reactions in the bell', 'When a friend reacts to or comments on your workout, it shows in the bell on Today with a red number until you open it.'],
@@ -1694,6 +1699,8 @@ function frRow(f) {
 // the photo edge to edge, Strava-style stats, emoji reactions (one per person) and comments. Add-a-friend and settings move into sheets.
 const REACTS = ['🔥', '💪', '👏', '😂', '😮', '❤️'];
 const IC = {
+  expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
+  key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg>',
   bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
   eq_machine: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 10.5h6M9 14h6M12 17.5v.01"/></svg>',
   eq_barbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h20"/><rect x="4" y="8" width="2.5" height="8" rx="1"/><rect x="17.5" y="8" width="2.5" height="8" rx="1"/></svg>',
@@ -2498,7 +2505,7 @@ function viewToday() {
     return `<div class="last-row lr-in"><button class="lr-main" data-a="recap" data-id="${lw2.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="cap">${tw ? 'Today’s session' : 'Last session · ' + relDay(lw2.date)}</div><div class="lr-n ell">${esc(lw2.splitName)}</div><div class="cap num ell">${[plural(lw2.ex.length, 'lift'), n0(wVol(lw2)) + ' ' + U(), lw2.end && lw2.start && lw2.end - lw2.start >= 6e4 ? fmtDur(lw2.end - lw2.start) : plural(sets, 'set')].join(' · ')}</div></div><span class="lr-go">Recap</span>${I.right}</button><button class="icon-btn lr-more" data-a="lastMenu" data-id="${lw2.id}" aria-label="More for this workout">${I.more || '⋯'}</button></div>`; })();
     if (!lsHTML && !prs.length) return '';
     return `<div class="card recent-card"><div class="card-h"><span class="eyebrow">Recently</span>${prs.length ? '<button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button>' : ''}</div>${lsHTML}${prs.slice(0, 2).map(prRow).join('')}</div>`; })()}
-  ${past ? '' : goalsCard() + reportCard()}
+  ${past ? '' : agoCard() + goalsCard() + reportCard()}
   ${past && prs.length ? `<div class="card"><div class="card-h"><span class="eyebrow">PRs that day</span><button class="mh32 cap" data-a="prog" data-k="strength">All PRs</button></div>${prs.map(prRow).join('')}</div>` : ''}
 </div>`;
 }
@@ -3623,10 +3630,12 @@ const SET_TYPES = [['warm', 'W', 'Warm-up', 'A lighter set to get ready. It isn�
 function setTypeSheet(ei, si) {
   const pick = ei != null && A && A.ex[ei] && A.ex[ei].sets[si], e = pick && A.ex[ei], cur = pick ? A.ex[ei].sets[si].t || 'work' : null;
   const sh = openSheet(`<div class="stack"><h2>${pick ? 'Set type' : 'Set types'}</h2><div class="list st-list">${SET_TYPES.map(([k, l, n, d]) => `<${pick ? 'button' : 'div'} class="li st-row${cur === k ? ' on' : ''}" ${pick ? `data-st="${k}"` : ''}><b class="setno ${k}">${k === 'work' && pick ? si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length : l}</b><div class="grow"><div class="t">${n}</div><div class="s">${d}</div></div>${cur === k ? I.check : ''}</${pick ? 'button' : 'div'}>`).join('')}
+    ${pick ? `<button class="li st-row${e.sets[si].sp ? ' on' : ''}" data-st="sp"><b class="setno sp">S</b><div class="grow"><div class="t">Spotted</div><div class="s">A friend helped with the last reps. It counts in your volume, not as a PR.</div></div>${e.sets[si].sp ? I.check : ''}</button>` : `<div class="li st-row"><b class="setno sp">S</b><div class="grow"><div class="t">Spotted</div><div class="s">Tap a set number and pick Spotted when a friend helped. It counts in your volume, not as a PR.</div></div></div>`}
     ${pick && e.sets.length > 1 ? `<button class="li st-row st-del" data-st="del"><b class="setno">${I.x}</b><div class="grow"><div class="t">Remove set</div></div></button>` : ''}</div></div>`, { label: 'Set types', mount: b => {
     if (!pick) return;
     b.onclick = ev => { const r = ev.target.closest('[data-st]'); if (!r) return; closeSheet(sh);
       if (r.dataset.st === 'del') return ACT.delSet({ dataset: { e: ei, s: si } });
+      if (r.dataset.st === 'sp') { const st = A.ex[ei].sets[si]; if (st.sp) delete st.sp; else st.sp = 1; return touchA(); }
       A.ex[ei].sets[si].t = r.dataset.st; touchA(); };
   } });
 }
@@ -3666,7 +3675,8 @@ function renderWorkout() {
   const allIn = totalSets && doneSets === totalSets;
   el.innerHTML = resolveVars(`<div class="wk-head"><div class="row wk-top"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
       <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · ${dvol(dv)} ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
-      <button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
+      <button class="icon-btn far-btn" data-a="farView" aria-label="Big view" title="Big view">${IC.expand}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
+    <button class="wk-note${A.locker ? ' on' : ''}" data-a="lockerNote">${IC.key}<span class="ell">${A.locker ? esc(A.locker) : 'Locker or parking note'}</span></button>
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
     ${GAME_ON ? partnerStrip() : ''}
   </div>
@@ -3675,9 +3685,45 @@ function renderWorkout() {
     <button class="self-c c-neg link" data-a="wkDiscard">Discard workout</button>
     ${GAME_ON && A.turns ? '<div class="pt-dock-space"></div>' : ''}
   </div>
-  ${REST ? restHTML() : ''}${GAME_ON ? turnDock() : ''}`);
+  ${REST ? restHTML() : ''}${GAME_ON ? turnDock() : ''}${farHTML()}`);
+  el.classList.toggle('far', FAR);
   const nb = el.querySelector('.wk-body'); if (nb) nb.scrollTop = keep;
   const rp = hadPop && el.querySelector('.restbar'); if (rp) rp.style.animation = 'none';
+}
+// This day last month and last year (v189, Job 14 Nov). Only shows on days with a match; tap for that workout's recap.
+function agoDate(t, months) {
+  const [y, m, d] = t.split('-').map(Number), dt = new Date(Date.UTC(y, m - 1 - months, 1)), last = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).getUTCDate();
+  return d > last ? null : `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; // 31st with no 31st: skip
+}
+function agoCard() {
+  const T = today(), rows = [[12, 'A year ago today'], [1, 'A month ago today']].map(([n, l]) => { const d = agoDate(T, n), w = d && Object.values(S.workouts).filter(x => x.date === d && !x.skipped).sort(sortW).pop(); return w ? [l, w] : null; }).filter(Boolean);
+  if (!rows.length) return '';
+  return `<div class="card ago-card"><div class="list">${rows.map(([l, w]) => { const sp = wSplit(w), sets = w.ex.reduce((a, e) => a + e.sets.filter(x => x.t !== 'warm').length, 0);
+    return `<button class="li" data-a="recap" data-id="${w.id}"><i class="lr-dot" style="background:${sp ? sp.color : 'var(--pos)'}"></i><div class="grow"><div class="eyebrow">${l}</div><div class="t ell">${esc(w.splitName || (sp && sp.name) || 'Workout')}</div><div class="s num">${plural(sets, 'set')} · ${dvol(wVol(w))} ${U()}</div></div>${I.right}</button>`; }).join('')}</div></div>`;
+}
+// Across-the-room view (v189, Job 14 Nov): one giant number you can read from the bench. Shows by itself when the
+// phone is turned sideways, or with the Big view button. Rest time, else whose turn it is, else your next set.
+// Tap anywhere to go back. Each theme dresses it its own way in styles.css (.far-*).
+let FAR = false;
+function farHTML() {
+  if (!A) return '';
+  const ts = GAME_ON && A.turns ? turnState() : null, nx = UPNEXT || (curLift() && curLift().sets.find(x => !x.done));
+  const ne = nx && A.ex.find(e => e.sets.includes(nx));
+  let lbl, big, sub, cls = '';
+  if (REST) { const left = restLeft(); lbl = REST.paused ? 'Paused' : 'Rest'; big = `<span data-far-clock>${clock(left)}</span>`; sub = ne ? 'Next: ' + esc(baseName(ne.name)) : ''; cls = left <= 10 ? ' soon' : ''; }
+  else if (ts && ts.now && !ts.waiting) { lbl = ts.mine ? 'Your turn' : esc(ts.now.n) + '’s turn'; big = ts.mine ? 'GO' : pInit(ts.now.n); sub = esc(ts.lift); cls = ts.mine ? ' mine' : ''; }
+  else if (ne) { lbl = esc(baseName(ne.name)); big = `${nx.w == null ? '–' : dw(nx.w)}<small>${U()}</small> × ${nx.r == null ? '–' : nx.r}`; sub = 'Set ' + (ne.sets.filter(x => x.t !== 'warm').indexOf(nx) + 1 || 'W') + ' of ' + ne.sets.filter(x => x.t !== 'warm').length;  cls = ' nxset'; }
+  else { lbl = 'All sets done'; big = '✓'; sub = 'Tap Finish when you’re ready'; }
+  return `<button class="far-view${cls}" data-a="farView" aria-label="Back to your workout"><span class="far-in"><span class="far-lbl">${lbl}</span><span class="far-big num">${big}</span>${sub ? `<span class="far-sub">${sub}</span>` : ''}${A.locker ? `<span class="far-note">${esc(A.locker)}</span>` : ''}</span></button>`;
+}
+function lockerSheet() {
+  if (!A) return;
+  const sh = openSheet(`<div class="stack"><h2>Locker or parking note</h2><input class="input" id="lk-in" maxlength="40" placeholder="Locker 112 · P2 blue" value="${esc(A.locker || '')}" autocomplete="off"><p class="cap m0">Shows at the top of this workout. It’s deleted when you finish.</p><button class="btn primary block" id="lk-ok">Save</button>${A.locker ? '<button class="btn ghost block" id="lk-del">Clear</button>' : ''}</div>`, { label: 'Locker or parking note', mount: b => {
+    const inp = b.querySelector('#lk-in'), save = v => { if (!A) return; const t = v.trim().replace(/\s+/g, ' ').slice(0, 40); if (t) A.locker = t; else delete A.locker; touchA(); closeSheet(sh); };
+    b.querySelector('#lk-ok').onclick = () => save(inp.value); inp.onkeydown = ev => { if (ev.key === 'Enter') save(inp.value); };
+    const d = b.querySelector('#lk-del'); if (d) d.onclick = () => save('');
+    setTimeout(() => inp.focus(), 250);
+  } });
 }
 // The set to do next gets a ring on its tick (Job, 4 Nov): the next one in the lift you just ticked, else the next lift with sets left.
 let UPNEXT = null;
@@ -3715,7 +3761,7 @@ function exCardHTML(e, ei) {
       <td><button class="setno ${s.t}" data-a="setType" data-e="${ei}" data-s="${si}" aria-label="Set ${si + 1}, ${s.t === 'work' ? 'working' : s.t === 'warm' ? 'warm-up' : s.t === 'drop' ? 'drop' : 'failure'} set. Tap to change type">${lbl}</button></td>
       <td class="prev">${pv ? setStr(pv) : '—'}${pr.length ? ' <span class="pill pr" title="' + esc(pr.join(', ')) + '">PR</span>' : ''}</td>
       <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="w" aria-label="Weight">${s.w == null ? '–' : dw(s.w)}</button></td>
-      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}</button></td>
+      <td><button class="cell ${s.ed || s.done ? 'edited' : ''} ${s.tg && !s.ed && !s.done ? 'tgt' : ''}" data-a="key" data-e="${ei}" data-s="${si}" data-f="r" aria-label="Reps">${s.r == null ? '–' : s.r}${s.rpe ? `<small class="rpe-v">@${s.rpe}</small>` : ''}${s.sp ? '<small class="sp-v">spotted</small>' : ''}</button></td>
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo set' : 'Log set'}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${e.sets.length > 1 && ix().ws.length < 5 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
@@ -3970,6 +4016,7 @@ function tick() {
     const left = restLeft();
     if (left <= 0) { REST = null; SOUNDS.rest(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); syncTabStart(); return; }
     const t = $('[data-rest]'); if (t) t.textContent = clock(left);
+    const fc = $('[data-far-clock]'); if (fc) { fc.textContent = clock(left); fc.closest('.far-view').classList.toggle('soon', left <= 10); }
     const re = $('[data-rest-end]'); if (re) re.textContent = REST.paused ? 'Paused' : 'Next set at ' + hm(Date.now() + left * 1000);
     const re2 = $('[data-rest-end2]'); if (re2) re2.textContent = REST.paused ? '' : hm(Date.now() + left * 1000);
     const ln = $('[data-rest-line]'); if (ln && !REST.paused) ln.style.transform = `scale(${(left / REST.total).toFixed(4)}, 1)`;
@@ -4006,7 +4053,7 @@ function logSet(ei, si) {
   } else { touchA(); if (partyIds().length) { statSync(); turnWatch(); } } // undo: the turn moves back
 }
 function summaryData() {
-  const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t, ...(s.rpe ? { rpe: s.rpe } : {}) })), ...(e.ss ? { ss: 1 } : {}) })).filter(e => e.sets.length);
+  const ex = A.ex.map(e => ({ ...e, sets: e.sets.filter(s => s.done).map(s => ({ w: s.w, r: s.r, t: s.t, ...(s.rpe ? { rpe: s.rpe } : {}), ...(s.sp ? { sp: 1 } : {}) })), ...(e.ss ? { ss: 1 } : {}) })).filter(e => e.sets.length);
   const rows = ex.map(e => {
     const last = lastSession(e.name); const b = clone(ix().best[e.name] || emptyBest());
     const types = new Set(); e.sets.forEach(s => { prTypes(s, b).forEach(t => types.add(t)); applyBest(s, b); });
@@ -6018,6 +6065,8 @@ const ACT = {
   skipImport: () => doImport(false),
   // workout
   minWk: () => minimizeWk(),
+  farView: () => { FAR = !FAR; renderWorkout(); },
+  lockerNote: () => lockerSheet(),
   finish: () => {
     const work = A.ex.flatMap(e => e.sets.filter(s => s.t !== 'warm')), left = work.filter(s => !s.done).length;
     const go = () => { A.view = 'summary'; touchA(); };
@@ -6156,6 +6205,7 @@ const IN = {
   profT: el => { const v = el.value.trim().slice(0, 30); if (v) { S.profile.name = v; persist('jd/meta'); } },
   profW: el => { const v = parseFloat(el.value); S.profile.goalW = !isNaN(v) && v > 0 ? Math.round(toKg(v) * 100) / 100 : null; persist('jd/meta'); },
   repR: el => { const r = (S.profile.repRange || [null, null]).slice(); r[+el.dataset.rr] = +el.value || null; const o = { lo: r[0], hi: r[1] }; fixRR(o, 'lo', 'hi'); S.profile.repRange = o.lo && o.hi ? [o.lo, o.hi] : o.lo || o.hi ? [o.lo, o.hi] : null; persist('jd/meta'); rerender(); },
+  remindBag: el => { if (!S.profile.remind) return; const v = el.value.trim().replace(/\s+/g, ' ').slice(0, 60); if (v) S.profile.remind.bag = v; else delete S.profile.remind.bag; persist('jd/meta'); toast(v ? 'Your bag list comes with the reminder.' : 'Bag list removed'); },
   remindAt: el => { if (!/^\d\d:\d\d$/.test(el.value) || !S.profile.remind) return; S.profile.remind.at = el.value; S.profile.remind.tz = myTz(); persist('jd/meta'); toast('Reminder moved to ' + hm12(el.value) + '.'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
   wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; if (old !== monthPath(w.date)) tomb(old, w.id); invalidate(); persist(old, monthPath(w.date)); rerender(); },

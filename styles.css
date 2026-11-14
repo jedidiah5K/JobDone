@@ -2377,3 +2377,40 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .scan-box { position: relative; width: 100%; max-width: 320px; aspect-ratio: 1; margin: 0 auto; border-radius: 18px; overflow: hidden; background: #000; }
 .scan-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scan-frame { position: absolute; inset: 18%; border: 2px solid rgba(255, 255, 255, .85); border-radius: 14px; pointer-events: none; }
+/* v189: spotted sets, locker note, this day last month, Big view (across-the-room) */
+.sp-v { font-size: 10px; opacity: .65; margin-left: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.setno.sp { color: var(--accent); }
+.wk-note { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0; border: 0; background: none; color: var(--text2); font: inherit; font-size: 13px; line-height: 18px; max-width: 100%; min-height: 28px; }
+.wk-note svg { width: 15px; height: 15px; flex: none; }
+.wk-note.on { color: var(--text); font-weight: 600; }
+.far-btn svg { width: 20px; height: 20px; }
+.ago-card .li { align-items: center; }
+.ago-card .eyebrow { margin-bottom: 2px; }
+.far-view { display: none; position: fixed; inset: 0; z-index: 60; border: 0; margin: 0; padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); width: 100%; background: var(--bg); color: var(--text); font: inherit; text-align: center; align-items: center; justify-content: center; }
+#wk.far .far-view { display: flex; }
+@media (orientation: landscape) and (max-height: 520px) { #wk:not([hidden]) .far-view { display: flex; } }
+.far-in { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 100%; }
+.far-lbl { font-size: 15px; line-height: 20px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text2); max-width: 90vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.far-big { font-family: var(--font-display); font-weight: 750; font-size: min(34vw, 62vh); line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.far-big small { font-size: .32em; font-weight: 600; margin-left: .06em; letter-spacing: 0; color: var(--text2); }
+.far-sub { font-size: 18px; line-height: 24px; font-weight: 600; color: var(--text2); }
+.far-note { margin-top: 8px; font-size: 14px; color: var(--text2); opacity: .8; }
+.far-view.soon .far-big, .far-view.mine .far-big { color: var(--accent); }
+/* Agent: black, a thin red scope ring behind the number */
+:root[data-theme="mono"] .far-view { background: radial-gradient(120% 70% at 50% 0%, rgba(200, 16, 46, .18), transparent 60%), #0B0B0E; }
+:root[data-theme="mono"] .far-in { position: relative; }
+:root[data-theme="mono"] .far-in::before { content: ''; position: absolute; left: 50%; top: 50%; width: min(78vw, 82vh); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid rgba(200, 16, 46, .45); background: linear-gradient(rgba(200, 16, 46, .35), rgba(200, 16, 46, .35)) center / 1.5px 100% no-repeat, linear-gradient(90deg, rgba(200, 16, 46, .35), rgba(200, 16, 46, .35)) center / 100% 1.5px no-repeat; -webkit-mask: radial-gradient(circle, transparent 34%, #000 35%); mask: radial-gradient(circle, transparent 34%, #000 35%); pointer-events: none; }
+:root[data-theme="mono"] .far-big { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-weight: 600; letter-spacing: -.04em; }
+:root[data-theme="mono"] .far-view.soon .far-big, :root[data-theme="mono"] .far-view.mine .far-big { color: #E0243F; }
+/* Summit: the same sky and ridges as the workout, in the theme's own ink */
+:root[data-theme="cliffs"] .far-view { background: var(--ridges) center bottom / 100% auto no-repeat, linear-gradient(180deg, var(--sky1, #5B9BCF) 0%, var(--sky2, #93C2E3) 45%, var(--sky3, #CFE5F1) 100%); }
+:root[data-theme="cliffs"] .far-big { text-shadow: 0 2px 0 color-mix(in srgb, var(--bg) 40%, transparent); }
+/* Boulder: chalk wall, the number in a boxed cell like the kg and reps boxes */
+:root:not([data-theme]) .far-view { background: #EFEBE5; color: #1E1A16; }
+:root:not([data-theme]) .far-big { padding: .04em .22em .08em; border: 3px solid #1E1A16; border-radius: 22px; background: #FFFDF8; }
+:root:not([data-theme]) .far-view.soon .far-big, :root:not([data-theme]) .far-view.mine .far-big { border-color: var(--accent); }
+/* Skyline: night navy, bold comic number with a red edge */
+:root[data-theme="spidey"] .far-view { background: radial-gradient(rgba(255, 255, 255, .06) 1px, transparent 1.4px) 0 0 / 9px 9px, #0D1A45; color: #fff; }
+:root[data-theme="spidey"] .far-big { font-style: italic; font-weight: 800; text-shadow: 4px 4px 0 #E2231A; }
+:root[data-theme="spidey"] .far-view.soon .far-big, :root[data-theme="spidey"] .far-view.mine .far-big { color: #fff; text-shadow: 4px 4px 0 #E2231A, -2px -2px 0 #E2231A; }
+.far-view.nxset .far-big { font-size: min(15vw, 42vh); }

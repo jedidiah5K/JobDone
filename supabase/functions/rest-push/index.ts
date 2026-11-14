@@ -59,7 +59,8 @@ const handle = async (req: Request) => {
       let n = 0;
       for (const r of cb.remind.slice(0, 500)) {
         const m = REMIND[r.theme] || REMIND.mono, i = Math.floor(Math.random() * m.length);
-        n += await sendTo(String(r.u), { title: m[i][0], body: m[i][1], tag: 'remind-' + new Date().toISOString().slice(0, 10) });
+        const bag = typeof r.bag === 'string' ? r.bag.replace(/\s+/g, ' ').trim().slice(0, 60) : ''; // v189: gym bag list
+        n += await sendTo(String(r.u), { title: m[i][0], body: m[i][1] + (bag ? ' Bag: ' + bag + '.' : ''), tag: 'remind-' + new Date().toISOString().slice(0, 10) });
       }
       return json(200, { sent: n });
     }
