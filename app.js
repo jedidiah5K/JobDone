@@ -6725,7 +6725,7 @@ const A2HS_ADD = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" 
 const A2HS_DOTS = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
 function installSteps(os) {
   const st = os === 'ios' ? [
-    ['Open this page in your phone’s main browser.', ''],
+    ['Open this page in <b>Safari</b>.', ''],
     [`Tap the <b>Share</b> button at the bottom of the screen.`, A2HS_SHARE],
     ['Scroll down and tap <b>Add to Home Screen</b>.', A2HS_ADD],
     ['Tap <b>Add</b> in the top right corner.', ''],
@@ -6741,7 +6741,7 @@ function openInstallGuide(first) {
   let os = devOS();
   const sh = openSheet(`<div class="stack"><div class="a2-hero"><div><div class="f22 fw7">${first ? 'Put Job’s Done on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
     ${isStandalone() ? '<div class="note">You’re already using Job’s Done from your Home Screen.</div>' : ''}
-    <div class="seg"><button data-os="ios">Share button</button><button data-os="android">⋮ menu</button></div>
+    <div class="seg"><button data-os="ios">iPhone</button><button data-os="android">Android</button></div>
     <div id="a2-body"></div>
     <button class="btn primary block" id="a2-ok">${first ? 'Got it' : 'Done'}</button></div>`, { label: 'Add to Home Screen', mount: b => {
     const draw = () => {
