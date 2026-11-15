@@ -1229,9 +1229,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v197';
+const NEWS_ID = '2026-11-v199';
 // Only the big things (Job, 15 Nov): a long list nobody reads.
 const NEWS = [
+  ['Recovery code', 'Save the code we show you. If you forget your password, tap Forgot password on the sign-in screen and use it to set a new one. Make a new code any time in Me → Account.'],
   ['Train with friends', 'Start a party from Friends or the workout gear. Take turns tells you whose set is next, and Party settings has No rush, Same rest, Wait for me, Nudge and a party code for gym buddies who aren’t friends yet.'],
   ['Match your friend', 'Join a party and the app offers to match their sets and rest. If they move on to the next lift before you, you’ll see it.'],
   ['Faster invites', 'Invites, friend requests and “Your turn” arrive straight away. With the app open, the Join button shows up the moment you’re invited.'],
@@ -1636,7 +1637,7 @@ async function inboxPoll() {
   rtSync();
   INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : A && A.turns ? 5000 : partyLive() ? 15000 : 60000);
 }
-const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); rtMe(); } };
+const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); rtMe(); setTimeout(recoveryCheck, 4000); } };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && INBOX_ON) inboxPoll(); });
 async function reqsLoad() { REQS = undefined; try { REQS = await gymRpc('jobdone_friend_requests') || []; } catch (e) { REQS = []; } rerender(); }
 async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; FR_FULL_AT = Date.now(); } catch (e) { FRIENDS = []; if (!quiet) toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
@@ -3075,6 +3076,7 @@ function meParts() {
   ${HOSTED && USER ? `<section><div class="sgh">Account</div><div class="sgrp">
     ${srow('Signed in as', `<span class="xr-v">${esc(USER.email || 'your account')}</span>`)}
     ${slink('Change password', 'setPassword')}
+    ${slink('New recovery code', 'recoveryNew')}
     ${slink(`Two-step sign-in${MFA_ON ? ' · On' : ''}`, 'mfa')}
     ${slink(DEMO ? 'Leave the demo' : 'Sign out', 'signOut', 'acc')}
   </div></section>` : ''}
@@ -5948,6 +5950,50 @@ const OB_BLOCK = { next: ['Not knowing what to do next', 'Every set shows the we
 const obSave = () => { try { if (obNeedAccount() && OB) { const { importFile, ...o } = OB; localStorage.setItem('jd-ob', JSON.stringify(o)); } } catch (e) {} };
 const obLoad = () => { try { return obNeedAccount() ? JSON.parse(localStorage.getItem('jd-ob')) : null; } catch (e) { return null; } };
 // Creates an account with the signup function (no confirmation email). Returns an error message, or '' when it worked.
+// Recovery code (v199, Job 15 Nov): no reset emails can be sent, so each account has a one-time code to save.
+function openRecover(email, done) {
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Forgot password</div>
+    <p class="m0 f15 sec">Use the recovery code you saved when you made your account.</p>
+    <div class="field"><label for="rc-em">Email</label><input class="input" id="rc-em" type="email" inputmode="email" autocomplete="email" value="${esc(email || '')}"></div>
+    <div class="field"><label for="rc-code">Recovery code</label><input class="input num" id="rc-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="16"></div>
+    <div class="field"><label for="rc-pw">New password</label><input class="input" id="rc-pw" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+    <input id="rc-web" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
+    <button class="btn primary block" id="rc-go">Set new password</button>
+    <div class="c-neg cap" id="rc-msg" role="alert" style="min-height:18px"></div>
+    <p class="m0 cap">No code? Ask whoever shared Job’s Done with you to reset it.</p></div>`, { label: 'Forgot password', mount: b => {
+    const go = b.querySelector('#rc-go'), msg = t => { b.querySelector('#rc-msg').textContent = t; };
+    go.onclick = async () => {
+      if (go.disabled) return;
+      const em = b.querySelector('#rc-em').value.trim(), code = b.querySelector('#rc-code').value.trim(), pw = b.querySelector('#rc-pw').value;
+      if (!/^\S+@\S+\.\S+$/.test(em)) return msg('Enter your email address.'); if (code.replace(/[^a-z0-9]/gi, '').length !== 12) return msg('The code has 12 letters and numbers.'); if (pw.length < 8) return msg('Use a password of at least 8 characters.');
+      go.disabled = true; go.textContent = 'Checking…';
+      try {
+        const res = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/recover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em, code, password: pw, website: b.querySelector('#rc-web').value }) });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) { go.disabled = false; go.textContent = 'Set new password'; return msg(j.error || 'Couldn’t change it. Try again.'); }
+        closeSheet(sh); done(em);
+      } catch (e) { go.disabled = false; go.textContent = 'Set new password'; msg('No connection. Check your connection and try again.'); }
+    };
+  } });
+}
+// Shown once to anyone signed in without a code (new accounts and existing ones), and from Me → Account.
+async function recoverySheet(fresh) {
+  let c; try { c = await gymRpc('jobdone_recovery_make'); } catch (e) { return fresh ? null : toast('Couldn’t make a code. Check your connection.'); }
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Recovery code</div><h2 class="m0">Save this code</h2>
+    <p class="m0 f15 sec">If you forget your password, this code lets you set a new one. Take a screenshot or keep it in your notes. It works once${fresh ? '' : ', and your old code no longer works'}.</p>
+    <div class="card tc"><b class="num" style="font-size:28px;letter-spacing:.08em">${esc(c)}</b></div>
+    <button class="btn block" id="rc-copy">Copy code</button><button class="btn primary block" data-a="closeSheet">I saved it</button></div>`, { label: 'Recovery code', mount: b => {
+    b.querySelector('#rc-copy').onclick = async () => { try { await navigator.clipboard.writeText(c); toast('Copied'); } catch (e) { toast('Couldn’t copy. Take a screenshot instead.'); } };
+  } });
+  return sh;
+}
+let RC_ASKED = false;
+function recoveryCheck() {
+  if (RC_ASKED || !HOSTED || !USER || DEMO) return;
+  if (SHEETS.length || (A && A.open)) { setTimeout(recoveryCheck, 15000); return; } // never on top of another sheet or a workout
+  RC_ASKED = true;
+  gymRpc('jobdone_recovery_has').then(has => { if (has === false) recoverySheet(true); }).catch(() => { RC_ASKED = false; });
+}
 async function signUp(email, password, name, website, ms) {
   try {
     const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name, age: true, website, ms }) });
@@ -6408,6 +6454,7 @@ const ACT = {
   cuOff: el => { if (!A) return; A.cuOff = el.dataset.k; touchA(); renderWorkout(); },
   partyCode: () => partyCodeSheet(),
   partySet: () => partySetSheet(),
+  recoveryNew: () => confirmSheet({ title: 'Make a new recovery code?', body: 'Your old code stops working.', ok: 'Make new code', key: null, onOk: () => recoverySheet(false) }),
   partnerLeave: () => { try { localStorage.setItem('jd-ptleft', JSON.stringify(partyIds())); } catch (e) {} if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),
@@ -6843,11 +6890,8 @@ function renderSignIn(stage = 'start', email = '', msg = '') {
   $('#si-eye').onclick = () => { const show = $('#si-pw').type === 'password'; for (const id of ['#si-pw', '#si-pw2']) { const e = $(id); if (e) e.type = show ? 'text' : 'password'; } $('#si-eye').textContent = show ? 'Hide' : 'Show'; $('#si-eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
   for (const id of ['#si-email', '#si-pw', ...(make ? ['#si-pw2'] : [])]) $(id).onkeydown = e => { if (e.key === 'Enter') go(); };
   $('#si-switch').onclick = () => { if (make) return renderSignIn('start', $('#si-email').value.trim()); OB = null; applyTheme('mono'); renderWelcomePublic(); }; // Create account starts the intro; the account is its last step
-  if (!make) $('#si-forgot').onclick = async () => {
-    const em = emailOk(); if (!em) return;
-    const { error } = await SB.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
-    m(error && /rate/i.test(error.message) ? 'Too many reset emails. Wait an hour, then try again.' : 'If that email has an account, a reset link is on its way (check spam too). If nothing arrives within 10 minutes, ask whoever shared Job’s Done with you to reset it.', !(error && /rate/i.test(error.message)));
-  };
+  if (!make) $('#si-forgot').onclick = () => openRecover($('#si-email').value.trim(), em => { renderSignIn('start', em, ''); setTimeout(() => m('Password changed. Sign in with the new one.', true), 50); });
+
 }
 function openSetPassword(recovery = false) {
   // Changing a password asks for the current one; a reset link (recovery) has already proved who you are.
