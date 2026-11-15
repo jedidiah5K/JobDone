@@ -1783,7 +1783,8 @@ function postHTML(p) {
     ${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}</section>` : '';
   const cap = b.c ? `<p class="po-cap">${esc(b.c)}</p>` : '';
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
-  const last = cm.slice(-2).map(c => `<p class="po-cm"><b>${esc(USER && c.u === USER.id ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p>`).join('');
+  const last = cm.slice(-2).map(c => { const own = USER && c.u === USER.id, cf = (FRIENDS || []).find(f => f.id === c.u); // faces beside names (Job, 15 Nov)
+    return `<p class="po-cm">${own ? myFace('xs') : face(c.n, cf && !(cf.card || {}).hidden ? cf.photo : null, cf ? (cf.card || {}).t : 'mono', 'xs')}<span><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</span></p>`; }).join('');
   const ph2 = new Date(p.at); const tod = todOf(ph2.getHours() + ph2.getMinutes() / 60); // Summit cards take the sky of when it was posted
   const pth = THEMES.some(x => x.k === b.th) ? b.th : mine ? theme() : (THEMES.some(x => x.k === t) ? t : theme());
   return `<article class="card po po2 po-t-${pth} po-${tod}${p.kind === 'stamp' ? ' po-stamp' : ''}">

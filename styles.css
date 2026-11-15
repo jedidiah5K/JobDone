@@ -2461,3 +2461,6 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .mt-tbl .num { text-align: right; font-weight: 600; }
 .mt-tbl > span:nth-child(3n+1) { color: var(--text2); }
 .mt-note { display: block; font-size: calc(13px * var(--ts, 1)); color: var(--muted); }
+/* Faces beside names in the comment preview under a post (Job, 15 Nov) */
+.po-cm { display: flex; gap: 8px; align-items: flex-start; }
+.av.xs { width: 22px; height: 22px; font-size: calc(11px * var(--ts, 1)); flex: none; margin-top: -1px; }
