@@ -1228,8 +1228,9 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v194';
+const NEWS_ID = '2026-11-v195';
 const NEWS = [
+  ['Faster invites', 'Party invites, friend requests and turns go out straight away, even while your friend is resting. With the app open, the Join button shows up the moment you’re invited.'],
   ['Match your friend', 'Join a friend’s party and the app offers to match their sets and rest for that workout. Your plan stays the same.'],
   ['Catch up', 'If a friend moves on while you still have sets left, you’ll see it and can do their lift now or keep going.'],
   ['More party buttons', 'Same rest gives everyone the host’s rest time. Wait for me skips you in the turns until you’re back. Go first takes the next set, and Nudge pings whoever’s up.'],
@@ -1665,7 +1666,7 @@ async function inboxPoll() {
   rtSync();
   INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : A && A.turns ? 5000 : partyLive() ? 15000 : 60000);
 }
-const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); } };
+const inboxStart = () => { if (!INBOX_ON && HOSTED && USER) { INBOX_ON = true; inboxPoll(); rtMe(); } };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && INBOX_ON) inboxPoll(); });
 async function reqsLoad() { REQS = undefined; try { REQS = await gymRpc('jobdone_friend_requests') || []; } catch (e) { REQS = []; } rerender(); }
 async function friendsLoad(quiet) { reqsLoad(); try { FRIENDS = await gymRpc('jobdone_friends_list') || []; FR_FULL_AT = Date.now(); } catch (e) { FRIENDS = []; if (!quiet) toast('Couldn’t load your friends. Check your connection.'); } rerender(); }
@@ -1689,7 +1690,7 @@ let STAT_SENT = '';
 function statSync() {
   if (!HOSTED || !SB || !USER || DEMO || !(S.profile.id || {}).on) return;
   const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
-  STAT_AT = Date.now(); rtSync(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).then(rtPoke).catch(() => { STAT_SENT = ''; });
+  STAT_AT = Date.now(); rtSync(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).then(() => { rtPoke(); invitePoke(); }).catch(() => { STAT_SENT = ''; });
 }
 // Live party updates (v192, Job 14 Nov): a Supabase Realtime broadcast "poke" on a channel per party. It carries no
 // data, it only tells the others to refresh now through the normal checked call, so someone who guesses the channel
@@ -1701,6 +1702,24 @@ function rtSync() {
   if (RT) { try { SB.removeChannel(RT); } catch (e) {} RT = null; }
   RT_KEY = key; if (!key) return;
   try { RT = SB.channel(key, { config: { broadcast: { self: false } } }).on('broadcast', { event: 'poke' }, () => { clearTimeout(RT_T); RT_T = setTimeout(() => { if (INBOX_ON) inboxPoll(); }, 250); }).subscribe(); } catch (e) { RT = null; }
+}
+// Your own channel (v195): a friend who invites you pokes it, so the Join banner shows at once while the app is open.
+// Same rule as the party channel: the poke carries nothing and only triggers the normal checked refresh.
+let RT_ME = null, RT_ME_ID = '';
+function rtMe() {
+  const id = HOSTED && SB && USER && !DEMO ? USER.id : '';
+  if (id === RT_ME_ID) return;
+  if (RT_ME) { try { SB.removeChannel(RT_ME); } catch (e) {} RT_ME = null; }
+  RT_ME_ID = id; if (!id) return;
+  try { RT_ME = SB.channel('jd-user-' + id).on('broadcast', { event: 'poke' }, () => { clearTimeout(RT_T); RT_T = setTimeout(() => { inboxPoll(); }, 250); }).subscribe(); } catch (e) { RT_ME = null; }
+}
+const POKED = new Set();
+function invitePoke() {
+  const ids = partyIds(); for (const id of [...POKED]) if (!ids.includes(id)) POKED.delete(id); // a later party pokes them again
+  for (const id of ids) {
+    if (POKED.has(id)) continue; POKED.add(id);
+    try { const ch = SB.channel('jd-user-' + id); ch.send({ type: 'broadcast', event: 'poke', payload: {} }).finally(() => { try { SB.removeChannel(ch); } catch (e) {} }); } catch (e) {}
+  }
 }
 const rtPoke = () => { if (RT) try { RT.send({ type: 'broadcast', event: 'poke', payload: {} }); } catch (e) {} };
 // A friend's today and week by their own clock (stat.o = their minutes ahead of UTC), so someone abroad who trained

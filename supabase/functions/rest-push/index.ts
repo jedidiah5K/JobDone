@@ -1,6 +1,6 @@
 // Rest-done notifications for the Home Screen app (Web Push).
 // The app sends its push subscription and, when a rest timer starts, the time it ends.
-// A pg_cron job (jobdone-rest-push, every 5 seconds) calls this function with x-cron-key when an alert is due,
+// A pg_cron job (jobdone-rest-push, every second) calls this function with x-cron-key when an alert is due,
 // and the function sends the push. A second job (jobdone-remind, every minute) posts daily workout reminders that are due.
 // VAPID keys and the cron key live in public.jobdone_private (service role only).
 // Deployed as the Supabase edge function "rest-push" with verify_jwt = false: it checks the user's token itself.
@@ -30,17 +30,18 @@ async function conf() {
 
 async function sendTo(userId: string, payload: unknown) {
   const { data: subs } = await db.from('jobdone_push_subs').select('endpoint, p256dh, auth').eq('user_id', userId);
-  let ok = 0;
-  for (const s of subs || []) {
+  // All devices at once (v195): one slow phone no longer holds up the others.
+  const r = await Promise.all((subs || []).map(async (s: any) => {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 120, urgency: 'high', timeout: 5000 });
-      ok++;
+      return 1;
     } catch (e: any) {
       if (e?.statusCode === 404 || e?.statusCode === 410) await db.from('jobdone_push_subs').delete().eq('endpoint', s.endpoint);
       else console.log('push failed', e?.statusCode, String(e?.body || e).slice(0, 200));
+      return 0;
     }
-  }
-  return ok;
+  }));
+  return r.reduce((a: number, b: number) => a + b, 0);
 }
 
 const handle = async (req: Request) => {
@@ -55,6 +56,11 @@ const handle = async (req: Request) => {
     // Daily workout reminders: jobdone_remind_tick() posts the accounts that are due, with their theme.
     let cb: any = {};
     try { cb = await req.json(); } catch { /* rest tick sends a small body */ }
+    // v195: friend requests, party invites and turns go straight out from the database, without the rest-timer slot.
+    if (cb.now && typeof cb.now.u === 'string') {
+      const t = String(cb.now.title || '').slice(0, 60), b = String(cb.now.body || '').slice(0, 140);
+      return json(200, { sent: await sendTo(cb.now.u, { title: t, body: b, tag: 'now-' + Date.now() }) });
+    }
     if (Array.isArray(cb.remind)) {
       let n = 0;
       for (const r of cb.remind.slice(0, 500)) {
