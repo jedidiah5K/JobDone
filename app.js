@@ -1228,8 +1228,14 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v192';
+const NEWS_ID = '2026-11-v194';
 const NEWS = [
+  ['Match your friend', 'Join a friend’s party and the app offers to match their sets and rest for that workout. Your plan stays the same.'],
+  ['Catch up', 'If a friend moves on while you still have sets left, you’ll see it and can do their lift now or keep going.'],
+  ['More party buttons', 'Same rest gives everyone the host’s rest time. Wait for me skips you in the turns until you’re back. Go first takes the next set, and Nudge pings whoever’s up.'],
+  ['Party code', 'Tap Party code and your gym buddy types the 4 letters in Add a friend. You become friends and they join, no QR needed.'],
+  ['Party on the finish page', 'The finish page and your share picture show who you trained with and their total.'],
+  ['Leaving a party', 'Leave asks first, your sets stay put, and you can rejoin while they’re still training.'],
   ['Instant updates', 'Pushes for friend requests, party invites and your turn now go out straight away, and in a party your friends’ sets show up the moment they tick them.'],
   ['Invite from a workout', 'Tap the gear in a workout and pick Invite friends to start a party without leaving it.'],
   ['Pick your bar', 'The plate loader has an Include the bar tick and a choice of bar: Olympic, women’s, EZ curl or trap bar. Each lift remembers its own, curls start on the EZ bar, and you can set each bar’s weight to match your gym.'],
@@ -1677,7 +1683,7 @@ function myStat() {
   let k = 0, x = (per[m] || 0) >= goal ? m : addDays(m, -7); // this week counts once it's hit
   while ((per[x] || 0) >= goal || rw.has(x)) { if ((per[x] || 0) >= goal) k++; x = addDays(x, -7); }
   const s = { d: T, w: m, tr: ws.filter(w => w.date === T).map(w => String(w.splitName || 'Workout').slice(0, 30)).slice(0, 3), rest: S.profile.restDay === T ? 1 : 0, wd: per[m] || 0, wg: goal, k, o: -new Date().getTimezoneOffset() };
-  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; const lv = GAME_ON && liveStat(); if (lv) { s.lv = lv; while (lv.xs.length && JSON.stringify(s).length > 880) lv.xs.pop(); } return s;
+  if (SO().nn) s.nn = true; const gs = myGameStat(); if (gs) s.g = gs; const lv = GAME_ON && liveStat(); if (lv) { s.lv = lv; while (lv.xs.length && JSON.stringify(s).length > 880) { lv.xs.pop(); lv.ss.length = lv.xs.length; } } return s;
 }
 let STAT_SENT = '';
 function statSync() {
@@ -1874,7 +1880,7 @@ function frAddSheet(pre) {
   const qr = ID_CODE && typeof qrcode === 'function' ? qrSVG(ADD_URL(ID_CODE), 112) : '';
   const sh = openSheet(`<div class="stack af"><h2>Add a friend</h2>
     <div class="af-me">${qr ? `<button class="af-qr" data-a="idQR" aria-label="Show my QR code bigger">${qr}</button>` : ''}<div class="af-code"><span class="eyebrow">Your code</span><b class="num">${esc(idCode(ID_CODE)) || '—'}</b><span class="cap">${qr ? 'Tell your friends to scan this with their camera.' : 'Share it so friends can add you.'}</span><button class="btn sm" data-a="idCopy" ${ID_CODE ? '' : 'disabled'}>Copy code</button></div></div>
-    <div><label class="eyebrow" for="fr-code">Their code</label><div class="row g2 mt1"><input class="input grow num af-in" id="fr-code" value="${pre ? esc(pre) : ''}" placeholder="JD-XXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
+    <div><label class="eyebrow" for="fr-code">Their code</label><div class="row g2 mt1"><input class="input grow num af-in" id="fr-code" value="${pre ? esc(pre) : ''}" placeholder="JD-XXXXXX or party code" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn primary" id="fr-go">Send</button></div>
     <button class="btn block mt2 af-scan" id="fr-scan">${IC.cam}Scan their QR</button>
     <p class="cap mt1 m0">They get a request to accept.</p></div></div>`, { label: 'Add a friend', mount: b => {
     const go = b.querySelector('#fr-go'); go.onclick = async () => { if (go.disabled) return; go.disabled = true; await friendAdd(); go.disabled = false; if (!b.querySelector('#fr-code').value) closeSheet(sh); };
@@ -2290,7 +2296,8 @@ function idLiftsSheet() {
   } });
 }
 async function friendAdd() {
-  const el = document.getElementById('fr-code'), v = (el && el.value || '').trim(); if (v.replace(/[^a-z0-9]/gi, '').length < 4) return toast('Type their friend code');
+  const el = document.getElementById('fr-code'), v = (el && el.value || '').trim();
+  if (/^[a-z]{4}$/i.test(v)) { try { el.value = ''; await partyCodeUse(v); } catch (e) { toast(/Too many/.test(e.message) ? 'Too many tries. Wait an hour.' : 'Couldn’t join. Check your connection.'); } return; } if (v.replace(/[^a-z0-9]/gi, '').length < 4) return toast('Type their friend code');
   try { const r = await gymRpc('jobdone_friend_request', { p_code: v }) || {}, n = esc(r.n || 'They');
     if (r.none) return toast('No one has that code. Check the letters.'); if (r.self) return toast('That’s your own code.'); if (r.full) return toast('You have 200 friends already.');
     if (r.many) return toast('You have 50 requests waiting. Cancel some first.'); if (r.already) return toast(n + ' is already your friend.');
@@ -3414,8 +3421,57 @@ function trainWith(f, also = [], host) {
   if (xs.length && canSwap) useHostWorkout(host, xs);
   else if (xs.length) toast('You’ve already logged sets, so you keep your own workout.');
   if (A) { touchA(); statSync(); openWk(); }
+  if (A && host && Array.isArray(host.ss)) setTimeout(() => syncAsk(f, host), 500);
   if (INBOX_ON) { clearTimeout(INBOX_T); INBOX_T = setTimeout(inboxPoll, 15000); }
   toast(`Training with ${esc(names)}. They can join from their app.`);
+}
+// Match the friend you joined (Job, 15 Nov): their set count per lift and their rest, for this workout only.
+function syncAsk(f, l) {
+  if (!A) return;
+  const n = esc(((f.card || {}).n || 'Your friend').split(' ')[0]), ss = l.ss || [], diffs = [];
+  (l.xs || []).forEach((x, i) => { const t = +ss[i], e = A.ex.find(y => baseName(y.name).slice(0, 26) === x); if (!e || !t) return; const w = e.sets.filter(z => z.t !== 'warm').length; if (w !== t) diffs.push([e, t, w]); });
+  const rs = +l.rs || 0, myRs = A.restAll || restFor((curLift() || A.ex[0] || {}).name || ''), restDiff = rs > 0 && rs !== myRs;
+  if (!diffs.length && !restDiff) return;
+  const same = a => a.every(x => x === a[0]), t = diffs.map(d => d[1]), w = diffs.map(d => d[2]);
+  const setsTxt = !diffs.length ? '' : same(t) && same(w) ? `${n} does ${plural(t[0], 'set')} a lift, you do ${w[0]}.` : `${n} has a different number of sets on ${plural(diffs.length, 'lift')}.`;
+  const restTxt = restDiff ? `${n} rests ${fmtRest(rs)}, you rest ${fmtRest(myRs)}.` : '';
+  confirmSheet({ title: `Match ${n}?`, body: [setsTxt, restTxt, 'Just for this workout. Your plan stays the same.'].filter(Boolean).join(' '), ok: 'Match', no: 'Keep mine', key: null,
+    onOk: () => { if (!A) return; diffs.forEach(([e, c]) => setCount(e, c)); if (restDiff) A.restAll = rs; touchA(); statSync(); openWk(); toast(`Matched ${n}`); } });
+}
+// Adds sets copied from the last one, or drops sets you haven't ticked from the end. Ticked sets are never removed.
+function setCount(e, t) {
+  const w = () => e.sets.filter(x => x.t !== 'warm');
+  while (w().length < t) { const p = e.sets[e.sets.length - 1] || {}; e.sets.push({ w: p.w ?? null, r: p.r ?? null, t: 'work', done: false }); }
+  while (w().length > t) { const i = e.sets.map(x => x.t !== 'warm' && !x.done).lastIndexOf(true); if (i < 0) break; e.sets.splice(i, 1); }
+}
+// Same rest: the host's rest time for everyone. Otherwise a rest you matched when you joined.
+function partyRest() {
+  if (!A || !USER) return 0;
+  const h = partyHostId();
+  if (h !== USER.id && partyIds().includes(h)) { const l = liveOf((FRIENDS || []).find(x => x.id === h)); if (l && l.sr && +l.rs) return +l.rs; }
+  return A.restAll || 0;
+}
+// A friend has moved on to a later lift while you still have sets left on yours (Job, 15 Nov).
+function catchUp() {
+  const me = curLift(); if (!me || !A.party) return '';
+  const myI = A.ex.indexOf(me), mine = baseName(me.name).slice(0, 26);
+  for (const m of A.party) {
+    const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); if (!l || !lvParty(l).includes(USER.id) || !l.cur || l.cur === mine) continue;
+    const ti = A.ex.findIndex(e => baseName(e.name).slice(0, 26) === l.cur); if (ti <= myI) continue;
+    const k = m.id + '|' + l.cur; if (A.cuOff === k) continue;
+    const left = me.sets.filter(x => !x.done && x.t !== 'warm').length, n = esc(String(m.n || 'Friend').split(' ')[0]);
+    return `<div class="pt-catch"><div class="cap"><b>${n}’s on ${esc(l.cur)}.</b> You have ${plural(left, 'set')} of ${esc(baseName(me.name))} left.</div><div class="pt-acts"><button class="pt-pill" data-a="cuGo" data-i="${ti}">Do ${esc(l.cur)} now</button><button class="pt-pill quiet" data-a="cuOff" data-k="${esc(k)}">Keep going</button></div></div>`;
+  }
+  return '';
+}
+// Party next to your totals on the finish page; their numbers are the last ones their phone sent.
+function partySum(d) {
+  if (!A || !A.party || !A.party.length) return '';
+  const rows = A.party.map(m => { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); return l && lvParty(l).includes(USER.id) ? [m.n, +l.v || 0, +l.n || 0, l.xs || []] : m.s ? [m.n, m.v || 0, m.s, []] : null; }).filter(Boolean);
+  if (!rows.length) return '';
+  const both = [...new Set(A.ex.filter(e => e.sets.some(x => x.done)).map(e => baseName(e.name)))].filter(x => rows.some(r => r[3].includes(x.slice(0, 26))));
+  const li = (n, v, c) => `<div class="li"><div class="grow t ell">${esc(n)}</div><span class="num cap">${dvol(v)} ${U()} · ${plural(c, 'set')}</span></div>`;
+  return `<div class="card"><div class="mb1 eyebrow">Party</div><div class="list">${li('You', d.vol, d.sets)}${rows.map(r => li(String(r[0] || 'Friend').split(' ')[0], r[1], r[2])).join('')}</div>${both.length ? `<div class="cap mt2">Together: ${esc(both.slice(0, 4).join(', '))}${both.length > 4 ? ` +${both.length - 4}` : ''}</div>` : ''}</div>`;
 }
 // Same split as the friend who invited you (Job, 13 Nov: Mikey joined a Pull and got his own Full body).
 function useHostWorkout(host, xs) {
@@ -3429,7 +3485,9 @@ function liveStat() {
   const done = A.ex.flatMap(e => e.sets.filter(s => s.done && s.t !== 'warm').map(s => ({ e: e.name, s, at: s.at || 0 }))).sort((a, b) => b.at - a.at)[0];
   const xs = A.ex.map(e => baseName(e.name).slice(0, 26)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 10);
   const ti = myTurnInfo();
-  return { party: ids, with: ids[0], xs, tt: A.turns ? 1 : 0, nr: A.turns && A.calm ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+  const wk = e => e.sets.filter(s => s.t !== 'warm'), ss = xs.map(x => { const e = A.ex.find(y => baseName(y.name).slice(0, 26) === x); return e ? wk(e).length : 0; });
+  const v = Math.round(A.ex.reduce((a, e) => a + exVol(e.sets.filter(s => s.done && s.t !== 'warm')), 0));
+  return { party: ids, with: ids[0], xs, ss, rs: A.restAll || restFor((curLift() || A.ex[0] || {}).name || ''), sr: A.sameRest ? 1 : 0, wt: A.wait ? 1 : 0, pr: A.goFirst || 0, v, tt: A.turns ? 1 : 0, nr: A.turns && A.calm ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
 }
 // ---------- Taking turns (v181, Job 14 Nov) ----------
 // Everyone in the party with Taking turns on who is on the same lift goes in order: the host first, then the rest.
@@ -3443,11 +3501,11 @@ function turnState() {
   if (!A || !A.turns || !USER || !Array.isArray(A.party) || !A.party.length) return null;
   const me = myTurnInfo(); if (!me) return null;
   const host = A.partyHost || USER.id, sk = A.turnSkip && A.turnSkip.cur === me.cur ? A.turnSkip.k : {};
-  const ppl = [{ id: USER.id, n: 'You', c: me.c, t: me.t }];
-  for (const m of A.party) { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); if (l && l.tt && l.cur === me.cur && lvParty(l).includes(USER.id)) ppl.push({ id: m.id, n: m.n, c: +l.c || 0, t: +l.t || 0 }); }
+  const ppl = [{ id: USER.id, n: 'You', c: A.wait ? me.t : me.c, t: me.t, pr: A.goFirst || 0 }];
+  for (const m of A.party) { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); if (l && l.tt && !l.wt && l.cur === me.cur && lvParty(l).includes(USER.id)) ppl.push({ id: m.id, n: m.n, c: +l.c || 0, t: +l.t || 0, pr: +l.pr || 0 }); }
   if (ppl.length < 2) return { lift: me.cur, waiting: true };
   ppl.forEach(x => { x.c += sk[x.id] || 0; });
-  ppl.sort((a, b) => a.id === host ? -1 : b.id === host ? 1 : a.id < b.id ? -1 : 1);
+  ppl.sort((a, b) => (b.pr || 0) - (a.pr || 0) || (a.id === host ? -1 : b.id === host ? 1 : a.id < b.id ? -1 : 1));
   const now = turnPick(ppl); if (!now) return null;
   const next = turnPick(ppl.map(x => x === now ? { ...x, c: x.c + 1 } : x));
   return { lift: me.cur, now, next: next && next.id !== now.id ? next : null, mine: now.id === USER.id, ppl };
@@ -3491,9 +3549,10 @@ function joinBanner() {
   let left = []; try { left = JSON.parse(localStorage.getItem('jd-ptleft') || '[]'); } catch (e) {}
   const still = left.filter(id => { const l = liveOf(FRIENDS.find(x => x.id === id)); return l && lvParty(l).includes(USER.id); }); // forget once their party ends
   if (still.length !== left.length) try { localStorage.setItem('jd-ptleft', JSON.stringify(still)); } catch (e) {}
-  const mine = partyIds(), f = FRIENDS.find(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id) && !mine.includes(x.id) && !still.includes(x.id); }); if (!f) return '';
+  const mine = partyIds(), f = FRIENDS.find(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id) && !mine.includes(x.id); }); if (!f) return '';
   const n = esc(((f.card || {}).n || 'A friend').split(' ')[0]), l = liveOf(f), size = lvParty(l).length + 1;
-  return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${size > 2 ? `${n}’s party · ${size} people` : `${n} is training with you`}</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">Join</button></div>`;
+  const was = still.includes(f.id);
+  return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${was ? `You left ${n}’s party` : size > 2 ? `${n}’s party · ${size} people` : `${n} is training with you`}</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">${was ? 'Rejoin' : 'Join'}</button></div>`;
 }
 // Party in the workout header (Job, 14 Nov): one small line of faces; tap it to open each friend's last set and the buttons.
 function partnerStrip() {
@@ -3504,8 +3563,8 @@ function partnerStrip() {
   const sum = `Party of ${P.length + 1}${A.turns ? ts && ts.waiting ? ' · turns on, waiting' : noRush() ? ' · turns, no rush' : ' · turns on' : ''}`;
   const open = A.partyOpen ? `<div class="pt-open"><div class="pt-chips">${info.map(x => `<span class="pt-chip2"><span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>${esc(x.m.n)} ${x.joined ? (x.l.last ? `<b class="num">${esc(x.l.last)}</b>` : `<span class="cap">${plural(+x.l.n || 0, 'set')}</span>`) : '<span class="cap">invited</span>'}</span>`).join('')}</div>
     ${ts && ts.waiting ? `<div class="cap pt-wait">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>` : ''}
-    <div class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button>${A.turns && partyHostId() === USER.id ? `<button class="pt-pill${A.calm ? ' on' : ''}" data-a="noRush" aria-pressed="${A.calm ? 'true' : 'false'}">No rush</button>` : ''}<button class="pt-pill quiet" data-a="partnerEnd">Leave</button></div></div>` : '';
-  return `<div class="partner"><button class="pt-sum" data-a="partyFold" aria-expanded="${A.partyOpen ? 'true' : 'false'}"><span class="pt-faces">${faces}</span><span class="cap">${sum}</span><i class="pt-chev">${I.down}</i></button>${open}</div>`;
+    <div class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button>${A.turns && partyHostId() === USER.id ? `<button class="pt-pill${A.calm ? ' on' : ''}" data-a="noRush" aria-pressed="${A.calm ? 'true' : 'false'}">No rush</button>` : ''}${partyHostId() === USER.id ? `<button class="pt-pill${A.sameRest ? ' on' : ''}" data-a="sameRest" aria-pressed="${A.sameRest ? 'true' : 'false'}">Same rest</button>` : ''}${A.turns ? `<button class="pt-pill${A.wait ? ' on' : ''}" data-a="waitMe" aria-pressed="${A.wait ? 'true' : 'false'}">${A.wait ? 'I’m back' : 'Wait for me'}</button><button class="pt-pill" data-a="goFirst">Go first</button>` : ''}${ts && ts.now && !ts.mine && !ts.waiting ? `<button class="pt-pill" data-a="nudge" data-id="${esc(ts.now.id)}">Nudge ${esc(String(ts.now.n).split(' ')[0])}</button>` : ''}${P.length < PARTY_MAX && HOSTED && !DEMO ? '<button class="pt-pill" data-a="partyCode">Party code</button>' : ''}<button class="pt-pill quiet" data-a="partnerEnd">Leave</button></div></div>` : '';
+  return `<div class="partner"><button class="pt-sum" data-a="partyFold" aria-expanded="${A.partyOpen ? 'true' : 'false'}"><span class="pt-faces">${faces}</span><span class="cap">${sum}</span><i class="pt-chev">${I.down}</i></button>${open}${catchUp()}</div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
 function partyAddSheet() {
@@ -3538,12 +3597,29 @@ function partyPrune() {
   if (!A || !Array.isArray(A.party) || !Array.isArray(FRIENDS)) return;
   const gone = [];
   A.party = A.party.filter(p => { const f = FRIENDS.find(x => x.id === p.id), l = liveOf(f), inIt = l && lvParty(l).includes(USER.id);
-    if (inIt) { p.in = 1; return true; } if (p.in && f && f.stat) { gone.push(p.n || 'A friend'); return false; } return true; });
+    if (inIt) { p.in = 1; p.v = +l.v || 0; p.s = +l.n || 0; return true; } if (p.in && f && f.stat) { gone.push(p.n || 'A friend'); A.gone = [...(A.gone || []).filter(g => g.id !== p.id), p]; return false; } return true; });
+  const back = FRIENDS.filter(f => { const l = liveOf(f); return l && lvParty(l).includes(USER.id) && !partyIds().includes(f.id) && ((A.gone || []).some(g => g.id === f.id) || (A.pcodeUntil || 0) > Date.now()); });
+  if (back.length && A.party.length < PARTY_MAX) { A.party = mergeParty(A.party, back.map(pName)); A.gone = (A.gone || []).filter(g => !back.some(f => f.id === g.id)); touchA(); statSync(); toast(`${esc(pName(back[0]).n.split(' ')[0])} ${(A.gone || []).length || !A.pcodeUntil ? 'is back' : 'joined'}`); }
   if (!gone.length) return;
   if (!A.party.length) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; }
   touchA(); statSync(); toast(`${esc(String(gone[0]).split(' ')[0])}${gone.length > 1 ? ` and ${gone.length - 1} more` : ''} left the party`);
 }
 let PARTNER_POLL = 0;
+const NUDGE_AT = {};
+// Party code (Job, 15 Nov): 4 letters that work for 2 hours. Typing it in Add a friend makes you friends and joins the party.
+async function partyCodeSheet() {
+  if (!A) return;
+  let c; try { c = await gymRpc('jobdone_party_code_make'); } catch (e) { return toast('Couldn’t make a code. Check your connection.'); }
+  A.pcodeUntil = Date.now() + 2 * 3600e3; touchA(); partnerTick();
+  openSheet(`<div class="stack"><div class="eyebrow">Party code</div><b class="num" style="font-size:56px;letter-spacing:.12em">${esc(c)}</b><p class="m0 sec">Your gym buddy types this in Add a friend. You become friends and they join this workout. It works for 2 hours.</p><button class="btn block primary" data-a="closeSheet">Done</button></div>`, { label: 'Party code' });
+}
+async function partyCodeUse(v) {
+  const r = await gymRpc('jobdone_party_code_use', { p_code: v }) || {};
+  if (r.none) return toast('That party code didn’t work. It may have run out.'); if (r.self) return toast('That’s your own party code.'); if (r.full) return toast('You have 200 friends already.');
+  await friendsLoad(true); const f = (FRIENDS || []).find(x => x.id === r.host);
+  if (!f) return toast(`You and ${esc(r.n || 'your friend')} are friends now.`);
+  ACT.joinFriend({ dataset: { id: f.id } });
+}
 function partnerTick() { // every 20 s while training together, refresh friends to see their sets
   clearTimeout(PARTNER_POLL); if (!partyIds().length || !HOSTED || !USER) return;
   PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; partyPrune(); } catch (e) {} if (partyIds().length && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
@@ -4172,7 +4248,7 @@ function logSet(ei, si) {
   if (s.done) {
     buzz(10);
     const pr = livePR(e)[si];
-    const secs = restFor(e.name);
+    const secs = partyRest() || restFor(e.name);
     const inSS = e.ss && A.ex[ei + 1];
     const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
     const tsNow = A.turns && turnState(); // taking turns: your friend's set is your rest, so no timer
@@ -4211,6 +4287,7 @@ function summaryHTML() {
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
+    ${partySum(d)}
     ${(() => { const lt = liftTimes(); return lt && lt.rows.length > 1 ? `<div class="card"><div class="card-h"><span class="eyebrow">Time per lift</span>${lt.rest ? `<span class="cap num">avg rest ${clock(lt.rest)}</span>` : ''}</div><div class="list">${lt.rows.map(([n, m]) => `<div class="li"><div class="grow t ell">${esc(n)}</div><span class="num cap">${m} min</span></div>`).join('')}</div></div>` : ''; })()}
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
     <div class="field"><span class="lbl">Energy <span class="cap">1 drained · 5 strong</span></span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${A.energy === n ? 'on' : ''}" data-a="energy" data-k="${n}">${n}</button>`).join('')}</div></div>
@@ -4222,7 +4299,7 @@ function saveWorkout() {
   const d = summaryData(); if (!d.sets) return;
   const planned = A.ex.reduce((a, e) => a + e.sets.filter(s => s.t !== 'warm').length, 0);
   const w = { id: A.id, date: A.date || ymd(new Date(A.start)), splitId: A.splitId, splitName: A.splitName, start: A.start, end: A.endAt || Date.now(), note: A.note || '', energy: A.energy || null, src: 'native', planned, ex: d.ex.map(e => ({ name: e.name, note: e.note || '', sets: e.sets, ...(e.ss ? { ss: 1 } : {}) })) };
-  if (A.gym) w.gym = A.gym; if (A.party && A.party.length) { w.party = A.party; S.profile.joint = [...(S.profile.joint || []), w.date].slice(-200); } setPartyNext(null);
+  if (A.gym) w.gym = A.gym; if (A.party && A.party.length) { w.party = A.party.map(m => { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); return { id: m.id, n: m.n, ...(l ? { v: +l.v || 0, s: +l.n || 0 } : m.s ? { v: m.v || 0, s: m.s } : {}) }; }); S.profile.joint = [...(S.profile.joint || []), w.date].slice(-200); } setPartyNext(null);
   S.workouts[w.id] = w;
   if (A.practice) { PRACTICE_W = w.id; A = null; REST = null; invalidate(); NAV.tab = 'today'; NAV.stack = []; render(); return showRecap(w.id); }
   const sp = A.splitId && splitById(A.splitId);
@@ -4508,7 +4585,7 @@ async function drawShare(d, o = shareOpts(d)) {
     .filter(s => !o.hide.includes(s[2]));
   const hotStat = s => s[2] === 'prs' && d.prs.length;
   lifts.splice(0, lifts.length, ...(o.lifts ? lifts.filter(r => !o.pick || o.pick.includes(r.name)) : []));
-  const date = fmtDate(d.w.date, { wd: true }), split = d.w.splitName || 'Workout';
+  const pw = (d.w.party || [])[0], date = fmtDate(d.w.date, { wd: true }) + (pw ? ` · with ${String(pw.n || 'a friend').split(' ')[0]}${pw.v ? ` ${dvol(pw.v)} ${U()}` : ''}${d.w.party.length > 1 ? ` +${d.w.party.length - 1}` : ''}` : ''), split = d.w.splitName || 'Workout';
   const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
   const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Job’s Done', 0), x0, y); };
   let OY = (H - CH) / 2;
@@ -5071,10 +5148,12 @@ function openPlates(target, onUse, o = {}) {
       out += `<g class="pl R${nw}" data-i="${i}"><rect x="${xR}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xR + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
       out += `<g class="pl L${nw}" data-i="${i}"><rect x="${xL - w}" y="${cy - h / 2}" width="${w}" height="${h}" rx="${Math.min(4, w / 3)}" fill="${col}" stroke="rgba(0,0,0,.25)"/><rect x="${xL - w + 2 * k}" y="${cy - h / 2 + 4}" width="${3 * k}" height="${h - 8}" rx="1.5" fill="#fff" opacity=".25"/></g>`;
       xR += w + 2 * k; xL -= w + 2 * k; });
-    const mid = barK === 'ez' ? `<path d="M${cx - 60} ${cy} l15 -6 l15 12 l15 -12 l15 12 l15 -12 l15 12 l15 -12 l15 6" fill="none" stroke="#7E848C" stroke-width="7" stroke-linejoin="round"/>`
+    const ezD = `M${cx - 58} ${cy} L${cx - 38} ${cy} L${cx - 30} ${cy - 7} L${cx - 20} ${cy + 7} L${cx - 12} ${cy} L${cx + 12} ${cy} L${cx + 20} ${cy + 7} L${cx + 30} ${cy - 7} L${cx + 38} ${cy} L${cx + 58} ${cy}`; // real EZ: straight, two short angled grips each side of a straight middle
+    const mid = barK === 'ez' ? `<path d="${ezD}" fill="none" stroke="#7E848C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="${ezD}" fill="none" stroke="#C3C8CE" stroke-width="1.6" stroke-linecap="round" transform="translate(0 -1.8)" opacity=".7"/>`
       : barK === 'trap' ? `<path d="M${cx - 56} ${cy} l14 -30 h84 l14 30 l-14 30 h-84z" fill="none" stroke="#7E848C" stroke-width="6" stroke-linejoin="round"/><rect x="${cx - 26}" y="${cy - 30}" width="6" height="60" rx="3" fill="#6B7178"/><rect x="${cx + 20}" y="${cy - 30}" width="6" height="60" rx="3" fill="#6B7178"/>`
       : `<rect x="${cx - 60}" y="${cy - 4}" width="120" height="8" fill="#7E848C"/>`;
-    return `<svg viewBox="0 0 ${W} ${H}" class="barsvg"><rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/>${mid}<rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
+    const shaft = barK === 'ez' && bar ? `<rect x="8" y="${cy - 5}" width="${cx - 72}" height="10" rx="5" fill="#9BA1A8"/><rect x="${cx + 64}" y="${cy - 5}" width="${cx - 72}" height="10" rx="5" fill="#9BA1A8"/>` : `<rect x="8" y="${cy - 5}" width="${W - 16}" height="10" rx="5" fill="#9BA1A8"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" class="barsvg">${shaft}${mid}<rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
   };
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
   const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
@@ -6256,7 +6335,7 @@ const ACT = {
   },
   sumBack: () => { A.view = 'log'; touchA(); },
   saveWk: () => saveWorkout(),
-  energy: el => { A.energy = +el.dataset.k; touchA(); },
+  energy: el => { A.energy = +el.dataset.k; A.touched = Date.now(); persist('jd/active'); el.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el)); }, // no redraw: it jumped the finish page to the top (Job, 15 Nov)
   key: el => el.dataset.f === 'w' && usesPlates(A.ex[+el.dataset.e].name) && !UI.kgPad ? openSetPlates(+el.dataset.e, +el.dataset.s) : openKeypad(+el.dataset.e, +el.dataset.s, el.dataset.f),
   done: el => logSet(+el.dataset.e, +el.dataset.s),
   rpe: el => { const st = A.ex[+el.dataset.e].sets[+el.dataset.s], k = +el.dataset.k; st.rpe = st.rpe === k ? null : k; A.rpeAsk = null; touchA(); },
@@ -6309,12 +6388,20 @@ const ACT = {
   idCard: () => { NAV.stack = [{ v: 'idcard' }]; render(); },
   rewards: () => { NAV.stack = [{ v: 'rewards' }]; render(); },
   idQR: () => qrSheet(),
-  joinFriend: el => { const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others, l); },
+  joinFriend: el => { try { localStorage.setItem('jd-ptleft', JSON.stringify(JSON.parse(localStorage.getItem('jd-ptleft') || '[]').filter(x => x !== el.dataset.id))); } catch (e) {} const f = (FRIENDS || []).find(x => x.id === el.dataset.id); if (!f) return; const l = liveOf(f), others = l ? (FRIENDS || []).filter(x => x.id !== f.id && lvParty(l).includes(x.id)) : []; trainWith(f, others, l); },
   partyFold: () => { if (!A) return; A.partyOpen = !A.partyOpen; touchA(); renderWorkout(); },
   noRush: () => { if (!A || !A.turns) return; A.calm = !A.calm; if (A.calm) REST = null; touchA(); statSync(); renderWorkout(); toast(A.calm ? 'No rush. No rest timer and no pings, just whose turn it is.' : 'No rush off'); },
   turnsToggle: () => { if (!A) return; A.turns = !A.turns; delete A.turnSkip; TURN_WAS = null; touchA(); statSync(); renderWorkout(); toast(A.turns ? 'Taking turns. Friends on the same lift go one after another.' : 'Turns off'); },
   turnSkip: el => { if (!A) return; const ts = turnState(); if (!ts || !ts.now || ts.now.id !== el.dataset.id) return; const k = A.turnSkip && A.turnSkip.cur === ts.lift ? A.turnSkip.k : {}; k[ts.now.id] = (k[ts.now.id] || 0) + 1; A.turnSkip = { cur: ts.lift, k }; touchA(); turnWatch(); renderWorkout(); },
-  partnerEnd: () => { try { localStorage.setItem('jd-ptleft', JSON.stringify(partyIds())); } catch (e) {} if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
+  partnerEnd: () => confirmSheet({ title: 'Leave the party?', body: 'Your sets stay in this workout. You can rejoin while they’re still training.', ok: 'Leave', danger: true, key: null, onOk: () => ACT.partnerLeave() }),
+  sameRest: () => { if (!A) return; A.sameRest = !A.sameRest; touchA(); statSync(); renderWorkout(); toast(A.sameRest ? `Everyone rests ${fmtRest(A.restAll || restFor((curLift() || A.ex[0] || {}).name || ''))}` : 'Everyone uses their own rest'); },
+  waitMe: () => { if (!A) return; A.wait = !A.wait; touchA(); statSync(); renderWorkout(); toast(A.wait ? 'Turns skip you until you’re back' : 'You’re back in the turns'); },
+  goFirst: () => { if (!A) return; A.goFirst = Date.now(); delete A.turnSkip; touchA(); statSync(); renderWorkout(); toast('You go first next set'); },
+  nudge: el => { const id = el.dataset.id; if (Date.now() - (NUDGE_AT[id] || 0) < 30000) return toast('Nudged. Give them a moment.'); NUDGE_AT[id] = Date.now(); gymRpc('jobdone_turn_ping', { p_to: id }).catch(() => {}); toast('Nudged'); },
+  cuGo: el => { if (!A) return; const ti = +el.dataset.i, me = curLift(), mi = A.ex.indexOf(me); if (!(ti > mi) || !A.ex[ti]) return; const [x] = A.ex.splice(ti, 1); A.ex.splice(mi, 0, x); touchA(); statSync(); openWk(); setTimeout(() => { const c = document.getElementById('ex-' + mi); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); },
+  cuOff: el => { if (!A) return; A.cuOff = el.dataset.k; touchA(); renderWorkout(); },
+  partyCode: () => partyCodeSheet(),
+  partnerLeave: () => { try { localStorage.setItem('jd-ptleft', JSON.stringify(partyIds())); } catch (e) {} if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),
   gymBoardOn: el => { S.profile.gymBoard = el.checked; persist('jd/meta'); statSync(); toast(el.checked ? 'Your name shows on your gym’s board' : 'You show as “A member”'); },

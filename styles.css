@@ -2304,7 +2304,8 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .partner .pt-chip2 .pt-av { width: 22px; height: 22px; font-size: calc(10px * var(--ts, 1)); box-shadow: none; }
 .partner .pt-chip2 b { font-weight: 600; }
 .partner .pt-wait { margin-top: 8px; }
-.partner .pt-acts { display: flex; gap: 6px; margin-top: 10px; }
+.partner .pt-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.partner .pt-catch { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); }
 .partner .pt-pill { font: inherit; font-size: calc(13px * var(--ts, 1)); font-weight: 600; padding: 6px 12px; min-height: 32px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); background: transparent; color: var(--text); }
 .partner .pt-pill.on { background: var(--gm-acc); border-color: var(--gm-acc); color: #fff; }
 :root[data-theme="mono"] .partner .pt-pill.on { color: #0B0B0E; } /* Agent's accent is light, so the label goes dark */
