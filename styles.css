@@ -1153,7 +1153,7 @@ body::before { content: ""; position: fixed; z-index: 70; top: 0; left: 0; right
 body:has(#recap) #sheets { z-index: 75; }
 .sh-prev.story { aspect-ratio: 1080 / 1920; width: 50%; max-width: 210px; }
 /* Skyline: red on navy is too dim for small text, so text that uses the accent gets a lighter red (22 Oct a11y pass) */
-:root[data-theme="spidey"] :is(.btn.ghost, .link, .icon-btn, .daychip, .datepick, .tab.on, .tab-start:not(.live), .xr.act, .xr.acc, .tgt-line, .li.on, .fold-btn.shut, .ss-line, .uni-lbl, .m-tgt, .fold-s, #wk .back) { color: #FF5A50; }
+:root[data-theme="spidey"] :is(.daychip, .datepick, .tab.on, .tab-start:not(.live), .xr.act, .xr.acc, .tgt-line, .li.on, .ss-line, .uni-lbl, .m-tgt, .fold-s) { color: #FF5A50; } /* buttons and links are white: see "Skyline (Job, 15 Nov)" */
 :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .pill.pr { color: #7A5410; }
 :root[data-theme="mono"] .link, :root[data-theme="mono"] .link.c-neg { color: #F0505B !important; }
 /* first-run hint above the Start tab */
@@ -1699,7 +1699,6 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .lr-go { color: var(--accent); font-weight: 600; font-size: calc(15px * var(--ts, 1)); }
 .last-row > svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 :root[data-theme="mono"] .lr-go { color: var(--text); }
-:root[data-theme="spidey"] .lr-go { color: #FF5A50; }
 /* Friends feed (review 2): one container per post. The photo runs edge to edge under the header, then the title and PR pill,
    three stats split by hairlines, lifts as plain rows. Posts still wear their author's theme. */
 .po2 .po-h b.ell { display: block; }
@@ -1844,6 +1843,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #recap .rc-body { position: relative; }
 #recap .rc-home { position: absolute; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 6px); left: 4px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--accent); filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
 :root[data-theme="cliffs"] #recap .rc-home { color: #E5342B; } /* the summit flag red; the theme blue disappears into the sky */
+/* Skyline (Job, 15 Nov): red buttons and links vanish on the navy and on the red recap art, so controls are white there.
+   Red stays for highlights (active tab, + button, PRs, targets). */
+:root[data-theme="spidey"] #recap .rc-home, :root[data-theme="spidey"]:not([data-tod="day"]) .link, :root[data-theme="spidey"]:not([data-tod="day"]) .btn.ghost,
+:root[data-theme="spidey"]:not([data-tod="day"]) .icon-btn, :root[data-theme="spidey"]:not([data-tod="day"]) #wk .back, :root[data-theme="spidey"]:not([data-tod="day"]) .fold-btn.shut,
+:root[data-theme="spidey"]:not([data-tod="day"]) #wk .link.add-set, :root[data-theme="spidey"]:not([data-tod="day"]) .lr-go, :root[data-theme="spidey"]:not([data-tod="day"]) .si-age a,
+:root[data-theme="spidey"]:not([data-tod="day"]) .legal a, :root[data-theme="spidey"]:not([data-tod="day"]) .me-ic { color: #FFFFFF; }
 #recap .rc-home svg { width: 30px; height: 30px; stroke-width: 3; }
 #recap .rc-home:active { transform: scale(.94); }
 #recap .rc-hero.fin > .fin-eb { margin-left: 40px; } /* room for the home button at the old height */
