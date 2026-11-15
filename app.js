@@ -6946,8 +6946,19 @@ const ERR_SEEN = new Set();
 function reportError(msg, src) {
   try {
     if (!HOSTED || !SB || !USER || mode !== 'cloud' || ERR_SEEN.size >= 5) return;
-    msg = String(msg || '').slice(0, 500); if (!msg || /^Script error\.?$/.test(msg) || ERR_SEEN.has(msg)) return; ERR_SEEN.add(msg);
+    msg = String(msg || '').slice(0, 500); if (!msg || /^Script error\.?$/.test(msg) || ERR_SEEN.has(msg)) return; ERR_SEEN.add(msg); sentrySend(msg, src);
     SB.from('jobdone_errors').insert({ user_id: USER.id, msg, src: String(src || '').slice(0, 300), ver: APP_VER, ua: navigator.userAgent.slice(0, 200) }).then(() => {}, () => {});
+  } catch (e) {}
+}
+// Sentry (v198, Job 15 Nov): the same crash note, so it's grouped and emailed. No SDK, no user id, email or workout
+// data: just the message, where it happened, the app version and the browser. IP storage is off in the Sentry project.
+const SENTRY = 'https://o4512430782480384.ingest.us.sentry.io/api/4512434510036992/envelope/?sentry_version=7&sentry_key=b7b74f31c00139b76baa8bad55be4b63';
+function sentrySend(msg, src) {
+  try {
+    const id = crypto.randomUUID().replace(/-/g, ''), now = new Date().toISOString();
+    const ev = { event_id: id, timestamp: now, platform: 'javascript', level: 'error', release: 'jobdone@' + APP_VER, environment: location.hostname === 'jobdone-peach.vercel.app' ? 'production' : 'dev',
+      exception: { values: [{ type: 'Error', value: msg }] }, tags: { where: String(src || '').slice(0, 200), theme: theme() }, request: { headers: { 'User-Agent': navigator.userAgent.slice(0, 200) } } };
+    fetch(SENTRY, { method: 'POST', body: JSON.stringify({ event_id: id, sent_at: now }) + '\n{"type":"event"}\n' + JSON.stringify(ev), keepalive: true, headers: { 'Content-Type': 'text/plain;charset=UTF-8' } }).catch(() => {});
   } catch (e) {}
 }
 addEventListener('error', e => reportError(e.message, (e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)));

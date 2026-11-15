@@ -42,7 +42,7 @@ import re, hashlib, base64
 hashes = ' '.join("'sha256-%s'" % base64.b64encode(hashlib.sha256(m.encode()).digest()).decode() for m in re.findall(r'<script>(.*?)</script>', html, re.S))
 sb = 'https://xvyibgnjibzopwtxajin.supabase.co'
 csp = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval' %s; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; "
-       "connect-src 'self' %s wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'") % (hashes, sb)
+       "connect-src 'self' %s wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'") % (hashes, sb)
 html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
 open(os.path.join(web, 'index.html'), 'w', encoding='utf-8').write(html)
 # Owner icon page: /?icon=skyline is rewritten here by vercel.json, so iPhone sees the Skyline icon in the page itself
