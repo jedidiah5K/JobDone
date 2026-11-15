@@ -3488,7 +3488,10 @@ const lvParty = l => Array.isArray(l.party) ? l.party : [l.with];
 // Someone started a party with you in it and you haven't joined yet.
 function joinBanner() {
   if (!GAME_ON || !HOSTED || !USER || !Array.isArray(FRIENDS)) return '';
-  const mine = partyIds(), f = FRIENDS.find(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id) && !mine.includes(x.id); }); if (!f) return '';
+  let left = []; try { left = JSON.parse(localStorage.getItem('jd-ptleft') || '[]'); } catch (e) {}
+  const still = left.filter(id => { const l = liveOf(FRIENDS.find(x => x.id === id)); return l && lvParty(l).includes(USER.id); }); // forget once their party ends
+  if (still.length !== left.length) try { localStorage.setItem('jd-ptleft', JSON.stringify(still)); } catch (e) {}
+  const mine = partyIds(), f = FRIENDS.find(x => { const l = liveOf(x); return l && lvParty(l).includes(USER.id) && !mine.includes(x.id) && !still.includes(x.id); }); if (!f) return '';
   const n = esc(((f.card || {}).n || 'A friend').split(' ')[0]), l = liveOf(f), size = lvParty(l).length + 1;
   return `<div class="card row between g3 join-card"><span class="row g2"><i class="live-dot"></i><span><b>${size > 2 ? `${n}’s party · ${size} people` : `${n} is training with you`}</b><span class="cap" style="display:block">${esc(l.sp || 'Workout')} · ${plural(+l.n || 0, 'set')} so far</span></span></span><button class="btn sm primary" data-a="joinFriend" data-id="${esc(f.id)}">Join</button></div>`;
 }
@@ -3530,10 +3533,20 @@ function partyAddSheet() {
     });
   } });
 }
+// Someone who joined and then left (Job, 15 Nov): their stat stops listing you, so drop them instead of showing them forever.
+function partyPrune() {
+  if (!A || !Array.isArray(A.party) || !Array.isArray(FRIENDS)) return;
+  const gone = [];
+  A.party = A.party.filter(p => { const f = FRIENDS.find(x => x.id === p.id), l = liveOf(f), inIt = l && lvParty(l).includes(USER.id);
+    if (inIt) { p.in = 1; return true; } if (p.in && f && f.stat) { gone.push(p.n || 'A friend'); return false; } return true; });
+  if (!gone.length) return;
+  if (!A.party.length) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; }
+  touchA(); statSync(); toast(`${esc(String(gone[0]).split(' ')[0])}${gone.length > 1 ? ` and ${gone.length - 1} more` : ''} left the party`);
+}
 let PARTNER_POLL = 0;
 function partnerTick() { // every 20 s while training together, refresh friends to see their sets
   clearTimeout(PARTNER_POLL); if (!partyIds().length || !HOSTED || !USER) return;
-  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; } catch (e) {} if (partyIds().length && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
+  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; partyPrune(); } catch (e) {} if (partyIds().length && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
 }
 // ---------- Seasons: 8 weeks each, starting Monday 2 Nov 2026. XP earned in the season; everyone starts at zero together.
 const SEASON0 = '2026-11-02', SEASON_NAMES = ['Winter Arc', 'Spring Build', 'Summer Cut', 'Iron Autumn', 'New Year Grind', 'Base Camp'];
@@ -6301,7 +6314,7 @@ const ACT = {
   noRush: () => { if (!A || !A.turns) return; A.calm = !A.calm; if (A.calm) REST = null; touchA(); statSync(); renderWorkout(); toast(A.calm ? 'No rush. No rest timer and no pings, just whose turn it is.' : 'No rush off'); },
   turnsToggle: () => { if (!A) return; A.turns = !A.turns; delete A.turnSkip; TURN_WAS = null; touchA(); statSync(); renderWorkout(); toast(A.turns ? 'Taking turns. Friends on the same lift go one after another.' : 'Turns off'); },
   turnSkip: el => { if (!A) return; const ts = turnState(); if (!ts || !ts.now || ts.now.id !== el.dataset.id) return; const k = A.turnSkip && A.turnSkip.cur === ts.lift ? A.turnSkip.k : {}; k[ts.now.id] = (k[ts.now.id] || 0) + 1; A.turnSkip = { cur: ts.lift, k }; touchA(); turnWatch(); renderWorkout(); },
-  partnerEnd: () => { if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
+  partnerEnd: () => { try { localStorage.setItem('jd-ptleft', JSON.stringify(partyIds())); } catch (e) {} if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),
   gymBoardOn: el => { S.profile.gymBoard = el.checked; persist('jd/meta'); statSync(); toast(el.checked ? 'Your name shows on your gym’s board' : 'You show as “A member”'); },
