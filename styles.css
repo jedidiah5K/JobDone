@@ -2464,3 +2464,5 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Faces beside names in the comment preview under a post (Job, 15 Nov) */
 .po-cm { display: flex; gap: 8px; align-items: flex-start; }
 .av.xs { width: 22px; height: 22px; font-size: calc(11px * var(--ts, 1)); flex: none; margin-top: -1px; }
+/* faint line between the post buttons and the comments (Job, 15 Nov) */
+.po-cms { border-top: .5px solid var(--edge); margin-top: 8px; padding-top: 2px; }

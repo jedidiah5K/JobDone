@@ -1793,7 +1793,7 @@ function postHTML(p) {
     <footer class="po-f"><div class="po-acts"><button class="po-act${p.mine ? ' on' : ''}" data-a="postRxOpen" data-k="${p.id}" aria-label="React" title="React">${p.mine ? `<span class="po-mine">${p.mine}</span>` : IC.smile}</button><button class="po-act" data-a="postComments" data-k="${p.id}" aria-label="Comments" title="Comments">${IC.chat}${cm.length ? `<b class="num">${cm.length}</b>` : ''}</button><button class="po-act" data-a="postShare" data-k="${p.id}" aria-label="Share" title="Share">${IC.share}</button><span class="grow"></span>${sum}</div>
     ${UI.rxOpen === p.id ? `<div class="po-pick" role="group" aria-label="Pick a reaction">${REACTS.map(e => `<button class="${p.mine === e ? 'on' : ''}" data-a="postReact" data-k="${p.id}" data-v="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>` : ''}
     ${mine && p.who && p.who.length ? `<p class="po-who">${esc(p.who.map(w => w[1] + ' ' + (w[0] || 'Friend')).join(' · '))}</p>` : ''}
-    ${last}${cm.length > 2 ? `<button class="link po-all" data-a="postComments" data-k="${p.id}">View all ${cm.length} comments</button>` : ''}
+    ${last ? `<div class="po-cms">${last}` : ''}${cm.length > 2 ? `<button class="link po-all" data-a="postComments" data-k="${p.id}">View all ${cm.length} comments</button>` : ''}${last ? '</div>' : ''}
     </footer></article>`;
 }
 // Faces row: everyone, with a ring for today's status (green at the gym, accent trained, dashed resting).
