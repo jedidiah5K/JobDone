@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Party card ideas 2</title>
+<style>
+:root{--bg:#0A1230;--sf:#131D45;--tx:#fff;--t2:rgba(220,228,255,.74);--red:#E2231A;--yel:#F2C14E;--blu:#6F97FF}
+*{box-sizing:border-box;margin:0}
+body{background:#05091c;color:var(--tx);font:15px/1.35 -apple-system,system-ui,Segoe UI,sans-serif;padding:24px 16px}
+h1{font-size:22px;margin-bottom:4px}h2{font-size:18px;margin:36px 0 4px}
+p.note{color:var(--t2);max-width:760px;margin-bottom:14px}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);margin:0 0 6px}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;border:2px solid #fff;flex:none;color:#fff}
+.a1{background:#E2231A}.a2{background:#2F7FA8}.a3{background:#C9862B}
+.stack{display:flex}.stack .av{margin-left:-10px;border-color:var(--sf)}.stack .av:first-child{margin-left:0}
+.feed{width:340px;background:var(--sf);border-radius:16px;overflow:hidden}
+.fh{display:flex;gap:10px;align-items:center;padding:12px 14px}.fh b{display:block}.fh span{font-size:13px;color:var(--t2)}
+.ff{display:flex;gap:16px;padding:10px 14px;color:var(--t2);font-size:14px}
+.card{position:relative;overflow:hidden;background:linear-gradient(180deg,#0F1B4A 0%,#16286A 55%,var(--bg) 100%);color:#fff}
+.card .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(111,151,255,.22) 1.2px,transparent 1.3px);background-size:12px 12px}
+.card .web{position:absolute;right:-6px;top:-6px;width:110px;opacity:.55}
+.card>*{position:relative}
+.post{width:340px;aspect-ratio:4/5}.story{width:220px;aspect-ratio:9/16}
+.ttl{font-weight:900;font-style:italic;text-transform:uppercase;color:var(--yel);text-shadow:2px 2px 0 var(--red),3px 3px 0 #000;line-height:.95}
+.cap{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.num{font-weight:800;font-variant-numeric:tabular-nums}
+.box{background:var(--yel);color:#111;font-weight:800;font-size:12px;padding:5px 8px;border:2px solid #000;box-shadow:3px 3px 0 #000;display:inline-block}
+.foot{position:absolute;left:12px;right:12px;bottom:8px;font-size:9px;color:var(--t2);display:flex;justify-content:space-between}
+/* D skyline */
+.city{position:absolute;left:0;right:0;bottom:0;height:60%;display:flex;align-items:flex-end;gap:8px;padding:0 18px}
+.bld{flex:1;position:relative;background:#0B1436;border:2px solid #2A3A7A;border-bottom:0;
+ background-image:repeating-linear-gradient(0deg,transparent 0 9px,rgba(0,0,0,0) 9px 10px),linear-gradient(90deg,transparent 0 0);}
+.bld .w{position:absolute;inset:8px 6px 0;background-image:radial-gradient(circle,var(--yel) 0 2.2px,transparent 2.6px);background-size:12px 13px;opacity:.85}
+.bld.top{border-color:var(--yel)}
+.roof{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 6px);text-align:center;white-space:nowrap}
+.roof .av{margin:0 auto 3px}
+.roof b{display:block;font-size:12px}.roof span{font-size:11px;color:var(--yel);font-weight:800}
+.crown{position:absolute;left:50%;top:-12px;transform:translateX(-50%);font-size:12px}
+/* E versus */
+.vs-h{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px}
+.vs-burst{background:var(--red);color:#fff;font-weight:900;font-style:italic;font-size:18px;width:46px;height:46px;display:grid;place-items:center;clip-path:polygon(50% 0,61% 30%,95% 20%,72% 48%,100% 70%,64% 68%,55% 100%,42% 70%,6% 82%,28% 52%,0 26%,36% 32%)}
+.vs-p{text-align:center}.vs-p .av{width:46px;height:46px;font-size:19px;margin:0 auto 4px}.vs-p b{font-size:13px}
+.lift{display:grid;grid-template-columns:1fr 92px 1fr;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.lift .n{text-align:center;color:var(--t2);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.lift .l{text-align:left}.lift .r{text-align:right}
+.win{color:var(--yel);font-weight:800}.win::after{content:" ★"}
+.lift .r.win::after{content:""}.lift .r.win::before{content:"★ "}
+.score{display:flex;justify-content:center;gap:14px;align-items:baseline;margin:8px 0}
+/* F comic page */
+.cp{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cp>div{background:#0B1436;border:2px solid #000;box-shadow:3px 3px 0 #000;padding:8px;position:relative;min-height:84px}
+.cp .wide{grid-column:span 2}
+.bub{position:relative;background:#fff;color:#111;font-weight:800;font-size:11px;padding:4px 7px;border-radius:10px;display:inline-block;margin-bottom:6px}
+.bub::after{content:"";position:absolute;left:12px;bottom:-6px;border:6px solid transparent;border-top-color:#fff;border-bottom:0}
+.mini{height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin-top:4px}.mini i{display:block;height:100%;border-radius:3px;background:var(--red)}
+.mvp{position:absolute;right:-6px;top:-8px;background:var(--yel);color:#000;font-weight:900;font-size:10px;padding:2px 6px;border:2px solid #000;transform:rotate(6deg)}
+/* G paper */
+.paper{background:#F3EEDF;color:#151515;font-family:Georgia,'Times New Roman',serif}
+.paper .mast{font-weight:900;font-size:22px;text-align:center;letter-spacing:.02em;border-bottom:3px double #151515;padding-bottom:3px}
+.paper .dl{display:flex;justify-content:space-between;font:600 9px/1.4 system-ui;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #151515;padding:2px 0;margin-bottom:6px}
+.paper .hl{font-weight:900;font-size:24px;line-height:1.02;text-transform:uppercase;text-align:center}
+.paper .sub{font-style:italic;text-align:center;font-size:12px;margin:4px 0 8px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;border-top:1px solid #151515;padding-top:6px}
+.cols>div{font-size:10.5px;line-height:1.3}
+.cols .ph{height:54px;background:#cfc7b0;display:grid;place-items:center;margin-bottom:4px;filter:grayscale(1) contrast(1.2)}
+.cols .ph .av{width:36px;height:36px;font-size:16px;border-color:#151515}
+.cols b{font-family:system-ui;font-size:11px;display:block}
+.tbl{width:100%;border-collapse:collapse;font:11px system-ui;margin-top:6px}.tbl td{border-top:1px solid #9b937c;padding:3px 2px}.tbl td:last-child{text-align:right;font-weight:800}
+</style></head><body>
+<h1>Party card: 4 more ideas</h1>
+<p class="note">More Skyline, the team compared against each other, and the "That's … stopped as a team" line in every one. Same sizes as now. Each theme would get its own spin (written under each idea).</p>
+
+<svg width="0" height="0" style="position:absolute"><defs><g id="web" stroke="#fff" stroke-opacity=".5" fill="none" stroke-width="1"><path d="M110 0L0 110M110 0L40 110M110 0L110 110M110 0L70 110M110 0L0 70M110 0L0 30"/><path d="M80 0Q88 18 110 30M50 0Q66 36 110 60M20 0Q44 56 110 92"/></g></defs></svg>
+
+<!-- D -->
+<h2>D · Skyline race</h2>
+<p class="note">Each person is a building. Taller = more kg, lit windows = sets done. The tallest gets a gold outline and a crown. You can see who carried the team in one glance. <i>Summit: three peaks with flags. Boulder: climbing ropes at different heights on the chalk wall. Agent: three sniper-scope rings that fill up.</i></p>
+<div class="row">
+ <div><div class="lbl">Feed post</div><div class="feed">
+  <div class="fh"><div class="stack"><div class="av a1">J</div><div class="av a2">J</div><div class="av a3">M</div></div><div><b>Job, John and Mikey</b><span>Trained together · Push · 2h</span></div></div>
+  <div class="card post" style="padding:18px 16px"><div class="dots"></div><svg class="web" viewBox="0 0 110 110"><use href="#web"/></svg>
+   <div class="ttl" style="font-size:30px">Crew's done!</div>
+   <div class="cap" style="margin:5px 0 10px">Push · Sat 14 Nov · 1h 10m</div>
+   <div class="box">That's 7 falling taxis, stopped as a team.</div>
+   <div class="num" style="font-size:30px;margin-top:10px">10,455 kg <span class="cap">together</span></div>
+   <div class="city">
+    <div class="bld" style="height:38%"><div class="w" style="background-size:12px 11px"></div><div class="roof"><div class="av a1">J</div><b>Job</b><span>2,937</span></div></div>
+    <div class="bld top" style="height:66%"><div class="w"></div><div class="roof"><span class="crown">👑</span><div class="av a2">J</div><b>John</b><span>4,398</span></div></div>
+    <div class="bld" style="height:46%"><div class="w" style="background-size:12px 12px"></div><div class="roof"><div class="av a3">M</div><b>Mikey</b><span>3,120</span></div></div>
+   </div>
+  </div>
+  <div class="ff"><span>👊 4</span><span>🔥 2</span><span>💬 1</span></div></div></div>
+ <div><div class="lbl">Story</div><div class="card story" style="padding:22px 12px"><div class="dots"></div><svg class="web" viewBox="0 0 110 110" style="width:80px"><use href="#web"/></svg>
+  <div class="ttl" style="font-size:26px">Crew's<br>done!</div>
+  <div class="cap" style="margin:5px 0 10px">Push · Sat 14 Nov</div>
+  <div class="box" style="font-size:11px">That's 7 falling taxis, stopped as a team.</div>
+  <div class="num" style="font-size:22px;margin-top:10px">10,455 kg</div>
+  <div class="city" style="height:50%;padding:0 10px;gap:6px">
+   <div class="bld" style="height:38%"><div class="roof"><div class="av a1">J</div><b>Job</b><span>2,937</span></div><div class="w"></div></div>
+   <div class="bld top" style="height:66%"><div class="w"></div><div class="roof"><span class="crown">👑</span><div class="av a2">J</div><b>John</b><span>4,398</span></div></div>
+   <div class="bld" style="height:46%"><div class="w"></div><div class="roof"><div class="av a3">M</div><b>Mikey</b><span>3,120</span></div></div>
+  </div></div></div>
+</div>
+
+<!-- E -->
+<h2>E · Head to head</h2>
+<p class="note">For a party of 2, or you against your best rival in a bigger party. Lift by lift, each person's best set, with a star for whoever won it, plus a lift score like "3–2". Only lifts you both did show up. <i>Summit: "Summit duel". Boulder: chalked tally marks. Agent: a "Mission debrief" with redacted bars.</i></p>
+<div class="row">
+ <div><div class="lbl">Feed post</div><div class="feed">
+  <div class="fh"><div class="stack"><div class="av a1">J</div><div class="av a2">J</div></div><div><b>Job and John</b><span>Head to head · Push · 2h</span></div></div>
+  <div class="card post" style="padding:16px 16px"><div class="dots"></div><svg class="web" viewBox="0 0 110 110"><use href="#web"/></svg>
+   <div class="vs-h"><div class="vs-p"><div class="av a1">J</div><b>Job</b><div class="num" style="font-size:18px">2,937</div></div><div class="vs-burst">VS</div><div class="vs-p"><div class="av a2">J</div><b>John</b><div class="num" style="font-size:18px">4,398</div></div></div>
+   <div class="score"><span class="num" style="font-size:26px">2</span><span class="cap">lifts won</span><span class="num" style="font-size:26px;color:var(--yel)">3</span></div>
+   <div class="lift"><span class="l win">67.5×6</span><span class="n">Bench</span><span class="r">65×6</span></div>
+   <div class="lift"><span class="l">23.75×6</span><span class="n">Incline DB</span><span class="r win">26×8</span></div>
+   <div class="lift"><span class="l win">45×7</span><span class="n">Shoulder</span><span class="r">40×8</span></div>
+   <div class="lift"><span class="l">11×6</span><span class="n">Lat raise</span><span class="r win">12.5×10</span></div>
+   <div class="lift"><span class="l">26.25×6</span><span class="n">Pushdown</span><span class="r win">30×8</span></div>
+   <div style="text-align:center;margin-top:10px"><span class="box">That's 5 falling taxis, stopped as a team.</span></div>
+   <div class="foot"><span>Job's Done</span><span>jobdone-peach.vercel.app</span></div>
+  </div>
+  <div class="ff"><span>👊 4</span><span>🔥 2</span><span>💬 1</span></div></div></div>
+ <div><div class="lbl">Story</div><div class="card story" style="padding:22px 10px"><div class="dots"></div>
+  <div class="ttl" style="font-size:22px;text-align:center;margin-bottom:12px">Head to<br>head</div>
+  <div class="vs-h"><div class="vs-p"><div class="av a1">J</div><b>Job</b></div><div class="vs-burst" style="width:38px;height:38px;font-size:15px">VS</div><div class="vs-p"><div class="av a2">J</div><b>John</b></div></div>
+  <div class="score"><span class="num" style="font-size:24px">2</span><span class="cap">–</span><span class="num" style="font-size:24px;color:var(--yel)">3</span></div>
+  <div class="lift" style="grid-template-columns:1fr 64px 1fr;font-size:11px"><span class="l win">67.5×6</span><span class="n">Bench</span><span class="r">65×6</span></div>
+  <div class="lift" style="grid-template-columns:1fr 64px 1fr;font-size:11px"><span class="l">23.75×6</span><span class="n">Incline</span><span class="r win">26×8</span></div>
+  <div class="lift" style="grid-template-columns:1fr 64px 1fr;font-size:11px"><span class="l win">45×7</span><span class="n">Shoulder</span><span class="r">40×8</span></div>
+  <div style="text-align:center;margin-top:12px"><span class="box" style="font-size:10px">5 falling taxis, stopped as a team.</span></div>
+  <div class="foot"><span>Job's Done</span></div></div></div>
+</div>
+
+<!-- F -->
+<h2>F · Comic page</h2>
+<p class="note">A comic page with one panel per person. Each panel has a speech bubble for what they did best ("Most sets!", "2 PRs!", "Done first!"), their share of the team total as a bar, and an MVP sticker on the top lifter. The taxi line is the big panel at the bottom. <i>Summit: trail-map panels. Boulder: chalk-tag panels. Agent: dossier photos with stamps.</i></p>
+<div class="row">
+ <div><div class="lbl">Feed post</div><div class="feed">
+  <div class="fh"><div class="stack"><div class="av a1">J</div><div class="av a2">J</div><div class="av a3">M</div></div><div><b>Job, John and Mikey</b><span>Team-up · Push · 2h</span></div></div>
+  <div class="card post" style="padding:14px 14px"><div class="dots"></div>
+   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px"><div class="ttl" style="font-size:28px">Job's done!</div><span class="cap">Issue #46 · ×3</span></div>
+   <div class="cp">
+    <div><span class="mvp">MVP</span><span class="bub">2 PRs!</span><div style="display:flex;gap:6px;align-items:center"><div class="av a2">J</div><div><b>John</b><div class="num" style="color:var(--yel)">4,398 kg</div></div></div><div class="mini"><i style="width:42%;background:var(--yel)"></i></div><div class="cap" style="margin-top:2px">42% of the team</div></div>
+    <div><span class="bub">Done first!</span><div style="display:flex;gap:6px;align-items:center"><div class="av a3">M</div><div><b>Mikey</b><div class="num">3,120 kg</div></div></div><div class="mini"><i style="width:30%"></i></div><div class="cap" style="margin-top:2px">30% of the team</div></div>
+    <div><span class="bub">Heaviest bench!</span><div style="display:flex;gap:6px;align-items:center"><div class="av a1">J</div><div><b>Job</b><div class="num">2,937 kg</div></div></div><div class="mini"><i style="width:28%"></i></div><div class="cap" style="margin-top:2px">28% of the team</div></div>
+    <div style="display:grid;place-items:center;text-align:center"><div class="num" style="font-size:22px">42</div><div class="cap">sets together</div><div class="num" style="font-size:16px;margin-top:4px">1h 10m</div></div>
+    <div class="wide" style="background:var(--yel);color:#111;text-align:center;min-height:0"><div class="num" style="font-size:24px">10,455 kg</div><div style="font-weight:800;font-size:13px">That's 7 falling taxis, stopped as a team.</div></div>
+   </div>
+   <div class="foot"><span>Job's Done</span><span>jobdone-peach.vercel.app</span></div>
+  </div>
+  <div class="ff"><span>👊 4</span><span>🔥 2</span><span>💬 1</span></div></div></div>
+ <div><div class="lbl">Story</div><div class="card story" style="padding:12px 10px"><div class="dots"></div>
+  <div class="ttl" style="font-size:22px;margin-bottom:6px">Job's<br>done! <span style="font-size:12px">×3</span></div>
+  <div class="cp" style="grid-template-columns:1fr">
+   <div style="min-height:0"><span class="mvp">MVP</span><span class="bub">2 PRs!</span><div style="display:flex;gap:6px;align-items:center"><div class="av a2">J</div><b>John</b><span class="num" style="margin-left:auto;color:var(--yel)">4,398</span></div></div>
+   <div style="min-height:0"><span class="bub">Done first!</span><div style="display:flex;gap:6px;align-items:center"><div class="av a3">M</div><b>Mikey</b><span class="num" style="margin-left:auto">3,120</span></div></div>
+   <div style="min-height:0"><span class="bub">Heaviest bench!</span><div style="display:flex;gap:6px;align-items:center"><div class="av a1">J</div><b>Job</b><span class="num" style="margin-left:auto">2,937</span></div></div>
+   <div style="background:var(--yel);color:#111;text-align:center;min-height:0;padding:6px"><div class="num" style="font-size:18px">10,455 kg</div><div style="font-weight:800;font-size:11px">7 falling taxis, stopped as a team.</div></div>
+  </div>
+  <div class="foot"><span>Job's Done</span></div></div></div>
+</div>
+
+<!-- G -->
+<h2>G · Front page</h2>
+<p class="note">A city newspaper front page. The headline is the taxi line, there's a "photo" column for each person with their numbers, and a small results table. It looks totally different from a normal workout card, so it stands out in a feed. <i>Summit: "Mountain Post" trail bulletin. Boulder: a gym noticeboard flyer. Agent: a classified file with stamps.</i></p>
+<div class="row">
+ <div><div class="lbl">Feed post</div><div class="feed">
+  <div class="fh"><div class="stack"><div class="av a1">J</div><div class="av a2">J</div><div class="av a3">M</div></div><div><b>Job, John and Mikey</b><span>Trained together · Push · 2h</span></div></div>
+  <div class="card post paper" style="padding:14px 14px">
+   <div class="mast">THE CITY LIFTER</div>
+   <div class="dl"><span>Sat 14 Nov</span><span>Push edition</span><span>Free</span></div>
+   <div class="hl">Crew stops 7 falling taxis</div>
+   <div class="sub">Three lifters, 10,455 kg, one evening. "Job's done," says the city.</div>
+   <div class="cols">
+    <div><div class="ph"><div class="av a2">J</div></div><b>John · 4,398 kg</b>Carried the team with 2 PRs and the most sets. ★ Top lifter.</div>
+    <div><div class="ph"><div class="av a3">M</div></div><b>Mikey · 3,120 kg</b>First to finish, 12 sets, no wasted rest.</div>
+    <div><div class="ph"><div class="av a1">J</div></div><b>Job · 2,937 kg</b>Heaviest bench of the night at 67.5×6.</div>
+   </div>
+   <table class="tbl"><tr><td>Sets together</td><td>42</td></tr><tr><td>Time</td><td>1h 10m</td></tr></table>
+   <div class="foot" style="color:#555"><span>Job's Done</span><span>jobdone-peach.vercel.app</span></div>
+  </div>
+  <div class="ff"><span>👊 4</span><span>🔥 2</span><span>💬 1</span></div></div></div>
+ <div><div class="lbl">Story</div><div class="card story paper" style="padding:16px 10px">
+  <div class="mast" style="font-size:17px">THE CITY LIFTER</div>
+  <div class="dl"><span>Sat 14 Nov</span><span>Push</span></div>
+  <div class="hl" style="font-size:22px;margin-top:8px">Crew stops 7 falling taxis</div>
+  <div class="sub">10,455 kg, stopped as a team.</div>
+  <div class="cols" style="grid-template-columns:1fr;gap:5px">
+   <div style="display:flex;gap:8px;align-items:center"><div class="av a2" style="border-color:#151515">J</div><b>John · 4,398 kg ★</b></div>
+   <div style="display:flex;gap:8px;align-items:center"><div class="av a3" style="border-color:#151515">M</div><b>Mikey · 3,120 kg</b></div>
+   <div style="display:flex;gap:8px;align-items:center"><div class="av a1" style="border-color:#151515">J</div><b>Job · 2,937 kg</b></div>
+  </div>
+  <div class="foot" style="color:#555"><span>Job's Done</span></div></div></div>
+</div>
+</body></html>

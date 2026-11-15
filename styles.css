@@ -2455,3 +2455,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pl-bw[hidden] { display: none; }
 .pl-bw .input { width: 72px; min-height: 40px; text-align: center; }
 .pt-row { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+/* Match pop-up (Job, 15 Nov): a comparison table instead of sentences */
+.mt-tbl { display: grid; grid-template-columns: 1fr auto auto; gap: 8px 22px; align-items: baseline; margin: 2px 0 10px; color: var(--text); }
+.mt-tbl b { font-size: calc(12px * var(--ts, 1)); letter-spacing: .08em; text-transform: uppercase; color: var(--text2); font-weight: 600; text-align: right; }
+.mt-tbl .num { text-align: right; font-weight: 600; }
+.mt-tbl > span:nth-child(3n+1) { color: var(--text2); }
+.mt-note { display: block; font-size: calc(13px * var(--ts, 1)); color: var(--muted); }

@@ -1229,9 +1229,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v199';
+const NEWS_ID = '2026-11-v202';
 // Only the big things (Job, 15 Nov): a long list nobody reads.
 const NEWS = [
+  ['Party tweaks', 'Take turns is on when a party starts. Invite friends from the button next to the gear. When someone leaves or finishes, everyone sees it straight away.'],
   ['Recovery code', 'Save the code we show you. If you forget your password, tap Forgot password on the sign-in screen and use it to set a new one. Make a new code any time in Me → Account.'],
   ['Train with friends', 'Start a party from Friends or the workout gear. Take turns tells you whose set is next, and Party settings has No rush, Same rest, Wait for me, Nudge and a party code for gym buddies who aren’t friends yet.'],
   ['Match your friend', 'Join a party and the app offers to match their sets and rest. If they move on to the next lift before you, you’ll see it.'],
@@ -1661,16 +1662,17 @@ let STAT_SENT = '';
 function statSync() {
   if (!HOSTED || !SB || !USER || DEMO || !(S.profile.id || {}).on) return;
   const s = SO().off ? 'null' : JSON.stringify(myStat()); if (s === STAT_SENT) return; STAT_SENT = s;
-  STAT_AT = Date.now(); rtSync(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).then(() => { rtPoke(); invitePoke(); }).catch(() => { STAT_SENT = ''; });
+  STAT_AT = Date.now(); rtSync(); gymRpc('jobdone_stat', { p: JSON.parse(s) }).then(() => { rtPoke(); invitePoke(); const o = RT_OLD; RT_OLD = null; if (o) try { o.send({ type: 'broadcast', event: 'poke', payload: {} }).finally(() => { try { SB.removeChannel(o); } catch (e) {} }); } catch (e) {} }).catch(() => { STAT_SENT = ''; });
 }
 // Live party updates (v192, Job 14 Nov): a Supabase Realtime broadcast "poke" on a channel per party. It carries no
 // data, it only tells the others to refresh now through the normal checked call, so someone who guesses the channel
 // name can't change anything. Falls back to the 5–60 s refresh if the socket drops.
-let RT = null, RT_KEY = '', RT_T = 0;
+let RT = null, RT_KEY = '', RT_T = 0, RT_OLD = null;
 function rtSync() {
   const key = HOSTED && SB && USER && !DEMO && A && !A.practice && partyIds().length ? 'jd-party-' + (A.partyHost || USER.id) : '';
   if (key === RT_KEY) return;
-  if (RT) { try { SB.removeChannel(RT); } catch (e) {} RT = null; }
+  if (RT_OLD) try { SB.removeChannel(RT_OLD); } catch (e) {}
+  RT_OLD = RT; RT = null; // kept until statSync pokes it: you left or finished, so the party refreshes now
   RT_KEY = key; if (!key) return;
   try { RT = SB.channel(key, { config: { broadcast: { self: false } } }).on('broadcast', { event: 'poke' }, () => { clearTimeout(RT_T); RT_T = setTimeout(() => { if (INBOX_ON) inboxPoll(); }, 250); }).subscribe(); } catch (e) { RT = null; }
 }
@@ -3408,7 +3410,7 @@ function trainWith(f, also = [], host) {
   const add = [f, ...also].filter(Boolean).map(pName), names = add.map(x => x.n).join(', ');
   const xs = host && Array.isArray(host.xs) ? host.xs.map(String).filter(Boolean) : [];
   const canSwap = !A || !A.ex.some(e => e.sets.some(x => x.done)); // nothing ticked yet, so switching loses nothing
-  if (A) { A.party = mergeParty(A.party, add); if (!A.partyHost) A.partyHost = host ? f.id : USER && USER.id; }
+  if (A) { A.party = mergeParty(A.party, add); if (!A.partyHost) A.partyHost = host ? f.id : USER && USER.id; if (A.turns == null) A.turns = true; } // turns on by default (Job, 15 Nov)
   else { setPartyNext(mergeParty([], add)); PARTY_HOST_NEXT = host ? f.id : null; const sp = nextSplit(); startWorkout(xs.length ? null : sp ? sp.id : null); if (xs.length && SHEETS.length) closeSheet(); } // close the empty-workout exercise picker
   if (xs.length && canSwap) useHostWorkout(host, xs);
   else if (xs.length) toast('You’ve already logged sets, so you keep your own workout.');
@@ -3425,9 +3427,11 @@ function syncAsk(f, l) {
   const rs = +l.rs || 0, myRs = A.restAll || restFor((curLift() || A.ex[0] || {}).name || ''), restDiff = rs > 0 && rs !== myRs;
   if (!diffs.length && !restDiff) return;
   const same = a => a.every(x => x === a[0]), t = diffs.map(d => d[1]), w = diffs.map(d => d[2]);
-  const setsTxt = !diffs.length ? '' : same(t) && same(w) ? `${n} does ${plural(t[0], 'set')} a lift, you do ${w[0]}.` : `${n} has a different number of sets on ${plural(diffs.length, 'lift')}.`;
-  const restTxt = restDiff ? `${n} rests ${fmtRest(rs)}, you rest ${fmtRest(myRs)}.` : '';
-  confirmSheet({ title: `Match ${n}?`, body: [setsTxt, restTxt, 'Just for this workout. Your plan stays the same.'].filter(Boolean).join(' '), ok: 'Match', no: 'Keep mine', key: null,
+  // a small table, not sentences (Job, 15 Nov)
+  const rows = [...(!diffs.length ? [] : same(t) && same(w) ? [['Sets per lift', w[0], t[0]]] : diffs.slice(0, 5).map(([e, c, m]) => [esc(baseName(e.name)), m, c])),
+    ...(restDiff ? [['Rest', fmtRest(myRs), fmtRest(rs)]] : [])];
+  const body = `<span class="mt-tbl"><span></span><b>You</b><b>${n}</b>${rows.map(([k, me, them]) => `<span>${k}</span><span class="num">${me}</span><span class="num">${them}</span>`).join('')}</span><span class="mt-note">Applies to this workout only. Your plan is unchanged.</span>`;
+  confirmSheet({ title: `Match ${n}?`, body, ok: `Match ${n}`, no: 'Keep mine', key: null,
     onOk: () => { if (!A) return; diffs.forEach(([e, c]) => setCount(e, c)); if (restDiff) A.restAll = rs; touchA(); statSync(); openWk(); toast(`Matched ${n}`); } });
 }
 // Adds sets copied from the last one, or drops sets you haven't ticked from the end. Ticked sets are never removed.
@@ -3757,7 +3761,7 @@ function startWorkout(splitId, date, practice) {
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
-  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) { A.party = PARTY_NEXT.slice(0, PARTY_MAX); A.partyHost = PARTY_HOST_NEXT || (USER && USER.id); PARTY_HOST_NEXT = null; } }
+  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) { A.party = PARTY_NEXT.slice(0, PARTY_MAX); A.partyHost = PARTY_HOST_NEXT || (USER && USER.id); PARTY_HOST_NEXT = null; A.turns = true; } }
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
 }
@@ -3851,7 +3855,7 @@ function renderWorkout() {
   const allIn = totalSets && doneSets === totalSets;
   el.innerHTML = resolveVars(`<div class="wk-head"><div class="row wk-top"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
       <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · <span data-roll="${dv}">${dvol(dv)}</span> ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
-      <button class="icon-btn far-btn" data-a="wkSettings" aria-label="Workout settings" title="Workout settings">${IC.gear}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
+      ${GAME_ON && !A.practice && (FRIENDS || []).length ? `<button class="icon-btn far-btn" data-a="partyAdd" aria-label="Invite friends" title="Invite friends">${IC.team}</button>` : ''}<button class="icon-btn far-btn" data-a="wkSettings" aria-label="Workout settings" title="Workout settings">${IC.gear}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
     ${A.locker ? `<button class="wk-note on" data-a="lockerNote">${IC.key}<span class="ell">${esc(A.locker)}</span></button>` : ''}
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
     ${GAME_ON ? partnerStrip() : ''}
