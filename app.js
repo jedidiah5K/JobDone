@@ -3563,7 +3563,7 @@ function partnerStrip() {
   const sum = `Party of ${P.length + 1}${A.turns ? ts && ts.waiting ? ' · turns on, waiting' : noRush() ? ' · turns, no rush' : ' · turns on' : ''}`;
   const open = A.partyOpen ? `<div class="pt-open"><div class="pt-chips">${info.map(x => `<span class="pt-chip2"><span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>${esc(x.m.n)} ${x.joined ? (x.l.last ? `<b class="num">${esc(x.l.last)}</b>` : `<span class="cap">${plural(+x.l.n || 0, 'set')}</span>`) : '<span class="cap">invited</span>'}</span>`).join('')}</div>
     ${ts && ts.waiting ? `<div class="cap pt-wait">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>` : ''}
-    <div class="pt-acts">${P.length < PARTY_MAX ? '<button class="pt-pill" data-a="partyAdd">Add</button>' : ''}<button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button>${A.turns && partyHostId() === USER.id ? `<button class="pt-pill${A.calm ? ' on' : ''}" data-a="noRush" aria-pressed="${A.calm ? 'true' : 'false'}">No rush</button>` : ''}${partyHostId() === USER.id ? `<button class="pt-pill${A.sameRest ? ' on' : ''}" data-a="sameRest" aria-pressed="${A.sameRest ? 'true' : 'false'}">Same rest</button>` : ''}${A.turns ? `<button class="pt-pill${A.wait ? ' on' : ''}" data-a="waitMe" aria-pressed="${A.wait ? 'true' : 'false'}">${A.wait ? 'I’m back' : 'Wait for me'}</button><button class="pt-pill" data-a="goFirst">Go first</button>` : ''}${ts && ts.now && !ts.mine && !ts.waiting ? `<button class="pt-pill" data-a="nudge" data-id="${esc(ts.now.id)}">Nudge ${esc(String(ts.now.n).split(' ')[0])}</button>` : ''}${P.length < PARTY_MAX && HOSTED && !DEMO ? '<button class="pt-pill" data-a="partyCode">Party code</button>' : ''}<button class="pt-pill quiet" data-a="partnerEnd">Leave</button></div></div>` : '';
+    <div class="pt-acts"><button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill" data-a="partySet">${I.dots || '⋯'} Party settings</button></div></div>` : '';
   return `<div class="partner"><button class="pt-sum" data-a="partyFold" aria-expanded="${A.partyOpen ? 'true' : 'false'}"><span class="pt-faces">${faces}</span><span class="cap">${sum}</span><i class="pt-chev">${I.down}</i></button>${open}${catchUp()}</div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
@@ -3606,6 +3606,23 @@ function partyPrune() {
 }
 let PARTNER_POLL = 0;
 const NUDGE_AT = {};
+// Everything but Take turns lives here (Job, 15 Nov: too many buttons on top). Each row does its thing and closes the sheet.
+function partySetSheet() {
+  if (!A) return;
+  const host = partyHostId() === USER.id, ts = turnState(), P = A.party || [];
+  const row = (a, t, d, on, extra = '') => `<button class="li pt-row" data-ps="${a}" ${extra}><div class="grow"><div class="t">${t}</div><div class="s cap">${d}</div></div>${on === undefined ? '' : `<span class="cap${on ? ' acc' : ''}">${on ? 'On' : 'Off'}</span>`}</button>`;
+  const rows = [
+    P.length < PARTY_MAX ? row('partyAdd', 'Add a friend', 'They get a Join button in their app.') : '',
+    P.length < PARTY_MAX && HOSTED && !DEMO ? row('partyCode', 'Party code', '4 letters for a gym buddy who isn’t your friend yet.') : '',
+    A.turns && host ? row('noRush', 'No rush', 'No rest timer or buzz. Everyone follows.', !!A.calm) : '',
+    host ? row('sameRest', 'Same rest', 'Everyone uses your rest time.', !!A.sameRest) : '',
+    A.turns ? row('waitMe', 'Wait for me', 'Turns skip you until you’re back.', !!A.wait) : '',
+    A.turns ? row('goFirst', 'Go first', 'You take the next set.') : '',
+    ts && ts.now && !ts.mine && !ts.waiting ? row('nudge', `Nudge ${esc(String(ts.now.n).split(' ')[0])}`, 'A ping saying it’s their turn.', undefined, `data-id="${esc(ts.now.id)}"`) : '',
+    row('partnerEnd', 'Leave party', 'Your sets stay in this workout.')].join('');
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">Party settings</div><div class="list">${rows}</div></div>`, { label: 'Party settings', mount: b => {
+    b.querySelectorAll('[data-ps]').forEach(el => el.onclick = () => { closeSheet(sh); setTimeout(() => ACT[el.dataset.ps](el), 50); }); } });
+}
 // Party code (Job, 15 Nov): 4 letters that work for 2 hours. Typing it in Add a friend makes you friends and joins the party.
 async function partyCodeSheet() {
   if (!A) return;
@@ -6401,6 +6418,7 @@ const ACT = {
   cuGo: el => { if (!A) return; const ti = +el.dataset.i, me = curLift(), mi = A.ex.indexOf(me); if (!(ti > mi) || !A.ex[ti]) return; const [x] = A.ex.splice(ti, 1); A.ex.splice(mi, 0, x); touchA(); statSync(); openWk(); setTimeout(() => { const c = document.getElementById('ex-' + mi); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); },
   cuOff: el => { if (!A) return; A.cuOff = el.dataset.k; touchA(); renderWorkout(); },
   partyCode: () => partyCodeSheet(),
+  partySet: () => partySetSheet(),
   partnerLeave: () => { try { localStorage.setItem('jd-ptleft', JSON.stringify(partyIds())); } catch (e) {} if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),

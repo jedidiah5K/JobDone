@@ -2449,3 +2449,4 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pl-bw { display: flex; align-items: center; gap: 8px; color: var(--text2); font-size: calc(14px * var(--ts, 1)); }
 .pl-bw[hidden] { display: none; }
 .pl-bw .input { width: 72px; min-height: 40px; text-align: center; }
+.pt-row { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
