@@ -1778,8 +1778,9 @@ function postHTML(p) {
   const nLifts = Array.isArray(b.ex) && b.ex.length ? b.ex.length : String(b.l || '').replace(/\D/g, '') || '—';
   const wk = p.kind === 'stamp' ? `<section class="po-wk"><div class="po-wk-h"><b>${esc(b.sp || 'Workout')}</b>${+b.pr > 0 ? `<span class="pill pr">${Math.floor(+b.pr)} PR${+b.pr > 1 ? 's' : ''}</span>` : ''}</div>
     <div class="po-stats${b.v ? '' : ' po-st2'}">${b.v ? `<div><span>Volume</span><b class="num">${esc(b.v)}</b></div>` : ''}<div><span>Time</span><b class="num">${esc(b.t || '—')}</b></div><div><span>Lifts</span><b class="num">${esc(String(nLifts))}</b></div></div>
-    ${Array.isArray(b.ex) && b.ex.length ? (() => { const L = b.ex.slice(0, 10), row = x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`, more = L.length - 3;
-      return `<div class="po-lifts">${L.slice(0, more > 1 ? 3 : L.length).map(row).join('')}</div>${more > 1 ? `<details class="po-dd" data-po="${esc(String(p.id))}" ${PO_OPEN.has(String(p.id)) ? 'open' : ''}><summary><span class="po-see">See ${more} more lifts</span><span class="po-hide">Show less</span></summary><div class="po-lifts">${L.slice(3).map(row).join('')}</div></details>` : ''}`; })() : ''}
+    ${Array.isArray(b.ex) && b.ex.length ? (() => { const L = b.ex.slice(0, 10), row = x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`;
+      // one Show lifts button, all lifts in one list (Job, 15 Nov: "see 3 more" split the list)
+      return `<details class="po-dd" data-po="${esc(String(p.id))}" ${PO_OPEN.has(String(p.id)) ? 'open' : ''}><summary><span class="po-see">Show lifts</span><span class="po-hide">Hide lifts</span></summary><div class="po-lifts">${L.map(row).join('')}</div></details>`; })() : ''}
     ${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}</section>` : '';
   const cap = b.c ? `<p class="po-cap">${esc(b.c)}</p>` : '';
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
