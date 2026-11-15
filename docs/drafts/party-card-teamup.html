@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team-up card</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#05070f;color:#fff;font:15px/1.35 -apple-system,system-ui,Segoe UI,sans-serif;padding:24px 16px}
+h1{font-size:22px;margin-bottom:4px}h2{font-size:18px;margin:34px 0 4px}
+p.note{color:rgba(220,228,255,.74);max-width:780px;margin-bottom:12px}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(220,228,255,.6);margin:0 0 6px}
+.feed{width:340px;border-radius:16px;overflow:hidden;background:var(--fsf)}
+.fh{display:flex;gap:10px;align-items:center;padding:12px 14px;color:var(--ftx)}.fh b{display:block}.fh span{font-size:13px;opacity:.7}
+.ff{display:flex;gap:16px;padding:10px 14px;color:var(--ftx);opacity:.7;font-size:14px}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;border:2px solid var(--avb);flex:none;color:#fff}
+.a1{background:#C0392B}.a2{background:#2F7FA8}.a3{background:#B9822C}
+.stk{display:flex}.stk .av{margin-left:-10px;border-color:var(--fsf)}.stk .av:first-child{margin-left:0}
+.card{position:relative;overflow:hidden;background:var(--bg);color:var(--tx);padding:14px}
+.card>*{position:relative}
+.post{width:340px;aspect-ratio:4/5}.story{width:220px;aspect-ratio:9/16;padding:16px 10px}
+.hd{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.ttl{font-weight:900;text-transform:uppercase;line-height:.95;font-size:26px;color:var(--ttl);font-family:var(--tf)}
+.cap{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t2)}
+.num{font-weight:800;font-variant-numeric:tabular-nums}
+.mem{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pan{position:relative;background:var(--pn);border:var(--pnb);box-shadow:var(--pns);border-radius:var(--pr);padding:7px 6px 6px;min-width:0}
+.pan .tp{display:flex;gap:5px;align-items:center}.pan b{font-size:12px;display:block}
+.pan .kg{font-size:12px;color:var(--hi)}
+.bub{display:inline-block;background:var(--bb);color:var(--bt);font-weight:800;font-size:9.5px;padding:2px 6px;border-radius:var(--br);margin-bottom:5px;position:relative;white-space:nowrap}
+.bub::after{content:"";position:absolute;left:9px;bottom:-5px;border:5px solid transparent;border-top-color:var(--bb);border-bottom:0;display:var(--btail)}
+.bar{height:5px;background:var(--trk);border-radius:3px;margin-top:5px}.bar i{display:block;height:100%;border-radius:3px;background:var(--acc)}
+.pan.mvp .bar i{background:var(--hi)}
+.stamp{position:absolute;right:-5px;top:-8px;background:var(--hi);color:var(--stx);font-weight:900;font-size:9px;padding:2px 5px;border:var(--stb);transform:rotate(7deg);font-family:var(--tf)}
+.lifts{margin-top:9px}
+.lift{display:grid;grid-template-columns:76px 1fr auto;gap:6px;align-items:center;font-size:11.5px;padding:4px 0;border-bottom:1px solid var(--ln)}
+.lift .n{color:var(--t2);font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lift .w{display:flex;gap:5px;align-items:center}.lift .w .av{width:18px;height:18px;font-size:9px;border-width:1px}
+.lift .s{font-weight:800;color:var(--hi)}
+.tally{display:flex;justify-content:space-between;margin:6px 0 0;font-size:11px;color:var(--t2)}
+.tally b{color:var(--tx)}
+.box{margin-top:9px;background:var(--bx);color:var(--bxt);border:var(--bxb);box-shadow:var(--bxs);border-radius:var(--pr);text-align:center;padding:7px 8px;font-family:var(--bf)}
+.box .num{font-size:21px;display:block}.box span{font-weight:700;font-size:12px}
+.foot{position:absolute;left:12px;right:12px;bottom:7px;font-size:8.5px;color:var(--t2);display:flex;justify-content:space-between}
+.art{position:absolute;inset:0;pointer-events:none}
+.story .pan{display:flex;align-items:center;gap:6px;padding:5px 6px}.story .pan .bub{order:2;margin:0 0 0 auto;font-size:8.5px}.story .pan .bub::after{display:none}.story .stamp{top:-9px;right:-3px}
+/* ---------- themes ---------- */
+.sky{--bg:linear-gradient(180deg,#0F1B4A,#16286A 55%,#0A1230);--tx:#fff;--t2:rgba(220,228,255,.7);--ttl:#F2C14E;--tf:inherit;--hi:#F2C14E;--acc:#E2231A;--pn:#0B1436;--pnb:2px solid #000;--pns:3px 3px 0 #000;--pr:0;--bb:#fff;--bt:#111;--br:9px;--btail:block;--trk:rgba(255,255,255,.12);--stx:#000;--stb:2px solid #000;--ln:rgba(255,255,255,.1);--bx:#F2C14E;--bxt:#111;--bxb:2px solid #000;--bxs:3px 3px 0 #000;--bf:inherit;--avb:#fff;--fsf:#131D45;--ftx:#fff}
+.sky .ttl{font-style:italic;text-shadow:2px 2px 0 #E2231A,3px 3px 0 #000}
+.sky .art{background-image:radial-gradient(rgba(111,151,255,.22) 1.2px,transparent 1.3px);background-size:12px 12px}
+.agt{--bg:radial-gradient(ellipse at 50% -10%,rgba(160,20,34,.55),transparent 55%),#08080A;--tx:#F4F4F6;--t2:rgba(235,235,242,.6);--ttl:#F4F4F6;--tf:ui-monospace,Menlo,Consolas,monospace;--hi:#E8C77A;--acc:#B5121B;--pn:#141418;--pnb:1px solid rgba(255,255,255,.12);--pns:none;--pr:4px;--bb:#B5121B;--bt:#fff;--br:2px;--btail:none;--trk:rgba(255,255,255,.1);--stx:#111;--stb:0;--ln:rgba(255,255,255,.08);--bx:transparent;--bxt:#F4F4F6;--bxb:1px solid rgba(232,199,122,.6);--bxs:none;--bf:ui-monospace,Menlo,Consolas,monospace;--avb:#2a2a30;--fsf:#141418;--ftx:#F4F4F6}
+.agt .ttl{font-size:21px;letter-spacing:.06em}.story .ttl{font-size:17px!important}
+.agt .bub{text-transform:uppercase;letter-spacing:.06em;font-family:var(--tf)}
+.agt .stamp{border:2px solid #E8C77A;background:transparent;color:#E8C77A;transform:rotate(-8deg)}
+.agt .art{background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+.agt .red{display:inline-block;background:#F4F4F6;height:9px;width:44px;vertical-align:middle;border-radius:1px}
+.sum{--bg:linear-gradient(180deg,#F6B87A 0%,#E98B6A 30%,#7D6A9C 62%,#2E3E66 100%);--tx:#fff;--t2:rgba(255,255,255,.82);--ttl:#fff;--tf:inherit;--hi:#FFE08A;--acc:#1E6F8C;--pn:rgba(14,26,52,.55);--pnb:1px solid rgba(255,255,255,.2);--pns:none;--pr:12px;--bb:#fff;--bt:#1E3A4C;--br:9px;--btail:block;--trk:rgba(255,255,255,.2);--stx:#1E3A4C;--stb:0;--ln:rgba(255,255,255,.18);--bx:rgba(255,255,255,.92);--bxt:#1E3A4C;--bxb:0;--bxs:none;--bf:inherit;--avb:#fff;--fsf:#1C2B4A;--ftx:#fff}
+.sum .art{background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 340 425' preserveAspectRatio='none'%3E%3Cpath d='M0 300L40 270L80 290L130 230L170 265L215 215L260 255L300 225L340 250V425H0Z' fill='%230A1328' fill-opacity='.35'/%3E%3Cpath d='M0 350L50 325L95 345L150 300L200 335L250 305L300 330L340 315V425H0Z' fill='%230A1328' fill-opacity='.55'/%3E%3C/svg%3E") bottom/100% 100% no-repeat}
+.sum .ttl{text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sum .stamp{border-radius:3px;transform:none;right:6px;top:-9px}
+.bld{--bg:#F2EFEA;--tx:#2A2622;--t2:rgba(42,38,34,.62);--ttl:#2A2622;--tf:inherit;--hi:#B8862B;--acc:#2A2622;--pn:#FFFFFF;--pnb:1.5px solid #2A2622;--pns:none;--pr:6px;--bb:#2A2622;--bt:#F2EFEA;--br:4px;--btail:block;--trk:rgba(42,38,34,.12);--stx:#fff;--stb:0;--ln:rgba(42,38,34,.14);--bx:#2A2622;--bxt:#F2EFEA;--bxb:0;--bxs:none;--bf:inherit;--avb:#2A2622;--fsf:#FFFFFF;--ftx:#2A2622}
+.bld .art{background:radial-gradient(circle at 15% 20%,rgba(42,38,34,.06) 0 8px,transparent 9px),radial-gradient(circle at 80% 60%,rgba(42,38,34,.05) 0 10px,transparent 11px),radial-gradient(circle at 40% 85%,rgba(42,38,34,.05) 0 7px,transparent 8px);background-size:120px 120px}
+.bld .ttl{letter-spacing:-.01em}
+.bld .stamp{background:#B8862B;transform:rotate(-4deg);border-radius:3px}
+.bld .tal{font-family:ui-monospace,Menlo,monospace;letter-spacing:-1px;color:#2A2622}
+</style></head><body>
+<h1>Team-up card: E + F together, in every theme</h1>
+<p class="note">One panel per person (speech bubble for what they did best, their kg, their share of the team, MVP sticker on the top lifter). Below that, lift by lift: who won each lift and with what set, then a "lifts won" tally. At the bottom, the theme's own "That's …, as a team" line. Same layout and size in every theme; only the look and voice change. Works for 2 people too (two wider panels).</p>
+<div id="out"></div>
+<script>
+const P=[{n:'John',c:'a2',kg:4398,b:'2 PRs!',won:3},{n:'Mikey',c:'a3',kg:3120,b:'Done first!',won:0},{n:'Job',c:'a1',kg:2937,b:'Heaviest bench!',won:2}];
+const L=[['Bench',2,'67.5×6'],['Incline DB',0,'26×8'],['Shoulder',2,'45×7'],['Lat raise',0,'12.5×10'],['Pushdown',0,'30×8']];
+const tot=P.reduce((a,p)=>a+p.kg,0);
+const T={
+ sky:{name:'Skyline',ttl:"Job's done!",sub:'Team-up ×3',line:"That's 7 falling taxis, stopped as a team.",mvp:'MVP',note:'Comic panels with speech bubbles, a yellow caption box and a gold MVP sticker.',feed:'Team-up · Push · 2h'},
+ agt:{name:'Agent',ttl:'Mission debrief',sub:'Operatives: 3',line:"That's 4 Aston Martins, pushed out quietly as a team.",mvp:'Top agent',note:'A dossier: monospace type, red "clearance" tags instead of bubbles, gold "TOP AGENT" stamp, thin gold frame round the line. Lifts read like a report.',feed:'Mission complete · Push · 2h',bubs:['2 PRs','First out','Top bench']},
+ sum:{name:'Summit',ttl:'Summit report',sub:'Rope team of 3',line:"That's 17 grumpy grizzlies, carried up as a team.",mvp:'Led the climb',note:'The sky that follows the clock with ridges at the bottom; panels are frosted glass, the MVP "led the climb", the line sits on a white trail sign.',feed:'Reached the top · Push · 2h'},
+ bld:{name:'Boulder',ttl:'Send report',sub:'Crew of 3',line:"That's 52 haul bags, dragged up the wall as a team.",mvp:'Crux crusher',note:'Cream panels with boxed lines like the rest of Boulder, chalk smudges, gold "Crux crusher" tag (no purple), lifts won as tally marks.',feed:'Sent it · Push · 2h'},
+};
+const fmt=n=>n.toLocaleString('en-GB');
+function card(k,story){const t=T[k];const bubs=t.bubs||P.map(p=>p.b);
+ const mem=P.map((p,i)=>`<div class="pan ${i===0?'mvp':''}">${i===0?`<span class="stamp">${t.mvp}</span>`:''}<span class="bub">${bubs[i]}</span><div class="tp"><div class="av ${p.c}">${p.n[0]}</div><div><b>${p.n}</b><div class="kg num">${fmt(p.kg)}</div></div></div>${story?'':`<div class="bar"><i style="width:${Math.round(p.kg/tot*100)}%"></i></div><div class="cap" style="margin-top:3px">${Math.round(p.kg/tot*100)}% of team</div>`}</div>`).join('');
+ const lifts=(story?L.slice(0,2):L.slice(0,4)).map(([n,w,s])=>`<div class="lift"><span class="n">${n}</span><span class="w"><span class="av ${P[w].c}">${P[w].n[0]}</span>${P[w].n}</span><span class="s">${k==='agt'&&w===1?'<span class="red"></span>':s} ★</span></div>`).join('');
+ const tally=`<div class="tally">${P.map(p=>`<span>${p.n} <b class="${k==='bld'?'tal':''}">${k==='bld'?('卌'.repeat(0)+'|'.repeat(p.won)||'–'):p.won}</b></span>`).join('')}<span>lifts won</span></div>`;
+ return `<div class="card ${story?'story':'post'} ${k}"><div class="art"></div>
+  <div class="hd"><div class="ttl" style="${story?'font-size:20px':''}">${t.ttl}</div><span class="cap">${story?'×3':t.sub}</span></div>
+  <div class="cap" style="margin:-3px 0 8px">Push · Sat 14 Nov${story?'':' · 1h 10m · 42 sets'}</div>
+  <div class="mem" style="${story?'grid-template-columns:1fr;gap:8px;margin-top:10px':''}">${mem}</div>
+  <div class="lifts">${lifts}${story?'':tally}</div>
+  <div class="box"><b class="num">${fmt(tot)} kg</b><span>${t.line}</span></div>
+  <div class="foot"><span>Job's Done</span>${story?'':'<span>jobdone-peach.vercel.app</span>'}</div></div>`;}
+document.getElementById('out').innerHTML=Object.keys(T).map(k=>{const t=T[k];return `<h2>${t.name}</h2><p class="note">${t.note}</p><div class="row ${k}"><div><div class="lbl">Feed post</div><div class="feed"><div class="fh"><div class="stk">${P.map(p=>`<div class="av ${p.c}">${p.n[0]}</div>`).join('')}</div><div><b>John, Mikey and Job</b><span>${t.feed}</span></div></div>${card(k)}<div class="ff"><span>👊 4</span><span>🔥 2</span><span>💬 1</span></div></div></div><div><div class="lbl">Story</div>${card(k,1)}</div></div>`}).join('');
+</script>
+</body></html>
