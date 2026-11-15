@@ -1819,7 +1819,8 @@ function viewFriends() {
   if (FRIENDS === null) { FRIENDS = undefined; friendsLoad(); }
   if (FEED === null && HOSTED) feedLoad();
   statSync();
-  const list = FRIENDS || [], rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
+  const rank = f => ({ gym: 0, done: 1, rest: 2 })[frStatus(f).c] ?? 3; // green-dot friends first (Job, 15 Nov); sort is stable
+  const list = (FRIENDS || []).slice().sort((x, y) => rank(x) - rank(y)), rin = (REQS || []).filter(r => r.dir === 'in'), rout = (REQS || []).filter(r => r.dir === 'out'), hid = postHidden(), posts = (FEED || []).filter(p => !hid.includes(p.id));
   const tab = UI.frTab || (list.length ? 'feed' : 'friends');
   const frSwap = () => `<div class="empty fr-empty">Swap codes with a friend to see each other’s workouts.${ID_CODE ? `<br>Your code: <b class="num">${esc(idCode(ID_CODE))}</b> <button class="btn sm" data-a="idCopy">Copy</button>` : ''}<br><button class="btn primary mt3" data-a="frAddSheet">Add a friend</button></div>`;
   // Request rows (review 2): the letter sits on a theme colour like friends' faces (it was white on cream in Boulder),
