@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-Q45Np078uWkJ/4cbxL3WUAXDMDP8f7+4FHRC+6Oyb4A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-MDZv+xoqjKoZW9IJizBNPeEiSeoV6t3WOciXp3f2J/k='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -376,7 +376,7 @@ ${String(n||"")}`.slice(0,2e3)});if(i)throw i;toast("Reported. Thanks.")}catch{t
   </div></section>
 `,steps:`
   <section><div class="sgh">${t.stepSrc?"Steps from "+esc(t.stepSrc):"Steps"}</div><div class="sgrp">
-    ${HOSTED&&USER?`<p class="xr-p">${t.stepSrc?esc(t.stepSrc)+" sends your steps to your phone\u2019s health app":"Your phone (and any watch that syncs to it) counts your steps"}, and an evening shortcut sends them on to Job\u2019s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
+    ${HOSTED&&USER?`<p class="xr-p">${t.stepSrc?esc(t.stepSrc)+" sends your steps to your phone\u2019s health app":"Your phone, and any watch that syncs to it, counts your steps"}, and an evening shortcut sends them on to Job\u2019s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
     ${slink("Create sync key","syncKey","act")}
     <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
       <ol class="f15 m0 sec xr-ol">

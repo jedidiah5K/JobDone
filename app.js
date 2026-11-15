@@ -3085,7 +3085,7 @@ function meParts() {
 `,
     steps: `
   <section><div class="sgh">${p.stepSrc ? 'Steps from ' + esc(p.stepSrc) : 'Steps'}</div><div class="sgrp">
-    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to your phone’s health app' : 'Your phone (and any watch that syncs to it) counts your steps'}, and an evening shortcut sends them on to Job’s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
+    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to your phone’s health app' : 'Your phone, and any watch that syncs to it, counts your steps'}, and an evening shortcut sends them on to Job’s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
     ${slink('Create sync key', 'syncKey', 'act')}
     <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
       <ol class="f15 m0 sec xr-ol">
