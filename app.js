@@ -2677,7 +2677,7 @@ function progBody() {
     <button class="link" data-a="weights">All weight entries</button></div>
   ${measCard()}
   <div class="card"><div class="card-h"><span class="eyebrow">Steps · last 30 days</span><button class="mh32 cap" data-a="steps">Add</button></div>
-    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or import from an Apple Shortcut (see Me → Steps).</div>'}
+    ${st.any ? barChart({ bars: st.bars, line: st.avg, h: 140 }) + '<div class="mt2 legend"><span><i style="background:var(--text2)"></i>Daily</span><span><i style="background:var(--accent)"></i>7-day average</span></div>' : '<div class="empty">No steps logged yet. Tap Add, or set up the evening shortcut in Me → Steps.</div>'}
   </div>`;
 }
 function steps30() {
@@ -3027,7 +3027,7 @@ const ME_GROUPS = [
   ['workouts', 'Workouts', 'Rest, targets, rep range, your exercises'],
   ['alerts', 'Reminders and sounds', 'Daily weigh-in, sounds'],
   ['look', 'Theme and app', 'Wallpaper and colours, Home Screen app'],
-  ['steps', 'Steps', 'Apple Health and the evening Shortcut'],
+  ['steps', 'Steps', 'From your phone or watch'],
   ['account', 'Account and data', 'Sign-in, backups, import and export'],
   ['help', 'Help and about', 'Tour, feedback, privacy, beta features']
 ];
@@ -3069,7 +3069,7 @@ function meParts() {
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
     ${slink('Play a test sound', 'soundTest', 'act')}
-  </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your iPhone is on silent: flip the switch on the side (or turn off Silent Mode in Control Centre) to hear them. iPhone doesn’t let websites play sounds on silent without pausing your music.</div></section>
+  </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your phone is probably on silent. Turn silent mode off to hear them. Phones don’t let websites play sounds on silent without pausing your music.</div></section>
 `,
     look: `
   <section><div class="sgh">Text size</div><div class="sgrp">${srow('Text size', textSizeSeg(), 'Makes all the writing in the app bigger')}</div></section>
@@ -3084,8 +3084,8 @@ function meParts() {
   </div></section>
 `,
     steps: `
-  <section><div class="sgh">${p.stepSrc ? 'Steps from ' + esc(p.stepSrc) : 'Steps from Apple Health'}</div><div class="sgrp">
-    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to Apple Health' : 'Your iPhone (and any watch that syncs to it) counts steps in Apple Health'}, and an evening Apple Shortcut sends them on to Job’s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
+  <section><div class="sgh">${p.stepSrc ? 'Steps from ' + esc(p.stepSrc) : 'Steps'}</div><div class="sgrp">
+    ${HOSTED && USER ? `<p class="xr-p">${p.stepSrc ? esc(p.stepSrc) + ' sends your steps to your phone’s health app' : 'Your phone (and any watch that syncs to it) counts your steps'}, and an evening shortcut sends them on to Job’s Done. It needs a sync key, made once here. On Android, add steps by hand below.</p>
     ${slink('Create sync key', 'syncKey', 'act')}
     <details class="xr-d"><summary class="xr act"><span class="grow">Set up the evening Shortcut</span></summary>
       <ol class="f15 m0 sec xr-ol">
@@ -3097,7 +3097,7 @@ function meParts() {
         <li>Add <b>Get Contents of URL</b> with the address shown with your key. Method POST. Header <b>Authorization</b> = <span class="num">Bearer</span>, a space, then your key. Request Body JSON with one Text field <b>text</b> set to Combined Text.</li>
         <li>Optional: add <b>Show Notification</b> with Contents of URL, so you see “Saved…”.</li>
         <li>Run it once. Then in the Automation tab add a daily Time of Day automation at 9:30 PM, set to Run Immediately, that runs “${SC_NAME()}”.</li>
-      </ol></details>` : `<p class="xr-p">Your steps are in Apple Health. Type them on Today, or paste them here. Sign in on the Job’s Done website to have a Shortcut send them every evening.</p>`}
+      </ol></details>` : `<p class="xr-p">Your phone counts your steps. Type them on Today, or paste them here. Sign in on the Job’s Done website to have a shortcut send them every evening.</p>`}
     ${slink('Add or paste steps by hand', 'steps', 'act')}
   </div></section>
 `,
@@ -3137,7 +3137,7 @@ function meParts() {
 }
 function viewMe() {
   const p = S.profile, lw = latestWeight();
-  const sub = { look: (THEMES.find(t => t.k === theme()) || THEMES[0]).name + ' theme', account: HOSTED && USER ? esc(USER.email || 'Your account') : 'Backups, import and export', steps: p.stepSrc ? 'From ' + esc(p.stepSrc) : 'From Apple Health' };
+  const sub = { look: (THEMES.find(t => t.k === theme()) || THEMES[0]).name + ' theme', account: HOSTED && USER ? esc(USER.email || 'Your account') : 'Backups, import and export', steps: p.stepSrc ? 'From ' + esc(p.stepSrc) : 'From your phone' };
   return `<div class="stack"><div class="top"><div><div class="eyebrow">Profile</div><h1>${esc(p.name)}</h1></div></div>
   ${HOSTED || DEMO ? meCard() : `<div class="card"><div class="kpis"><div class="kpi"><b>${p.heightCm ? p.heightCm + ' cm' : '—'}</b><span>height</span></div><div class="kpi"><b>${lw ? bw(lw.w) + ' ' + U() : '—'}</b><span>current</span></div><div class="kpi"><b>${plural(ix().ws.filter(w => !w.skipped).length, 'workout')}</b><span>logged</span></div></div></div>`}
   ${GAME_ON ? `<div class="sgrp">${gameRow()}</div>` : ''}
@@ -6042,7 +6042,7 @@ function obBody(k) {
   if (k === 'prefs') {
     const P = OB.prefs, row = (f, t, d) => `<div class="xr"><span class="grow">${t}<span class="s">${d}</span></span>${swi(!!P[f], '', `data-pf="${f}"`)}</div>`;
     return `<h1 class="ob-t">Sounds and alerts</h1><p class="sec ob-s">Pick what you want. You can change any of these later in Me.</p>
-    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off (the switch on the side of your iPhone) to hear it')}</div></section>
+    <section><div class="sgh">Sound</div><div class="sgrp">${row('sound', 'Sounds', 'A short chime when you finish a set or a rest. Plays over your music. Turn silent mode off to hear it')}</div></section>
     ${HOSTED ? `<section><div class="sgh">Notifications</div><div class="sgrp">${row('push', 'Rest finished', pushReady() ? 'A notification when the timer ends, even when your phone is locked' : 'Available once Job’s Done is on your Home Screen. Turn it on later in Me')}</div></section>` : ''}
     <section><div class="sgh">Reminders</div><div class="sgrp">${row('weigh', 'Daily weigh-in', 'Asks for your weight the first time you open the app each day')}</div></section>
     <section><div class="sgh">During workouts</div><div class="sgrp">${row('autoRest', 'Start rest automatically', 'The timer starts when you tick off a set')}
@@ -6725,7 +6725,7 @@ const A2HS_ADD = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" 
 const A2HS_DOTS = '<svg class="a2-ic" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
 function installSteps(os) {
   const st = os === 'ios' ? [
-    ['Open this page in <b>Safari</b>.', ''],
+    ['Open this page in your phone’s main browser.', ''],
     [`Tap the <b>Share</b> button at the bottom of the screen.`, A2HS_SHARE],
     ['Scroll down and tap <b>Add to Home Screen</b>.', A2HS_ADD],
     ['Tap <b>Add</b> in the top right corner.', ''],
@@ -6741,7 +6741,7 @@ function openInstallGuide(first) {
   let os = devOS();
   const sh = openSheet(`<div class="stack"><div class="a2-hero"><div><div class="f22 fw7">${first ? 'Put Job’s Done on your Home Screen' : 'Add to Home Screen'}</div><div class="mt1 cap">It opens full screen like a normal app, and you stay signed in.</div></div></div>
     ${isStandalone() ? '<div class="note">You’re already using Job’s Done from your Home Screen.</div>' : ''}
-    <div class="seg"><button data-os="ios">iPhone</button><button data-os="android">Android</button></div>
+    <div class="seg"><button data-os="ios">Share button</button><button data-os="android">⋮ menu</button></div>
     <div id="a2-body"></div>
     <button class="btn primary block" id="a2-ok">${first ? 'Got it' : 'Done'}</button></div>`, { label: 'Add to Home Screen', mount: b => {
     const draw = () => {
