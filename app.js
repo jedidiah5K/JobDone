@@ -2002,7 +2002,22 @@ function cropPhoto(im, W, H) {
     draw();
   });
 }
+// Watermark on every photo taken or posted in the app (Job, 16 Nov): the app icon and "Job's Done",
+// bottom right, white and grey only, 30% see-through.
+const WM_ICON = typeof Image !== 'undefined' && HOSTED ? Object.assign(new Image(), { src: 'icons/apple-touch-icon.png?v=7' }) : null;
+function stampMark(src) {
+  const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  const x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  const u = c.width / 1080, pad = 36 * u, h = 34 * u, gap = 12 * u;
+  x.save(); x.globalAlpha = .3; x.font = `800 ${30 * u}px -apple-system, "SF Pro Display", system-ui, sans-serif`; x.textBaseline = 'middle';
+  const label = 'Job’s Done', tw = x.measureText(label).width, ok = WM_ICON && WM_ICON.complete && WM_ICON.naturalWidth;
+  const y = c.height - pad - h / 2, tx = c.width - pad - tw;
+  x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 6 * u; x.fillStyle = '#fff'; x.fillText(label, tx, y);
+  if (ok) { x.shadowBlur = 0; x.filter = 'grayscale(1)'; const ix = tx - gap - h; x.beginPath(); x.roundRect(ix, y - h / 2, h, h, 8 * u); x.clip(); x.drawImage(WM_ICON, ix, y - h / 2, h, h); }
+  x.restore(); return c;
+}
 function jpegFit(cv) {
+  cv = stampMark(cv);
   // best quality that fits: start high, step down gently (Job, 8 Nov: photos looked soft)
   const fit = c => { let q = .92, d = c.toDataURL('image/jpeg', q); while (d.length >= PMAX && q > .3) { q -= .04; d = c.toDataURL('image/jpeg', q); } return d; };
   let d = fit(cv);
@@ -5095,7 +5110,7 @@ async function loadPhotos() {
   return PHOTOS;
 }
 function shrink(file, max = 720) {
-  return new Promise((ok, no) => { const img = new Image(); img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg', .72)); }; img.onerror = no; img.src = URL.createObjectURL(file); });
+  return new Promise((ok, no) => { const img = new Image(); img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); let c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); c = stampMark(c); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg', .72)); }; img.onerror = no; img.src = URL.createObjectURL(file); });
 }
 async function openPhotos() {
   if (!DB) { toast('Sign in to keep progress photos in your account.'); return; }
