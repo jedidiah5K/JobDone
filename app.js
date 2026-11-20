@@ -843,7 +843,7 @@ function render() {
   const top = NAV.stack[NAV.stack.length - 1];
   const scr = $('#screen'); const keep = scr.scrollTop;
   let html;
-  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, rewards: viewRewards, friends: viewFriends, set: viewSet, admin: viewAdmin })[top.v](top) : ({ today: viewToday, splits: viewSplits, friends: viewFriends, progress: viewProgress, me: viewMe })[NAV.tab]();
+  const view = () => top ? ({ split: viewSplit, splitEdit: viewSplitEdit, exercise: viewExercise, compare: viewCompare, workout: viewWorkout, weights: viewWeights, gym: viewGym, idcard: viewIdCard, rewards: viewRewards, friends: viewFriends, set: viewSet, admin: viewAdmin })[top.v](top) : ({ today: viewToday, splits: viewSplits, friends: viewFriends, progress: viewProgress, me: viewMe })[NAV.tab]();
   try { html = view(); } catch (e) { if (!top && NAV.tab === 'today') throw e; NAV = { tab: 'today', stack: [], prog: 'body', range: '6M' }; return render(); }
   try { localStorage.setItem('jd-nav', JSON.stringify(NAV)); } catch (e) {}
   scr.innerHTML = resolveVars(html);
@@ -1229,9 +1229,11 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v202';
+const NEWS_ID = '2026-11-v207';
 // Only the big things (Job, 15 Nov): a long list nobody reads.
 const NEWS = [
+  ['Compare with any date', 'Progress → Compare puts you on any past day next to you now: weight, measurements, the top set of every lift and how much you trained.'],
+  ['Friends in comments', 'Tap a friend’s face or name in the comments to see their card.'],
   ['Party tweaks', 'Take turns is on when a party starts. Invite friends from the button next to the gear. When someone leaves or finishes, everyone sees it straight away.'],
   ['Recovery code', 'Save the code we show you. If you forget your password, tap Forgot password on the sign-in screen and use it to set a new one. Make a new code any time in Me → Account.'],
   ['Train with friends', 'Start a party from Friends or the workout gear. Take turns tells you whose set is next, and Party settings has No rush, Same rest, Wait for me, Nudge and a party code for gym buddies who aren’t friends yet.'],
@@ -1785,7 +1787,8 @@ function postHTML(p) {
   const cap = b.c ? `<p class="po-cap">${esc(b.c)}</p>` : '';
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
   const last = cm.slice(-2).map(c => { const own = USER && c.u === USER.id, cf = (FRIENDS || []).find(f => f.id === c.u); // faces beside names (Job, 15 Nov)
-    return `<p class="po-cm">${own ? myFace('xs') : face(c.n, cf && !(cf.card || {}).hidden ? cf.photo : null, cf ? (cf.card || {}).t : 'mono', 'xs')}<span><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</span></p>`; }).join('');
+    const who = x => cf && !own ? `<button class="cm-who" data-a="friendOpen" data-k="${esc(c.u)}" aria-label="${esc(c.n || 'Friend')}’s card">${x}</button>` : x;
+    return `<p class="po-cm">${who(own ? myFace('xs') : face(c.n, cf && !(cf.card || {}).hidden ? cf.photo : null, cf ? (cf.card || {}).t : 'mono', 'xs'))}<span>${who(`<b>${esc(own ? 'You' : c.n || 'Friend')}</b>`)} ${esc(c.b)}</span></p>`; }).join('');
   const ph2 = new Date(p.at); const tod = todOf(ph2.getHours() + ph2.getMinutes() / 60); // Summit cards take the sky of when it was posted
   const pth = THEMES.some(x => x.k === b.th) ? b.th : mine ? theme() : (THEMES.some(x => x.k === t) ? t : theme());
   return `<article class="card po po2 po-t-${pth} po-${tod}${p.kind === 'stamp' ? ' po-stamp' : ''}">
@@ -1934,7 +1937,8 @@ async function blockedList() {
 function postComments(id) {
   const p = (FEED || []).find(x => x.id === +id); if (!p) return;
   const row = c => { const own = USER && c.u === USER.id, can = own || (USER && p.user_id === USER.id), fr = (FRIENDS || []).find(f => f.id === c.u);
-    return `<div class="cm-row">${own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm')}<div class="grow"><p><b>${esc(own ? 'You' : c.n || 'Friend')}</b> ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}${own ? '' : ` · <button class="link cm-rep" data-cid="${c.id}">Report</button>`}</span></div></div>`; };
+    const who = x => fr && !own ? `<button class="cm-who" data-cu="${esc(c.u)}" aria-label="${esc(c.n || 'Friend')}’s card">${x}</button>` : x;
+    return `<div class="cm-row">${who(own ? myFace('sm') : face(c.n, fr && !(fr.card || {}).hidden ? fr.photo : null, fr ? (fr.card || {}).t : 'mono', 'sm'))}<div class="grow"><p>${who(`<b>${esc(own ? 'You' : c.n || 'Friend')}</b>`)} ${esc(c.b)}</p><span class="cap">${agoShort(c.at)}${can ? ` · <button class="link cm-del" data-cid="${c.id}">Delete</button>` : ''}${own ? '' : ` · <button class="link cm-rep" data-cid="${c.id}">Report</button>`}</span></div></div>`; };
   const html = () => `<div class="stack"><h2>Comments</h2><div class="cm-list">${(p.comments || []).length ? p.comments.map(row).join('') : '<p class="cap m0">No comments yet. Say something nice.</p>'}</div>
     <div class="row g2 cm-in">${myFace('sm')}<input class="input grow" id="cm-t" maxlength="200" placeholder="Add a comment" autocomplete="off" enterkeyhint="send"><button class="btn primary" id="cm-go">Post</button></div></div>`;
   const sh = openSheet(html(), { label: 'Comments', mount: b => {
@@ -1943,6 +1947,7 @@ function postComments(id) {
       const send = async () => { const v = t.value.trim(); if (!v || go.disabled) return; go.disabled = true;
         try { const cid = await gymRpc('jobdone_comment', { p_id: p.id, p_body: v }); p.comments = [...(p.comments || []), { id: cid, u: USER.id, n: S.profile.name, b: v, at: new Date().toISOString() }]; b.innerHTML = html(); wire(); rerender(); }
         catch (e) { go.disabled = false; toast(/Too many/.test(e.message) ? 'That’s enough comments for today.' : 'Couldn’t post it. Check your connection.'); } };
+      b.querySelectorAll('.cm-who').forEach(x => x.onclick = () => { closeSheet(sh); friendOpen(x.dataset.cu); });
       go.onclick = send; t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); send(); } };
       b.querySelectorAll('.cm-rep').forEach(x => x.onclick = () => { const c = (p.comments || []).find(y => y.id === +x.dataset.cid); if (!c) return;
         confirmSheet({ title: 'Report this comment?', body: 'A copy goes to Job’s Done to look at.', ok: 'Report it', danger: true, key: false,
@@ -2647,7 +2652,7 @@ function viewSplitEdit({ id }) {
 function viewProgress() {
   const segs = [['body', 'Body'], ['strength', 'Strength'], ['volume', 'Volume'], ['insights', 'Insights'], ['history', 'History']];
   const inner = ({ body: progBody, strength: progStrength, volume: progVolume, insights: progInsights, history: progHistory })[NAV.prog]();
-  return `<div class="stack"><div class="top"><h1>Progress</h1></div>
+  return `<div class="stack"><div class="top"><h1>Progress</h1><button class="btn sm" data-a="compare">Compare</button></div>
   <div class="seg" role="tablist">${segs.map(([k, l]) => `<button role="tab" class="${NAV.prog === k ? 'on' : ''}" aria-selected="${NAV.prog === k}" data-a="prog" data-k="${k}">${l}</button>`).join('')}</div>${inner}</div>`;
 }
 function progBody() {
@@ -2682,6 +2687,31 @@ function viewWeights() {
   return `<div class="stack">${backBtn('Progress')}<div class="pt0 top"><h1>Weight log</h1><button class="btn sm" data-a="weighDate">Add entry</button></div>
   ${l.some(e => e.src === 'estimated') ? `<div class="card est-note"><b>${plural(l.filter(e => e.src === 'estimated').length, 'entry is an estimate', 'entries are estimates')}</b><span>They were filled in from your starting numbers, not weighed. They show as hollow points, are marked Estimated below, and never count toward badges. Tap one to replace it with a real weigh-in.</span></div>` : ''}
   <div class="card"><div class="list">${l.map(e => `<button class="li" data-a="weighDate" data-d="${e.d}"><div class="grow"><div class="t">${esc(fmtDate(e.d, { wd: true, y: true }))}</div><div class="s">${e.src === 'estimated' ? '<span class="est-tag">Estimated</span>' : e.src === 'import' ? 'Imported' : 'Logged'}</div></div><span class="fw6 num">${bw(e.w)} ${U()}</span>${I.right}</button>`).join('')}</div></div></div>`;
+}
+// Compare (Job, 20 Nov): you on any past date next to you now. Weight, measurements, each lift's top set, last 4 weeks of training.
+function viewCompare(v) {
+  const t = today(), w0 = ix().ws.length ? ix().ws[0].date : t;
+  if (!v.d) v.d = [addDays(t, -91), w0].sort()[1];
+  const d = v.d, h = ix().hist, U_ = U();
+  const lastOn = (a, day) => { let r = null; for (const x of a) if (x.date <= day) r = x; return r; };
+  const row = (n, a, b, fmt, unit) => `<tr><td>${n}</td><td class="r num sec">${a == null ? '—' : fmt(a)}</td><td class="r num">${b == null ? '—' : fmt(b)}</td><td class="r num">${a != null && b != null ? delta(b, a, fmt) : ''}</td></tr>`;
+  const head = `<tr><th></th><th class="r">${esc(fmtDate(d))}</th><th class="r">Now</th><th class="r">Change</th></tr>`;
+  const wt = weightOn(d), wn = latestWeight();
+  const ms = Object.keys(S.meas || {}).sort(), mThen = lastOn(ms.map(x => ({ date: x })), d), mNow = ms[ms.length - 1];
+  const mRows = MEAS.map(([k, n]) => { const a = mThen && S.meas[mThen.date][k], b = mNow && S.meas[mNow][k]; return a || b ? row(n + ' (cm)', a || null, b || null, x => trim(Math.round(x * 10) / 10)) : ''; }).join('');
+  const lifts = exerciseGroups().map(g => { const n = g.names.find(x => sideOf(x) === 'R') || g.names[0], a = lastOn(h[n] || [], d), b = (h[n] || [])[(h[n] || []).length - 1];
+    return a && b && a.top && b.top && b.date > d ? { b: g.b, a, z: b } : null; }).filter(Boolean);
+  const win = day => ix().ws.filter(w => !w.skipped && w.date <= day && daysBetween(w.date, day) < 28);
+  const wa = win(d), wb = win(t);
+  return `<div class="stack">${backBtn('Progress')}<div class="pt0 top"><h1>Compare</h1></div>
+  <div class="card"><div class="field"><label for="cmp-d">You on</label><input class="input" type="date" id="cmp-d" data-in="cmpDate" value="${d}" max="${addDays(t, -1)}"></div>
+    <div class="mt2 row g2 wrap">${[[30, '1 month'], [91, '3 months'], [182, '6 months'], [365, '1 year']].map(([k, l]) => `<button class="btn sm${daysBetween(d, t) === k ? ' on' : ''}" data-a="cmpAgo" data-k="${k}">${l} ago</button>`).join('')}</div></div>
+  <div class="card"><div class="card-h"><span class="eyebrow">Body</span></div><table class="tbl">${head}${row('Weight (' + U_ + ')', wt ? wt.w : null, wn ? wn.w : null, x => bw(x))}${mRows}</table>
+    ${wt && wt.d !== d ? `<div class="mt2 cap">Weight from your entry on ${esc(fmtDate(wt.d))}.</div>` : ''}</div>
+  <div class="card"><div class="card-h"><span class="eyebrow">Lifts · top set</span><span class="cap">${plural(lifts.length, 'lift')}</span></div>
+    ${lifts.length ? `<div class="list">${lifts.map(l => `<button class="li" data-a="openEx" data-name="${esc(l.b)}"><div class="grow"><div class="t">${esc(l.b)}</div><div class="s num">${setStr(l.a.top)} → ${setStr(l.z.top)}</div></div><span class="num">${delta(l.z.top.w, l.a.top.w, x => dw(x))}</span></button>`).join('')}</div>` : '<div class="empty">No lift you did on or before that date and again since. Pick an earlier date.</div>'}</div>
+  <div class="card"><div class="card-h"><span class="eyebrow">Training · 4 weeks before</span></div><table class="tbl">${head}${row('Workouts', wa.length, wb.length, x => n0(x))}${row('Volume (' + U_ + ')', wa.reduce((s, w) => s + wVol(w), 0), wb.reduce((s, w) => s + wVol(w), 0), x => dvol(x))}</table></div>
+</div>`;
 }
 function exerciseGroups() {
   const h = ix().hist, groups = {};
@@ -6331,6 +6361,8 @@ const ACT = {
   openW: el => go({ v: 'workout', id: el.dataset.id }),
   weighDate: el => openWeighIn(el.dataset.d || null, false),
   weights: () => go({ v: 'weights' }),
+  compare: () => go({ v: 'compare' }),
+  cmpAgo: el => { NAV.stack[NAV.stack.length - 1].d = addDays(today(), -+el.dataset.k); rerender(); },
   steps: el => openSteps(el && el.dataset.k),
   syncKey: () => openSyncKey(),
   setPassword: () => openSetPassword(),
@@ -6543,6 +6575,7 @@ document.addEventListener('click', ev => {
 });
 let tapEl = null, tapAt = 0;
 const IN = {
+  cmpDate: el => { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value) && el.value < today()) { NAV.stack[NAV.stack.length - 1].d = el.value; rerender(); } },
   viewDay: el => { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) setViewDay(el.value); },
   spName: (el, live) => { const sp = splitById(el.dataset.id); const v = el.value.trim(); if (!v) return; sp.name = v; Object.values(S.workouts).forEach(w => { if (w.splitId === sp.id) w.splitName = v; }); persist('jd/meta', ...(live ? [] : allPaths().filter(p => p.startsWith('months/')))); },
   spEx: el => { const sp = splitById(el.dataset.id), e = sp.ex[+el.dataset.i], f = el.dataset.f; if (f === 'note') e.note = el.value; else { const v = parseInt(el.value, 10); if (!isNaN(v) && v >= 0) e[f] = v; if (e.repMax < e.repMin) e.repMax = e.repMin; } persist('jd/meta'); },
