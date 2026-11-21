@@ -2470,3 +2470,13 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* v206: tap a friend's face or name in comments for their card */
 .cm-who { all: unset; cursor: pointer; display: inline; }
 .cm-who:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+/* Party (v208): friend's last set in your lift row, rest countdown, reactions */
+.pt-last { display: flex; align-items: center; gap: 6px; margin-top: var(--s1); min-width: 0; color: var(--text2, var(--text)); }
+.pt-last .pt-av { width: 20px; height: 20px; font-size: calc(9px * var(--ts, 1)); }
+.partner .pt-chip2 .pt-rest { white-space: nowrap; }
+.pt-rx { min-width: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; font-size: 17px; line-height: 1; cursor: pointer; }
+.pt-rx:active { transform: scale(.9); }
+.po-team { margin-top: 10px; }
+.po-team-h { display: flex; justify-content: space-between; gap: 12px; font-size: calc(12px * var(--ts, 1)); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+.po-team-h b { color: var(--text); letter-spacing: 0; text-transform: none; font-size: calc(14px * var(--ts, 1)); }
+.po-team .pill { font-style: normal; margin-left: 4px; }

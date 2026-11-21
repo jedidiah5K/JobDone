@@ -156,9 +156,10 @@ function syncRestPush() {
   const due = A && REST && !REST.paused ? Math.round(REST.end / 1000) * 1000 : 0;
   if (due === restPushSent) return;
   const was = restPushSent; restPushSent = due;
-  if (due) { const ex = A.ex && A.ex.find(e => e.sets && e.sets.some(x => !x.done)); restFn({ action: 'at', due, title: 'Rest done', body: ex ? 'Next set: ' + ex.name : 'Time for your next set.' }); }
+  if (due) { const ex = A.ex && A.ex.find(e => e.sets && e.sets.some(x => !x.done)); restFn({ action: 'at', due, title: 'Rest done', body: ex ? 'Next set: ' + ex.name : 'Time for your next set.' }).then(r => { if (!r && restPushSent === due) restPushSent = 0; }); } // no signal: book it again later
   else if (was && Date.now() < was - 1500) restFn({ action: 'cancel' });
 }
+addEventListener('online', () => setTimeout(() => { if (ready) syncRestPush(); }, 1500)); // back online: re-book a rest alert that didn't go through
 // Daily workout reminder (24 Oct): pick a time and days; a once-a-minute server job pings only if nothing is logged that day.
 // It reads profile.remind {on, at 'HH:MM', days [0-6, Sunday 0], tz} from jd/meta and skips rest weeks and workouts in progress.
 const REMIND_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], REMIND_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -1229,9 +1230,12 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v207';
+const NEWS_ID = '2026-11-v208';
 // Only the big things (Job, 15 Nov): a long list nobody reads.
 const NEWS = [
+  ['Party extras', 'Send a 👊 or 🔥 to a friend, ask for a spot, and see their rest count down. If a friend just did the lift you’re on, their set shows under it, with a heads-up when you can leave the plates on. If whoever started the party leaves, someone else takes over.'],
+  ['Target line off', 'The “Target:” line under each lift is off now. Turn it back on in Settings → Workouts.'],
+  ['Team card', 'After a party workout, pick Team on the share card to show everyone’s kg and who lifted most. Posts to your feed show the team too.'],
   ['Compare with any date', 'Progress → Compare puts you on any past day next to you now: weight, measurements, the top set of every lift and how much you trained.'],
   ['Friends in comments', 'Tap a friend’s face or name in the comments to see their card.'],
   ['Party tweaks', 'Take turns is on when a party starts. Invite friends from the button next to the gear. When someone leaves or finishes, everyone sees it straight away.'],
@@ -1637,6 +1641,7 @@ async function inboxPoll() {
   if (fresh.length) toast(esc(fresh[0][1]) + (fresh.length > 1 ? ` and ${fresh.length - 1} more` : ''), 4000);
   if (inboxSig() !== was) rerender(); // nothing new, no redraw
   if (A && A.turns) turnWatch();
+  if (A) partyEvents();
   rtSync();
   INBOX_T = setTimeout(inboxPoll, FR_FULL_AT === 0 ? 1000 : A && A.turns ? 5000 : partyLive() ? 15000 : 60000);
 }
@@ -1783,6 +1788,7 @@ function postHTML(p) {
     ${Array.isArray(b.ex) && b.ex.length ? (() => { const L = b.ex.slice(0, 10), row = x => `<div><span>${esc(String(x[0] || ''))}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`;
       // one Show lifts button, all lifts in one list (Job, 15 Nov: "see 3 more" split the list)
       return `<details class="po-dd" data-po="${esc(String(p.id))}" ${PO_OPEN.has(String(p.id)) ? 'open' : ''}><summary><span class="po-see">Show lifts</span><span class="po-hide">Hide lifts</span></summary><div class="po-lifts">${L.map(row).join('')}</div></details>`; })() : ''}
+    ${Array.isArray(b.pt) && b.pt.length ? `<div class="po-team"><div class="po-team-h"><span>Trained as a team</span><b class="num">${esc(String(b.tv || ''))}</b></div><div class="po-lifts">${b.pt.slice(0, 6).map((x, i) => `<div><span>${esc(String(x[0] || who))}${i === 0 && b.pt.length > 1 ? ' <i class="pill pr">MVP</i>' : ''}</span><b class="num">${esc(String(x[1] || ''))}</b></div>`).join('')}</div></div>` : ''}
     ${b.h ? `<p class="po-line">${esc(b.h)}</p>` : ''}</section>` : '';
   const cap = b.c ? `<p class="po-cap">${esc(b.c)}</p>` : '';
   const sum = REACTS.filter(e => rc[e]).map(e => `<span class="po-rx${p.mine === e ? ' on' : ''}">${e}<b class="num">${rc[e]}</b></span>`).join('');
@@ -2129,6 +2135,7 @@ function stampBody(id, o = {}) {
   const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? (m => m >= 60 ? Math.floor(m / 60) + ':' + pad2(m % 60) : fmtDur(d.dur))(Math.floor(d.dur / 6e4)) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
   if (o.c) body.c = String(o.c).slice(0, 80);
   const noW = !!SO().noW; if (noW) { delete body.v; delete body.h; } // Show my weights off: just the workout
+  const tm = !noW && teamRows(d.w, d.vol); if (tm) { body.pt = tm.rows.slice(0, 6).map(r => [r.n === 'You' ? '' : r.n.slice(0, 20), dvol(r.v) + ' ' + U()]); body.tv = dvol(tm.tot) + ' ' + U(); } // party post (Job, 21 Nov)
   if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t && !noW ? setStr(t) : '']; });
   return body;
 }
@@ -3072,6 +3079,7 @@ function meParts() {
   <section><div class="sgh">Workouts</div><div class="sgrp">
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
+    ${p.noTargets ? '' : srow('Show the target line', swi(!!p.tgtLine, 'pset', 'data-f="tgtLine"'), 'A line under each lift saying what to aim for')}
     ${repRangeRow()}
     ${srow('Log how hard sets felt (RPE)', swi(!!p.rpe, 'pset', 'data-f="rpe"'), 'Tap 6 to 10 after each working set')}
     ${srow('Start rest automatically', swi(on('noAutoRest'), 'pset', 'data-f="noAutoRest"'))}
@@ -3507,14 +3515,42 @@ function catchUp() {
   }
   return '';
 }
+// Their last set in your row (Job, 21 Nov): what a friend in the party just did on this lift, and if their weight is
+// the same as your next set, the plates can stay on.
+function ptLastSet(e) {
+  if (!A || !A.party || !USER) return '';
+  const nm = baseName(e.name).slice(0, 26), nx = e.sets.find(x => !x.done && x.t !== 'warm');
+  return A.party.map(m => { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); if (!l || !lvParty(l).includes(USER.id) || l.ex !== nm || !l.last) return '';
+    const same = nx && nx.w != null && l.lw != null && +l.lw === +nx.w;
+    return `<div class="pt-last cap"><span class="pt-av live">${pInit(m.n)}</span><span class="ell">${esc(String(m.n || 'Friend').split(' ')[0])}: <b class="num">${esc(l.last)}</b>${same ? ' · same weight, leave the plates on' : ''}</span></div>`; }).join('');
+}
+// Spot me and reactions (Job, 21 Nov) ride on your live stat like the rest of the party, so the server checks who sees them.
+const PT_SEEN = {}, PT_RX = ['👊', '🔥'];
+function partyEvents() {
+  if (!A || !A.party || !USER) return;
+  const fresh = t => t && Math.abs(Date.now() - t) < 3 * 6e4;
+  for (const m of A.party) {
+    const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); if (!l || !lvParty(l).includes(USER.id)) continue;
+    const n = esc(String(m.n || 'Friend').split(' ')[0]);
+    const rx = l.rx; if (rx && rx.to === USER.id && fresh(+rx.at) && PT_SEEN[m.id + 'r'] !== +rx.at) { PT_SEEN[m.id + 'r'] = +rx.at; toast(`${n} sent you ${PT_RX.includes(rx.e) ? rx.e : '👊'}`); }
+    if (fresh(+l.sm) && PT_SEEN[m.id + 's'] !== +l.sm) { PT_SEEN[m.id + 's'] = +l.sm; buzz([60, 40, 60]); try { SOUNDS.rest(); } catch (e) {} toast(`${n} needs a spot`, 4000); } // last, so it wins over a reaction
+  }
+}
+// Party streak (Job, 21 Nov): workouts together and weeks in a row with each friend, from your own history.
+function partyStreak(id) {
+  const ws = ix().ws.filter(w => !w.skipped && (w.party || []).some(p => p.id === id));
+  const wk = new Set(ws.map(w => mondayOf(w.date))); let k = 0, m = mondayOf(today());
+  if (!wk.has(m)) m = addDays(m, -7); while (wk.has(m)) { k++; m = addDays(m, -7); }
+  return { n: ws.length, k };
+}
 // Party next to your totals on the finish page; their numbers are the last ones their phone sent.
 function partySum(d) {
   if (!A || !A.party || !A.party.length) return '';
-  const rows = A.party.map(m => { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); return l && lvParty(l).includes(USER.id) ? [m.n, +l.v || 0, +l.n || 0, l.xs || []] : m.s ? [m.n, m.v || 0, m.s, []] : null; }).filter(Boolean);
+  const rows = A.party.map(m => { const l = liveOf((FRIENDS || []).find(x => x.id === m.id)); return l && lvParty(l).includes(USER.id) ? [m.n, +l.v || 0, +l.n || 0, l.xs || [], m.id] : m.s ? [m.n, m.v || 0, m.s, [], m.id] : null; }).filter(Boolean);
   if (!rows.length) return '';
   const both = [...new Set(A.ex.filter(e => e.sets.some(x => x.done)).map(e => baseName(e.name)))].filter(x => rows.some(r => r[3].includes(x.slice(0, 26))));
-  const li = (n, v, c) => `<div class="li"><div class="grow t ell">${esc(n)}</div><span class="num cap">${dvol(v)} ${U()} · ${plural(c, 'set')}</span></div>`;
-  return `<div class="card"><div class="mb1 eyebrow">Party</div><div class="list">${li('You', d.vol, d.sets)}${rows.map(r => li(String(r[0] || 'Friend').split(' ')[0], r[1], r[2])).join('')}</div>${both.length ? `<div class="cap mt2">Together: ${esc(both.slice(0, 4).join(', '))}${both.length > 4 ? ` +${both.length - 4}` : ''}</div>` : ''}</div>`;
+  const li = (n, v, c, id) => { const st = id ? partyStreak(id) : null; return `<div class="li"><div class="grow"><div class="t ell">${esc(n)}</div>${st && st.n > 1 ? `<div class="s cap">${st.n} workouts together${st.k > 1 ? ` · ${st.k} weeks in a row` : ''}</div>` : ''}</div><span class="num cap">${dvol(v)} ${U()} · ${plural(c, 'set')}</span></div>`; };
+  return `<div class="card"><div class="mb1 eyebrow">Party</div><div class="list">${li('You', d.vol, d.sets)}${rows.map(r => li(String(r[0] || 'Friend').split(' ')[0], r[1], r[2], r[4])).join('')}</div>${both.length ? `<div class="cap mt2">Together: ${esc(both.slice(0, 4).join(', '))}${both.length > 4 ? ` +${both.length - 4}` : ''}</div>` : ''}</div>`;
 }
 // Same split as the friend who invited you (Job, 13 Nov: Mikey joined a Pull and got his own Full body).
 function useHostWorkout(host, xs) {
@@ -3530,7 +3566,7 @@ function liveStat() {
   const ti = myTurnInfo();
   const wk = e => e.sets.filter(s => s.t !== 'warm'), ss = xs.map(x => { const e = A.ex.find(y => baseName(y.name).slice(0, 26) === x); return e ? wk(e).length : 0; });
   const v = Math.round(A.ex.reduce((a, e) => a + exVol(e.sets.filter(s => s.done && s.t !== 'warm')), 0));
-  return { party: ids, with: ids[0], xs, ss, rs: A.restAll || restFor((curLift() || A.ex[0] || {}).name || ''), sr: A.sameRest ? 1 : 0, wt: A.wait ? 1 : 0, pr: A.goFirst || 0, v, tt: A.turns ? 1 : 0, nr: A.turns && A.calm ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', at: Date.now() };
+  return { party: ids, with: ids[0], xs, ss, rs: A.restAll || restFor((curLift() || A.ex[0] || {}).name || ''), sr: A.sameRest ? 1 : 0, wt: A.wait ? 1 : 0, pr: A.goFirst || 0, v, tt: A.turns ? 1 : 0, nr: A.turns && A.calm ? 1 : 0, h: A.partyHost || (USER && USER.id), cur: ti ? ti.cur : '', c: ti ? ti.c : 0, t: ti ? ti.t : 0, n: A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0), sp: String(A.splitName || '').slice(0, 30), ex: done ? baseName(done.e).slice(0, 30) : '', last: done ? setStr(done.s) : '', lw: done && done.s.w != null ? +done.s.w : null, re: REST && !REST.paused && REST.end > Date.now() ? Math.round(REST.end) : 0, sm: A.sm || 0, rx: A.rx || null, at: Date.now() };
 }
 // ---------- Taking turns (v181, Job 14 Nov) ----------
 // Everyone in the party with Taking turns on who is on the same lift goes in order: the host first, then the rest.
@@ -3604,9 +3640,9 @@ function partnerStrip() {
   const ts = A.turns ? turnState() : null;
   const faces = info.slice(0, 4).map(x => `<span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>`).join('');
   const sum = `Party of ${P.length + 1}${A.turns ? ts && ts.waiting ? ' · turns on, waiting' : noRush() ? ' · turns, no rush' : ' · turns on' : ''}`;
-  const open = A.partyOpen ? `<div class="pt-open"><div class="pt-chips">${info.map(x => `<span class="pt-chip2"><span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>${esc(x.m.n)} ${x.joined ? (x.l.last ? `<b class="num">${esc(x.l.last)}</b>` : `<span class="cap">${plural(+x.l.n || 0, 'set')}</span>`) : '<span class="cap">invited</span>'}</span>`).join('')}</div>
+  const open = A.partyOpen ? `<div class="pt-open"><div class="pt-chips">${info.map(x => `<span class="pt-chip2"><span class="pt-av${x.joined ? ' live' : ''}">${pInit(x.m.n)}</span>${esc(x.m.n)} ${x.joined ? (x.l.last ? `<b class="num">${esc(x.l.last)}</b>` : `<span class="cap">${plural(+x.l.n || 0, 'set')}</span>`) + (+x.l.re > Date.now() ? ` <span class="cap pt-rest">resting <span class="num" data-left="${+x.l.re}">${fmtRest(Math.round((+x.l.re - Date.now()) / 1000))}</span></span>` : '') + PT_RX.map(e => `<button class="pt-rx" data-a="ptReact" data-id="${esc(x.m.id)}" data-k="${e}" aria-label="Send ${e} to ${esc(x.m.n)}">${e}</button>`).join('') : '<span class="cap">invited</span>'}</span>`).join('')}</div>
     ${ts && ts.waiting ? `<div class="cap pt-wait">Turns start when a friend with turns on is on ${esc(ts.lift)} too.</div>` : ''}
-    <div class="pt-acts"><button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill" data-a="partySet">${I.dots || '⋯'} Party settings</button></div></div>` : '';
+    <div class="pt-acts"><button class="pt-pill${A.turns ? ' on' : ''}" data-a="turnsToggle" aria-pressed="${A.turns ? 'true' : 'false'}">Take turns</button><button class="pt-pill" data-a="spotMe">Spot me</button><button class="pt-pill" data-a="partySet">${I.dots || '⋯'} Party settings</button></div></div>` : '';
   return `<div class="partner"><button class="pt-sum" data-a="partyFold" aria-expanded="${A.partyOpen ? 'true' : 'false'}"><span class="pt-faces">${faces}</span><span class="cap">${sum}</span><i class="pt-chev">${I.down}</i></button>${open}${catchUp()}</div>`;
 }
 const PARTY_VOICE = { mono: ['Assemble the team', 'Pick who’s in on this one.'], cliffs: ['Rope up', 'Pick who climbs with you today.'], climb: ['Who’s spotting you?', 'Pick your gym buddies for today.'], spidey: ['Call in backup', 'Pick who’s on patrol with you.'] };
@@ -3644,6 +3680,7 @@ function partyPrune() {
   const back = FRIENDS.filter(f => { const l = liveOf(f); return l && lvParty(l).includes(USER.id) && !partyIds().includes(f.id) && ((A.gone || []).some(g => g.id === f.id) || (A.pcodeUntil || 0) > Date.now()); });
   if (back.length && A.party.length < PARTY_MAX) { A.party = mergeParty(A.party, back.map(pName)); A.gone = (A.gone || []).filter(g => !back.some(f => f.id === g.id)); touchA(); statSync(); toast(`${esc(pName(back[0]).n.split(' ')[0])} ${(A.gone || []).length || !A.pcodeUntil ? 'is back' : 'joined'}`); }
   if (!gone.length) return;
+  if (A.party.length && !A.party.some(p => p.id === A.partyHost) && A.partyHost !== USER.id) { A.partyHost = [USER.id, ...partyIds()].sort()[0]; if (A.partyHost === USER.id) toast('You’re running the party now'); } // the host left: lowest id takes over
   if (!A.party.length) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; }
   touchA(); statSync(); toast(`${esc(String(gone[0]).split(' ')[0])}${gone.length > 1 ? ` and ${gone.length - 1} more` : ''} left the party`);
 }
@@ -3682,7 +3719,7 @@ async function partyCodeUse(v) {
 }
 function partnerTick() { // every 20 s while training together, refresh friends to see their sets
   clearTimeout(PARTNER_POLL); if (!partyIds().length || !HOSTED || !USER) return;
-  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; partyPrune(); } catch (e) {} if (partyIds().length && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
+  PARTNER_POLL = setTimeout(async () => { try { FRIENDS = await gymRpc('jobdone_friends_list') || FRIENDS; partyPrune(); partyEvents(); } catch (e) {} if (partyIds().length && document.getElementById('wk')) openWk(); partnerTick(); }, 20000);
 }
 // ---------- Seasons: 8 weeks each, starting Monday 2 Nov 2026. XP earned in the season; everyone starts at zero together.
 const SEASON0 = '2026-11-02', SEASON_NAMES = ['Winter Arc', 'Spring Build', 'Summer Cut', 'Iron Autumn', 'New Year Grind', 'Base Camp'];
@@ -3901,7 +3938,7 @@ function renderWorkout() {
   // One-line header (review 2): title with an ellipsis, then sets · kg · time, and a quiet Finish until every set is ticked.
   const allIn = totalSets && doneSets === totalSets;
   el.innerHTML = resolveVars(`<div class="wk-head"><div class="row wk-top"><button class="icon-btn" data-a="minWk" aria-label="Minimise workout">${I.down}</button>
-      <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : ''}${doneSets} of ${plural(totalSets, 'set')} · <span data-roll="${dv}">${dvol(dv)}</span> ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}${A.date ? '' : ` · <span data-elapsed>${fmtDur(Date.now() - A.start)}</span>`}</div></div>
+      <div class="grow wk-t"><div class="wkname ell">${esc(A.splitName)}</div><div class="cap num ell wk-meta">${A.date ? `<button class="cap daychip" data-a="wkDay">${esc(fmtDate(A.date, { wd: true }))} ▾</button> · ` : `<span data-elapsed>${fmtDur(Date.now() - A.start)}</span> · `}${doneSets} of ${plural(totalSets, 'set')} · <span data-roll="${dv}">${dvol(dv)}</span> ${U()}${gv ? ` · <span class="${dv >= gv ? 'pos' : ''}">${dv >= gv ? 'past last time' : dvol(gv - dv) + ' ' + U() + ' to match last time'}</span>` : ''}</div></div>
       ${GAME_ON && !A.practice && (FRIENDS || []).length ? `<button class="icon-btn far-btn" data-a="partyAdd" aria-label="Invite friends" title="Invite friends">${IC.team}</button>` : ''}<button class="icon-btn far-btn" data-a="wkSettings" aria-label="Workout settings" title="Workout settings">${IC.gear}</button><button class="btn sm ${allIn ? 'primary' : 'wk-fin'}" data-a="finish">Finish</button></div>
     ${A.locker ? `<button class="wk-note on" data-a="lockerNote">${IC.key}<span class="ell">${esc(A.locker)}</span></button>` : ''}
     ${gv ? `<div class="race" aria-hidden="true"><i class="ghost" style="width:${gv / scale * 100}%"></i><i class="me ${dv >= gv ? 'ahead' : ''}" style="width:${dv / scale * 100}%"></i></div>` : ''}
@@ -4016,7 +4053,7 @@ function exCardHTML(e, ei) {
   const prs = livePR(e);
   const sp = A.splitId && splitById(A.splitId); const tgt = sp && sp.ex.find(x => x.name === e.name);
   let sugg = '';
-  if (last && !S.profile.noTargets) {
+  if (last && !S.profile.noTargets && S.profile.tgtLine) { // the line is opt-in (Job, 21 Nov); targets still fill the boxes
     const hi = repRange(e.name, sp || null)[1], ws = last.sets.filter(validSet), up = ws.filter(x => x.r >= hi).length;
     if (ws.length) sugg = up ? `Target: +${dw(TGT_UP())} ${U()} on ${up === ws.length ? 'every set' : up + ' set' + (up > 1 ? 's' : '')} (you hit ${hi}+ reps last time).` : 'Target: same weight, one more rep.';
   }
@@ -4032,7 +4069,7 @@ function exCardHTML(e, ei) {
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
     ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
-    ${setupHTML(e.name)}${sugg ? `<div class="tgt-line"><span class="ell">${esc(sugg)}</span>${infoBtn('target')}</div>` : ''}
+    ${setupHTML(e.name)}${GAME_ON ? ptLastSet(e) : ''}${sugg ? `<div class="tgt-line"><span class="ell">${esc(sugg)}</span>${infoBtn('target')}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
     <table class="mt2 sets"><thead><tr><th>Set<button class="set-i" data-a="setInfo" aria-label="What the set types mean">i</button></th><th>Previous</th><th>${U()}</th><th>Reps</th><th><span class="sr" style="position:absolute;left:-9999px">Done</span></th></tr></thead><tbody>
     ${e.sets.map((s, si) => { const lw = last && last.sets.filter(x => x.t !== 'warm'), pv = s.t === 'warm' ? (last && last.sets.filter(x => x.t === 'warm')[e.sets.slice(0, si).filter(x => x.t === 'warm').length]) : lw && lw[si - e.sets.slice(0, si).filter(x => x.t === 'warm').length]; const pr = prs[si] || []; const lbl = s.t === 'warm' ? 'W' : s.t === 'drop' ? 'D' : s.t === 'fail' ? 'F' : si + 1 - e.sets.slice(0, si).filter(x => x.t === 'warm').length; return `<tr class="${s.done ? 'done' : ''}${s === UPNEXT ? ' upnext' : ''}" id="row-${ei}-${si}">
@@ -4290,6 +4327,7 @@ function beep() { SOUNDS.rest(); }
 function tick() {
   syncTabStart();
   document.querySelectorAll('[data-elapsed]').forEach(n => { if (A) n.textContent = fmtDur(Date.now() - A.start); });
+  document.querySelectorAll('[data-left]').forEach(n => { const v = Math.round((+n.dataset.left - Date.now()) / 1000); n.textContent = v > 0 ? fmtRest(v) : 'done'; });
   if (REST) {
     const left = restLeft();
     if (left <= 0) { REST = null; SOUNDS.rest(); buzz([30, 60, 30]); toast('Rest done. Next set.'); renderWorkout(); syncTabStart(); return; }
@@ -4387,6 +4425,13 @@ const HEAVY = {
 function heavyLine(kg, k = theme()) {
   const L = HEAVY[k] || HEAVY.mono, h = L.find(x => kg / x[0] >= 1.5) || L[L.length - 1], t = kg / h[0];
   return h[1](Math.round(t).toLocaleString('en-GB'));
+}
+// Team totals for a party workout (Job, 21 Nov): you plus everyone whose numbers came back, biggest first.
+// shortcut: friends' volume is in their own unit; fine while everyone in a party uses the same one.
+function teamRows(w, vol) {
+  const P = ((w && w.party) || []).filter(p => +p.v > 0); if (!P.length) return null;
+  const rows = [{ n: 'You', v: vol }, ...P.map(p => ({ n: String(p.n || 'Friend').split(' ')[0], v: +p.v }))].sort((a, b) => b.v - a.v);
+  return { rows, tot: rows.reduce((a, r) => a + r.v, 0) };
 }
 function recapData(id) {
   const w = S.workouts[id], I2 = ix(), ws = I2.ws.filter(x => !x.skipped);
@@ -4619,7 +4664,8 @@ async function drawShare(d, o = shareOpts(d)) {
   const sp = (t, ls) => { g.letterSpacing = ls + 'px'; return t; };
   const line = d.line || RC_LINE[d.w.id] || doneLine(d.w);
   // the theme's 'That's like…' comparison from the recap goes on every card (Job, 20 Oct)
-  const heavy = d.heavy || heavyLine(d.vol);
+  const team = o.team ? teamRows(d.w, d.vol) : null;
+  const heavy = team ? heavyLine(team.tot).replace(/\.\s*$/, ', as a team.') : d.heavy || heavyLine(d.vol);
   // with no lifts on the card (Job, 22 Oct): muscles worked and the week's streak fill the space, no weights or exercise names
   const wkN = ix().ws.filter(x => !x.skipped && mondayOf(x.date) === mondayOf(d.w.date)).length, wkT = Math.max(wkN, S.profile.weeklyTarget || 4);
   // fill: 'both' (muscles + week), 'mus', 'week', or 'shrink' (nothing added, the layout closes the gap)
@@ -4645,7 +4691,10 @@ async function drawShare(d, o = shareOpts(d)) {
     .filter(s => !o.hide.includes(s[2]));
   const hotStat = s => s[2] === 'prs' && d.prs.length;
   lifts.splice(0, lifts.length, ...(o.lifts ? lifts.filter(r => !o.pick || o.pick.includes(r.name)) : []));
-  const pw = (d.w.party || [])[0], date = fmtDate(d.w.date, { wd: true }) + (pw ? ` · with ${String(pw.n || 'a friend').split(' ')[0]}${pw.v ? ` ${dvol(pw.v)} ${U()}` : ''}${d.w.party.length > 1 ? ` +${d.w.party.length - 1}` : ''}` : ''), split = d.w.splitName || 'Workout';
+  if (team) { // team-up card: one row per person, top lifter marked
+    lifts.splice(0, lifts.length, ...team.rows.slice(0, 5).map((r, i) => ({ name: r.n, txt: `${dvol(r.v)} ${U()} · ${Math.round(r.v / team.tot * 100)}%`, pr: i === 0, tag: 'MVP', vol: r.v })));
+    const vi = stats.findIndex(x => x[2] === 'vol'); if (vi >= 0) stats[vi] = [dvol(team.tot), U() + ' as a team', 'vol']; }
+  const pw = (d.w.party || [])[0], date = fmtDate(d.w.date, { wd: true }) + (pw && !team ? ` · with ${String(pw.n || 'a friend').split(' ')[0]}${pw.v ? ` ${dvol(pw.v)} ${U()}` : ''}${d.w.party.length > 1 ? ` +${d.w.party.length - 1}` : ''}` : ''), split = d.w.splitName || 'Workout';
   const icon = HOSTED ? await img('icons/apple-touch-icon.png?v=7') : null;
   const mark = (x, y, col, s = 1) => { let x0 = x; if (icon) { g.save(); RR(x, y - 44 * s, 56 * s, 56 * s, 14 * s); g.clip(); g.drawImage(icon, x, y - 44 * s, 56 * s, 56 * s); g.restore(); x0 = x + 72 * s; } g.fillStyle = col; g.font = F(800, 32 * s); g.fillText(sp('Job’s Done', 0), x0, y); };
   let OY = (H - CH) / 2;
@@ -4679,12 +4728,12 @@ async function drawShare(d, o = shareOpts(d)) {
       g.fillStyle = hot ? RED : '#fff'; g.textAlign = 'right'; g.fillText(b, W - 72, y + 2); g.textAlign = 'left'; y += 54; };
     row('OPERATION', fit(split, 22)); stats.forEach(s => row(s[1].toUpperCase().replace(' LIFTED', ' MOVED'), s[0], hotStat(s)));
     g.letterSpacing = '0px'; g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `italic 600 32px ${SANS}`; y += 4 + (wrap(heavy, 72, y, W - 144, 42) - 1) * 42 + 30;
-    if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp('LIFTS', 4), 72, y + 8); y += 64;
+    if (lifts.length) { y += 26; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); g.font = F(700, 26, MONO); g.fillText(sp(team ? 'OPERATIVES' : 'LIFTS', 4), 72, y + 8); y += 64;
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 5)) {
       if (y > CH - 120) break;
       g.fillStyle = '#fff'; g.font = F(700, 36); g.fillText(sp(fit(r.name, 22), 0), 72, y);
       g.textAlign = 'right'; g.font = F(700, 34, MONO); g.fillStyle = r.pr ? RED : 'rgba(255,255,255,.8)'; g.fillText(sp(fit(r.txt, 16), 0), W - (r.pr ? 230 : 72), y);
-      if (r.pr) { g.strokeStyle = RED; g.lineWidth = 3; RR(W - 214, y - 34, 142, 46, 6); g.stroke(); g.fillStyle = RED; g.font = F(800, 22, MONO); g.textAlign = 'center'; g.fillText(sp('NEW RECORD', 1), W - 143, y - 3); }
+      if (r.pr) { g.strokeStyle = RED; g.lineWidth = 3; RR(W - 214, y - 34, 142, 46, 6); g.stroke(); g.fillStyle = RED; g.font = F(800, 22, MONO); g.textAlign = 'center'; g.fillText(sp(r.tag ? 'TOP AGENT' : 'NEW RECORD', 1), W - 143, y - 3); }
       g.textAlign = 'left'; y += 58;
     } } else if (FILL !== 'shrink') { y += 40; g.fillStyle = RED; g.fillRect(72, y - 38, W - 144, 3); fillIn(72, y + 8, W - 144, CH - 110 - y, { title: 'AREAS ENGAGED', ink: '#fff', dim: RED, bar: RED, track: 'rgba(255,255,255,.14)', mono: true }); }
     g.letterSpacing = '0px'; mark(72, CH - 56, 'rgba(255,255,255,.7)', .8);
@@ -4721,7 +4770,7 @@ async function drawShare(d, o = shareOpts(d)) {
     for (const r of lifts.sort((a, b) => b.pr - a.pr).slice(0, 3)) {
       g.letterSpacing = '0px'; g.fillStyle = 'rgba(13,26,69,.85)'; RR(56, y - 50, W - 112, 72, 12); g.fill(); g.strokeStyle = r.pr ? RED : 'rgba(255,255,255,.18)'; g.lineWidth = 3; g.stroke();
       g.fillStyle = '#fff'; g.font = F(700, 34); g.fillText(fit(r.name, 24), 88, y); g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 18), W - (r.pr ? 180 : 88), y);
-      if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText('PR', W - 128, y - 6); }
+      if (r.pr) { hex(W - 128, y - 14, 34); g.fillStyle = RED; g.fill(); g.fillStyle = '#fff'; g.font = F(900, 22); g.textAlign = 'center'; g.fillText(r.tag || 'PR', W - 128, y - 6); }
       g.textAlign = 'left'; y += 78;
     }
     g.fillStyle = 'rgba(255,255,255,.6)'; g.font = F(600, 26); g.fillText(sp(`Job’s Done! ${INVITE.spidey} at ${APP_URL}`, 0), 72, CH - 48); g.restore();
@@ -4760,7 +4809,7 @@ async function drawShare(d, o = shareOpts(d)) {
     if (!lifts.length && FILL !== 'shrink') { g.fillStyle = CARD; RR(px, y - 52, pw, CH - 60 - (y - 52), 28); g.fill(); fillIn(px + 36, y, pw - 72, CH - 100 - y, { title: 'TERRAIN COVERED', ink: INK, dim: INK2, bar: night ? '#9CC4E8' : '#1F7A99', track: night ? 'rgba(255,255,255,.15)' : 'rgba(18,48,74,.12)' }); }
     lifts.slice(0, 3).forEach((r, i) => { g.fillStyle = CARD; RR(px, y - 44, pw, 64, 20); g.fill(); g.fillStyle = INK; g.font = F(800, 24); g.beginPath(); g.arc(px + 40, y - 12, 18, 0, 7); g.fill();
       g.fillStyle = night ? '#0E1828' : '#fff'; g.textAlign = 'center'; g.fillText(String(i + 1), px + 40, y - 3); g.textAlign = 'left'; g.fillStyle = INK; g.font = F(700, 30); g.fillText(fit(r.name, 26), px + 76, y);
-      g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? 'PR  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 70; });
+      g.textAlign = 'right'; g.font = F(800, 30); g.fillText((r.pr ? (r.tag || 'PR') + '  ' : '') + fit(r.txt, 18), px + pw - 32, y); g.textAlign = 'left'; y += 70; });
     g.fillStyle = INK2; g.font = F(600, 24); g.textAlign = 'center'; g.fillText(`Job’s Done! ${INVITE.cliffs} at ${APP_URL}`, W / 2, CH - 26); g.textAlign = 'left'; g.restore();
   } else {
     // Boulder: a route tag taped to the chalk wall
@@ -4828,10 +4877,10 @@ async function drawShare(d, o = shareOpts(d)) {
     const HC = { time: '#E7E0F7', vol: '#DDEBF7', sets: '#E3F1E6', prs: '#FFF1CF' };
     if (stats.length) y += 120; stats.forEach(([a, b, key], i) => { const x = L + 95 + (1.5 + i - (stats.length - 1) / 2) * 196; hold(x, y, 84, key === 'prs' && d.prs.length ? MUS : HC[key], i + 5);
       g.fillStyle = INK; g.textAlign = 'center'; g.letterSpacing = '0px'; g.font = F(900, a.length > 6 ? 34 : 46); g.fillText(a, x, y + 10); g.fillStyle = INK2; g.font = F(800, 20); g.fillText(sp(b.toUpperCase(), 1), x, y + 112); g.textAlign = 'left'; });
-    y += stats.length ? 180 : 40; g.letterSpacing = '0px'; g.fillStyle = PUR; g.font = `italic 700 32px ${SANS}`; y += (wrap(heavy, L, y, TW - 120, 42) - 1) * 42 + 70; if (lifts.length) { g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp('PROBLEMS SENT', 4), L, y); } else fillIn(L, y, TW - 120, TH / 2 - 40 - y, { title: 'MUSCLES ON THE WALL', ink: INK, dim: INK2, bar: PUR, track: 'rgba(108,63,214,.14)' }); y += 64;
+    y += stats.length ? 180 : 40; g.letterSpacing = '0px'; g.fillStyle = PUR; g.font = `italic 700 32px ${SANS}`; y += (wrap(heavy, L, y, TW - 120, 42) - 1) * 42 + 70; if (lifts.length) { g.fillStyle = INK2; g.font = F(800, 24); g.fillText(sp(team ? 'THE CREW' : 'PROBLEMS SENT', 4), L, y); } else fillIn(L, y, TW - 120, TH / 2 - 40 - y, { title: 'MUSCLES ON THE WALL', ink: INK, dim: INK2, bar: PUR, track: 'rgba(108,63,214,.14)' }); y += 64;
     lifts.sort((a, b) => b.pr - a.pr).slice(0, 5).forEach((r, i) => { hold(L + 18, y - 12, 20, HOLDS[i % HOLDS.length], i + 2); g.letterSpacing = '0px'; g.fillStyle = INK; g.font = F(700, 34); g.fillText(fit(r.name, 22), L + 56, y);
       g.textAlign = 'right'; g.font = F(800, 34); g.fillText(fit(r.txt, 16), TW / 2 - (r.pr ? 170 : 60), y);
-      if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText('PR', TW / 2 - 105, y - 4); }
+      if (r.pr) { g.fillStyle = MUS; RR(TW / 2 - 150, y - 36, 90, 48, 24); g.fill(); g.fillStyle = INK; g.font = F(900, 24); g.textAlign = 'center'; g.fillText(r.tag || 'PR', TW / 2 - 105, y - 4); }
       g.textAlign = 'left'; y += 66; });
     // a little chalk on the card itself, from chalky hands
     CK = '150,138,126'; chalkMarks([[-TW / 2 + 70, TH / 2 - 60, 70, .34], [TW / 2 - 36, -TH / 2 + 260, 56, .3], [TW / 2 - 80, TH / 2 - 120, 50, .26]], [[TW / 2 - 210, TH / 2 - 44, 110, -.35, .5], [-TW / 2 + 40, -TH / 2 + 170, 90, .4, .45]]);
@@ -4844,7 +4893,7 @@ async function drawShare(d, o = shareOpts(d)) {
 }
 // The person picks what goes on their card (Job, 19 Oct). Hidden stats and lifts on/off are remembered; which lifts is per workout.
 const SHARE_MAX = { spidey: 3, cliffs: 3, 'mono-post': 3 }; // what each card really draws ('-post' = Post size only)
-function shareOpts(d) { const p = S.profile.share || {}; return { hide: p.hide || [], lifts: p.lifts !== false, story: !!p.story, pick: d.pick || null }; }
+function shareOpts(d) { const p = S.profile.share || {}; return { hide: p.hide || [], lifts: p.lifts !== false, story: !!p.story, pick: d.pick || null, team: !!d.team }; }
 function shareLiftNames(d) {
   const prn = new Set(d.prs.map(p => baseName(p.ex)));
   return mergeLR(d.w.ex.map(e => ({ name: e.name, sets: e.sets })), () => '').map(r => ({ name: r.name, pr: prn.has(baseName(r.name)) })).sort((a, b) => b.pr - a.pr);
@@ -4856,10 +4905,11 @@ function openShareSheet(d) {
   const STATS = [['time', d.dur ? 'Time' : 'Reps'], ['vol', U() + ' lifted'], ['sets', 'Sets'], ['prs', 'PRs']];
   const body = () => { const x = o(), max = maxOf(); d.pick = d.pick.slice(0, max); return `<div class="stack"><div><div class="eyebrow">Share your card</div><div class="mt1 cap">Pick what goes on it. The picture shows what your friends will see.</div></div>
     <div class="seg sh-seg">${[['', 'Post'], ['1', 'Story']].map(([v, t]) => `<button class="${!!v === x.story ? 'on' : ''}" data-sf="${v}">${t}</button>`).join('')}</div>
+    ${teamRows(d.w, d.vol) ? `<div class="seg sh-seg">${[['', 'Just me'], ['1', 'Team']].map(([v, t]) => `<button class="${!!v === !!d.team ? 'on' : ''}" data-st="${v}">${t}</button>`).join('')}</div>` : ''}
     <img class="sh-prev ${x.story ? 'story' : ''}" id="sh-prev" alt="Your share card">
     <div><div class="mb2 eyebrow">Stats</div><div class="chips sh-chips">${STATS.map(([k, t]) => `<button class="chip ${x.hide.includes(k) ? '' : 'on'}" data-sx="${k}">${esc(t)}</button>`).join('')}</div></div>
-    <div class="row between"><span class="eyebrow">Lifts</span><button class="xsw ${x.lifts ? 'on' : ''}" role="switch" aria-checked="${x.lifts}" data-sl="1" aria-label="Show lifts"></button></div>
-    ${x.lifts ? `<details class="sh-dd" ${d.ddOpen ? 'open' : ''}><summary class="row between"><span>Choose lifts</span><span class="cap">${d.pick.length} of ${max} picked<i class="sh-chev">${I.down}</i></span></summary><div class="list mt2">${all.map(r => { const on = d.pick.includes(r.name); return `<label class="li sh-li"><div class="grow"><div class="t">${esc(r.name)} ${r.pr ? '<span class="pill pr">PR</span>' : ''}</div></div><input type="checkbox" class="cbox" data-lp="${esc(r.name)}" ${on ? 'checked' : ''} ${!on && d.pick.length >= max ? 'disabled' : ''}></label>`; }).join('')}</div></details>` : ''}
+    ${d.team ? '' : `<div class="row between"><span class="eyebrow">Lifts</span><button class="xsw ${x.lifts ? 'on' : ''}" role="switch" aria-checked="${x.lifts}" data-sl="1" aria-label="Show lifts"></button></div>
+    ${x.lifts ? `<details class="sh-dd" ${d.ddOpen ? 'open' : ''}><summary class="row between"><span>Choose lifts</span><span class="cap">${d.pick.length} of ${max} picked<i class="sh-chev">${I.down}</i></span></summary><div class="list mt2">${all.map(r => { const on = d.pick.includes(r.name); return `<label class="li sh-li"><div class="grow"><div class="t">${esc(r.name)} ${r.pr ? '<span class="pill pr">PR</span>' : ''}</div></div><input type="checkbox" class="cbox" data-lp="${esc(r.name)}" ${on ? 'checked' : ''} ${!on && d.pick.length >= max ? 'disabled' : ''}></label>`; }).join('')}</div></details>` : ''}`}
     <button class="btn primary block" id="sh-go">Share</button></div>`; };
   let tok = 0;
   const paint = async b => { const t = ++tok; const c = await drawShare(d, o()); if (t !== tok) return; const im = b.querySelector('#sh-prev'); if (im) im.src = c.toDataURL('image/jpeg', .8); };
@@ -4870,6 +4920,7 @@ function openShareSheet(d) {
     b.addEventListener('click', e => {
       const sx = e.target.closest('[data-sx]'), sl = e.target.closest('[data-sl]');
       if (sx) { const p = S.profile.share = S.profile.share || {}, h = new Set(p.hide || []); h.has(sx.dataset.sx) ? h.delete(sx.dataset.sx) : h.add(sx.dataset.sx); p.hide = [...h]; save(); draw(b); }
+      else if (e.target.closest('[data-st]')) { d.team = !!e.target.closest('[data-st]').dataset.st; draw(b); }
       else if (e.target.closest('[data-sf]')) { const p = S.profile.share = S.profile.share || {}; p.story = !!e.target.closest('[data-sf]').dataset.sf; save(); draw(b); }
       else if (sl) { const p = S.profile.share = S.profile.share || {}; p.lifts = p.lifts === false; save(); draw(b); }
       else if (e.target.id === 'sh-go') { closeSheet(sh); shareRecap(d); }
@@ -6509,6 +6560,8 @@ const ACT = {
   partyCode: () => partyCodeSheet(),
   partySet: () => partySetSheet(),
   recoveryNew: () => confirmSheet({ title: 'Make a new recovery code?', body: 'Your old code stops working.', ok: 'Make new code', key: null, onOk: () => recoverySheet(false) }),
+  spotMe: () => { if (!A || !partyIds().length) return; if (Date.now() - (A.sm || 0) < 30000) return toast('Asked already. Give them a moment.'); A.sm = Date.now(); touchA(); statSync(); toast('Asked your party for a spot'); },
+  ptReact: el => { if (!A || !PT_RX.includes(el.dataset.k)) return; A.rx = { e: el.dataset.k, to: el.dataset.id, at: Date.now() }; touchA(); statSync(); toast(`Sent ${el.dataset.k}`); },
   partnerLeave: () => { try { localStorage.setItem('jd-ptleft', JSON.stringify(partyIds())); } catch (e) {} if (A) { delete A.party; delete A.partyHost; delete A.turns; delete A.turnSkip; touchA(); statSync(); } setPartyNext(null); openWk(); toast('Training on your own'); },
   partyAdd: () => partyAddSheet(),
   inbox: () => inboxSheet(),
