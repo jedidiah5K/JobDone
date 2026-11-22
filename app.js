@@ -1147,22 +1147,12 @@ function gymStart(c, focus, lifts) {
 // workout (nothing saved, no rest alerts) unless a workout is already open or they pick Start for real.
 let TOUR = null;
 const tq = (q, txt) => [...document.querySelectorAll(q)].find(e => !txt || e.textContent.includes(txt));
-const TOUR_STEPS = [
-  { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Next up', d: 'The next split in your rotation. After you train it, the one after moves up.' },
-  { tab: 'today', el: () => tq('#screen .wk-card'), t: 'Your week', d: 'Each day you train gets marked. Hit your weekly target to keep the streak going.' },
-  { tab: 'today', el: () => tq('#screen .bell-btn'), t: 'Notifications', d: 'Friend requests, party invites, and reactions and comments on your posts land here. The red number is how many are new.' },
+const TOUR_STEPS = [ // short on purpose (Job, 22 Nov): four stops, the intro already had them log a set
+  { tab: 'today', el: () => tq('#screen .card.nextup'), t: 'Your next workout', d: 'Your plan in order. Train this one and the next moves up.' },
+  { tab: 'today', el: () => tq('#screen .wk-card'), t: 'Your week', d: 'Every day you train gets marked. Hit your weekly target to keep the streak.' },
   { tab: 'friends', el: () => tq('#screen [data-a="partyAdd"]') || tq('#screen [data-a="frAddSheet"]'), t: () => tq('#screen [data-a="partyAdd"]') ? 'Train together' : 'Add friends',
-    d: () => tq('#screen [data-a="partyAdd"]') ? 'Pick up to 5 friends and start a party. They get a push and a Join button, you see each other’s sets live, and Take turns tells you whose set is next. Party settings has No rush, Same rest, Nudge and a party code.' : 'Swap codes or scan a QR to add a friend. Then you can train together, compare lifts and start a crew.' },
-  { tab: 'friends', el: () => tq('#screen .fr-faces'), t: 'Your friends', d: 'A green ring means they’re at the gym now. Tap a face to see their card, compare or nudge them.' },
-  { tab: 'me', el: () => tq('#screen [data-a="rewards"]'), t: 'Card and rewards', d: 'Your XP, card tier, passport stamps, lift cards and season. Share any of them as a Story.' },
-  { tab: 'me', el: () => { const x = tq('#screen [data-a="meGroup"]'); return x && x.parentElement; }, t: 'Settings', d: 'Rest time, sounds, theme, units, steps and backups. Help and about has this tour and What’s new.' },
-  { tab: 'today', el: () => tq('.tab-start'), t: 'Start a workout', d: 'Let’s try a sample workout. Nothing in it is saved.', pick: true },
-  { wk: true, el: () => tq('#row-0-0 [data-f="w"]'), t: 'Load the plates', d: 'Tap kg to open the plate loader, then tap plates to put them on the bar. Or tap Next and we’ll open it for you.', plates: true },
-  { wk: true, el: () => tq('#row-0-0 [data-f="r"]'), t: 'Then reps', d: 'Tap reps and put in how many you did. Then tick the set off with ✓.', go: () => { const s = A && A.ex[0] && A.ex[0].sets[0]; if (s && !s.done) { if (s.w == null) s.w = 20; if (s.r == null) s.r = 10; logSet(0, 0); } } },
-  { wk: true, el: () => tq('#wk [data-a="wkSettings"]'), t: 'Workout settings', d: 'The gear has invite friends, Big view, text size and targets. Turn your phone sideways for Big view too.' },
-  { wk: true, el: () => tq('#wk [data-a="finish"]'), t: 'Finish', d: 'When you’re done, tap Finish.', go: () => { if (A) { A.view = 'summary'; touchA(); } } },
-  { el: () => tq('#wk [data-a="saveWk"]'), t: 'Save workout', d: 'Check your sets and tap Save workout. This one is practice, so nothing is kept.', go: () => saveWorkout() },
-  { el: () => tq('#recap #rc-done'), t: 'Post to feed', d: 'Tap Post to put your workout in your friends’ feed. You can even add a photo straight from your camera.', last: true },
+    d: () => tq('#screen [data-a="partyAdd"]') ? 'Start a party and see each other’s sets live.' : 'Add a friend with a code or QR. You’ll see when they train and can train together.' },
+  { tab: 'today', el: () => tq('.tab-start'), t: 'Start', d: 'At the gym, tap here. Your next workout opens with the weights to beat.', last: true },
 ];
 let PRACTICE_W = null; // the sample workout's finish page; kept in memory only, removed when the tour ends
 function tourGo() {
@@ -1231,9 +1221,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v209';
+const NEWS_ID = '2026-11-v210';
 // Only the big things (Job, 15 Nov): a long list nobody reads.
 const NEWS = [
+  ['Shorter tour', 'The tour is down to four stops. New people now log their first set during sign-up instead.'],
   ['Sign-up check', 'New accounts get a quick, mostly invisible check that keeps bots out. New people also get a few friendly nudges in their first two weeks if they go quiet, and can turn them off in Settings.'],
   ['Party extras', 'Send a 👊 or 🔥 to a friend, ask for a spot, and see their rest count down. If a friend just did the lift you’re on, their set shows under it, with a heads-up when you can leave the plates on. If whoever started the party leaves, someone else takes over.'],
   ['Target line off', 'The “Target:” line under each lift is off now. Turn it back on in Settings → Workouts.'],
@@ -6046,10 +6037,10 @@ TEMPLATES.pplul.s = [...TEMPLATES.ppl.s, ...TEMPLATES.ul.s];
 // First sign-in for new people: a short, required intro (Job, 15 Oct). Home Screen first, then what Job’s Done does,
 // then the few things it needs: you, your goal, your experience, a look, a plan.
 let OB = null;
-const OB_NAMES = { hook: 'Start', block: 'What gets in the way', account: 'Save your plan', move: 'Moving from another app', tour: 'What you get', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', where: 'Where you train', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
+const OB_NAMES = { hook: 'Start', block: 'What gets in the way', account: 'Save your plan', move: 'Moving from another app', tour: 'What you get', try: 'Try it', you: 'About you', goal: 'Your goal', days: 'Training days', exp: 'Experience', where: 'Where you train', theme: 'Your look', prefs: 'Sounds and alerts', train: 'Training defaults', plan: 'Your plan' };
 // Nov 2026 (Job): open with the problem, ask, build the plan, and ask for the account last. Signed-in people (tester, an account with no data yet) skip the account step.
 const obNeedAccount = () => HOSTED && !USER && !DEMO;
-const obSteps = () => ['hook', 'you', 'days', 'exp', 'where', 'block', 'train', 'plan', 'theme', 'prefs', 'tour', ...(obNeedAccount() ? ['account'] : [])];
+const obSteps = () => ['hook', 'you', 'days', 'exp', 'where', 'block', 'train', 'plan', 'try', 'theme', 'prefs', ...(obNeedAccount() ? ['account'] : [])];
 let OB_STEPS = []; // set by renderWelcomePublic; moving from another app is part of the plan step
 const OB_BLOCK = { next: ['Not knowing what to do next', 'Every set shows the weight and reps to beat', 'Targets on every set'], progress: ['Not seeing progress', 'PRs and charts show each lift going up', 'PRs and charts for every lift'], habit: ['Showing up every week', 'A weekly goal, streaks and friends who see you train', 'A weekly goal and streaks'], start: ['Not sure where to start', 'A plan built for your days and experience', 'A plan you can start today'] };
 // The answers live on this phone until the account exists, so closing Safari halfway doesn't lose them.
@@ -6149,6 +6140,15 @@ function obBody(k) {
   if (k === 'hook') return `<div class="ob-hero ob-hook"><div class="row g2 wm-row"><div class="wordmark">Job’s <span>Done</span></div><span class="beta-pill">Early beta</span></div><h1>Stop guessing what to do at the gym</h1><p>Answer a few questions and get a plan that fits your week. Every session shows what to lift and when to go heavier.</p>
     <div class="ob-mock ob-shot"><img src="ob/log.webp" alt="A lift with last time’s numbers and today’s targets" decoding="async"></div></div>`;
   if (k === 'tour') return `<h1 class="ob-t">Here’s what you get</h1>${obTour()}`;
+  if (k === 'try') { // the first lift of their new plan, logged for real in two taps (nothing is saved)
+    const pd = obPlanDef(OB.plan || obPlan()), sp = (pd.s || [])[0] || ['Workout', ['Chest Fly']], lift = sp[1][0];
+    const [, , lo, hi] = OB_EXP[OB.exp] || OB_EXP.some, kg = OB.unit === 'lb' ? 45 : 20, step = OB.unit === 'lb' ? 5 : 2.5, u = OB.unit === 'lb' ? 'lb' : 'kg';
+    const t = OB.tried || 0, row = i => `<div class="ob-tr${i < t ? ' done' : ''}"><span class="num">${i + 1}</span><b class="num">${kg}</b><b class="num">${hi}</b><button class="ob-tick" data-try="${i}" aria-label="Log set ${i + 1}" aria-pressed="${i < t}" ${i === t ? '' : 'disabled'}>${I.check}</button></div>`;
+    return `<h1 class="ob-t">${t ? t >= 3 ? 'That’s the whole lift' : 'Nice. Again.' : 'Log your first set'}</h1><p class="sec ob-s">${t ? 'Two taps a set. The rest timer starts by itself.' : 'Your plan starts with ' + esc(sp[0]) + '. Tap ✓ when the set is done.'}</p>
+    <div class="ob-try"><div class="ob-try-h"><span class="eyebrow">${esc(sp[0])} · lift 1</span><b>${esc(lift)}</b></div><div class="ob-tr ob-tr-h"><span>Set</span><span>${u}</span><span>Reps</span><span></span></div>${[0, 1, 2].map(row).join('')}
+    ${t ? `<div class="ob-try-r" role="status"><span class="cap">Rest</span><b class="num">2:00</b></div>` : ''}
+    ${t >= 3 ? `<div class="ob-try-n"><span class="eyebrow">Next time</span><b class="num">${kg + step} ${u} × ${lo}</b><span class="cap">You hit ${hi} reps on every set, so the weight goes up.</span></div>` : ''}</div>`;
+  }
   if (k === 'block') return `<h1 class="ob-t">What gets in the way most?</h1><p class="sec ob-s">Pick the one that sounds most like you.</p>
     <div class="tmpl">${Object.entries(OB_BLOCK).map(([b, [n, d]]) => `<button data-block="${b}" class="${OB.block === b ? 'on' : ''}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`;
   if (k === 'account') return `<h1 class="ob-t">Save your plan</h1><p class="sec ob-s">Your plan is ready${OB.name ? ', ' + esc(OB.name) : ''}. Create your account so it and every set you log are saved, on any phone you sign in on.</p>
@@ -6249,6 +6249,7 @@ function renderWelcomePublic() {
   qa('#app input').forEach(i => i.addEventListener('input', () => { const e = q('#ob-err'); if (e) e.textContent = ''; }));
   const hv = q('#ob-have'); if (hv) hv.onclick = () => renderSignIn('start');
   qa('[data-block]').forEach(b => b.onclick = () => { OB.block = b.dataset.block; renderWelcomePublic(); });
+  qa('[data-try]').forEach(b => b.onclick = () => { OB.tried = (OB.tried || 0) + 1; try { SOUNDS.rest(); } catch (e) {} buzz(20); renderWelcomePublic(); });
   const ey = q('#ob-eye'); if (ey) ey.onclick = () => { const pw = q('#ob-pw'), show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; ey.textContent = show ? 'Hide' : 'Show'; ey.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); };
   qa('[data-unit]').forEach(b => b.onclick = () => { keep(); OB.unit = b.dataset.unit; renderWelcomePublic(); });
   qa('[data-goal]').forEach(b => b.onclick = () => { OB.goal = b.dataset.goal; if (OB.goal === 'strength' && OB.exp !== 'new') OB.exp = 'pro'; renderWelcomePublic(); });

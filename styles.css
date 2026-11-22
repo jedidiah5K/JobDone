@@ -2482,3 +2482,25 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .po-team .pill { font-style: normal; margin-left: 4px; }
 #ts-box { position: fixed; z-index: 400; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); transform: translateX(-50%); }
 #ts-box:empty { display: none; }
+/* Intro "Try it" step (v210): the first lift of their plan, logged in two taps */
+.ob-try { background: var(--surface-solid, var(--surface)); border-radius: 22px; padding: var(--s4); display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 0 1px var(--edge); }
+.ob-try-h { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+.ob-try-h b { font-size: 20px; }
+.ob-tr { display: grid; grid-template-columns: 44px 1fr 1fr 56px; align-items: center; min-height: 52px; border-radius: 12px; padding: 0 4px 0 12px; transition: background .2s; }
+.ob-tr b { font-size: 20px; text-align: center; }
+.ob-tr > span:first-child { color: var(--text2); }
+.ob-tr-h { min-height: 24px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+.ob-tr-h span { text-align: center; } .ob-tr-h span:first-child { text-align: left; }
+.ob-tr.done { background: color-mix(in srgb, var(--red, #E0303C) 16%, transparent); }
+.ob-tick { width: 48px; height: 44px; border-radius: 12px; border: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); transition: transform .15s, background .2s; }
+.ob-tick:not(:disabled) { background: var(--text); color: var(--bg); box-shadow: 0 0 0 0 color-mix(in srgb, var(--text) 40%, transparent); animation: ob-pulse 1.6s ease-out infinite; }
+.ob-tick:active { transform: scale(.92); }
+.ob-tick:disabled { opacity: .45; }
+.ob-tr.done .ob-tick { opacity: 1; background: var(--red, #E0303C); color: #fff; animation: none; }
+.ob-tick svg { width: 22px; height: 22px; }
+@keyframes ob-pulse { 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.ob-try-r { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 7%, transparent); }
+.ob-try-n { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding: 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--red, #E0303C); animation: ob-up .3s ease-out; }
+.ob-try-n b { font-size: 22px; }
+@keyframes ob-up { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .ob-tick:not(:disabled), .ob-try-n { animation: none; } }
