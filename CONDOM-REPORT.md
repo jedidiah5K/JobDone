@@ -9,13 +9,11 @@ Only harmless checks were run against the live site (headers, file paths). No re
 
 ## What would hurt first
 
-1. **Password reset doesn't sign out other phones** (Medium). If someone got into an account, resetting the password with the
-   recovery code doesn't kick them out.
-2. **Privacy page missed two services** (Medium, legal). Sentry (crash notes, since v198) and Cloudflare Turnstile (new in v209)
+1. **Privacy page missed two services** (Medium, legal). Sentry (crash notes, since v198) and Cloudflare Turnstile (new in v209)
    weren't listed. **Fixed in this run**: `web-src/privacy.html`, dated 22 Nov.
-3. **No leaked-password check** (Low). Supabase's leaked-password check is a paid-plan feature. Fine until launch spending starts.
+2. **No leaked-password check** (Low). Supabase's leaked-password check is a paid-plan feature. Fine until launch spending starts.
 
-Counts: Critical 0 · High 0 · Medium 2 (1 fixed) · Low 3.
+Counts: Critical 0 · High 0 · Medium 1 (fixed) · Low 3.
 
 ## The ten core checks
 
@@ -36,10 +34,9 @@ Login redirect check (SEC-AUTH-01): the app has no redirect-after-login paramete
 
 ## Other findings
 
-**SEC · Password reset keeps old sessions** · LIKELY · Medium
-Evidence: `supabase/functions/recover/index.ts:36` changes the password with `updateUserById` and never ends existing sessions.
-What could happen: someone already signed in on another phone stays signed in after the owner resets.
-Fix (Claude, needs a deploy): after the reset, delete that user's rows in `auth.sessions` through a service-role-only SQL function.
+**SEC · Password reset keeps old sessions** · CLEAR (dropped on re-check)
+First flagged because `recover/index.ts` only calls `updateUserById`. On re-check, the next call, `jobdone_recovery_used`
+(server only), runs `delete from auth.sessions where user_id = p_user`, so every phone is signed out after a reset.
 
 **LAW · Privacy page incomplete** · CONFIRMED → FIXED · Medium
 Evidence: no mention of Sentry or Cloudflare in `web-src/privacy.html` before this run.
@@ -74,4 +71,4 @@ Every security definer function line by line · full git-history secret scan (tr
 before handling data at scale).
 
 ## Waiting on Job
-- Yes or no to the session-revoke fix (Supabase deploy).
+- Nothing. Add `TURNSTILE_SECRET` in Supabase when you want the sign-up bot check on.
