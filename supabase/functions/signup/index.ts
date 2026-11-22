@@ -14,7 +14,7 @@ async function sha256hex(s: string) {
 const handle = async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
-  if (Number(req.headers.get('content-length') || 0) > 4000) return json(413, { error: 'Too much data' });
+  if (Number(req.headers.get('content-length') || 0) > 6000) return json(413, { error: 'Too much data' });
   let b: any = {};
   try { b = JSON.parse((await req.text()) || '{}'); } catch { return json(400, { error: 'Bad request' }); }
   const email = String(b.email || '').trim().toLowerCase(), password = String(b.password || ''), name = String(b.name || '').trim().slice(0, 40);
@@ -25,6 +25,13 @@ const handle = async (req: Request) => {
   if (!b.age) return json(400, { error: 'Please confirm you are 13 or older.' });
 
   const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+  // Cloudflare Turnstile: checked only once the TURNSTILE_SECRET secret is set in Supabase.
+  const tsSecret = Deno.env.get('TURNSTILE_SECRET');
+  if (tsSecret) {
+    const f = new FormData(); f.append('secret', tsSecret); f.append('response', String(b.ts || '').slice(0, 2048)); if (ip !== 'unknown') f.append('remoteip', ip);
+    const v = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: f }).then(r => r.json()).catch(() => ({ success: false }));
+    if (!v.success) return json(400, { error: 'We couldn’t check that you’re a person. Try again.' });
+  }
   const ipHash = await sha256hex('jd-signup:' + ip);
   const since = new Date(Date.now() - 3600e3).toISOString();
   const { count } = await db.from('jobdone_signup_log').select('*', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('at', since);

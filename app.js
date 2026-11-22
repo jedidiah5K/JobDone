@@ -820,6 +820,7 @@ function render() {
   addFromLink(); goShortcut();
   if (!ready) return;
   syncRestPush();
+  { const z = myTz(); if (z && S.profile.tz !== z && !DEMO) { S.profile.tz = z; persist('jd/meta'); } } // comeback nudges go out at 6 pm your time
   // Oct 2026: Job made Cliffs the default look; switch everyone over once, then their own pick sticks.
   // Oct 2026: Job removed the Miles theme; anyone on it moves to Cliffs.
   if (S && S.profile && S.profile.theme === 'miles') { S.profile.theme = 'cliffs'; persist('jd/meta'); }
@@ -1230,9 +1231,10 @@ function tourAuto() {
 // What's new (Job, 5 Nov): after an update, people who already train with the app get one sheet listing what changed.
 // Shown once per account (saved in the profile, so it syncs). Brand-new accounts skip it; they get the tour instead.
 // To announce the next update: change NEWS_ID and the NEWS lines.
-const NEWS_ID = '2026-11-v208';
+const NEWS_ID = '2026-11-v209';
 // Only the big things (Job, 15 Nov): a long list nobody reads.
 const NEWS = [
+  ['Sign-up check', 'New accounts get a quick, mostly invisible check that keeps bots out. New people also get a few friendly nudges in their first two weeks if they go quiet, and can turn them off in Settings.'],
   ['Party extras', 'Send a 👊 or 🔥 to a friend, ask for a spot, and see their rest count down. If a friend just did the lift you’re on, their set shows under it, with a heads-up when you can leave the plates on. If whoever started the party leaves, someone else takes over.'],
   ['Target line off', 'The “Target:” line under each lift is off now. Turn it back on in Settings → Workouts.'],
   ['Team card', 'After a party workout, pick Team on the share card to show everyone’s kg and who lifted most. Posts to your feed show the team too.'],
@@ -3093,6 +3095,7 @@ function meParts() {
     alerts: `
   <section><div class="sgh">Reminders</div><div class="sgrp">
     ${HOSTED ? remindRows(p) : ''}
+    ${HOSTED && pushReady() ? srow('Nudges in your first two weeks', swi(!p.noNudge, 'pset', 'data-f="noNudge"'), 'A ping now and then if you haven’t trained for a few days') : ''}
     ${srow('Daily weigh-in', swi(on('noWeighPrompt'), 'pset', 'data-f="noWeighPrompt"'), 'Asks once a day until you log a weight')}
   </div></section>
   <section><div class="sgh">Sounds</div><div class="sgrp">
@@ -6097,9 +6100,22 @@ function recoveryCheck() {
   RC_ASKED = true;
   gymRpc('jobdone_recovery_has').then(has => { if (has === false) recoverySheet(true); }).catch(() => { RC_ASKED = false; });
 }
+// Bot check on sign-up (Cloudflare Turnstile, free). Most people never see it; a suspicious browser gets one tap.
+// The site key is public. The server checks the token only once TURNSTILE_SECRET is set in Supabase.
+const TS_KEY = '0x4AAAAAAGA4CYzs6e_NfdC1';
+function tsToken() {
+  return new Promise(res => {
+    const done = t => { clearTimeout(to); const b = document.getElementById('ts-box'); if (b) b.innerHTML = ''; res(t || ''); }, to = setTimeout(() => done(''), 60000); // a minute to tap it if asked
+    const go = () => { try { let box = document.getElementById('ts-box'); if (!box) { box = document.createElement('div'); box.id = 'ts-box'; document.body.appendChild(box); }
+      box.innerHTML = ''; window.turnstile.render(box, { sitekey: TS_KEY, appearance: 'interaction-only', callback: done, 'error-callback': () => done(''), 'timeout-callback': () => done('') }); } catch (e) { done(''); } };
+    if (window.turnstile) return go();
+    const sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async = true; sc.onload = go; sc.onerror = () => done(''); document.head.appendChild(sc);
+  });
+}
 async function signUp(email, password, name, website, ms) {
   try {
-    const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name, age: true, website, ms }) });
+    const ts = await tsToken();
+    const r = await fetch(CFG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name, age: true, website, ms, ts }) });
     const j = await r.json().catch(() => ({}));
     return r.ok ? '' : j.error || 'Couldn’t create the account. Try again.';
   } catch (e) { return 'No connection. Check your connection and try again.'; }
