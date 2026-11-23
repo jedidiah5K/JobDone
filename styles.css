@@ -2531,3 +2531,6 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .gym-seg { flex-wrap: wrap; }
 .gym-seg button { flex: 1 1 auto; padding: 0 8px; }
 .gym-rem { gap: 10px; margin-top: 8px; padding: 8px 0 2px; border-top: 1px solid var(--line, rgba(127,127,127,.2)); }
+.uni-step { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.uni-t { min-width: 120px; text-align: center; font-size: calc(40px * var(--ts, 1)); font-weight: 700; letter-spacing: -.02em; }
+.uni-rec { text-align: center; margin-top: 6px; }

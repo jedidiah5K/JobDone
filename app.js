@@ -4388,15 +4388,23 @@ function tick() {
   }
 }
 // Asked the first time someone logs a left side (Job, 23 Nov). Working one side barely tires the other, so 30 s is the suggestion.
-const UNI_OPTS = [[0, 'No timer', 'Go straight to the other side'], [15, '15 seconds', ''], [30, '30 seconds', 'Recommended'], [60, '1 minute', ''], [90, '1:30', '']];
+const UNI_OPTS = [0, 15, 30, 45, 60, 75, 90, 120, 150, 180].map(v => [v]);
 function askUniRest() {
   if (!A || S.profile.uniRest != null) return;
-  const sh = openSheet(`<div class="exm"><h2 class="exm-h">Rest between sides?</h2><div class="cap">Working one side barely tires the other, so a short break is enough before your right side. Your normal ${esc(clock(S.profile.defaultRest || 120))} rest starts after the right side.</div>
-    <div class="mgrp mt3">${UNI_OPTS.map(([v, l, d]) => `<button class="mi eqp ${v === 30 ? 'on' : ''}" data-v="${v}"><span class="grow"><b>${l}</b>${d ? `<span class="cap">${d}</span>` : ''}</span></button>`).join('')}</div>
-    <div class="cap mt2">Change it later in Me → Workouts.</div></div>`, {
+  let v = 30;
+  const t = () => v ? clock(v) : 'No timer';
+  const sh = openSheet(`<div class="exm uni-ask"><h2 class="exm-h">Rest between sides</h2><div class="cap">Studies show training one side barely tires the other. Your left side keeps resting while your right side works, so a short break is enough. Your full ${esc(clock(S.profile.defaultRest || 120))} rest starts after the right side.</div>
+    <div class="uni-step mt3"><button class="rb-b" data-d="-15" aria-label="15 seconds less">−15</button><div class="uni-t num" aria-live="polite">${t()}</div><button class="rb-b" data-d="15" aria-label="15 seconds more">+15</button></div>
+    <div class="cap uni-rec">30 seconds is a good start. Go to 0 for no timer.</div>
+    <button class="btn block primary mt3" data-k="save">Use this</button><div class="cap mt2">Change it later in Me → Workouts.</div></div>`, {
     label: 'Rest between sides',
-    mount: b => { b.onclick = ev => { const x = ev.target.closest('[data-v]'); if (!x) return; const v = +x.dataset.v; S.profile.uniRest = v; persist('jd/meta'); closeSheet(sh);
-      if (A && v > 0 && !REST) { REST = { end: Date.now() + v * 1000, total: v, paused: false, min: false }; renderWorkout(); } }; },
+    mount: b => { b.onclick = ev => {
+      const d = ev.target.closest('[data-d]'); if (d) { v = Math.max(0, Math.min(180, v + +d.dataset.d)); b.querySelector('.uni-t').textContent = t(); return; }
+      if (!ev.target.closest('[data-k="save"]')) return;
+      S.profile.uniRest = v; persist('jd/meta'); closeSheet(sh);
+      // The 30 s timer is already running; move it to the picked time (0 stops it).
+      if (A && REST && !REST.paused) { const gone = Math.max(0, REST.total - restLeft()); if (!v || v <= gone) REST = null; else { REST.end = Date.now() + (v - gone) * 1000; REST.total = v; } renderWorkout(); }
+    }; },
   });
 }
 function logSet(ei, si) {
@@ -4409,7 +4417,7 @@ function logSet(ei, si) {
     let secs = partyRest() || restFor(e.name);
     // Between sides (Job, 23 Nov): after a left set whose right set is still to do, a short rest of its own (or none).
     const sd = sideOf(e.name), rx = sd === 'L' && A.ex.find(x => x.name === baseName(e.name) + ' (R)'), betweenSides = !!(rx && rx.sets[si] && !rx.sets[si].done) && !partyRest();
-    if (betweenSides) { if (S.profile.uniRest == null) { secs = 0; setTimeout(() => askUniRest(), 400); } else secs = S.profile.uniRest; }
+    if (betweenSides) { if (S.profile.uniRest == null) { secs = 30; setTimeout(() => askUniRest(), 400); } else secs = S.profile.uniRest; }
     const inSS = e.ss && A.ex[ei + 1];
     const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
     const tsNow = A.turns && turnState(); // taking turns: your friend's set is your rest, so no timer
