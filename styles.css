@@ -1658,6 +1658,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .mi svg { width: 22px; height: 22px; flex: none; fill: none; stroke: var(--text2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .mi-v { color: var(--muted); font-size: calc(15px * var(--ts, 1)); font-variant-numeric: tabular-nums; }
 .mi:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.wkm-h { display: flex; align-items: center; gap: 12px; } .wkm-h .lr-dot { flex: none; width: 10px; height: 10px; }
+.mi > svg:last-child:not(:first-child) { width: 16px; height: 16px; stroke: var(--muted); }
+.mi.wkm-rm { color: var(--neg); } .mi.wkm-rm svg, :root[data-theme] .mi.wkm-rm svg, :root:not([data-theme]) .mi.wkm-rm svg { stroke: var(--neg); }
 .mi.mi-rm { margin-top: 16px; justify-content: center; border-radius: 14px; background: var(--raised); color: var(--neg); font-weight: 600; }
 :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .mgrp, :root[data-theme="cliffs"]:not([data-tod="night"]):not([data-tod="dusk"]) .mi.mi-rm { background: #fff; }
 :root:not([data-theme]) .mgrp, :root:not([data-theme]) .mi.mi-rm { background: #fff; box-shadow: inset 0 0 0 1.5px #E7DFD3; }
@@ -2534,3 +2537,4 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .uni-step { display: flex; align-items: center; justify-content: center; gap: 18px; }
 .uni-t { min-width: 120px; text-align: center; font-size: calc(40px * var(--ts, 1)); font-weight: 700; letter-spacing: -.02em; }
 .uni-rec { text-align: center; margin-top: 6px; }
+:root[data-theme="cliffs"][data-tod="dusk"] .mi.wkm-rm, :root[data-theme="cliffs"][data-tod="night"] .mi.wkm-rm { color: #FFB0A8; } :root[data-theme="cliffs"][data-tod="dusk"] .mi.wkm-rm svg, :root[data-theme="cliffs"][data-tod="night"] .mi.wkm-rm svg { stroke: #FFB0A8; }
