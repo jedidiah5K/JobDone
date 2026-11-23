@@ -2538,3 +2538,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .uni-t { min-width: 120px; text-align: center; font-size: calc(40px * var(--ts, 1)); font-weight: 700; letter-spacing: -.02em; }
 .uni-rec { text-align: center; margin-top: 6px; }
 :root[data-theme="cliffs"][data-tod="dusk"] .mi.wkm-rm, :root[data-theme="cliffs"][data-tod="night"] .mi.wkm-rm { color: #FFB0A8; } :root[data-theme="cliffs"][data-tod="dusk"] .mi.wkm-rm svg, :root[data-theme="cliffs"][data-tod="night"] .mi.wkm-rm svg { stroke: #FFB0A8; }
+
+/* Edit workout: Delete / Save stay on screen while scrolling (Job, 23 Nov) */
+.wk-bar { position: sticky; bottom: calc(var(--tabh) + env(safe-area-inset-bottom, 0px) + 16px); z-index: 4; display: flex; gap: var(--s2); padding: var(--s2); border-radius: 18px; background: var(--surface-solid, var(--raised)); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+.wk-bar .btn { margin: 0; }

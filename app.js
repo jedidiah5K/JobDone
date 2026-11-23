@@ -405,6 +405,14 @@ function renameLifts(st, act) {
   if (!st.profile.eqFix2) {
     st.profile.eqFix2 = 1; n++; st.customEx = (st.customEx || []).filter(e => e.name !== 'Leg Press'); st.customEx.push({ name: 'Leg Press', muscle: 'Quads', equip: 'plate' });
   }
+  // 23 Nov (Job): Leg Press logged as the pin-loaded machine counts as plate-loaded too.
+  if (!st.profile.eqFix3) {
+    st.profile.eqFix3 = 1; n++;
+    const lp = e => { if (e && e.name && liftName(e.name) === 'Leg Press' && eqOf(e.name) === 'machine') e.name = withEq(e.name, 'plate'); };
+    for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(lp);
+    if (act) (act.ex || []).forEach(lp);
+    if (st.profile.eqLast && st.profile.eqLast['Leg Press'] === 'machine') delete st.profile.eqLast['Leg Press'];
+  }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(plain);
@@ -3100,7 +3108,7 @@ function viewWorkout(v) {
   <div class="pt0 top"><div><div class="eyebrow">${esc(fmtDate(w.date, { wd: true, y: true }))}${w.src === 'import' ? ' · imported' : ''}</div><h1>${esc(w.splitName || 'Workout')}</h1></div></div>
   ${ed ? `<div class="grid2"><div class="field"><label for="wk-date">Date</label><input class="input" type="date" id="wk-date" data-in="wkDate" value="${w.date}"></div><div class="field"><label for="wk-split">Split</label><select class="input" id="wk-split" data-in="wkSplit">${S.splits.map(s => `<option value="${s.id}" ${wSplit(w) === s ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div></div>` : ''}
   ${w.skipped ? `<div class="card"><div class="empty">This session was skipped.</div></div>` : `<div class="card"><div class="kpis"><div class="kpi"><b>${dvol(wVol(w))}</b><span>${U()} volume</span></div><div class="kpi"><b>${wSets(w)}</b><span>sets</span></div><div class="kpi"><b>${w.end && w.start ? fmtDur(w.end - w.start) : '—'}</b><span>duration</span></div></div>${w.energy ? `<div class="mt3 cap">Energy ${w.energy}/5</div>` : ''}${w.note ? `<div class="mt3 note">${esc(w.note)}</div>` : ''}</div>`}
-  ${w.ex.map((e, ei) => `<div class="card tight"><div class="row between"><button class="f17 ex-name" data-a="openEx" data-name="${esc(e.name)}">${esc(e.name)}</button>${pr.has(e.name) ? `<span class="pill pr">PR · ${esc(pr.get(e.name).types[0])}</span>` : ''}</div>
+  ${w.ex.map((e, ei) => `<div class="card tight"><div class="row between"><button class="f17 ex-name" data-a="openEx" data-name="${esc(e.name)}">${esc(ed ? liftName(e.name) + (sideOf(e.name) ? ` (${sideOf(e.name)})` : '') : e.name)}</button>${pr.has(e.name) ? `<span class="pill pr">PR · ${esc(pr.get(e.name).types[0])}</span>` : ''}</div>
     ${ed ? `<button class="eq-chip" data-a="wkEq" data-e="${ei}">${esc(eqLine(e.name))} ▾</button>` : ''}
     ${e.note ? `<div class="mt1 cap">${esc(e.note)}</div>` : ''}
     ${ed ? `<div class="g2 mt2 stack">${e.sets.map((s, si) => `<div class="g2 row"><span class="cap" style="width:22px">${si + 1}</span><input class="input sm num" style="width:84px" inputmode="decimal" id="ws-${ei}-${si}-w" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="w" value="${s.w == null ? '' : dw(s.w)}" aria-label="Weight"><span class="cap">${U()} ×</span><input class="input sm num" style="width:60px" inputmode="numeric" id="ws-${ei}-${si}-r" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="r" value="${s.r == null ? '' : s.r}" aria-label="Reps"><button class="icon-btn" data-a="wsDel" data-e="${ei}" data-s="${si}" aria-label="Delete set">${I.x}</button></div>`).join('')}<div class="row between"><button class="link cap" data-a="wkAddSet" data-e="${ei}">+ Add set</button><button class="link cap c-neg" data-a="wkRmEx" data-e="${ei}">Remove lift</button></div></div>`
@@ -3108,7 +3116,7 @@ function viewWorkout(v) {
   </div>`).join('')}
   ${ed ? `<button class="btn block" data-a="wkAddLift">Add exercise</button><div class="field"><label for="wk-dur">Duration in minutes</label><input class="input num" inputmode="numeric" id="wk-dur" data-in="wkDur" value="${w.end && w.start ? Math.round((w.end - w.start) / 6e4) : ''}"></div>` : ''}
   ${ed ? `<div class="field"><label for="wk-note">Note</label><textarea class="input" id="wk-note" data-in="wkNote">${esc(w.note || '')}</textarea></div>` : ''}
-  <button class="btn block danger" data-a="wkDelete">Delete this workout</button>
+  ${ed ? `<div class="wk-bar"><button class="btn danger" data-a="wkDelete">Delete</button><button class="btn primary grow" data-a="wkEdit">Save workout</button></div>` : `<button class="btn block danger" data-a="wkDelete">Delete this workout</button>`}
 </div>`;
 }
 
@@ -6693,7 +6701,7 @@ const ACT = {
   spDelete: el => { const sp = splitById(el.dataset.id); if (!sp) return; if (A && A.splitId === sp.id) return toast('Finish or discard the workout using this split first.');
     { const was = S.splits.slice(), rot = S.rotation.slice(); S.splits = S.splits.filter(x => x.id !== sp.id); S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(esc(sp.name) + ' deleted', 0, () => { S.splits = was; S.rotation = rot; persist('jd/meta'); render(); toast(esc(sp.name) + ' restored'); }); } },
   spArchive: el => { const sp = splitById(el.dataset.id); sp.archived = !sp.archived; if (sp.archived) S.rotation = S.rotation.filter(x => x !== sp.id); persist('jd/meta'); NAV.stack = []; render(); toast(sp.archived ? sp.name + ' archived' : sp.name + ' restored'); },
-  wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); },
+  wkEdit: () => { const t = NAV.stack[NAV.stack.length - 1]; t.edit = !t.edit; rerender(); if (!t.edit) toast('Workout saved', 2000); },
   wsDel: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const e = w.ex[+el.dataset.e]; e.sets.splice(+el.dataset.s, 1); if (!e.sets.length) w.ex.splice(+el.dataset.e, 1); invalidate(); persist(monthPath(w.date)); rerender(); },
   // Today's session ⋯ (Job, 8 Nov): delete a test workout straight from the Today screen
   lastMenu: el => { const id = el.dataset.id, w = S.workouts[id]; if (!w) return;
