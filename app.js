@@ -70,6 +70,8 @@ Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:
 // "Incline Press (Smith)", "Incline Press (Smith) (L)". The plain name is the lift's usual equipment, so old history stays put.
 // Plate-loaded vs pin-stack machines (Job, 23 Nov): the same lift on each keeps its own numbers.
 const EQ_LBL = { machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
+// What people read: the name tag stays short, the label says it in full.
+const eqTxt = q => ({ plate: 'Plate-loaded machine' })[q] || EQ_LBL[q];
 const VAR_RE = /\s*\((Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
 const libEx = n => LIB.find(e => e.name === n) || (VAR_RE.test(n) ? LIB.find(e => e.name === n.replace(VAR_RE, '')) : undefined);
 const liftName = n => n.replace(/\s*\((L|R)\)$/, '').replace(VAR_RE, '');
@@ -3041,7 +3043,7 @@ function viewExercise(v) {
   const info = exInfo(b);
   return `<div class="stack">${backBtn()}
   ${hasVariants(b) ? `<div class="pt0 top"><div><div class="mh28 eyebrow">${esc(info.muscle)}</div><h1>${esc(liftName(b))}</h1></div></div>
-  ${eqMain(b, h).length < 2 ? '' : `<div class="seg eq-seg" role="group" aria-label="Equipment">${eqMain(b, h).map(q => { const n = withEq(b, q); return `<button class="${info.equip === q ? 'on' : ''}" data-a="exVar" data-k="${esc(n)}" aria-pressed="${info.equip === q}">${esc(EQ_LBL[q])}${h[n] || h[n + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`; }).join('')}</div>`}` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
+  ${eqMain(b, h).length < 2 ? '' : `<div class="seg eq-seg" role="group" aria-label="Equipment">${eqMain(b, h).map(q => { const n = withEq(b, q); return `<button class="${info.equip === q ? 'on' : ''}" data-a="exVar" data-k="${esc(n)}" aria-pressed="${info.equip === q}">${esc(eqTxt(q))}${h[n] || h[n + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`; }).join('')}</div>`}` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
   ${v.gym ? `<div class="seg gym-seg" role="group" aria-label="Gym">${gyms.map(g => `<button class="${v.gym === g ? 'on' : ''}" data-a="exGym" data-k="${esc(g)}" aria-pressed="${v.gym === g}">${esc(gymName(g))}</button>`).join('')}</div>` : ''}
   ${setupHTML(b)}${howtoHTML(main)}
@@ -4116,7 +4118,7 @@ function exCardHTML(e, ei) {
   // One ⋯ per card (review 2) so long names get the width; swap lives in the menu. The fold chevron shows once every set is in.
   const foldBtn = allDone || e.fold === true ? `<button class="icon-btn fold-btn ${fold ? 'shut' : ''}" data-a="foldEx" data-e="${ei}" aria-label="${fold ? 'Show sets' : 'Hide sets'}" aria-expanded="${!fold}">${I.down}</button>` : '';
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
-    ${uni === 'R' ? '' : `<div class="row between"><div class="grow">${hasVariants(e.name) ? '<div class="ex-nm">' : ''}<div class="ex-name">${esc(hasVariants(e.name) ? liftName(e.name) : uni ? baseName(e.name) : e.name)}</div>${hasVariants(e.name) ? `<button class="eq-chip" data-a="exEq" data-e="${ei}" aria-label="Equipment: ${esc(EQ_LBL[exInfo(e.name).equip] || '')}. Change">${esc(EQ_LBL[exInfo(e.name).equip] || 'Equipment')} <span aria-hidden="true">▾</span></button></div>` : ''}${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+    ${uni === 'R' ? '' : `<div class="row between"><div class="grow">${hasVariants(e.name) ? '<div class="ex-nm">' : ''}<div class="ex-name">${esc(hasVariants(e.name) ? liftName(e.name) : uni ? baseName(e.name) : e.name)}</div>${hasVariants(e.name) ? `<button class="eq-chip" data-a="exEq" data-e="${ei}" aria-label="Equipment: ${esc(eqTxt(exInfo(e.name).equip) || '')}. Change">${esc(eqTxt(exInfo(e.name).equip) || 'Equipment')} <span aria-hidden="true">▾</span></button></div>` : ''}${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
     ${setupHTML(e.name)}${GAME_ON ? ptLastSet(e) : ''}${sugg ? `<div class="tgt-line"><span class="ell">${esc(sugg)}</span>${infoBtn('target')}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
@@ -5875,7 +5877,7 @@ function openEqPick(ei) {
   const lift = liftName(e.name), cur = exInfo(e.name).equip, h = ix().hist;
   const lastOf = q => { const n = withEq(lift, q), c = [h[n], h[n + ' (L)']].filter(Boolean).map(x => x[x.length - 1]).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return c; };
   const mm = eqMain(e.name, h), main = mm.length > 1 || eqFit(e.name).length ? mm : Object.keys(EQ_LBL), more = Object.keys(EQ_LBL).filter(q => !main.includes(q));
-  const row = q => { const l = lastOf(q); return `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(EQ_LBL[q])}</b><span class="cap">${l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet'}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`; };
+  const row = q => { const l = lastOf(q); return `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(eqTxt(q))}</b><span class="cap">${l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet'}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`; };
   const rows = main.map(row).join('') + (more.length ? `<details class="eq-more"><summary class="mi">Other equipment</summary>${more.map(row).join('')}</details>` : '');
   const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history.</div><div class="mgrp mt3">${rows}</div>${S.profile.eqAsk ? `<button class="mt3 link cap" data-q="_ask">${S.profile.eqAsk === 'move' ? 'History moves with you when you switch.' : 'History stays put when you switch.'} Ask me each time</button>` : ''}</div>`, {
     label: 'Equipment',
@@ -5892,14 +5894,14 @@ function openEqPick(ei) {
         }
         S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [lift]: q }); persist('jd/meta');
         touchA();
-        if (moved) toast(`Moved ${plural(new Set(moved.map(m => m[0])).size, 'session')} to ${esc(EQ_LBL[q])}`, 0, () => { eqMoveBack(moved); toast('History moved back', 2500); });
-        else toast(esc(lift) + ': ' + esc(EQ_LBL[q]), 2500);
+        if (moved) toast(`Moved ${plural(new Set(moved.map(m => m[0])).size, 'session')} to ${esc(eqTxt(q))}`, 0, () => { eqMoveBack(moved); toast('History moved back', 2500); });
+        else toast(esc(lift) + ': ' + esc(eqTxt(q)), 2500);
       };
       // Ask once per switch whether the old equipment's history should come along (Job, 23 Nov). "Don't ask again" keeps the answer.
       const had = [h[withEq(lift, cur)], h[withEq(lift, cur) + ' (L)']].some(Boolean), ask = S.profile.eqAsk;
       if (!had || ask === 'keep') return go(null);
       if (ask === 'move') return go(eqMove(lift, cur, q));
-      const s2 = openSheet(`<div class="stack"><h2 class="exm-h">Move your ${esc(EQ_LBL[cur] || cur)} history to ${esc(EQ_LBL[q])}?</h2>
+      const s2 = openSheet(`<div class="stack"><h2 class="exm-h">Move your ${esc(eqTxt(cur) || cur)} history to ${esc(eqTxt(q))}?</h2>
         <p class="cap">Do this if you logged ${esc(lift)} on the wrong equipment. Otherwise keep them separate so each has its own numbers.</p>
         <button class="btn primary" data-k="move">Move it</button><button class="btn" data-k="keep">Keep separate</button>
         <label class="row between card tight"><span>Don’t ask again</span><input type="checkbox" id="eq-nomore" class="cbox"></label></div>`, {
