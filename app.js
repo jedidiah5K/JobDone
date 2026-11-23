@@ -71,7 +71,7 @@ Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:
 // Plate-loaded vs pin-stack machines (Job, 23 Nov): the same lift on each keeps its own numbers.
 const EQ_LBL = { machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
 // What people read: the name tag stays short, the label says it in full.
-const eqTxt = q => ({ plate: 'Plate-loaded machine' })[q] || EQ_LBL[q];
+const eqTxt = q => ({ machine: 'Pin-loaded machine', plate: 'Plate-loaded machine' })[q] || EQ_LBL[q];
 const VAR_RE = /\s*\((Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
 const libEx = n => LIB.find(e => e.name === n) || (VAR_RE.test(n) ? LIB.find(e => e.name === n.replace(VAR_RE, '')) : undefined);
 const liftName = n => n.replace(/\s*\((L|R)\)$/, '').replace(VAR_RE, '');
@@ -4280,6 +4280,8 @@ function clank(big = 1, delay = 0) {
 const GLOSSARY = [
   ['rpe', 'RPE (how hard a set felt)', 'A 6 to 10 score after a set. 10 means you could not have done another rep, 9 means one more was left, 8 means two were left, and 6 or 7 felt fairly easy. Most working sets land around 7 to 9. Turn it on or off in Me.'],
   ['ss', 'Superset', 'Two exercises done back to back. Rest starts after the second one, then you go back to the first. It saves time and works well for pairs like curls and pushdowns.'],
+  ['equip', 'Pin-loaded vs plate-loaded machine', 'A pin-loaded machine has a stack of weights you pick with a pin. A plate-loaded machine takes the same plates as a barbell. The same lift feels different on each, and on a Smith, barbell or dumbbells, so each one keeps its own history, PRs and previous numbers.'],
+  ['unirest', 'Rest between sides', 'Studies show training one side barely tires the other side, and your left side keeps resting while your right side works. So a short break of up to 30 seconds is enough between sides. Your full rest comes after the right side.'],
   ['e1rm', 'e1RM (estimated one-rep max)', 'The most you could likely lift for a single rep, worked out from a set you did. 80 kg for 8 reps works out to about 100 kg. It lets sets with different reps be compared fairly.'],
   ['volume', 'Volume', 'Weight × reps, added up across sets. 3 sets of 10 at 50 kg is 1,500 kg. Warm-up sets don’t count.'],
   ['pr', 'PRs (personal records)', 'You get at most one PR per exercise per workout, and left and right sides count as one lift. Heaviest: more weight than ever before. e1RM: your strongest set ever once reps are taken into account. Reps: more reps than ever at a weight you’ve lifted before.'],
@@ -4290,7 +4292,7 @@ const GLOSSARY = [
   ['estimated', 'Estimated weigh-ins', 'Weights filled in from your starting numbers, not actually weighed. They show as hollow points and never count toward badges.'],
 ];
 function openGlossary(focus) {
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">What the numbers mean</div><div class="gl">${GLOSSARY.map(([k, t, d]) => `<div class="gl-i ${k === focus ? 'on' : ''}" id="gl-${k}"><b>${esc(t)}</b><p>${esc(d)}</p></div>`).join('')}</div><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'What the numbers mean' });
+  const sh = openSheet(`<div class="stack"><div class="eyebrow">What the numbers mean</div><div class="gl">${GLOSSARY.map(([k, t, d]) => `<div class="gl-i ${k === focus ? 'on' : ''}" id="gl-${k}"><b>${esc(t)}</b><p>${esc(d)}</p></div>`).join('')}</div><button class="btn block" data-a="closeSheet">Done</button></div>`, { label: 'What the numbers mean', over: SHEETS.length > 0 });
   const el = sh.el.querySelector('#gl-' + focus); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 250);
 }
 const infoBtn = k => `<button class="info" data-a="glossary" data-k="${k}" aria-label="What does this mean?" title="What does this mean?">i</button>`;
@@ -4397,7 +4399,7 @@ function askUniRest() {
   if (!A || S.profile.uniRest != null) return;
   let v = 30;
   const t = () => v ? clock(v) : 'No timer';
-  const sh = openSheet(`<div class="exm uni-ask"><h2 class="exm-h">Rest between sides</h2><div class="cap">Studies show training one side barely tires the other. Your left side keeps resting while your right side works, so a short break is enough. Your full ${esc(clock(S.profile.defaultRest || 120))} rest starts after the right side.</div>
+  const sh = openSheet(`<div class="exm uni-ask"><h2 class="exm-h">Rest between sides ${infoBtn('unirest')}</h2><div class="cap">Studies show training one side barely tires the other. Your left side keeps resting while your right side works, so a short break is enough. Your full ${esc(clock(S.profile.defaultRest || 120))} rest starts after the right side.</div>
     <div class="uni-t num mt3" aria-live="polite">${t()}</div>
     <div class="rel"><div class="ruler" id="uni-dial" style="--tw:${UNI_D.px}px"><div class="ruler-in">${Array.from({ length: UNI_D.n }, (_, i) => { const m = (i * UNI_D.step) % 30 === 0; return `<i class="${m ? 'm' : ''}">${m ? `<b>${clock(i * UNI_D.step)}</b>` : ''}</i>`; }).join('')}</div></div><span class="ruler-mark"></span></div>
     <div class="cap uni-rec">30 seconds is a good start. Slide to 0:00 for no timer.</div>
@@ -5879,7 +5881,7 @@ function openEqPick(ei) {
   const mm = eqMain(e.name, h), main = mm.length > 1 || eqFit(e.name).length ? mm : Object.keys(EQ_LBL), more = Object.keys(EQ_LBL).filter(q => !main.includes(q));
   const row = q => { const l = lastOf(q); return `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(eqTxt(q))}</b><span class="cap">${l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet'}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`; };
   const rows = main.map(row).join('') + (more.length ? `<details class="eq-more"><summary class="mi">Other equipment</summary>${more.map(row).join('')}</details>` : '');
-  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history.</div><div class="mgrp mt3">${rows}</div>${S.profile.eqAsk ? `<button class="mt3 link cap" data-q="_ask">${S.profile.eqAsk === 'move' ? 'History moves with you when you switch.' : 'History stays put when you switch.'} Ask me each time</button>` : ''}</div>`, {
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history. ${infoBtn('equip')}</div><div class="mgrp mt3">${rows}</div>${S.profile.eqAsk ? `<button class="mt3 link cap" data-q="_ask">${S.profile.eqAsk === 'move' ? 'History moves with you when you switch.' : 'History stays put when you switch.'} Ask me each time</button>` : ''}</div>`, {
     label: 'Equipment',
     mount: b => { b.onclick = ev => {
       const x = ev.target.closest('[data-q]'); if (!x) return; const q = x.dataset.q; closeSheet(sh);
