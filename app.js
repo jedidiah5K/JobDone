@@ -697,6 +697,9 @@ function showUpdateBar() {
 }
 function openSheet(html, opts = {}) {
   const root = $('#sheets');
+  // One pop-up at a time (Job, 23 Nov): a new sheet closes what's on screen. Confirm boxes sit over the sheet that asked.
+  document.querySelectorAll('.toast, .cele').forEach(t => t.remove());
+  if (!opts.over) SHEETS.slice().forEach(x => closeSheet(x));
   const wrap = document.createElement('div'); wrap.className = 'sheet-wrap';
   wrap.innerHTML = `<div class="scrim" data-a="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(opts.label || 'Sheet')}"><div class="grab"></div><div class="sheet-body">${html}</div></div>`;
   root.appendChild(wrap);
@@ -839,7 +842,7 @@ function confirmSheet({ title, body = '', ok = 'Confirm', no = 'Cancel', danger 
   if (key && sk[key] === 'n') return;
   const sh = openSheet(`<div class="stack"><h2>${esc(title)}</h2>${body ? `<p class="m0 sec">${body}</p>` : ''}
     <button class="btn block ${danger ? 'danger-fill' : 'primary'}" id="cf-ok">${esc(ok)}</button><button class="btn block ghost" id="cf-no">${esc(no)}</button>
-    ${key ? `<label class="row cf-skip"><input type="checkbox" class="cbox" id="cf-skip"><span class="sec">Don’t ask again</span></label>` : ''}</div>`, { label: title });
+    ${key ? `<label class="row cf-skip"><input type="checkbox" class="cbox" id="cf-skip"><span class="sec">Don’t ask again</span></label>` : ''}</div>`, { label: title, over: true });
   const keep = v => { if (key && sh.el.querySelector('#cf-skip').checked) { S.profile.skipAsk = { ...S.profile.skipAsk, [key]: v }; persist('jd/meta'); } };
   sh.el.querySelector('#cf-ok').onclick = () => { keep('y'); closeSheet(sh); onOk(); };
   sh.el.querySelector('#cf-no').onclick = () => { if (noToo) keep('n'); closeSheet(sh); if (onNo) onNo(); };
@@ -3120,6 +3123,7 @@ function meParts() {
     workouts: `
   <section><div class="sgh">Workouts</div><div class="sgrp">
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
+    <label class="xr"><span class="grow">Rest between sides<span class="s">Left to right on one-side lifts</span></span><select class="xr-in" id="set-unirest" data-in="uniRest">${UNI_OPTS.map(([v, l]) => `<option value="${v}" ${v === (p.uniRest == null ? 30 : p.uniRest) ? 'selected' : ''}>${v ? clock(v) : 'No timer'}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
     ${p.noTargets ? '' : srow('Show the target line', swi(!!p.tgtLine, 'pset', 'data-f="tgtLine"'), 'A line under each lift saying what to aim for')}
     ${repRangeRow()}
@@ -4383,6 +4387,18 @@ function tick() {
     document.querySelectorAll('.restbar .hg-mini').forEach(hg => { if (REST.paused) return; const p = 1 - left / REST.total, r = hg.querySelectorAll('.hg-sand'); if (r.length === 2) { const top = 46 * (1 - p), bot = 46 * p; r[0].setAttribute('y', (58 - top).toFixed(1)); r[0].setAttribute('height', top.toFixed(1)); r[1].setAttribute('y', (108 - bot).toFixed(1)); r[1].setAttribute('height', bot.toFixed(1)); } else hg.innerHTML = hourglass(p, false); });
   }
 }
+// Asked the first time someone logs a left side (Job, 23 Nov). Working one side barely tires the other, so 30 s is the suggestion.
+const UNI_OPTS = [[0, 'No timer', 'Go straight to the other side'], [15, '15 seconds', ''], [30, '30 seconds', 'Recommended'], [60, '1 minute', ''], [90, '1:30', '']];
+function askUniRest() {
+  if (!A || S.profile.uniRest != null) return;
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">Rest between sides?</h2><div class="cap">Working one side barely tires the other, so a short break is enough before your right side. Your normal ${esc(clock(S.profile.defaultRest || 120))} rest starts after the right side.</div>
+    <div class="mgrp mt3">${UNI_OPTS.map(([v, l, d]) => `<button class="mi eqp ${v === 30 ? 'on' : ''}" data-v="${v}"><span class="grow"><b>${l}</b>${d ? `<span class="cap">${d}</span>` : ''}</span></button>`).join('')}</div>
+    <div class="cap mt2">Change it later in Me → Workouts.</div></div>`, {
+    label: 'Rest between sides',
+    mount: b => { b.onclick = ev => { const x = ev.target.closest('[data-v]'); if (!x) return; const v = +x.dataset.v; S.profile.uniRest = v; persist('jd/meta'); closeSheet(sh);
+      if (A && v > 0 && !REST) { REST = { end: Date.now() + v * 1000, total: v, paused: false, min: false }; renderWorkout(); } }; },
+  });
+}
 function logSet(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   if (!s.done && !s.r) { toast('Add your reps first.'); return; } // an empty set shouldn't count or start rest
@@ -4390,11 +4406,14 @@ function logSet(ei, si) {
   if (s.done) {
     buzz(10);
     const pr = livePR(e)[si];
-    const secs = partyRest() || restFor(e.name);
+    let secs = partyRest() || restFor(e.name);
+    // Between sides (Job, 23 Nov): after a left set whose right set is still to do, a short rest of its own (or none).
+    const sd = sideOf(e.name), rx = sd === 'L' && A.ex.find(x => x.name === baseName(e.name) + ' (R)'), betweenSides = !!(rx && rx.sets[si] && !rx.sets[si].done) && !partyRest();
+    if (betweenSides) { if (S.profile.uniRest == null) { secs = 0; setTimeout(() => askUniRest(), 400); } else secs = S.profile.uniRest; }
     const inSS = e.ss && A.ex[ei + 1];
     const left = A.ex.some(x => x.sets.some(y => !y.done)); // no rest after the very last set (Job, 19 Oct)
     const tsNow = A.turns && turnState(); // taking turns: your friend's set is your rest, so no timer
-    if (!left || (tsNow && tsNow.now) || noRush()) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
+    if (!left || (tsNow && tsNow.now) || noRush() || (betweenSides && !secs)) REST = null; else if (!S.profile.noAutoRest && !inSS) REST = { end: Date.now() + secs * 1000, total: secs, paused: false, min: false };
     A.rpeAsk = S.profile.rpe && s.t !== 'warm' ? [ei, si] : null;
     touchA(); snapMaybe();
     if (inSS) setTimeout(() => { if (!A) return; const el = $('#ex-' + (ei + 1)); if (el) el.scrollIntoView({ behavior: smooth(), block: 'start' }); }, 600);
@@ -6780,6 +6799,7 @@ const IN = {
   repR: el => { const r = (S.profile.repRange || [null, null]).slice(); r[+el.dataset.rr] = +el.value || null; const o = { lo: r[0], hi: r[1] }; fixRR(o, 'lo', 'hi'); S.profile.repRange = o.lo && o.hi ? [o.lo, o.hi] : o.lo || o.hi ? [o.lo, o.hi] : null; persist('jd/meta'); rerender(); },
   remindBag: el => { if (!S.profile.remind) return; const v = el.value.trim().replace(/\s+/g, ' ').slice(0, 60); if (v) S.profile.remind.bag = v; else delete S.profile.remind.bag; persist('jd/meta'); toast(v ? 'Your bag list comes with the reminder.' : 'Bag list removed'); },
   remindAt: el => { if (!/^\d\d:\d\d$/.test(el.value) || !S.profile.remind) return; S.profile.remind.at = el.value; S.profile.remind.tz = myTz(); persist('jd/meta'); toast('Reminder moved to ' + hm12(el.value) + '.'); },
+  uniRest: el => { S.profile.uniRest = +el.value; persist('jd/meta'); },
   prof: el => { const v = parseInt(el.value, 10); if (!isNaN(v) && v > 0) { S.profile[el.dataset.f] = v; persist('jd/meta'); } },
   wkDate: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return; const old = monthPath(w.date); w.date = el.value; if (old !== monthPath(w.date)) tomb(old, w.id); invalidate(); persist(old, monthPath(w.date)); rerender(); },
   wkSplit: el => { const t = NAV.stack[NAV.stack.length - 1], w = S.workouts[t.id]; const sp = splitById(el.value); w.splitId = sp.id; w.splitName = sp.name; invalidate(); persist(monthPath(w.date)); rerender(); },
