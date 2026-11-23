@@ -66,7 +66,18 @@ Leg Press:m;Leg Extension:m;Back Squat:b;Front Squat:b;Hack Squat:m;Smith Squat:
 Stiff-Leg Deadlift:bd;Romanian Deadlift:b;Dumbbell RDL:d;Leg Curl:m;Seated Leg Curl:m;Lying Leg Curl:m;Nordic Curl:w;Good Morning:bs;
 Hip Thrust:bms;Glute Bridge:bwd;Cable Kickback:c;Abductor:m;Glute Drive:m;Adductor:m;Copenhagen Plank:w;
 Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:m;Donkey Calf Raise:mw`.split(';').map(s => s.trim()).filter(Boolean).map(s => { const i = s.lastIndexOf(':'); return [s.slice(0, i), [...s.slice(i + 1)].map(c => EQ_CODE[c])]; }));
-const libEx = n => LIB.find(e => e.name === n);
+// Equipment variants (Job, 23 Nov): one lift, its own history per equipment. The name carries it like a side does:
+// "Incline Press (Smith)", "Incline Press (Smith) (L)". The plain name is the lift's usual equipment, so old history stays put.
+const EQ_LBL = { machine: 'Machine', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
+const VAR_RE = /\s*\((Machine|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
+const libEx = n => LIB.find(e => e.name === n) || (VAR_RE.test(n) ? LIB.find(e => e.name === n.replace(VAR_RE, '')) : undefined);
+const liftName = n => n.replace(/\s*\((L|R)\)$/, '').replace(VAR_RE, '');
+const eqOf = n => { const m = n.replace(/\s*\((L|R)\)$/, '').match(VAR_RE); return m ? m[1].toLowerCase() : null; };
+const eqDefault = n => { const l = liftName(n), c = (S.customEx || []).find(e => e.name === l), x = libEx(l); return x ? (c && eqOptions(l).includes(c.equip) ? c.equip : x.equip) : (c ? c.equip : 'other'); };
+const hasVariants = n => !!LIB.find(e => e.name === liftName(n)) && eqOptions(liftName(n)).length > 1;
+function withEq(n, eq) { const sd = sideOf(n), l = liftName(n); return (eq === eqDefault(l) || !EQ_LBL[eq] ? l : l + ' (' + EQ_LBL[eq] + ')') + (sd ? ' (' + sd + ')' : ''); }
+// A new workout picks the equipment you used last time for that lift.
+const eqPref = n => { const q = ((S.profile || {}).eqLast || {})[liftName(n)]; return q && !eqOf(n) && hasVariants(n) && eqOptions(liftName(n)).includes(q) ? withEq(n, q) : n; };
 const eqOptions = n => libEx(n) ? (EQ_OK[n] || [libEx(n).equip]) : EQUIP;
 const EQUIP = ['barbell', 'dumbbell', 'machine', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
@@ -90,10 +101,11 @@ const sideOf = n => (n.match(/\((L|R)\)$/) || [])[1] || null;
 // Job's existing Shortcut is called JobDone steps; everyone else gets the app's real name.
 const SC_NAME = () => S && S.profile && S.profile.owner ? 'JobDone steps' : 'Job’s Done steps';
 // Rest: one default in Me, with an optional override per exercise (from its ⋯ menu).
-const restFor = name => ((S.profile.restBy || {})[baseName(name)]) || S.profile.defaultRest || 120;
+const restFor = name => ((S.profile.restBy || {})[liftName(name)]) || S.profile.defaultRest || 120;
 const usesPlates = name => !['dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band'].includes(exInfo(name).equip);
 function exInfo(name) {
-  const b = baseName(name);
+  const b = baseName(name), v = eqOf(b);
+  if (v && LIB.find(e => e.name === liftName(b))) return { name: b, muscle: libEx(b).muscle, equip: v };
   const c = (S.customEx || []).find(e => e.name === b), l = libEx(b);
   if (l) return c && eqOptions(b).includes(c.equip) ? { name: b, muscle: l.muscle, equip: c.equip } : l;
   return c || { name: b, muscle: 'Other', equip: 'other' };
@@ -2989,7 +3001,8 @@ function viewExercise(v) {
   const histSessions = sel.flatMap(n => (h[n] || []).map(s => ({ ...s, n }))).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.n < b.n ? -1 : 1);
   const info = exInfo(b);
   return `<div class="stack">${backBtn()}
-  <div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>
+  ${hasVariants(b) ? `<div class="pt0 top"><div><div class="mh28 eyebrow">${esc(info.muscle)}</div><h1>${esc(liftName(b))}</h1></div></div>
+  <div class="seg eq-seg" role="group" aria-label="Equipment">${eqOptions(liftName(b)).filter(q => EQ_LBL[q]).map(q => { const n = withEq(b, q); return `<button class="${info.equip === q ? 'on' : ''}" data-a="exVar" data-k="${esc(n)}" aria-pressed="${info.equip === q}">${esc(EQ_LBL[q])}${h[n] || h[n + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`; }).join('')}</div>` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
   ${setupHTML(b)}${howtoHTML(main)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
@@ -3837,11 +3850,11 @@ function newExEntry(name, nSets, rest, tip, sp) {
 function startWorkout(splitId, date, practice) {
   if (A) { openWk(); return; }
   const sp = splitId ? splitById(splitId) : null;
-  A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(e.name, e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
+  A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(eqPref(e.name), e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
   if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) { A.party = PARTY_NEXT.slice(0, PARTY_MAX); A.partyHost = PARTY_HOST_NEXT || (USER && USER.id); PARTY_HOST_NEXT = null; A.turns = true; } }
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
-  if (!sp) pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); });
+  if (!sp) pickExercise(name => { A.ex.push(newExEntry(eqPref(name))); touchA(); });
 }
 // Tap a day: open what was logged that day, or log a workout for it.
 function openDay(d) {
@@ -4061,7 +4074,7 @@ function exCardHTML(e, ei) {
   // One ⋯ per card (review 2) so long names get the width; swap lives in the menu. The fold chevron shows once every set is in.
   const foldBtn = allDone || e.fold === true ? `<button class="icon-btn fold-btn ${fold ? 'shut' : ''}" data-a="foldEx" data-e="${ei}" aria-label="${fold ? 'Show sets' : 'Hide sets'}" aria-expanded="${!fold}">${I.down}</button>` : '';
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
-    ${uni === 'R' ? '' : `<div class="row between"><div class="grow"><div class="ex-name">${esc(uni ? baseName(e.name) : e.name)}</div>${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+    ${uni === 'R' ? '' : `<div class="row between"><div class="grow">${hasVariants(e.name) ? '<div class="ex-nm">' : ''}<div class="ex-name">${esc(hasVariants(e.name) ? liftName(e.name) : uni ? baseName(e.name) : e.name)}</div>${hasVariants(e.name) ? `<button class="eq-chip" data-a="exEq" data-e="${ei}" aria-label="Equipment: ${esc(EQ_LBL[exInfo(e.name).equip] || '')}. Change">${esc(EQ_LBL[exInfo(e.name).equip] || 'Equipment')} <span aria-hidden="true">▾</span></button></div>` : ''}${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
     ${setupHTML(e.name)}${GAME_ON ? ptLastSet(e) : ''}${sugg ? `<div class="tgt-line"><span class="ell">${esc(sugg)}</span>${infoBtn('target')}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
@@ -5569,7 +5582,7 @@ function presetMuscles(name) {
 }
 function pickExercise(onPick, opts = {}) {
   let q = '', mf = null, ef = null; const pm = opts.split ? presetMuscles(opts.split) : null; let scoped = false; // scoped: the arrow hid everything outside the split howtoFor('Bench Press'); // loads the body map
-  const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = baseName(e.name); if (!recent.includes(b)) recent.push(b); }
+  const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = liftName(e.name); if (!recent.includes(b)) recent.push(b); }
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
   const score0 = (n, q) => { n = n.toLowerCase(); q = q.toLowerCase().trim(); if (!q) return 1; if (n.includes(q)) return 100 - n.indexOf(q); let i = 0; for (const c of n) if (c === q[i]) i++; return i === q.length ? 10 : 0; };
   // Nicknames and muscle names find lifts too (Job, 4 Nov): "pec dec" finds Chest Fly, "chest" lists chest lifts.
@@ -5777,6 +5790,28 @@ function dragSort(ev) {
 }
 document.addEventListener('pointerdown', dragSort);
 // ⋯ → Split into left and right, or back (Job, 2 Nov). A second card of the same lift becomes the right side.
+// Equipment picker on the workout card (Job, 23 Nov): each equipment keeps its own history and PREVIOUS numbers.
+function openEqPick(ei) {
+  const e = A.ex[ei]; if (!e) return;
+  const lift = liftName(e.name), cur = exInfo(e.name).equip, h = ix().hist;
+  const lastOf = q => { const n = withEq(lift, q), c = [h[n], h[n + ' (L)']].filter(Boolean).map(x => x[x.length - 1]).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return c; };
+  const rows = eqOptions(lift).filter(q => EQ_LBL[q]).map(q => { const l = lastOf(q); return `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(EQ_LBL[q])}</b><span class="cap">${l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet'}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`; }).join('');
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history.</div><div class="mgrp mt3">${rows}</div></div>`, {
+    label: 'Equipment',
+    mount: b => { b.onclick = ev => {
+      const x = ev.target.closest('[data-q]'); if (!x) return; const q = x.dataset.q; closeSheet(sh);
+      if (!A || q === cur) return;
+      const sd = sideOf(e.name), targets = sd ? A.ex.filter(y => baseName(y.name) === baseName(e.name)) : [e];
+      for (const t of targets) {
+        const n = withEq(t.name, q), i = A.ex.indexOf(t);
+        if (t.sets.some(z => z.done)) t.name = n;
+        else { const ne = newExEntry(n, t.sets.length, t.rest, t.tip); A.ex[i] = { ...t, name: n, sets: ne.sets }; }
+      }
+      S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [lift]: q }); persist('jd/meta');
+      touchA(); toast(esc(lift) + ': ' + esc(EQ_LBL[q]), 2500);
+    }; },
+  });
+}
 function toggleSides(ei) {
   const e = A.ex[ei], b = baseName(e.name), cp = x => ({ ...x, sets: x.sets.map(t => ({ ...t })), key: uid() });
   if (sideOf(e.name)) {
@@ -5805,7 +5840,7 @@ function exMenu(ei) {
     <div class="sgh exm-l">This workout</div><div class="mgrp">
     ${row('note', e.note ? 'Edit note' : 'Add note')}
     ${row('warm', e.sets.some(x => x.t === 'warm') ? 'Remove warm-up sets' : 'Add warm-up sets')}
-    ${row('rest', 'Rest time', fmtRest(restFor(e.name)) + ((S.profile.restBy || {})[baseName(e.name)] ? '' : ' (default)'))}
+    ${row('rest', 'Rest time', fmtRest(restFor(e.name)) + ((S.profile.restBy || {})[liftName(e.name)] ? '' : ' (default)'))}
     ${ei < A.ex.length - 1 ? row('ss', e.ss ? 'Unlink superset' : 'Superset with ' + esc(baseName(A.ex[ei + 1].name))) : ''}</div>
     <div class="sgh exm-l">Change</div><div class="mgrp">
     ${row('swap', 'Swap exercise')}${gymOn() && gymCur() ? row('taken', 'Machine taken') : ''}
@@ -5845,7 +5880,7 @@ function addWarmups(ei) {
   e.sets.unshift(...ramp); touchA(); toast(`${plural(ramp.length, 'warm-up set')} added, building to ${dw(w0)} ${U()}`);
 }
 function openExRest(name) {
-  const b0 = baseName(name), cur = (S.profile.restBy || {})[b0] || 0;
+  const b0 = liftName(name), cur = (S.profile.restBy || {})[b0] || 0;
   const opts = [[0, `Default (${fmtRest(S.profile.defaultRest || 120)})`], [60, '1:00'], [90, '1:30'], [120, '2:00'], [150, '2:30'], [180, '3:00'], [240, '4:00'], [300, '5:00']];
   const sh = openSheet(`<div class="stack"><div class="eyebrow">Rest for ${esc(b0)}</div><p class="m0 cap">Short rests suit raises and curls; big lifts like more.</p><div class="list">${opts.map(([v, l]) => `<button class="li tl ${cur === v ? 'on' : ''}" data-r="${v}"><span class="grow t">${l}</span>${cur === v ? I.check : ''}</button>`).join('')}</div></div>`, { label: 'Rest', mount: b => {
     b.onclick = ev => { const x = ev.target.closest('[data-r]'); if (!x) return; const v = +x.dataset.r; S.profile.restBy = Object.assign({}, S.profile.restBy); if (v) S.profile.restBy[b0] = v; else delete S.profile.restBy[b0]; persist('jd/meta'); closeSheet(sh); toast(v ? `${esc(b0)}: ${fmtRest(v)} rest` : `${esc(b0)} uses your default rest`); };
@@ -6519,6 +6554,8 @@ const ACT = {
   delSet: el => { const e = A.ex[+el.dataset.e], si = +el.dataset.s; if (!e || e.sets.length < 2) return; const [gone] = e.sets.splice(si, 1); touchA(); toast('Set deleted', 0, () => { if (A && A.ex.includes(e)) { e.sets.splice(Math.min(si, e.sets.length), 0, gone); touchA(); } }); },
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length < 2) return; const gone = e.sets.pop(); touchA(); if (gone.done) toast('Logged set removed', 0, () => { if (A && A.ex.includes(e)) { e.sets.push(gone); touchA(); } }); },
   exMenu: el => exMenu(+el.dataset.e),
+  exEq: el => openEqPick(+el.dataset.e),
+  exVar: el => { const t = NAV.stack[NAV.stack.length - 1]; t.name = el.dataset.k; delete t.sel; rerender(); },
   swapEx: el => openSwap(+el.dataset.e),
   foldEx: el => { const ei = +el.dataset.e, e = A.ex[ei], shut = !!document.querySelector('#ex-' + ei + '.folded'); e.fold = !shut; persist('jd/active'); renderWorkout(); },
   month: el => showMonth(el.dataset.k),
@@ -6532,7 +6569,7 @@ const ACT = {
   delAccount: () => openDeleteAccount(),
   photos: () => openPhotos(),
   setup: el => openSetup(el.dataset.name),
-  wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(name)); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: smooth() }), 50); }, { split: A && A.splitName }),
+  wkAddEx: () => pickExercise(name => { A.ex.push(newExEntry(eqPref(name))); touchA(); const b = $('#wk .wk-body'); if (b) setTimeout(() => b.scrollTo({ top: b.scrollHeight, behavior: smooth() }), 50); }, { split: A && A.splitName }),
   // Undo instead of "Are you sure?" (Job, 4 Nov)
   wkDiscard: () => { const was = A; if (A && A.atGym) atGymSet(false); A = null; REST = null; persist('jd/active'); if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } render(); toast('Workout discarded', 6000, () => { if (A) return; A = was; persist('jd/active'); render(); openWk(); }); },
   rest: el => { const d = +el.dataset.d; if (!REST) return; if (d === 0) REST = null; else { if (REST.paused) REST.left = Math.max(1, REST.left + d); else REST.end += d * 1000; REST.total = Math.max(REST.total + d, restLeft(), 1); } renderWorkout(); },
