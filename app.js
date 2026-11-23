@@ -68,11 +68,12 @@ Hip Thrust:bms;Glute Bridge:bwd;Cable Kickback:c;Abductor:mcn;Glute Drive:m;Addu
 Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:m;Donkey Calf Raise:mw`.split(';').map(s => s.trim()).filter(Boolean).map(s => { const i = s.lastIndexOf(':'); return [s.slice(0, i), [...s.slice(i + 1)].map(c => EQ_CODE[c])]; }));
 // Equipment variants (Job, 23 Nov): one lift, its own history per equipment. The name carries it like a side does:
 // "Incline Press (Smith)", "Incline Press (Smith) (L)". The plain name is the lift's usual equipment, so old history stays put.
-const EQ_LBL = { machine: 'Machine', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
-const VAR_RE = /\s*\((Machine|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
+// Plate-loaded vs pin-stack machines (Job, 23 Nov): the same lift on each keeps its own numbers.
+const EQ_LBL = { machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
+const VAR_RE = /\s*\((Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
 const libEx = n => LIB.find(e => e.name === n) || (VAR_RE.test(n) ? LIB.find(e => e.name === n.replace(VAR_RE, '')) : undefined);
 const liftName = n => n.replace(/\s*\((L|R)\)$/, '').replace(VAR_RE, '');
-const eqOf = n => { const m = n.replace(/\s*\((L|R)\)$/, '').match(VAR_RE); return m ? m[1].toLowerCase() : null; };
+const eqOf = n => { const m = n.replace(/\s*\((L|R)\)$/, '').match(VAR_RE); return m ? Object.keys(EQ_LBL).find(k => EQ_LBL[k] === m[1]) : null; };
 const eqDefault = n => { const l = liftName(n), c = (S.customEx || []).find(e => e.name === l), x = libEx(l); return x ? (c && eqOptions(l).includes(c.equip) ? c.equip : x.equip) : (c ? c.equip : 'other'); };
 // Every lift gets the chip (Job, 23 Nov "do for all lifts"). The usual equipment for the lift comes first, the rest under Other equipment.
 const hasVariants = n => !!n;
@@ -82,8 +83,8 @@ const eqMain = (n, h = ix().hist) => { const l = liftName(n), cur = exInfo(n).eq
 function withEq(n, eq) { const sd = sideOf(n), l = liftName(n); return (eq === eqDefault(l) || !EQ_LBL[eq] ? l : l + ' (' + EQ_LBL[eq] + ')') + (sd ? ' (' + sd + ')' : ''); }
 // A new workout picks the equipment you used last time for that lift.
 const eqPref = n => { const q = ((S.profile || {}).eqLast || {})[liftName(n)]; return q && !eqOf(n) && EQ_LBL[q] ? withEq(n, q) : n; };
-const eqOptions = n => libEx(n) ? (EQ_OK[n] || [libEx(n).equip]) : EQUIP;
-const EQUIP = ['barbell', 'dumbbell', 'machine', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
+const eqOptions = n => { if (!libEx(n)) return EQUIP; const o = EQ_OK[n] || [libEx(n).equip]; return o.includes('machine') ? o.flatMap(q => q === 'machine' ? ['machine', 'plate'] : [q]) : o; };
+const EQUIP = ['barbell', 'dumbbell', 'machine', 'plate', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
 const baseName = n => n.replace(/\s*\((L|R)\)$/, '');
 // Left and right versions of one lift (unilateral) are shown together as one row (Job, 15 Oct).
@@ -3123,7 +3124,7 @@ function meParts() {
     workouts: `
   <section><div class="sgh">Workouts</div><div class="sgrp">
     <label class="xr"><span class="grow">Rest between sets<span class="s">For every exercise. Change one from its ⋯ menu in a workout</span></span><select class="xr-in" id="set-rest" data-in="prof" data-f="defaultRest">${[60, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600].concat(REST_OPTS_X(p.defaultRest)).sort((a, b) => a - b).map(v => `<option value="${v}" ${v === (p.defaultRest || 300) ? 'selected' : ''}>${clock(v)}</option>`).join('')}</select></label>
-    <label class="xr"><span class="grow">Rest between sides<span class="s">Left to right on one-side lifts</span></span><select class="xr-in" id="set-unirest" data-in="uniRest">${UNI_OPTS.map(([v, l]) => `<option value="${v}" ${v === (p.uniRest == null ? 30 : p.uniRest) ? 'selected' : ''}>${v ? clock(v) : 'No timer'}</option>`).join('')}</select></label>
+    <label class="xr"><span class="grow">Rest between sides<span class="s">Left to right on one-side lifts</span></span><select class="xr-in" id="set-unirest" data-in="uniRest">${[...new Set(UNI_OPTS.map(([v]) => v).concat(p.uniRest == null ? [] : [p.uniRest]))].sort((x, y) => x - y).map(v => `<option value="${v}" ${v === (p.uniRest == null ? 30 : p.uniRest) ? 'selected' : ''}>${v ? clock(v) : 'No timer'}</option>`).join('')}</select></label>
     ${srow("Today's targets", swi(on('noTargets'), 'pset', 'data-f="noTargets"'), 'Top of your rep range last time adds weight, otherwise one more rep')}
     ${p.noTargets ? '' : srow('Show the target line', swi(!!p.tgtLine, 'pset', 'data-f="tgtLine"'), 'A line under each lift saying what to aim for')}
     ${repRangeRow()}
@@ -4389,17 +4390,23 @@ function tick() {
 }
 // Asked the first time someone logs a left side (Job, 23 Nov). Working one side barely tires the other, so 30 s is the suggestion.
 const UNI_OPTS = [0, 15, 30, 45, 60, 75, 90, 120, 150, 180].map(v => [v]);
+const UNI_D = { step: 5, px: 14, n: 181 / 5 + 1 | 0 };
 function askUniRest() {
   if (!A || S.profile.uniRest != null) return;
   let v = 30;
   const t = () => v ? clock(v) : 'No timer';
   const sh = openSheet(`<div class="exm uni-ask"><h2 class="exm-h">Rest between sides</h2><div class="cap">Studies show training one side barely tires the other. Your left side keeps resting while your right side works, so a short break is enough. Your full ${esc(clock(S.profile.defaultRest || 120))} rest starts after the right side.</div>
-    <div class="uni-step mt3"><button class="rb-b" data-d="-15" aria-label="15 seconds less">−15</button><div class="uni-t num" aria-live="polite">${t()}</div><button class="rb-b" data-d="15" aria-label="15 seconds more">+15</button></div>
-    <div class="cap uni-rec">30 seconds is a good start. Go to 0 for no timer.</div>
+    <div class="uni-t num mt3" aria-live="polite">${t()}</div>
+    <div class="rel"><div class="ruler" id="uni-dial" style="--tw:${UNI_D.px}px"><div class="ruler-in">${Array.from({ length: UNI_D.n }, (_, i) => { const m = (i * UNI_D.step) % 30 === 0; return `<i class="${m ? 'm' : ''}">${m ? `<b>${clock(i * UNI_D.step)}</b>` : ''}</i>`; }).join('')}</div></div><span class="ruler-mark"></span></div>
+    <div class="cap uni-rec">30 seconds is a good start. Slide to 0:00 for no timer.</div>
     <button class="btn block primary mt3" data-k="save">Use this</button><div class="cap mt2">Change it later in Me → Workouts.</div></div>`, {
     label: 'Rest between sides',
-    mount: b => { b.onclick = ev => {
-      const d = ev.target.closest('[data-d]'); if (d) { v = Math.max(0, Math.min(180, v + +d.dataset.d)); b.querySelector('.uni-t').textContent = t(); return; }
+    mount: b => {
+      // Same slide-to-pick tick ruler as the reps and kg keypad (Job, 23 Nov), 5 s steps.
+      const r = b.querySelector('#uni-dial'), inner = r.firstElementChild; let lastI = v / UNI_D.step, quiet = 0, raf = null;
+      requestAnimationFrame(() => { inner.style.padding = `0 ${r.clientWidth / 2 - UNI_D.px / 2}px`; quiet = performance.now() + 300; r.scrollLeft = lastI * UNI_D.px; });
+      r.addEventListener('scroll', () => { if (raf || performance.now() < quiet) return; raf = requestAnimationFrame(() => { raf = null; const i = Math.max(0, Math.min(UNI_D.n - 1, Math.round(r.scrollLeft / UNI_D.px))); if (i !== lastI) { lastI = i; v = i * UNI_D.step; b.querySelector('.uni-t').textContent = t(); buzz(3); SOUNDS.tick(); } }); }, { passive: true });
+      b.onclick = ev => {
       if (!ev.target.closest('[data-k="save"]')) return;
       S.profile.uniRest = v; persist('jd/meta'); closeSheet(sh);
       // The 30 s timer is already running; move it to the picked time (0 stops it).
@@ -5016,7 +5023,7 @@ async function shareRecap(d) {
 
 // ---------- Swap: same-muscle alternatives, ranked by your own history ----------
 const EQ_ORDER = ['machine', 'cable', 'smith', 'barbell', 'dumbbell', 'bodyweight'];
-const EQ_NAME = { machine: 'Machines', cable: 'Cable', smith: 'Smith machine', barbell: 'Barbell', dumbbell: 'Dumbbells', bodyweight: 'Bodyweight' };
+const EQ_NAME = { machine: 'Machines', plate: 'Plate-loaded', cable: 'Cable', smith: 'Smith machine', barbell: 'Barbell', dumbbell: 'Dumbbells', bodyweight: 'Bodyweight' };
 function swapList(list, n) {
   const row = x => { const l = lastSession(x.name);
     return `<button class="li sw-li" data-sw="${esc(x.name)}"><i class="sw-ic">${IC['eq_' + x.equip] || IC.eq_machine}</i><div class="grow"><div class="t">${esc(x.name)}</div>${l ? `<div class="s">Last ${esc(l.sets.filter(validSet).map(setStr).join(', '))} · ${esc(relDay(l.date))}</div>` : ''}</div>${I.right}</button>`; };
@@ -5296,7 +5303,7 @@ const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 1
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: ['machine', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: ['machine', 'plate', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 // Bars (v191, Job 14 Nov): "Include the bar" plus which bar, remembered per lift. Curls and skull crushers start on the
 // EZ bar, anything named trap/hex bar on the trap bar, the rest on an Olympic bar. Machines and cables never have one.
