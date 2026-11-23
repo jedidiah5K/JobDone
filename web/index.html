@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-XDYXcJp0axEBUCwpRFFXPCRJ5aruYfJJtmF0V1AjylE='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-wYCI6Ix9yaBcAgKxNCe9VtsAXOZU9fXxpVzOL4TYCXE='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2561,6 +2561,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .eq-more summary::-webkit-details-marker { display: none; }
 .eq-more summary::after { content: '▾'; margin-left: auto; font-size: 11px; }
 .eq-more[open] summary::after { content: '▴'; }
+/* Main gym (23 Nov) */
+.gym-li { display: flex; align-items: center; gap: 10px; }
+.gym-li > .tl { min-width: 0; background: none; border: 0; padding: 0; color: inherit; text-align: left; }
+.gym-main svg { width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 2; }
+.gym-seg { flex-wrap: wrap; }
+.gym-seg button { flex: 1 1 auto; padding: 0 8px; }
 
 body { margin: 0; box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -2706,7 +2712,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v214';
+const APP_VER = 'v215';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -3525,6 +3531,10 @@ let GYM = (() => { try { return JSON.parse(localStorage.getItem('jd-gym')) || {}
 const gymSave = () => { try { localStorage.setItem('jd-gym', JSON.stringify(GYM)); } catch (e) {} };
 const gymOn = () => !!(HOSTED && USER && SB && S && S.profile && (S.profile.gymBeta != null ? S.profile.gymBeta : true)); // on for everyone since 5 Nov (Job); Me → Beta turns it off
 const gymType = k => (GYM.types || []).find(t => t.key === k);
+// Main gym (Job, 23 Nov): charts and PRs on the exercise page can show just this gym. Falls back to the gym marked home, or your only gym.
+const gymMainId = () => { const m = GYM.mine || []; return (S.profile.gymMain && (!m.length || m.some(x => x.gym_id === S.profile.gymMain)) ? S.profile.gymMain : null) || ((m.find(x => x.is_home) || {}).gym_id) || (m.length === 1 ? m[0].gym_id : null) || gymMost(); };
+// No main gym picked yet: the one you've trained at most.
+const gymMost = () => { const c = {}; for (const w of Object.values(S.workouts || {})) if (w.gym) c[w.gym] = (c[w.gym] || 0) + 1; return Object.keys(c).sort((x, y) => c[y] - c[x])[0] || null; };
 const gymCur = () => { const m = GYM.mine || []; return m.find(x => x.gym_id === S.profile.gymAt) || m[0] || null; };
 const gymTitle = m => m ? (m.independent ? m.brand : m.brand + ' · ' + m.branch) : '';
 const gymMsg = e => { const m = (e && e.message) || ''; return !m || /fetch|network|load failed|jwt|pgrst|syntax|violates|function|permission|column|relation|typeerror/i.test(m) ? 'That didn’t work. Check your connection and try again.' : m; };
@@ -3587,7 +3597,7 @@ function viewGym() {
     <div class="card"><div class="card-h"><span class="eyebrow">Equipment · ${usable}</span><button class="cap link" data-a="gymPick">+ Add</button></div>
       ${live.length ? `<div class="list">${live.map(row).join('')}</div>` : '<div class="empty">Nothing added yet.</div>'}</div>
     <div class="card"><div class="card-h"><span class="eyebrow">Your gyms</span><button class="cap link" data-a="gymFind">+ Add another</button></div><div class="list">
-      ${[c, ...others].map(m => `<button class="li" data-a="gymUse" data-g="${m.gym_id}"><div class="grow"><div class="t">${esc(gymTitle(m))}</div><div class="s">${m.is_home ? 'Home' : 'Last used ' + esc(fmtDate(ymd(new Date(m.last_used))))}${m.gym_id === c.gym_id ? ' · training here' : ''}</div></div></button>`).join('')}</div></div>
+      ${[c, ...others].map(m => { const main = m.gym_id === gymMainId(); return `<div class="li gym-li"><button class="grow tl" data-a="gymUse" data-g="${m.gym_id}"><div class="t">${esc(gymTitle(m))}</div><div class="s">${main ? 'Main gym' : 'Last used ' + esc(fmtDate(ymd(new Date(m.last_used))))}${m.gym_id === c.gym_id ? ' · training here' : ''}</div></button>${main ? `<span class="mi-v gym-main" aria-label="Main gym">${I.check}</span>` : `<button class="btn sm" data-a="gymMain" data-g="${m.gym_id}">Make main</button>`}</div>`; }).join('')}</div></div>
     <button class="self-c c-neg link" data-a="gymLeave">Leave this gym</button></div>`;
 }
 // A brand-new branch starts from what most of the chain's other branches have (or a general list).
@@ -5573,7 +5583,13 @@ function openGoal(name) {
   const d = sh.el.querySelector('#gl-del'); if (d) d.onclick = () => { const o = { ...goalsOf() }; delete o[name]; S.profile.goals = o; persist('jd/meta'); closeSheet(sh); rerender(); toast('Goal removed', 0, () => { S.profile.goals = { ...goalsOf(), [name]: g }; persist('jd/meta'); rerender(); }); };
 }
 function viewExercise(v) {
-  const b = baseName(v.name), h = ix().hist;
+  const b = baseName(v.name), h0 = ix().hist;
+  // Per-gym view (Job, 23 Nov): Main gym or one of your other gyms. Sessions with no gym tag count as the main gym.
+  const gMain = gymMainId(), gOf = s => { const w = S.workouts[s.wid]; return w && w.gym && w.gym !== gMain ? w.gym : 'main'; };
+  const mine = [b, b + ' (L)', b + ' (R)'].flatMap(n => h0[n] || []), gyms = [...new Set(mine.map(gOf))].sort((x, y) => (y === 'main') - (x === 'main'));
+  if (gyms.length < 2) delete v.gym; else if (!v.gym || !gyms.includes(v.gym)) v.gym = gyms.includes('main') ? 'main' : gyms[0];
+  const h = v.gym ? Object.fromEntries(Object.entries(h0).map(([k, a]) => [k, a.filter(x => gOf(x) === v.gym)]).filter(([, a]) => a.length)) : h0;
+  const gymName = g => { if (g === 'main') return 'Main gym'; const m = (GYM.mine || []).find(x => x.gym_id === g); return m ? m.brand + (m.independent ? '' : ' ' + m.branch) : 'Other gym'; };
   const sides = ['L', 'R'].filter(s => h[`${b} (${s})`]);
   const hasPlain = !!h[b];
   const opts = [...(hasPlain ? [b] : []), ...sides.map(s => `${b} (${s})`)];
@@ -5584,7 +5600,7 @@ function viewExercise(v) {
   const metricOf = s => v.metric === 'e1' ? s.e1 : v.metric === 'top' ? (s.top ? s.top.w : 0) : s.vol;
   const series = sel.map((n, i) => ({ name: n, pts: (h[n] || []).filter(s => metricOf(s) > 0).map(s => ({ x: ts(s.date), y: U() === 'lb' ? metricOf(s) * LB : metricOf(s) })), color: colors[i], dots: true, noArea: sel.length > 1 }));
   const main = sel[sel.length - 1];
-  const B = ix().best[main] || emptyBest();
+  const B = v.gym ? (h[main] || []).reduce((o, x) => { for (const t of x.sets) if (validSet(t)) { o.maxW = Math.max(o.maxW, t.w); o.e1 = Math.max(o.e1, e1(t)); o.vol = Math.max(o.vol, setVol(t)); } return o; }, emptyBest()) : (ix().best[main] || emptyBest());
   const sessions = (h[main] || []);
   const allSets = sessions.flatMap(s => s.sets.filter(validSet).map(x => ({ ...x, date: s.date })));
   const bestFor = n => { let r = null; for (const s of allSets) if (s.r >= n && (!r || s.w > r.w || (s.w === r.w && s.r > r.r))) r = s; return r; };
@@ -5595,6 +5611,7 @@ function viewExercise(v) {
   ${hasVariants(b) ? `<div class="pt0 top"><div><div class="mh28 eyebrow">${esc(info.muscle)}</div><h1>${esc(liftName(b))}</h1></div></div>
   ${eqMain(b, h).length < 2 ? '' : `<div class="seg eq-seg" role="group" aria-label="Equipment">${eqMain(b, h).map(q => { const n = withEq(b, q); return `<button class="${info.equip === q ? 'on' : ''}" data-a="exVar" data-k="${esc(n)}" aria-pressed="${info.equip === q}">${esc(EQ_LBL[q])}${h[n] || h[n + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`; }).join('')}</div>`}` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
+  ${v.gym ? `<div class="seg gym-seg" role="group" aria-label="Gym">${gyms.map(g => `<button class="${v.gym === g ? 'on' : ''}" data-a="exGym" data-k="${esc(g)}" aria-pressed="${v.gym === g}">${esc(gymName(g))}</button>`).join('')}</div>` : ''}
   ${setupHTML(b)}${howtoHTML(main)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
   ${bw && B.e1 && ['barbell', 'dumbbell', 'smith'].includes(exInfo(main).equip) ? `<div class="mt3 cap">Strength-to-weight: e1RM is <b class="c-text num">${(B.e1 / bw.w).toFixed(2)}×</b> your body weight${(() => { const old = sessions.filter(s => daysBetween(s.date, today()) >= 60 && s.e1 > 0); if (!old.length) return ''; const o = old[old.length - 1]; const ow = weightOn(o.date); return ow ? ` (was ${(Math.max(...old.map(s => s.e1)) / ow.w).toFixed(2)}× two months ago)` : ''; })()}.</div>` : ''}</div>
@@ -9221,6 +9238,8 @@ const ACT = {
   gymBuild: () => gymBuildSheet(),
   gymSwitch: () => gymSwitch(),
   gymUse: el => gymUse(el.dataset.g),
+  gymMain: el => { S.profile.gymMain = el.dataset.g; persist('jd/meta'); rerender(); toast('Main gym set', 2000); },
+  exGym: el => { NAV.stack[NAV.stack.length - 1].gym = el.dataset.k; rerender(); },
   gymPick: () => { while (SHEETS.length) closeSheet(); gymPick(); },
   gymRetry: () => { GYM.failAt = 0; gymRefresh(true); rerender(); },
   gymMachine: el => gymMachine(el.dataset.e),
