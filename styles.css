@@ -2517,3 +2517,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .eqp .mi-v svg { stroke: var(--accent); }
 .eq-seg { margin-top: 8px; }
 .eq-new { display: inline-block; width: 5px; height: 5px; margin-left: 5px; vertical-align: middle; border-radius: 50%; background: var(--muted); opacity: .6; }
+.eq-seg { flex-wrap: wrap; }
+.eq-seg button { flex: 1 1 auto; padding: 0 8px; }
+.eq-more summary { list-style: none; color: var(--text2); cursor: pointer; }
+.eq-more summary::-webkit-details-marker { display: none; }
+.eq-more summary::after { content: '▾'; margin-left: auto; font-size: 11px; }
+.eq-more[open] summary::after { content: '▴'; }
