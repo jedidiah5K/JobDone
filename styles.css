@@ -2505,11 +2505,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 @keyframes ob-up { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .ob-tick:not(:disabled), .ob-try-n { animation: none; } }
 /* Equipment variant chip on the workout card + picker (23 Nov) */
-.ex-nm { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ex-nm { display: flex; flex-direction: column; align-items: flex-start; }
 .ex-nm .ex-name { min-width: 0; }
-.eq-chip { display: inline-flex; align-items: center; gap: 4px; flex: none; min-height: 24px; padding: 0 9px; border-radius: 12px; background: var(--raised); color: var(--text); border: 1px solid var(--line, rgba(127,127,127,.25)); font-size: calc(12px * var(--ts, 1)); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; position: relative; }
-.eq-chip span { color: var(--text2); font-size: 10px; }
-.eq-chip::after { content: ''; position: absolute; inset: -10px -6px; }
+/* Option 4 (Job, 23 Nov): plain grey line under the name, no box */
+.eq-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 20px; margin-top: 1px; padding: 0; background: none; border: 0; color: var(--text2); font-size: calc(14px * var(--ts, 1)); font-weight: 500; position: relative; }
+.eq-chip span { font-size: 10px; }
+.eq-chip::after { content: ''; position: absolute; inset: -10px -8px; }
 .eqp { min-height: 58px; }
 .eqp .grow { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; }
 .eqp b { font-weight: 600; }

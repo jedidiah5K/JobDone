@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-WEp1b3XHvOhfC8djcoa0QX0gcreRS3Z08hixMtIZQPQ='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-rRTRGQIaQzdC2HM801eBrskrJC+wRUh5ZqXwQqhL3xY='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2542,11 +2542,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 @keyframes ob-up { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .ob-tick:not(:disabled), .ob-try-n { animation: none; } }
 /* Equipment variant chip on the workout card + picker (23 Nov) */
-.ex-nm { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ex-nm { display: flex; flex-direction: column; align-items: flex-start; }
 .ex-nm .ex-name { min-width: 0; }
-.eq-chip { display: inline-flex; align-items: center; gap: 4px; flex: none; min-height: 24px; padding: 0 9px; border-radius: 12px; background: var(--raised); color: var(--text); border: 1px solid var(--line, rgba(127,127,127,.25)); font-size: calc(12px * var(--ts, 1)); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; position: relative; }
-.eq-chip span { color: var(--text2); font-size: 10px; }
-.eq-chip::after { content: ''; position: absolute; inset: -10px -6px; }
+/* Option 4 (Job, 23 Nov): plain grey line under the name, no box */
+.eq-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 20px; margin-top: 1px; padding: 0; background: none; border: 0; color: var(--text2); font-size: calc(14px * var(--ts, 1)); font-weight: 500; position: relative; }
+.eq-chip span { font-size: 10px; }
+.eq-chip::after { content: ''; position: absolute; inset: -10px -8px; }
 .eqp { min-height: 58px; }
 .eqp .grow { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; }
 .eqp b { font-weight: 600; }
@@ -2705,7 +2706,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v212';
+const APP_VER = 'v213';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
