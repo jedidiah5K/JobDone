@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-rRTRGQIaQzdC2HM801eBrskrJC+wRUh5ZqXwQqhL3xY='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-XDYXcJp0axEBUCwpRFFXPCRJ5aruYfJJtmF0V1AjylE='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2706,7 +2706,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v213';
+const APP_VER = 'v214';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -8389,21 +8389,52 @@ function openEqPick(ei) {
   const mm = eqMain(e.name, h), main = mm.length > 1 || eqFit(e.name).length ? mm : Object.keys(EQ_LBL), more = Object.keys(EQ_LBL).filter(q => !main.includes(q));
   const row = q => { const l = lastOf(q); return `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(EQ_LBL[q])}</b><span class="cap">${l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet'}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`; };
   const rows = main.map(row).join('') + (more.length ? `<details class="eq-more"><summary class="mi">Other equipment</summary>${more.map(row).join('')}</details>` : '');
-  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history.</div><div class="mgrp mt3">${rows}</div></div>`, {
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history.</div><div class="mgrp mt3">${rows}</div>${S.profile.eqAsk ? `<button class="mt3 link cap" data-q="_ask">${S.profile.eqAsk === 'move' ? 'History moves with you when you switch.' : 'History stays put when you switch.'} Ask me each time</button>` : ''}</div>`, {
     label: 'Equipment',
     mount: b => { b.onclick = ev => {
       const x = ev.target.closest('[data-q]'); if (!x) return; const q = x.dataset.q; closeSheet(sh);
+      if (q === '_ask') { delete S.profile.eqAsk; persist('jd/meta'); toast('I’ll ask each time', 2500); return; }
       if (!A || q === cur) return;
-      const sd = sideOf(e.name), targets = sd ? A.ex.filter(y => baseName(y.name) === baseName(e.name)) : [e];
-      for (const t of targets) {
-        const n = withEq(t.name, q), i = A.ex.indexOf(t);
-        if (t.sets.some(z => z.done)) t.name = n;
-        else { const ne = newExEntry(n, t.sets.length, t.rest, t.tip); A.ex[i] = { ...t, name: n, sets: ne.sets }; }
-      }
-      S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [lift]: q }); persist('jd/meta');
-      touchA(); toast(esc(lift) + ': ' + esc(EQ_LBL[q]), 2500);
+      const go = moved => {
+        const sd = sideOf(e.name), targets = sd ? A.ex.filter(y => baseName(y.name) === baseName(e.name)) : [e];
+        for (const t of targets) {
+          const n = withEq(t.name, q), i = A.ex.indexOf(t);
+          if (t.sets.some(z => z.done)) t.name = n;
+          else { const ne = newExEntry(n, t.sets.length, t.rest, t.tip); A.ex[i] = { ...t, name: n, sets: ne.sets }; }
+        }
+        S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [lift]: q }); persist('jd/meta');
+        touchA();
+        if (moved) toast(`Moved ${plural(new Set(moved.map(m => m[0])).size, 'session')} to ${esc(EQ_LBL[q])}`, 0, () => { eqMoveBack(moved); toast('History moved back', 2500); });
+        else toast(esc(lift) + ': ' + esc(EQ_LBL[q]), 2500);
+      };
+      // Ask once per switch whether the old equipment's history should come along (Job, 23 Nov). "Don't ask again" keeps the answer.
+      const had = [h[withEq(lift, cur)], h[withEq(lift, cur) + ' (L)']].some(Boolean), ask = S.profile.eqAsk;
+      if (!had || ask === 'keep') return go(null);
+      if (ask === 'move') return go(eqMove(lift, cur, q));
+      const s2 = openSheet(`<div class="stack"><h2 class="exm-h">Move your ${esc(EQ_LBL[cur] || cur)} history to ${esc(EQ_LBL[q])}?</h2>
+        <p class="cap">Do this if you logged ${esc(lift)} on the wrong equipment. Otherwise keep them separate so each has its own numbers.</p>
+        <button class="btn primary" data-k="move">Move it</button><button class="btn" data-k="keep">Keep separate</button>
+        <label class="row between card tight"><span>Don’t ask again</span><input type="checkbox" id="eq-nomore" class="cbox"></label></div>`, {
+        label: 'Move history',
+        mount: b2 => { b2.onclick = ev2 => { const y = ev2.target.closest('[data-k]'); if (!y) return; const k = y.dataset.k;
+          if (b2.querySelector('#eq-nomore').checked) { S.profile.eqAsk = k; persist('jd/meta'); }
+          closeSheet(s2); go(k === 'move' ? eqMove(lift, cur, q) : null); }; },
+      });
     }; },
   });
+}
+// Renames past sessions of one equipment to another (sides kept). Returns what changed so Undo can put it back.
+function eqMove(lift, from, to) {
+  const a = withEq(lift, from), b = withEq(lift, to), map = { [a]: b, [a + ' (L)']: b + ' (L)', [a + ' (R)']: b + ' (R)' }, moved = [], months = new Set();
+  for (const w of Object.values(S.workouts)) for (const x of w.ex || []) if (map[x.name]) { moved.push([w.id, x.name, map[x.name]]); x.name = map[x.name]; months.add(monthPath(w.date)); }
+  if (S.setup && S.setup[a] && !S.setup[b]) { S.setup[b] = S.setup[a]; delete S.setup[a]; }
+  invalidate(); if (months.size) persist(...months, 'jd/meta');
+  return [...new Set(moved.map(m => m[0]))].length ? moved : null;
+}
+function eqMoveBack(moved) {
+  const months = new Set();
+  for (const [id, was, now] of moved) { const w = S.workouts[id]; if (!w) continue; const x = (w.ex || []).find(y => y.name === now); if (x) { x.name = was; months.add(monthPath(w.date)); } }
+  invalidate(); if (months.size) persist(...months); rerender(); if (A) renderWorkout();
 }
 const rd2 = x => Math.round(x * 100) / 100;
 function toggleSides(ei) {
