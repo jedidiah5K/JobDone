@@ -59,7 +59,7 @@ const EQ_CODE = { b: 'barbell', d: 'dumbbell', m: 'machine', c: 'cable', s: 'smi
 const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:bs;Incline Bench Press:bs;Decline Bench Press:bs;Dumbbell Bench Press:d;Incline Dumbbell Press:d;Chest Press:m;Smith Bench Press:s;Cable Crossover:c;Low-to-High Cable Fly:c;Dumbbell Fly:d;Pec Deck:m;Push-Up:w;Dip:wm;
 Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:b;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:b;Rack Pull:b;Back Extension:wm;Shrug:dbsm;Face Pull:cn;
 Shoulder Press:ms;Overhead Press:bs;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
-Preacher Curl:mbd;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:b;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
+Preacher Curl:mbdc;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:b;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
 Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:bd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
 Cable Crunch:c;Oblique Crunch:cw;Hanging Leg Raise:w;Ab Wheel:w;Crunch Machine:m;Plank:w;Russian Twist:wdk;Pallof Press:cn;Woodchopper:cn;
 Leg Press:m;Leg Extension:mcn;Back Squat:bs;Front Squat:b;Hack Squat:ms;Smith Squat:s;Goblet Squat:dk;Bulgarian Split Squat:dbsw;Walking Lunge:dbw;Pendulum Squat:m;Step-Up:dbw;Sissy Squat:wm;
@@ -73,18 +73,43 @@ const EQ_LBL = { machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barb
 // What people read: the name tag stays short, the label says it in full.
 const eqTxt = q => ({ machine: 'Pin-loaded machine', plate: 'Plate-loaded machine' })[q] || EQ_LBL[q];
 const VAR_RE = /\s*\((Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
-const libEx = n => LIB.find(e => e.name === n) || (VAR_RE.test(n) ? LIB.find(e => e.name === n.replace(VAR_RE, '')) : undefined);
-const liftName = n => n.replace(/\s*\((L|R)\)$/, '').replace(VAR_RE, '');
-const eqOf = n => { const m = n.replace(/\s*\((L|R)\)$/, '').match(VAR_RE); return m ? Object.keys(EQ_LBL).find(k => EQ_LBL[k] === m[1]) : null; };
+// Attachments (Job, 23 Nov): which handle or bar is on the cable, or which bar for barbell lifts. Own history each, like equipment.
+// Name order: lift, equipment, attachment, side: "Tricep Pushdown (Rope) (L)", "Lateral Raise (Cable) (Cuff)". Dumbbell versions have none.
+const ATT_LBL = { rope: 'Rope', bar: 'Straight bar', vbar: 'V-bar', ez: 'EZ bar', single: 'Single handle', cuff: 'Cuff', wide: 'Wide bar', close: 'Close-grip bar', vhandle: 'V-handle', neutral: 'Neutral grip', olympic: 'Olympic bar', trap: 'Trap bar' };
+const ATT_RE = new RegExp('\\s*\\((' + Object.values(ATT_LBL).join('|') + ')\\)$');
+const ATT_FOR = {
+  'Tricep Pushdown': { cable: ['rope', 'bar', 'vbar', 'single'] }, 'Overhead Tricep Extension': { cable: ['rope', 'bar', 'single'] },
+  'Lat Pulldown': { cable: ['wide', 'close', 'vhandle', 'neutral', 'single'], machine: ['wide', 'close', 'vhandle', 'neutral'] },
+  'Wide-Grip Row': { cable: ['wide', 'neutral'], machine: ['wide', 'neutral'] }, 'Close-Grip Row': { cable: ['vhandle', 'close', 'single'], machine: ['vhandle', 'close'] },
+  'Seated Cable Row': { cable: ['vhandle', 'wide', 'single'] }, 'Straight-Arm Pulldown': { cable: ['bar', 'rope'] }, 'Face Pull': { cable: ['rope'] }, 'Cable Crunch': { cable: ['rope'] },
+  'Cable Curl': { cable: ['bar', 'ez', 'rope', 'single'] }, 'Preacher Curl': { barbell: ['ez', 'olympic'], cable: ['ez', 'bar', 'single'] }, 'Barbell Curl': { barbell: ['olympic', 'ez'] },
+  'Hammer Curl': { cable: ['rope'] }, 'Bayesian Curl': { cable: ['single', 'cuff'] }, 'Reverse Curl': { barbell: ['olympic', 'ez'], cable: ['bar', 'ez'] },
+  'Lateral Raise': { cable: ['single', 'cuff'] }, 'Rear Delt Fly': { cable: ['single', 'cuff'] }, 'Front Raise': { cable: ['rope', 'bar', 'single'], barbell: ['olympic', 'ez'] },
+  'Upright Row': { cable: ['bar', 'rope'], barbell: ['olympic', 'ez'] }, 'Chest Fly': { cable: ['single', 'cuff'] }, 'Skull Crusher': { barbell: ['ez', 'olympic'] },
+  'Cable Kickback': { cable: ['cuff', 'single'] }, 'Abductor': { cable: ['cuff'] }, 'Adductor': { cable: ['cuff'] },
+  'Stiff-Leg Deadlift': { barbell: ['olympic', 'trap'] }, 'Romanian Deadlift': { barbell: ['olympic', 'trap'] },
+};
+const noSide = n => n.replace(/\s*\((L|R)\)$/, '');
+const liftName = n => noSide(n).replace(ATT_RE, '').replace(VAR_RE, '');
+const libEx = n => LIB.find(e => e.name === n) || (n !== liftName(n) ? LIB.find(e => e.name === liftName(n)) : undefined);
+const eqOf = n => { const m = noSide(n).replace(ATT_RE, '').match(VAR_RE); return m ? Object.keys(EQ_LBL).find(k => EQ_LBL[k] === m[1]) : null; };
+const attOf = n => { const m = noSide(n).match(ATT_RE); return m ? Object.keys(ATT_LBL).find(k => ATT_LBL[k] === m[1]) : null; };
+const attOpts = (n, eq) => ((ATT_FOR[liftName(n)] || {})[eq || exInfo(n).equip] || []);
+const mkName = (l, eq, att, sd) => l + (eq && eq !== eqDefault(l) && EQ_LBL[eq] ? ' (' + EQ_LBL[eq] + ')' : '') + (att && ATT_LBL[att] ? ' (' + ATT_LBL[att] + ')' : '') + (sd ? ' (' + sd + ')' : '');
+const withAtt = (n, att) => mkName(liftName(n), eqOf(n) || eqDefault(n), att, sideOf(n));
+// What the line under the name says: "Cable · Rope".
+const eqLine = n => { const q = exInfo(n).equip, a = attOf(n); return (eqTxt(q) || 'Equipment') + (a ? ' · ' + ATT_LBL[a] : ''); };
 const eqDefault = n => { const l = liftName(n), c = (S.customEx || []).find(e => e.name === l), x = libEx(l); return x ? (c && eqOptions(l).includes(c.equip) ? c.equip : x.equip) : (c ? c.equip : 'other'); };
 // Every lift gets the chip (Job, 23 Nov "do for all lifts"). The usual equipment for the lift comes first, the rest under Other equipment.
 const hasVariants = n => !!n;
 const eqFit = n => { const l = liftName(n); return (LIB.find(e => e.name === l) ? eqOptions(l) : [eqDefault(l)]).filter(q => EQ_LBL[q]); };
 // Options worth showing up front: the usual ones, the one in use, and any with history.
 const eqMain = (n, h = ix().hist) => { const l = liftName(n), cur = exInfo(n).equip; return Object.keys(EQ_LBL).filter(q => eqFit(l).includes(q) || q === cur || h[withEq(l, q)] || h[withEq(l, q) + ' (L)']); };
-function withEq(n, eq) { const sd = sideOf(n), l = liftName(n); return (eq === eqDefault(l) || !EQ_LBL[eq] ? l : l + ' (' + EQ_LBL[eq] + ')') + (sd ? ' (' + sd + ')' : ''); }
+function withEq(n, eq) { const l = liftName(n), a = attOf(n); return mkName(l, EQ_LBL[eq] ? eq : null, a && attOpts(l, eq).includes(a) ? a : null, sideOf(n)); }
 // A new workout picks the equipment you used last time for that lift.
-const eqPref = n => { const q = ((S.profile || {}).eqLast || {})[liftName(n)]; return q && !eqOf(n) && EQ_LBL[q] ? withEq(n, q) : n; };
+const eqPref = n => { const q = ((S.profile || {}).eqLast || {})[liftName(n)]; let r = q && !eqOf(n) && EQ_LBL[q] ? withEq(n, q) : n; return attPref(r); };
+// ...and the attachment you used last time on that equipment.
+const attPref = n => { if (attOf(n)) return n; const q = exInfo(n).equip, a = ((S.profile || {}).attLast || {})[liftName(n) + '|' + q]; return a && attOpts(n, q).includes(a) ? withAtt(n, a) : n; };
 const eqOptions = n => { if (!libEx(n)) return EQUIP; const o = EQ_OK[n] || [libEx(n).equip]; return o.includes('machine') ? o.flatMap(q => q === 'machine' ? ['machine', 'plate'] : [q]) : o; };
 const EQUIP = ['barbell', 'dumbbell', 'machine', 'plate', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
@@ -113,8 +138,8 @@ const usesPlates = name => !['dumbbell', 'cable', 'bodyweight', 'kettlebell', 'b
 function exInfo(name) {
   const b = baseName(name), v = eqOf(b), own = (S.customEx || []).find(e => e.name === b);
   if (v && !own) { const l = liftName(b), lx = LIB.find(e => e.name === l), cx = (S.customEx || []).find(e => e.name === l); if (lx || cx) return { name: b, muscle: (lx || cx).muscle, equip: v }; }
-  const c = (S.customEx || []).find(e => e.name === b), l = libEx(b);
-  if (l) return c && eqOptions(b).includes(c.equip) ? { name: b, muscle: l.muscle, equip: c.equip } : l;
+  const c = (S.customEx || []).find(e => e.name === b || e.name === liftName(b)), l = libEx(b);
+  if (l) return c && eqOptions(liftName(b)).includes(c.equip) ? { name: b, muscle: l.muscle, equip: c.equip } : l;
   return c || { name: b, muscle: 'Other', equip: 'other' };
 }
 
@@ -375,6 +400,10 @@ function renameLifts(st, act) {
     st.profile.eqFix1 = 1; n++;
     const lr = (st.customEx || []).find(e => e.name === 'Lateral Raise'); if (lr && lr.equip === 'band') lr.equip = 'cable';
     if (st.customEx) st.customEx = st.customEx.filter(e => !(e.name === 'Incline Press' && e.equip !== 'machine'));
+  }
+  // 23 Nov (Job): all Leg Press history is the plate-loaded machine, so that becomes the usual equipment for it.
+  if (!st.profile.eqFix2) {
+    st.profile.eqFix2 = 1; n++; st.customEx = (st.customEx || []).filter(e => e.name !== 'Leg Press'); st.customEx.push({ name: 'Leg Press', muscle: 'Quads', equip: 'plate' });
   }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
@@ -3045,6 +3074,8 @@ function viewExercise(v) {
   ${hasVariants(b) ? `<div class="pt0 top"><div><div class="mh28 eyebrow">${esc(info.muscle)}</div><h1>${esc(liftName(b))}</h1></div></div>
   ${eqMain(b, h).length < 2 ? '' : `<div class="seg eq-seg" role="group" aria-label="Equipment">${eqMain(b, h).map(q => { const n = withEq(b, q); return `<button class="${info.equip === q ? 'on' : ''}" data-a="exVar" data-k="${esc(n)}" aria-pressed="${info.equip === q}">${esc(eqTxt(q))}${h[n] || h[n + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`; }).join('')}</div>`}` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
+  ${(() => { const ao = attOpts(b, info.equip); if (!ao.length) return ''; const ca = attOf(b) || '', base = mkName(liftName(b), info.equip, null, null), nm = a => a ? mkName(liftName(b), info.equip, a, null) : base;
+    const list = ['', ...ao].filter(a => a === ca || h0[nm(a)] || h0[nm(a) + ' (L)'] || (a && true)); return `<div class="seg eq-seg" role="group" aria-label="Attachment">${list.map(a => `<button class="${a === ca ? 'on' : ''}" data-a="exVar" data-k="${esc(nm(a))}" aria-pressed="${a === ca}">${a ? esc(ATT_LBL[a]) : 'Not picked'}${h0[nm(a)] || h0[nm(a) + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`).join('')}</div>`; })()}
   ${v.gym ? `<div class="seg gym-seg" role="group" aria-label="Gym">${gyms.map(g => `<button class="${v.gym === g ? 'on' : ''}" data-a="exGym" data-k="${esc(g)}" aria-pressed="${v.gym === g}">${esc(gymName(g))}</button>`).join('')}</div>` : ''}
   ${setupHTML(b)}${howtoHTML(main)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
@@ -3880,7 +3911,8 @@ function targetOf(p, rr = repRange()) {
   return { w: p.w, r: p.r + 1 };
 }
 function newExEntry(name, nSets, rest, tip, sp) {
-  const last = lastSession(name), rr = repRange(name, sp);
+  // A new attachment starts from the same lift's untagged numbers, so you don't type them in again.
+  const last = lastSession(name) || (attOf(name) ? lastSession(withAtt(name, null)) : null), rr = repRange(name, sp);
   const src = last ? last.sets : [];
   const n = Math.max(nSets || 0, src.length) || 2;
   const sets = [];
@@ -4118,7 +4150,7 @@ function exCardHTML(e, ei) {
   // One ⋯ per card (review 2) so long names get the width; swap lives in the menu. The fold chevron shows once every set is in.
   const foldBtn = allDone || e.fold === true ? `<button class="icon-btn fold-btn ${fold ? 'shut' : ''}" data-a="foldEx" data-e="${ei}" aria-label="${fold ? 'Show sets' : 'Hide sets'}" aria-expanded="${!fold}">${I.down}</button>` : '';
   return `<section class="card tight ${uni ? 'uni uni-' + uni.toLowerCase() : ''} ${fold ? 'folded' : ''}" id="ex-${ei}" aria-label="${esc(e.name)}">
-    ${uni === 'R' ? '' : `<div class="row between"><div class="grow">${hasVariants(e.name) ? '<div class="ex-nm">' : ''}<div class="ex-name">${esc(hasVariants(e.name) ? liftName(e.name) : uni ? baseName(e.name) : e.name)}</div>${hasVariants(e.name) ? `<button class="eq-chip" data-a="exEq" data-e="${ei}" aria-label="Equipment: ${esc(eqTxt(exInfo(e.name).equip) || '')}. Change">${esc(eqTxt(exInfo(e.name).equip) || 'Equipment')} <span aria-hidden="true">▾</span></button></div>` : ''}${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
+    ${uni === 'R' ? '' : `<div class="row between"><div class="grow">${hasVariants(e.name) ? '<div class="ex-nm">' : ''}<div class="ex-name">${esc(hasVariants(e.name) ? liftName(e.name) : uni ? baseName(e.name) : e.name)}</div>${hasVariants(e.name) ? `<button class="eq-chip" data-a="exEq" data-e="${ei}" aria-label="Equipment: ${esc(eqLine(e.name))}. Change">${esc(eqLine(e.name))} <span aria-hidden="true">▾</span></button></div>` : ''}${uni ? '<div class="cap">One side at a time</div>' : ''}`}${uni === 'R' ? `<div class="row between"><div class="grow"><div class="uni-lbl">Right</div>` : ''}${e.tip ? `<div class="cap">${esc(e.tip)}</div>` : ''}${uni === 'L' ? '<div class="uni-lbl">Left</div>' : ''}</div>${foldBtn}<button class="icon-btn" data-a="exMenu" data-e="${ei}" aria-label="Options for ${esc(e.name)}">${I.more}</button></div>
     ${fold ? `<button class="fold-sum" data-a="foldEx" data-e="${ei}"><span class="fold-ck">${I.check}</span><span class="grow">${dsets.length === e.sets.length ? 'Done' : plural(dsets.length, 'set') + ' done'} · ${e.sets.filter(x => x.done && x.t !== 'warm').map(setStr).join(', ') || plural(e.sets.length, 'set')}</span><span class="sec">Show</span></button>${asking && S.profile.rpe ? (() => { const si = A.rpeAsk[1], st = e.sets[si]; return st ? `<div class="rpe mt2"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${st.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div>` : ''; })() : ''}${cmp}` : `
     ${setupHTML(e.name)}${GAME_ON ? ptLastSet(e) : ''}${sugg ? `<div class="tgt-line"><span class="ell">${esc(sugg)}</span>${infoBtn('target')}</div>` : ''}
     ${e.note ? `<div class="it cap">${esc(e.note)}</div>` : ''}${e.ss && A.ex[ei + 1] ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei + 1].name))} ${infoBtn('ss')}</div>` : ''}${ei && A.ex[ei - 1].ss ? `<div class="ss-line">Superset with ${esc(baseName(A.ex[ei - 1].name))}. Rest starts after this one</div>` : ''}
@@ -5876,48 +5908,59 @@ function gymRemRow(e, ei) {
 }
 function openEqPick(ei) {
   const e = A.ex[ei]; if (!e) return;
-  const lift = liftName(e.name), cur = exInfo(e.name).equip, h = ix().hist;
-  const lastOf = q => { const n = withEq(lift, q), c = [h[n], h[n + ' (L)']].filter(Boolean).map(x => x[x.length - 1]).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return c; };
+  const lift = liftName(e.name), cur = exInfo(e.name).equip, curA = attOf(e.name), h = ix().hist;
+  const lastN = n => [h[n], h[n + ' (L)']].filter(Boolean).map(x => x[x.length - 1]).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+  const sub = l => l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet';
   const mm = eqMain(e.name, h), main = mm.length > 1 || eqFit(e.name).length ? mm : Object.keys(EQ_LBL), more = Object.keys(EQ_LBL).filter(q => !main.includes(q));
-  const row = q => { const l = lastOf(q); return `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(eqTxt(q))}</b><span class="cap">${l ? esc(fmtDate(l.date)) + ' · ' + esc(l.sets.filter(validSet).map(setStr).join(', ') || 'no sets') : 'Nothing logged yet'}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`; };
+  const row = q => `<button class="mi eqp ${q === cur ? 'on' : ''}" data-q="${q}" aria-pressed="${q === cur}"><span class="grow"><b>${esc(eqTxt(q))}</b><span class="cap">${sub(lastN(withEq(lift, q)))}</span></span>${q === cur ? `<span class="mi-v">${I.check}</span>` : ''}</button>`;
   const rows = main.map(row).join('') + (more.length ? `<details class="eq-more"><summary class="mi">Other equipment</summary>${more.map(row).join('')}</details>` : '');
-  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history. ${infoBtn('equip')}</div><div class="mgrp mt3">${rows}</div>${S.profile.eqAsk ? `<button class="mt3 link cap" data-q="_ask">${S.profile.eqAsk === 'move' ? 'History moves with you when you switch.' : 'History stays put when you switch.'} Ask me each time</button>` : ''}</div>`, {
+  // Attachments for the equipment in use (cable handles, barbell type). "Not picked" keeps sessions from before attachments.
+  const ao = attOpts(e.name, cur), base0 = mkName(lift, cur, null, null);
+  const arow = a => `<button class="mi eqp ${a === (curA || '') ? 'on' : ''}" data-t="${a}" aria-pressed="${a === (curA || '')}"><span class="grow"><b>${a ? esc(ATT_LBL[a]) : 'Not picked'}</b><span class="cap">${sub(lastN(a ? mkName(lift, cur, a, null) : base0))}</span></span>${a === (curA || '') ? `<span class="mi-v">${I.check}</span>` : ''}</button>`;
+  const arows = ao.length ? `<div class="sgh exm-l mt3">Attachment</div><div class="mgrp">${ao.map(arow).join('')}${curA || h[base0] || h[base0 + ' (L)'] ? arow('') : ''}</div>` : '';
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">What are you using? Each one keeps its own history. ${infoBtn('equip')}</div><div class="mgrp mt3">${rows}</div>${arows}${S.profile.eqAsk ? `<button class="mt3 link cap" data-q="_ask">${S.profile.eqAsk === 'move' ? 'History moves with you when you switch.' : 'History stays put when you switch.'} Ask me each time</button>` : ''}</div>`, {
     label: 'Equipment',
     mount: b => { b.onclick = ev => {
-      const x = ev.target.closest('[data-q]'); if (!x) return; const q = x.dataset.q; closeSheet(sh);
-      if (q === '_ask') { delete S.profile.eqAsk; persist('jd/meta'); toast('I’ll ask each time', 2500); return; }
-      if (!A || q === cur) return;
+      const x = ev.target.closest('[data-q], [data-t]'); if (!x) return; closeSheet(sh);
+      if (x.dataset.q === '_ask') { delete S.profile.eqAsk; persist('jd/meta'); toast('I’ll ask each time', 2500); return; }
+      if (!A) return;
+      let to, label;
+      if (x.dataset.t != null) { const a = x.dataset.t || null; if (a === curA) return; to = n => withAtt(n, a); label = a ? ATT_LBL[a] : 'no attachment';
+        if (a) S.profile.attLast = Object.assign({}, S.profile.attLast, { [lift + '|' + cur]: a }); }
+      else { const q = x.dataset.q; if (q === cur) return; to = n => attPref(withEq(n, q)); label = eqTxt(q);
+        S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [lift]: q }); }
+      persist('jd/meta');
+      const fromB = baseName(e.name), toB = baseName(to(e.name));
       const go = moved => {
         const sd = sideOf(e.name), targets = sd ? A.ex.filter(y => baseName(y.name) === baseName(e.name)) : [e];
         for (const t of targets) {
-          const n = withEq(t.name, q), i = A.ex.indexOf(t);
+          const n = to(t.name), i = A.ex.indexOf(t);
           if (t.sets.some(z => z.done)) t.name = n;
           else { const ne = newExEntry(n, t.sets.length, t.rest, t.tip); A.ex[i] = { ...t, name: n, sets: ne.sets }; }
         }
-        S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [lift]: q }); persist('jd/meta');
         touchA();
-        if (moved) toast(`Moved ${plural(new Set(moved.map(m => m[0])).size, 'session')} to ${esc(eqTxt(q))}`, 0, () => { eqMoveBack(moved); toast('History moved back', 2500); });
-        else toast(esc(lift) + ': ' + esc(eqTxt(q)), 2500);
+        if (moved) toast(`Moved ${plural(new Set(moved.map(m => m[0])).size, 'session')} to ${esc(label)}`, 0, () => { eqMoveBack(moved); toast('History moved back', 2500); });
+        else toast(esc(lift) + ': ' + esc(label), 2500);
       };
-      // Ask once per switch whether the old equipment's history should come along (Job, 23 Nov). "Don't ask again" keeps the answer.
-      const had = [h[withEq(lift, cur)], h[withEq(lift, cur) + ' (L)']].some(Boolean), ask = S.profile.eqAsk;
-      if (!had || ask === 'keep') return go(null);
-      if (ask === 'move') return go(eqMove(lift, cur, q));
-      const s2 = openSheet(`<div class="stack"><h2 class="exm-h">Move your ${esc(eqTxt(cur) || cur)} history to ${esc(eqTxt(q))}?</h2>
-        <p class="cap">Do this if you logged ${esc(lift)} on the wrong equipment. Otherwise keep them separate so each has its own numbers.</p>
+      // Ask once per switch whether the old history should come along (Job, 23 Nov). "Don't ask again" keeps the answer.
+      const had = [h[fromB], h[fromB + ' (L)']].some(Boolean), ask = S.profile.eqAsk;
+      if (!had || ask === 'keep' || fromB === toB) return go(null);
+      if (ask === 'move') return go(eqMove(fromB, toB));
+      const s2 = openSheet(`<div class="stack"><h2 class="exm-h">Move your ${esc(eqLine(e.name))} history to ${esc(eqLine(to(e.name)))}?</h2>
+        <p class="cap">Do this if you logged ${esc(lift)} on the wrong one. Otherwise keep them separate so each has its own numbers.</p>
         <button class="btn primary" data-k="move">Move it</button><button class="btn" data-k="keep">Keep separate</button>
         <label class="row between card tight"><span>Don’t ask again</span><input type="checkbox" id="eq-nomore" class="cbox"></label></div>`, {
         label: 'Move history',
         mount: b2 => { b2.onclick = ev2 => { const y = ev2.target.closest('[data-k]'); if (!y) return; const k = y.dataset.k;
           if (b2.querySelector('#eq-nomore').checked) { S.profile.eqAsk = k; persist('jd/meta'); }
-          closeSheet(s2); go(k === 'move' ? eqMove(lift, cur, q) : null); }; },
+          closeSheet(s2); go(k === 'move' ? eqMove(fromB, toB) : null); }; },
       });
     }; },
   });
 }
 // Renames past sessions of one equipment to another (sides kept). Returns what changed so Undo can put it back.
-function eqMove(lift, from, to) {
-  const a = withEq(lift, from), b = withEq(lift, to), map = { [a]: b, [a + ' (L)']: b + ' (L)', [a + ' (R)']: b + ' (R)' }, moved = [], months = new Set();
+function eqMove(a, b) {
+  const map = { [a]: b, [a + ' (L)']: b + ' (L)', [a + ' (R)']: b + ' (R)' }, moved = [], months = new Set();
   for (const w of Object.values(S.workouts)) for (const x of w.ex || []) if (map[x.name]) { moved.push([w.id, x.name, map[x.name]]); x.name = map[x.name]; months.add(monthPath(w.date)); }
   if (S.setup && S.setup[a] && !S.setup[b]) { S.setup[b] = S.setup[a]; delete S.setup[a]; }
   invalidate(); if (months.size) persist(...months, 'jd/meta');

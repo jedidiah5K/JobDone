@@ -7,5 +7,5 @@ const st = o => ({ profile: { owner: o }, workouts: { a: { ex: [{ name: 'Tricep 
 const own = st(true); assert.strictEqual(renameLifts(own, null), true); assert.strictEqual(own.workouts.a.ex[0].name, 'Tricep Pushdown', 'owner gets the rename');
 const other = st(false); assert.strictEqual(renameLifts(other, null), false); assert.strictEqual(other.workouts.a.ex[0].name, 'Tricep Vulken', 'other accounts are left alone');
 const fx = st(true); fx.customEx = [{ name: 'Lateral Raise', equip: 'band' }, { name: 'Incline Press', equip: 'dumbbell' }]; renameLifts(fx, null);
-assert.deepStrictEqual(fx.customEx, [{ name: 'Lateral Raise', equip: 'cable' }], 'band to cable, incline back to machine');
+assert.deepStrictEqual(fx.customEx, [{ name: 'Lateral Raise', equip: 'cable' }, { name: 'Leg Press', muscle: 'Quads', equip: 'plate' }], 'band to cable, incline back to machine, leg press plate-loaded');
 console.log('lift renames: all checks passed');
