@@ -2530,3 +2530,4 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .gym-main svg { width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 2; }
 .gym-seg { flex-wrap: wrap; }
 .gym-seg button { flex: 1 1 auto; padding: 0 8px; }
+.gym-rem { gap: 10px; margin-top: 8px; padding: 8px 0 2px; border-top: 1px solid var(--line, rgba(127,127,127,.2)); }

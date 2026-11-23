@@ -429,7 +429,18 @@ function ix() {
   IX = { ws, hist, best, prs };
   return IX;
 }
-const lastSession = name => { const h = ix().hist[name]; return h && h.length ? h[h.length - 1] : null; };
+// During a workout, last time = last time at this gym (Job, 23 Nov). At another gym: your last session there, else your main gym.
+// At your main gym, other gyms never move your numbers. Sessions with no gym count as the main gym.
+const gymBucket = wid => { const w = S.workouts[wid], m = gymMainId(); return w && w.gym && w.gym !== m ? w.gym : 'main'; };
+const curBucket = () => { if (!A || !A.gym) return 'main'; const m = gymMainId(); return m && A.gym !== m ? A.gym : 'main'; };
+const lastSession = name => {
+  const h = ix().hist[name]; if (!h || !h.length) return null;
+  if (!A || !(S.workouts && Object.values(S.workouts).some(w => w.gym))) return h[h.length - 1];
+  const b = curBucket(), at = k => { for (let i = h.length - 1; i >= 0; i--) if (gymBucket(h[i].wid) === k) return h[i]; return null; };
+  return at(b) || (b !== 'main' && at('main')) || h[h.length - 1];
+};
+// "Remember for this gym": a starting weight you saved for a lift at a gym that isn't your main one.
+const gymPin = name => { const b = curBucket(); return b === 'main' ? null : ((S.profile.gymW || {})[b] || {})[baseName(name)] || null; };
 const splitById = id => S.splits.find(s => s.id === id);
 const wSplit = w => (w.splitId && splitById(w.splitId)) || S.splits.find(s => s.name === w.splitName);
 function lastOfSplit(sp) { const ws = ix().ws; for (let i = ws.length - 1; i >= 0; i--) { const w = ws[i]; if (!w.skipped && (w.splitId === sp.id || (!w.splitId && w.splitName === sp.name))) return w; } return null; }
@@ -3870,6 +3881,7 @@ function newExEntry(name, nSets, rest, tip, sp) {
     const p = src[i] || src[src.length - 1], t = targetOf(p, rr);
     sets.push({ w: t ? t.w : null, r: t ? t.r : null, t: p && p.t === 'warm' ? 'warm' : 'work', done: false, ...(t && (t.up || t.r !== p.r) ? { tg: 1 } : {}) });
   }
+  const pin = gymPin(name); if (pin) sets.forEach(t => { if (t.t !== 'warm') { t.w = pin; delete t.tg; } });
   return { name, rest: rest || S.profile.defaultRest, tip: tip || '', note: '', sets, key: uid() };
 }
 function startWorkout(splitId, date, practice) {
@@ -3877,7 +3889,7 @@ function startWorkout(splitId, date, practice) {
   const sp = splitId ? splitById(splitId) : null;
   A = { id: uid(), splitId: sp ? sp.id : null, splitName: sp ? sp.name : 'Workout', start: Date.now(), touched: Date.now(), ex: sp ? sp.ex.map(e => newExEntry(eqPref(e.name), e.sets, e.rest, e.note, sp)) : [], orig: sp ? sp.ex.map(e => e.name) : [], view: 'log', ...(practice ? { practice: true } : {}) };
   if (date && date !== today()) A.date = date;
-  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (PARTY_NEXT) { A.party = PARTY_NEXT.slice(0, PARTY_MAX); A.partyHost = PARTY_HOST_NEXT || (USER && USER.id); PARTY_HOST_NEXT = null; A.turns = true; } }
+  if (GAME_ON && !practice) { const gc = gymOn() && gymCur(); if (gc) A.gym = gc.gym_id; if (sp && curBucket() !== 'main') A.ex = sp.ex.map(e => newExEntry(eqPref(e.name), e.sets, e.rest, e.note, sp)); if (PARTY_NEXT) { A.party = PARTY_NEXT.slice(0, PARTY_MAX); A.partyHost = PARTY_HOST_NEXT || (USER && USER.id); PARTY_HOST_NEXT = null; A.turns = true; } }
   persist('jd/active'); openWk(); if (!practice) atGymAsk();
   if (!sp) pickExercise(name => { A.ex.push(newExEntry(eqPref(name))); touchA(); });
 }
@@ -4112,7 +4124,7 @@ function exCardHTML(e, ei) {
       <td><button class="check" data-a="done" data-e="${ei}" data-s="${si}" aria-label="${s.done ? 'Undo' : 'Log'} ${esc(baseName(e.name))} set ${lbl}${s.w != null ? ', ' + dw(s.w) + ' ' + U() : ''}${s.r != null ? ', ' + s.r + ' reps' : ''}" aria-pressed="${s.done}">${I.check}</button>${e.sets.length > 1 ? `<button class="set-del" data-a="delSet" data-e="${ei}" data-s="${si}" tabindex="-1" aria-label="Delete set">${IC.trash}<span>Delete</span></button>` : ''}</td></tr>${S.profile.rpe && s.done && s.t !== 'warm' && A.rpeAsk && A.rpeAsk[0] === ei && A.rpeAsk[1] === si ? `<tr class="rpe-row"><td colspan="5"><div class="rpe"><span class="cap">How hard? ${infoBtn('rpe')}</span>${[6, 7, 8, 9, 10].map(n => `<button class="${s.rpe === n ? 'on' : ''}" data-a="rpe" data-e="${ei}" data-s="${si}" data-k="${n}">${n}</button>`).join('')}</div></td></tr>` : ''}`; }).join('')}
     </tbody></table>
     <div class="mt2 row between"><button class="link add-set" data-a="addSet" data-e="${ei}">+ Add set</button>${last && !dsets.length && sameDiff(e, last) ? `<button class="link add-set" data-a="sameLast" data-e="${ei}">Same as last time</button>` : ''}${e.sets.length > 1 && ix().ws.length < 5 ? `<span class="cap sw-hint">Swipe a set left to remove it</span>` : ''}</div>
-    ${cmp}`}
+    ${gymRemRow(e, ei)}${cmp}`}
   </section>`;
 }
 const restMsg = m => m ? `<b>${esc(m.title)}${/[.!?…]$/.test(m.title) ? '' : '.'}</b> ${esc(m.sub)}` : '';
@@ -5816,6 +5828,14 @@ function dragSort(ev) {
 document.addEventListener('pointerdown', dragSort);
 // ⋯ → Split into left and right, or back (Job, 2 Nov). A second card of the same lift becomes the right side.
 // Equipment picker on the workout card (Job, 23 Nov): each equipment keeps its own history and PREVIOUS numbers.
+// Shows at another gym once you change a weight on this lift (Job, 23 Nov, option B).
+function gymRemRow(e, ei) {
+  const b = curBucket(); if (b === 'main' || sideOf(e.name) === 'R') return '';
+  const pin = gymPin(e.name), ed = e.sets.find(t => t.ed && t.w != null && t.t !== 'warm');
+  if (!pin && !ed) return '';
+  const w = pin && !ed ? pin : ed.w, m = (GYM.mine || []).find(x => x.gym_id === b), gn = m ? m.brand : 'this gym', on = pin === w;
+  return `<label class="row between gym-rem"><span class="cap">Start at <b class="num">${dw(w)} ${U()}</b> here at ${esc(gn)}</span><input type="checkbox" class="cbox" data-a="gymRem" data-e="${ei}" data-w="${w}" ${on ? 'checked' : ''} aria-label="Remember this weight for ${esc(gn)}"></label>`;
+}
 function openEqPick(ei) {
   const e = A.ex[ei]; if (!e) return;
   const lift = liftName(e.name), cur = exInfo(e.name).equip, h = ix().hist;
@@ -6620,6 +6640,8 @@ const ACT = {
   rmSet: el => { const e = A.ex[+el.dataset.e]; if (e.sets.length < 2) return; const gone = e.sets.pop(); touchA(); if (gone.done) toast('Logged set removed', 0, () => { if (A && A.ex.includes(e)) { e.sets.push(gone); touchA(); } }); },
   exMenu: el => exMenu(+el.dataset.e),
   exEq: el => openEqPick(+el.dataset.e),
+  gymRem: el => { const e = A && A.ex[+el.dataset.e], g = curBucket(); if (!e || g === 'main') return; const k = baseName(e.name), all = Object.assign({}, S.profile.gymW), m = Object.assign({}, all[g]);
+    if (el.checked) m[k] = +el.dataset.w; else delete m[k]; all[g] = m; S.profile.gymW = all; persist('jd/meta'); toast(el.checked ? 'Saved for this gym' : 'Back to your last weight here', 2000); },
   exVar: el => { const t = NAV.stack[NAV.stack.length - 1]; t.name = el.dataset.k; delete t.sel; rerender(); },
   swapEx: el => openSwap(+el.dataset.e),
   foldEx: el => { const ei = +el.dataset.e, e = A.ex[ei], shut = !!document.querySelector('#ex-' + ei + '.folded'); e.fold = !shut; persist('jd/active'); renderWorkout(); },
