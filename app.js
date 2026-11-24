@@ -3147,8 +3147,8 @@ function viewWorkout(v) {
   <div class="pt0 top"><div><div class="eyebrow">${esc(fmtDate(w.date, { wd: true, y: true }))}${w.src === 'import' ? ' · imported' : ''}</div><h1>${esc(w.splitName || 'Workout')}</h1></div></div>
   ${ed ? `<div class="grid2"><div class="field"><label for="wk-date">Date</label><input class="input" type="date" id="wk-date" data-in="wkDate" value="${w.date}"></div><div class="field"><label for="wk-split">Split</label><select class="input" id="wk-split" data-in="wkSplit">${S.splits.map(s => `<option value="${s.id}" ${wSplit(w) === s ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div></div>` : ''}
   ${w.skipped ? `<div class="card"><div class="empty">This session was skipped.</div></div>` : `<div class="card"><div class="kpis"><div class="kpi"><b>${dvol(wVol(w))}</b><span>${U()} volume</span></div><div class="kpi"><b>${wSets(w)}</b><span>sets</span></div><div class="kpi"><b>${w.end && w.start ? fmtDur(w.end - w.start) : '—'}</b><span>duration</span></div></div>${w.energy ? `<div class="mt3 cap">Energy ${w.energy}/5</div>` : ''}${w.note ? `<div class="mt3 note">${esc(w.note)}</div>` : ''}</div>`}
-  ${w.ex.map((e, ei) => `<div class="card tight"><div class="row between"><button class="f17 ex-name" data-a="openEx" data-name="${esc(e.name)}">${esc(ed ? liftName(e.name) + (sideOf(e.name) ? ` (${sideOf(e.name)})` : '') : e.name)}</button>${pr.has(e.name) ? `<span class="pill pr">PR · ${esc(pr.get(e.name).types[0])}</span>` : ''}</div>
-    ${ed ? `<button class="eq-chip" data-a="wkEq" data-e="${ei}">${esc(eqLine(e.name))} ▾</button>` : ''}
+  ${w.ex.map((e, ei) => `<div class="card tight"><div class="row between"><button class="f17 ex-name" data-a="openEx" data-name="${esc(e.name)}">${esc(liftName(e.name) + (sideOf(e.name) ? ` (${sideOf(e.name)})` : ''))}</button>${pr.has(e.name) ? `<span class="pill pr">PR · ${esc(pr.get(e.name).types[0])}</span>` : ''}</div>
+    ${ed ? `<button class="eq-chip" data-a="wkEq" data-e="${ei}">${esc(eqLine(e.name))} ▾</button>` : `<div class="eq-chip eq-ro">${esc(eqLine(e.name))}</div>`}
     ${e.note ? `<div class="mt1 cap">${esc(e.note)}</div>` : ''}
     ${ed ? `<div class="g2 mt2 stack">${e.sets.map((s, si) => `<div class="g2 row"><span class="cap" style="width:22px">${si + 1}</span><input class="input sm num" style="width:84px" inputmode="decimal" id="ws-${ei}-${si}-w" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="w" value="${s.w == null ? '' : dw(s.w)}" aria-label="Weight"><span class="cap">${U()} ×</span><input class="input sm num" style="width:60px" inputmode="numeric" id="ws-${ei}-${si}-r" data-in="wsSet" data-e="${ei}" data-s="${si}" data-f="r" value="${s.r == null ? '' : s.r}" aria-label="Reps"><button class="icon-btn" data-a="wsDel" data-e="${ei}" data-s="${si}" aria-label="Delete set">${I.x}</button></div>`).join('')}<div class="row between"><button class="link cap" data-a="wkAddSet" data-e="${ei}">+ Add set</button><button class="link cap c-neg" data-a="wkRmEx" data-e="${ei}">Remove lift</button></div></div>`
       : `<div class="mt2 f15 num sec">${e.sets.map(setStr).join('  ·  ')}</div>`}
@@ -3228,7 +3228,7 @@ function meParts() {
   <section><div class="sgh">Sounds</div><div class="sgrp">
     ${srow('Sounds', swi(p.sound !== false, 'soundToggle'))}
     ${slink('Play a test sound', 'soundTest', 'act')}
-  </div><div class="sgf">Sounds play over your music and never pause it. No sound? Your phone is probably on silent. Turn silent mode off to hear them. Phones don’t let websites play sounds on silent without pausing your music.</div></section>
+  </div><div class="sgf">Sounds play over your music without pausing it. No sound? Your phone is on silent, which mutes websites.</div></section>
 `,
     look: `
   <section><div class="sgh">Text size</div><div class="sgrp">${srow('Text size', textSizeSeg(), 'Makes all the writing in the app bigger')}</div></section>
@@ -6131,7 +6131,7 @@ function exMenu(ei) {
     <div class="sgh exm-l">Change</div><div class="mgrp">
     ${row('swap', 'Swap exercise')}${gymOn() && gymCur() ? row('taken', 'Machine taken') : ''}
     ${row('sides', sideOf(e.name) ? 'Log both sides together' : 'Split into left and right')}
-    ${row('order', 'Reorder exercises')}${row('setup', 'Machine setup notes')}${row('hist', 'See history')}${howtoFor(e.name) ? row('howto', 'How to do it') : ''}</div>
+    ${row('order', 'Reorder exercises')}${row('setup', ['machine', 'plate', 'smith', 'cable'].includes(inf.equip) ? 'Machine setup notes' : 'Setup notes')}${row('hist', 'See history')}${howtoFor(e.name) ? row('howto', 'How to do it') : ''}</div>
     <button class="mi mi-rm" data-m="rm">Remove from this workout</button></div>`, {
     label: 'Exercise options',
     onClose: () => { },
