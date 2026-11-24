@@ -883,10 +883,10 @@ function openNewSplit() {
   const home = () => `<div class="stack rc-view"><h2>New split</h2>
     <section><div class="sgh">Where are you training?</div><div class="rc-grid">${tiles.map(([k, n, d]) => `<button class="rc-tile" data-rc="${k}"><span class="rc-t"><b>${esc(n)}</b><span class="cap">${esc(d)}</span></span><span class="rc-ic">${rcIcon(k)}</span></button>`).join('')}</div></section>
     <button class="btn block" data-a="newBlankSplit">Start from blank</button></div>`;
-  const gym = () => `<div class="stack rc-view"><button class="link rc-back" data-rc="back">‹ Back</button><h2>Gym</h2>
+  const gym = () => `<div class="stack rc-view"><button class="back rc-back" data-rc="back" aria-label="Back">${I.left}</button><h2>Gym</h2>
     <section><div class="sgh">Ready-made plans</div><div class="tmpl">${Object.entries(TEMPLATES).filter(([, t]) => t.s.length).map(([k, t]) => `<button data-np="${k}"><b>${esc(t.n)}</b><span>${esc(t.d)}</span></button>`).join('')}</div></section>
     <section><div class="sgh">Or one split</div><div class="tmpl">${one.map(([n, ex], i) => `<button data-ns="${i}"><b>${esc(n)}</b><span>${esc(ex.join(', '))}</span></button>`).join('')}</div></section></div>`;
-  const cat = k => { const r = ROUTINES[k]; return `<div class="stack rc-view"><button class="link rc-back" data-rc="back">‹ Back</button><div class="row g3"><span class="rc-ic">${rcIcon(k)}</span><h2>${esc(r.n)}</h2></div>
+  const cat = k => { const r = ROUTINES[k]; return `<div class="stack rc-view"><button class="back rc-back" data-rc="back" aria-label="Back">${I.left}</button><div class="row g3"><span class="rc-ic">${rcIcon(k)}</span><h2>${esc(r.n)}</h2></div>
     <div class="tmpl">${r.p.map(([n, d, list], i) => `<button data-rp="${k}:${i}"><b>${esc(n)}</b><span>${esc(d)}</span><span>${esc(list.flatMap(x => x[1]).filter((v, j, a) => a.indexOf(v) === j).slice(0, 7).join(', '))}</span></button>`).join('')}</div></div>`; };
   const sh = openSheet(home(), { label: 'New split' });
   const add = list => { const ids = []; for (const [name, ex] of list) { const id = 'sp-' + uid(); const r = S.profile.exp && OB_EXP[S.profile.exp] ? OB_EXP[S.profile.exp] : [0, 0, 6, 10]; S.splits.push({ id, name, color: SPLIT_COLORS[name] || PALETTE[S.splits.length % PALETTE.length], archived: false, ex: ex.map(n => ({ name: n, sets: 3, repMin: r[2], repMax: r[3], rest: S.profile.defaultRest || 120, note: '' })) }); S.rotation.push(id); ids.push(id); } persist('jd/meta'); closeSheet(sh); NAV.tab = 'splits'; NAV.stack = []; render(); toast(list.length > 1 ? list.length + ' splits added to your rotation' : list[0][0] + ' added to your rotation'); };
@@ -4727,7 +4727,7 @@ function showRecap(id, fresh) {
   const sp = wSplit(d.w), col = sp ? sp.color : 'var(--accent)', nx = nextSplit();
   const n1 = n => (n % 1 ? n.toFixed(1) : n) + (n === 1 ? ' set' : ' sets');
   el.innerHTML = `<div class="rc-body" style="--split:${col};--ink:${sp ? inkOn(sp.color) : '#fff'}">
-    <button class="rc-home" id="rc-home" aria-label="Home" title="Home">${I.left}</button>
+    <button class="back rc-home" id="rc-home" aria-label="Home">${I.left}</button>
     ${finHero(d)}
     <div class="card"><div class="kpis rc-k">${d.dur ? `<div class="kpi"><b>${fmtDur(d.dur)}</b><span>time</span></div>` : ''}<div class="kpi"><b class="num" data-roll>${dvol(d.vol)}</b><span>${U()} lifted</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b>${d.prs.length}</b><span>${d.prs.length === 1 ? 'PR' : 'PRs'}</span></div></div></div>
     <div class="card rc-vol">
@@ -6604,7 +6604,7 @@ function renderWelcomePublic() {
   const next = k === 'hook' ? 'Build my plan' : k === 'tour' ? 'Next' : k === 'account' ? 'Save my plan' : last ? 'Start training' : 'Continue';
   // The second button keeps its space on every step so the main one never moves (Continue in the same spot).
   const alt = k === 'hook' && obNeedAccount() ? '<button class="self-c link" id="ob-have">I already have an account</button>' : '<button class="self-c link" tabindex="-1" aria-hidden="true" style="visibility:hidden">I already have an account</button>';
-  $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="icon-btn ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div></div>
+  $('#app').innerHTML = `<main id="screen" class="ob"><div class="ob-top"><button class="back ${OB.step ? '' : 'hide'}" id="ob-back" aria-label="Back">${I.left}</button><div class="ob-prog"><i style="width:${(OB.step + 1) / OB_STEPS.length * 100}%"></i></div></div>
     <div class="ob-body stack${OB.dir ? (OB.dir > 0 ? ' ob-in' : ' ob-in-back') : ''}" data-k="${k}"><div class="ob-eb">Step ${OB.step + 1} of ${OB_STEPS.length} · ${OB_NAMES[k]}</div>${obBody(k)}</div>
     <div class="ob-foot"><div class="ob-err cap" id="ob-err"></div><button class="mh52 f17 btn primary block" id="ob-next">${next}</button>${alt}</div></main>`;
   const q = x => $('#app').querySelector(x), qa = x => $('#app').querySelectorAll(x);

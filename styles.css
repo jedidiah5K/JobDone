@@ -1845,14 +1845,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Finish page back button: a frosted circle floating over the top-left of the hero (Job, 8 Nov) */
 #recap .rc-body { position: relative; }
 #recap .rc-home { position: absolute; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 6px); left: 4px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--accent); filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
-:root[data-theme="cliffs"] #recap .rc-home { color: #E5342B; } /* the summit flag red; the theme blue disappears into the sky */
 /* Skyline (Job, 15 Nov): red buttons and links vanish on the navy and on the red recap art, so controls are white there.
    Red stays for highlights (active tab, + button, PRs, targets). */
-:root[data-theme="spidey"] #recap .rc-home, :root[data-theme="spidey"]:not([data-tod="day"]) .link, :root[data-theme="spidey"]:not([data-tod="day"]) .btn.ghost,
+:root[data-theme="spidey"]:not([data-tod="day"]) .link, :root[data-theme="spidey"]:not([data-tod="day"]) .btn.ghost,
 :root[data-theme="spidey"]:not([data-tod="day"]) .icon-btn, :root[data-theme="spidey"]:not([data-tod="day"]) .fold-btn.shut,
 :root[data-theme="spidey"]:not([data-tod="day"]) #wk .link.add-set, :root[data-theme="spidey"]:not([data-tod="day"]) .lr-go, :root[data-theme="spidey"]:not([data-tod="day"]) .si-age a,
 :root[data-theme="spidey"]:not([data-tod="day"]) .legal a, :root[data-theme="spidey"]:not([data-tod="day"]) .me-ic { color: #FFFFFF; }
-#recap .rc-home svg { width: 30px; height: 30px; stroke-width: 3; }
 #recap .rc-home:active { transform: scale(.94); }
 #recap .rc-hero.fin > .fin-eb { margin-left: 40px; } /* room for the home button at the old height */
 /* New post screen (Job, 8 Nov): top bar, live feed-card preview, caption/photo/lifts box underneath */
@@ -2577,3 +2575,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Back = a round arrow button, same on every screen and theme (Job, 24 Nov) */
 .back, #wk .back { width: 40px; height: 40px; min-height: 40px; padding: 0; gap: 0; justify-content: center; align-self: flex-start; flex: none; border-radius: 999px; color: var(--accent); background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); text-shadow: none; font-size: 0; }
 .back svg, #wk .back svg { width: 22px; height: 22px; margin: 0; }
+#recap .rc-home { z-index: 20; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 10px); width: 40px; height: 40px; display: inline-flex; background: var(--surface-solid, var(--surface)); color: var(--accent); filter: none; box-shadow: var(--shadow); }
+/* room for the round back arrow above every finish page title */
+.rc-hero.fin { padding-top: calc(58px + env(safe-area-inset-top, 0px)); height: calc(264px + env(safe-area-inset-top, 0px)); }
+#recap .rc-hero.fin.fin-boulder { height: calc(300px + env(safe-area-inset-top, 0px)); }
+/* Summit at night: the arrow's dark circle gets a light rim so it doesn't sink into the sky */
+:root[data-theme="cliffs"][data-tod="night"] .back, :root[data-theme="cliffs"][data-tod="night"] #recap .rc-home { box-shadow: 0 0 0 1px rgba(255,255,255,.16), var(--shadow); color: #9CC8FF; }
