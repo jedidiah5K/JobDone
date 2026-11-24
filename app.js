@@ -5352,10 +5352,11 @@ const PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5
 const PLATE_COL = { 25: '#D8312B', 20: '#2F62C9', 15: '#E8B524', 10: '#2E8B4E', 5: '#DCD8CE', 2.5: '#7A7F88', 1.25: '#9EA3AA', 45: '#2F62C9', 35: '#E8B524' };
 const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 104 * Math.sqrt(w / m)); };
 // Weight entry starts on the plate loader; "Dial / keypad" switches to the number pad.
+// Only bar equipment (barbell, Smith) counts a bar; machines, cables, dumbbells never do (Job, 24 Nov).
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: ['machine', 'plate', 'cable'].includes(exInfo(e.name).equip), toBar: eqFit(e.name).includes('barbell') ? () => openEqPick(ei) : null, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: !['barbell', 'smith'].includes(exInfo(e.name).equip), toBar: eqFit(e.name).includes('barbell') ? () => openEqPick(ei) : null, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 // Bars (v191, Job 14 Nov): "Include the bar" plus which bar, remembered per lift. Curls and skull crushers start on the
 // EZ bar, anything named trap/hex bar on the trap bar, the rest on an Olympic bar. Machines and cables never have one.
