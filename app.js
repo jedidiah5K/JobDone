@@ -5755,8 +5755,28 @@ function presetMuscles(name) {
   for (const t of Object.values(TEMPLATES)) for (const [n, ex] of t.s) if (n === name) return new Set(ex.map(x => exInfo(x).muscle));
   return null;
 }
+// Equipment and attachment words in a search ("smith incline", "rope pushdown") pick that version (Job, 24 Nov).
+const PK_SEQ = [[/\bsmith\b(?: machine\b)?/, 'smith'], [/\bez[ -]?(curl )?(bar)?\b/, 'ez'], [/\b(trap|hex) bar\b/, 'trap'], [/\bplate[ -]?loaded\b/, 'plate'], [/\bcables?\b/, 'cable'], [/\bdumbbells?\b|\bdbs?\b/, 'dumbbell'], [/\bbarbell\b|\bbb\b/, 'barbell'], [/\b(pin[ -]?loaded )?machine\b/, 'machine'], [/\bbody ?weight\b/, 'bodyweight']];
+const PK_SATT = [[/\bropes?\b/, 'rope'], [/\bv[ -]?bar\b/, 'vbar'], [/\bv[ -]?handle\b/, 'vhandle'], [/\bcuffs?\b|\bankle strap\b/, 'cuff'], [/\bstraight bar\b/, 'bar'], [/\bsingle[ -]?(arm|handle)\b|\bone[ -]?arm\b/, 'single']];
+function pkParse(q) {
+  let t = ' ' + q.toLowerCase() + ' ', eq = null, att = null;
+  for (const [re, k] of PK_SEQ) if (!eq && re.test(t)) { eq = k; t = t.replace(re, ' '); }
+  for (const [re, k] of PK_SATT) if (!att && re.test(t)) { att = k; t = t.replace(re, ' '); }
+  t = t.replace(/\s+/g, ' ').trim();
+  return (eq || att) && t.length >= 3 ? { eq, att, q: t } : null;
+}
+// The picker's last pick of filters, kept on this phone only
+const pkFLoad = () => { try { return JSON.parse(localStorage.getItem('jd-pkf') || '{}') || {}; } catch (e) { return {}; } };
+const pkFSave = (ef, mf) => { try { localStorage.setItem('jd-pkf', JSON.stringify({ ef, mf })); } catch (e) {} };
+// "Last 40 kg × 10": the newest session of the lift on any equipment
+function pkLastMap() {
+  const m = {}, h = ix().hist;
+  for (const k of Object.keys(h)) { const l = liftName(k), x = h[k][h[k].length - 1]; if (x && x.top && (!m[l] || x.date > m[l].date)) m[l] = x; }
+  return m;
+}
+const pkLastTxt = x => !x || !x.top ? '' : 'Last ' + (x.top.w ? `${dw(x.top.w)} ${U()} × ${x.top.r}` : `${x.top.r} reps`);
 function pickExercise(onPick, opts = {}) {
-  let q = '', mf = null, ef = null; const pm = opts.split ? presetMuscles(opts.split) : null; let scoped = false; // scoped: the arrow hid everything outside the split
+  const f0 = pkFLoad(); let q = '', mf = MUSCLES.includes(f0.mf) ? f0.mf : null, ef = PK_EQ[f0.ef] ? f0.ef : null; const lastM = pkLastMap(); const pm = opts.split ? presetMuscles(opts.split) : null; let scoped = false; // scoped: the arrow hid everything outside the split
   howtoFor('Bench Press'); // loads the body map
   const recent = []; for (const w of ix().ws.slice().reverse()) for (const e of w.ex) { const b = liftName(e.name); if (!recent.includes(b)) recent.push(b); }
   const all = () => { const names = new Set([...LIB.map(e => e.name).filter(n => !PICK_HIDE.has(n)), ...(S.customEx || []).map(e => e.name)]); return [...names].map(exInfo); };
@@ -5765,7 +5785,18 @@ function pickExercise(onPick, opts = {}) {
   const exact0 = e => Math.max(score0(e.name, q), ...(NICK[e.name] || []).map(a => score0(a, q) - 5), q.trim().length > 2 && e.muscle.toLowerCase().startsWith(q.trim().toLowerCase()) ? 5 : 0);
   // typos: below every real match, so "pec" still lists exact hits first
   const score = e => exact0(e) || Math.min(9, fuzzy([e.name, ...(NICK[e.name] || []), e.muscle].join(' '), q)) / 10;
+  // the version a tap adds: the filter's equipment, or the equipment/attachment named in the search
+  const pkName = n0 => { let n = n0; const e = (sp && sp.eq) || ef; if (e && e !== exInfo(n).equip && eqOptions(n).includes(e)) n = withEq(n, e);
+    if (sp && sp.att && attOpts(n).includes(sp.att)) n = withAtt(n, sp.att); return n; };
+  // last time: that exact version when the search or filter picked one, else the lift on any equipment
+  const lastOf = n => { if (!(sp && (sp.eq || sp.att)) && !ef) return lastM[n]; const h = ix().hist[pkName(n)]; return h && h.length ? h[h.length - 1] : null; };
+  let sp = null; // parsed search: { eq, att, q } when it named equipment
   const list = () => {
+    sp = pkParse(q);
+    if (sp) { const q0 = q; q = sp.q;
+      const l2 = all().filter(e => (!mf || e.muscle === mf) && (!ef || eqCan(e.name, ef)) && (!sp.eq || eqCan(e.name, sp.eq)) && (!sp.att || attOpts(e.name, sp.eq || e.equip).includes(sp.att)) && (!scoped || pm.has(e.muscle))).map(e => ({ e, s: exact0(e) })).filter(x => x.s > 0);
+      q = q0; if (l2.length) { l2.sort((a, b) => b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name)); return l2.map(x => x.e); }
+      sp = null; }
     let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || eqCan(e.name, ef)) && (!scoped || pm.has(e.muscle))).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
     l.sort((a, b) => (pm ? pm.has(b.e.muscle) - pm.has(a.e.muscle) : 0) || b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
     return l.map(x => x.e);
@@ -5773,7 +5804,7 @@ function pickExercise(onPick, opts = {}) {
   const rows = () => {
     const l = list(); const exact = l.some(e => e.name.toLowerCase() === q.trim().toLowerCase());
     const info = e => `<span class="pk-info" role="button" tabindex="0" data-info="${esc(e.name)}" aria-label="About ${esc(e.name)}">i</span>`;
-    const row = (e, extra = '') => pkRow(e, e.muscle + extra, info(e));
+    const row = (e, extra = '') => pkRow(e, e.muscle + extra + (lastOf(e.name) ? ' · ' + pkLastTxt(lastOf(e.name)) : ''), info(e));
     if (!q.trim() && !mf && !ef) {
       const az = (a, b) => a.name.localeCompare(b.name), all2 = all().filter(e => !scoped || pm.has(e.muscle)), rec = recent.slice(0, 6).map(n => all2.find(e => e.name === n)).filter(Boolean);
       const head = (rec.length ? `<div class="grp">Recent</div>` + rec.map(e => row(e)).join('') : '');
@@ -5785,8 +5816,8 @@ function pickExercise(onPick, opts = {}) {
     }
     const create = q.trim() && !exact ? `<button class="li pk-row" data-pick-new="1"><span class="pk-av pk-plus">${I.plus}</span><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Your own exercise${mf ? ' · ' + esc(mf) : ''}</div></div></button>` : '';
     const typo = l.length && !l.some(e => exact0(e) > 0); // only typo matches: suggest them first, Create last
-    return (typo ? '<div class="grp">Did you mean</div>' : create) + (l.length ? '' : '<div class="empty">No exercises match. Try another filter.</div>') +
-      l.slice(0, typo ? 5 : 120).map(e => row(e, ' · ' + (ef ? PK_EQ[ef] : PK_EQ[e.equip] || eqTxt(e.equip) || e.equip) + (recent.includes(e.name) ? ' · used before' : '') + (!opts.title && lastSided(e.name) ? ' · left and right' : ''))).join('') + (typo ? create : '');
+    return (typo ? '<div class="grp">Did you mean</div>' : sp ? '' : create) + (l.length ? '' : '<div class="empty">No exercises match. Try another filter.</div>') +
+      l.slice(0, typo ? 5 : 120).map(e => row(e, ' · ' + (sp ? eqLine(pkName(e.name)) : ef ? PK_EQ[ef] : PK_EQ[e.equip] || eqTxt(e.equip) || e.equip) + (recent.includes(e.name) && !lastOf(e.name) ? ' · used before' : '') + (!opts.title && lastSided(e.name) ? ' · left and right' : ''))).join('') + (typo || sp ? create : '');
   };
   const sh = openSheet(`<div class="stack pk"><div class="pk-top"><button class="pk-pill" id="pk-x">Cancel</button><b>${esc(opts.title || 'Add exercise')}</b><button class="pk-pill" id="pk-new">Create</button></div>
     <label class="pk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pk-q" placeholder="Search exercises" autocomplete="off"></label>
@@ -5797,6 +5828,7 @@ function pickExercise(onPick, opts = {}) {
     label: 'Exercise picker',
     mount: b => {
       const L = b.querySelector('#pk-list'), redraw = () => { L.innerHTML = rows(); b.querySelector('#pk-fe').textContent = ef ? PK_EQ[ef] : 'All equipment'; b.querySelector('#pk-fm').textContent = mf || 'All muscles'; b.querySelector('#pk-fe').classList.toggle('on', !!ef); b.querySelector('#pk-fm').classList.toggle('on', !!mf); };
+      if (ef || mf) redraw(); // filters kept from last time
       if (!BODY) { const t = setInterval(() => { if (BODY) { clearInterval(t); redraw(); } }, 300); setTimeout(() => clearInterval(t), 10000); } // ponytail: poll until the body map loads, it arrives once per session
       const created = n => { const sides = b.querySelector('#pk-side').checked; closeSheet(sh); if (sides) { onPick(n + ' (L)'); onPick(n + ' (R)'); } else onPick(n); };
       b.querySelector('#pk-q').oninput = ev => { q = ev.target.value; redraw(); };
@@ -5813,8 +5845,8 @@ function pickExercise(onPick, opts = {}) {
           ${isEq ? grid(keys) : `<div class="grp">Upper body</div>${grid(PK_UPPER)}<div class="grp">Lower body</div>${grid(PK_LOWER)}<div class="grp">Other</div>${grid(['Other'])}`}
           <div class="sheet-foot grid2"><button class="btn block" id="pf-clear">Clear filters</button><button class="btn primary block" id="pf-go">Show ${count(pick)} results</button></div></div>`, { label: isEq ? 'Equipment' : 'Muscle group', over: true, mount: fb => {
           fb.querySelectorAll('.pk-tile').forEach(t => t.onclick = () => { pick = pick === t.dataset.k ? null : t.dataset.k; fb.querySelectorAll('.pk-tile').forEach(x => x.classList.toggle('on', x.dataset.k === pick)); fb.querySelector('#pf-go').textContent = `Show ${count(pick)} results`; });
-          fb.querySelector('#pf-clear').onclick = () => { ef = null; mf = null; closeSheet(fs); redraw(); };
-          fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; closeSheet(fs); redraw(); };
+          fb.querySelector('#pf-clear').onclick = () => { ef = null; mf = null; pkFSave(ef, mf); closeSheet(fs); redraw(); };
+          fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; pkFSave(ef, mf); closeSheet(fs); redraw(); };
         } });
       };
       b.querySelector('#pk-fe').onclick = () => filt('eq');
@@ -5826,7 +5858,7 @@ function pickExercise(onPick, opts = {}) {
         const p = ev.target.closest('[data-pick]'), nw = ev.target.closest('[data-pick-new]');
         if (nw) { openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: created }); return; }
         if (!p) return;
-        const name = ef && ef !== exInfo(p.dataset.pick).equip && eqOptions(p.dataset.pick).includes(ef) ? withEq(p.dataset.pick, ef) : p.dataset.pick, sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
+        const name = pkName(p.dataset.pick), sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
         closeSheet(sh);
         if (sides) { onPick(name + ' (L)'); onPick(name + ' (R)'); } else onPick(name);
       };
@@ -7560,6 +7592,7 @@ async function boot() {
   livingBackground();
   if (HOSTED) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') swRegister();
+    setTimeout(() => howtoFor('Bench Press'), 1500); // muscle pictures ready before the picker opens
     $('#app').innerHTML = `<div class="splash"><div class="wordmark">Job’s <span>Done</span></div></div>`;
     try { await startHosted(); } catch (e) { renderSignIn('start', '', 'Couldn’t reach the sign-in service. Check your connection and reload.'); }
     return;
