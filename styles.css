@@ -2576,3 +2576,5 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #wk .back svg { width: 18px; height: 18px; }
 .sum-cmp .li .t { font-size: calc(15px * var(--ts, 1)); line-height: calc(20px * var(--ts, 1)); }
 .sum-cmp .li { padding-block: 10px; min-height: 46px; }
+#wk .back.back-ic { width: 40px; height: 40px; min-height: 40px; padding: 0; justify-content: center; }
+#wk .back.back-ic svg { width: 22px; height: 22px; }

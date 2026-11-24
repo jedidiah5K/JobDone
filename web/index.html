@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-ZgNWGkVa+jY6CEa8H7QGH/jeEGF/xpBexMFKwTKQYm4='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-pmL5Rq461WfRLKidM+7xN5pJLkI+bSBe86az5Tuo5js='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2613,6 +2613,8 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 #wk .back svg { width: 18px; height: 18px; }
 .sum-cmp .li .t { font-size: calc(15px * var(--ts, 1)); line-height: calc(20px * var(--ts, 1)); }
 .sum-cmp .li { padding-block: 10px; min-height: 46px; }
+#wk .back.back-ic { width: 40px; height: 40px; min-height: 40px; padding: 0; justify-content: center; }
+#wk .back.back-ic svg { width: 22px; height: 22px; }
 
 body { margin: 0; box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -4862,16 +4864,29 @@ const STAMP = {};
 // "Post every workout" in What friends see skips the choice and posts the plain stamp straight away.
 function stampBody(id, o = {}) {
   const d = recapData(id); if (!d.w) return null;
-  const body = { th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? (m => m >= 60 ? Math.floor(m / 60) + ':' + pad2(m % 60) : fmtDur(d.dur))(Math.floor(d.dur / 6e4)) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
+  const body = { w: String(id).slice(0, 40), th: theme(), sp: String(d.w.splitName || 'Workout').slice(0, 30), v: dvol(d.vol) + ' ' + U(), t: d.dur ? (m => m >= 60 ? Math.floor(m / 60) + ':' + pad2(m % 60) : fmtDur(d.dur))(Math.floor(d.dur / 6e4)) : '', l: plural(d.w.ex.length, 'lift'), pr: d.prs.length, h: String(d.heavy || '').slice(0, 90) };
   if (o.c) body.c = String(o.c).slice(0, 80);
   const noW = !!SO().noW; if (noW) { delete body.v; delete body.h; } // Show my weights off: just the workout
   const tm = !noW && teamRows(d.w, d.vol); if (tm) { body.pt = tm.rows.slice(0, 6).map(r => [r.n === 'You' ? '' : r.n.slice(0, 20), dvol(r.v) + ' ' + U()]); body.tv = dvol(tm.tot) + ' ' + U(); } // party post (Job, 21 Nov)
   if (o.ex) body.ex = d.w.ex.slice(0, 10).map(e => { const t = topSet(e.sets); return [String(e.name).slice(0, 32), t && !noW ? setStr(t) : '']; });
   return body;
 }
+// One post per workout (Job, 24 Nov): posting again, by hand or automatically, replaces the earlier post of that workout.
+const STAMP_P = {};
 async function stampPost(id, o = {}) {
+  while (STAMP_P[id]) await STAMP_P[id].catch(() => {}); // an auto-post still on its way: wait, then replace it
+  const run = stampPost0(id, o); STAMP_P[id] = run; try { return await run; } finally { if (STAMP_P[id] === run) delete STAMP_P[id]; }
+}
+async function stampOld(id) { // your earlier posts of this workout, also ones made before the app was reopened
+  const ids = STAMP[id] ? [STAMP[id]] : [];
+  try { const f = await gymRpc('jobdone_feed') || []; f.forEach(p => { if (USER && p.user_id === USER.id && p.kind === 'stamp' && p.body && p.body.w === String(id) && !ids.includes(p.id)) ids.push(p.id); }); } catch (e) {}
+  return ids;
+}
+async function stampPost0(id, o) {
   statSync(); if (!soReady()) return false;
   const body = stampBody(id, o); if (!body) return false;
+  if (o.auto && STAMP[id]) return true; // already posted by hand
+  try { for (const pid of await stampOld(id)) await gymRpc('jobdone_post_delete', { p_id: pid }); delete STAMP[id]; } catch (e) { postErr(e); return false; }
   try { STAMP[id] = await gymRpc('jobdone_post', { p_kind: 'stamp', p_body: body, p_photo: o.photo || null }); FEED = null; const el = document.getElementById('rc-feed'); if (el) el.innerHTML = stampDone(!!o.photo); return true; }
   catch (e) { postErr(e); return false; }
 }
@@ -4894,7 +4909,6 @@ function openComposer(id, after) {
   q('#cp-ex').onchange = e => { st.ex = e.target.checked; draw(); };
   q('#cp-ph').onclick = () => pickPhoto(d => { st.photo = d; q('#cp-ph span').textContent = 'Change photo'; draw(); });
   q('#cp-go').onclick = async ev => { const b = ev.currentTarget; b.disabled = true;
-    if (STAMP[id]) { try { await gymRpc('jobdone_post_delete', { p_id: STAMP[id] }); delete STAMP[id]; } catch (e) { b.disabled = false; return toast('Couldn’t post. Try again.'); } }
     if (await stampPost(id, st)) { toast('Posted to your feed'); close(); if (after) after(); } else b.disabled = false; };
 }
 // Finish page feed row (Job, 8 Nov): a "Share with friends" tick and a camera beside it. Ticked = on the feed.
@@ -7173,7 +7187,7 @@ function summaryHTML() {
   const d = summaryData(); const sp = A.splitId && splitById(A.splitId);
   const changed = sp && JSON.stringify(A.ex.map(e => e.name)) !== JSON.stringify(sp.ex.map(e => e.name));
   return `<div class="wk-body" style="padding-top:calc(16px + env(safe-area-inset-top, 0px))">
-    <button class="back" data-a="sumBack">${I.left}Back to workout</button>
+    <button class="back back-ic" data-a="sumBack" aria-label="Back to workout">${I.left}</button>
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card sum-cmp"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
@@ -7203,7 +7217,7 @@ function saveWorkout() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   persist(monthPath(w.date), 'jd/active', ...(metaChanged ? ['jd/meta'] : []));
   NAV.tab = 'today'; NAV.stack = []; render();
-  showRecap(w.id, true); if (autoOn(w)) stampPost(w.id); else statSync();
+  showRecap(w.id, true); if (autoOn(w)) stampPost(w.id, { auto: true }); else statSync();
 }
 
 // ---------- Job’s Done recap (after saving, or from a past workout) ----------
