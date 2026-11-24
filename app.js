@@ -432,6 +432,11 @@ function renameLifts(st, act) {
     if (act) (act.ex || []).forEach(bars);
     for (const k of ['barBy', 'eqLast', 'attLast']) { const o = st.profile[k]; if (!o) continue; for (const x of Object.keys(o)) if (/\((EZ bar|Trap bar|Olympic bar)\)/.test(x) || /\|barbell$/.test(x) && ['ez', 'olympic', 'trap'].includes(o[x])) delete o[x]; }
   }
+  // 24 Nov (Job): every Preacher Curl session before today was on the pin-loaded machine.
+  if (!st.profile.eqFix5) {
+    st.profile.eqFix5 = 1; n++;
+    for (const w of Object.values(st.workouts || {})) if (w.date < '2026-11-24') (w.ex || []).forEach(e => { if (e && e.name && liftName(e.name) === 'Preacher Curl') e.name = mkName('Preacher Curl', 'machine', null, sideOf(e.name)); });
+  }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(plain);
@@ -3099,10 +3104,8 @@ function viewExercise(v) {
   const info = exInfo(b);
   return `<div class="stack">${backBtn()}
   ${hasVariants(b) ? `<div class="pt0 top"><div><div class="mh28 eyebrow">${esc(info.muscle)}</div><h1>${esc(liftName(b))}</h1></div></div>
-  ${eqMain(b, h).length < 2 ? '' : `<div class="seg eq-seg" role="group" aria-label="Equipment">${eqMain(b, h).map(q => { const n = withEq(b, q); return `<button class="${info.equip === q ? 'on' : ''}" data-a="exVar" data-k="${esc(n)}" aria-pressed="${info.equip === q}">${esc(eqTxt(q))}${h[n] || h[n + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`; }).join('')}</div>`}` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
+  ${exFiltRow(b, info, h0)}` : `<div class="pt0 top"><div><button class="mh28 eyebrow" data-a="exCat" data-k="${esc(b)}">${esc(info.muscle)} · ${esc(info.equip)} ▾</button><h1>${esc(b)}</h1></div></div>`}
   ${opts.length > 1 ? `<div class="seg">${opts.map(o => `<button class="${v.sel === o ? 'on' : ''}" data-a="exSel" data-k="${esc(o)}">${sideOf(o) ? (sideOf(o) === 'L' ? 'Left' : 'Right') : opts.length > 2 ? 'Two-arm' : 'Both'}</button>`).join('')}${sides.length === 2 ? `<button class="${v.sel === 'both' ? 'on' : ''}" data-a="exSel" data-k="both">L + R</button>` : ''}</div>` : ''}
-  ${(() => { const ao = attOpts(b, info.equip); if (!ao.length) return ''; const ca = attOf(b) || '', base = mkName(liftName(b), info.equip, null, null), nm = a => a ? mkName(liftName(b), info.equip, a, null) : base;
-    const list = ['', ...ao].filter(a => a === ca || h0[nm(a)] || h0[nm(a) + ' (L)'] || (a && true)); return `<div class="seg eq-seg" role="group" aria-label="Attachment">${list.map(a => `<button class="${a === ca ? 'on' : ''}" data-a="exVar" data-k="${esc(nm(a))}" aria-pressed="${a === ca}">${a ? esc(ATT_LBL[a]) : 'Not picked'}${h0[nm(a)] || h0[nm(a) + ' (L)'] ? '' : '<i class="eq-new" aria-label="no history"></i>'}</button>`).join('')}</div>`; })()}
   ${v.gym ? `<div class="seg gym-seg" role="group" aria-label="Gym">${gyms.map(g => `<button class="${v.gym === g ? 'on' : ''}" data-a="exGym" data-k="${esc(g)}" aria-pressed="${v.gym === g}">${esc(gymName(g))}</button>`).join('')}</div>` : ''}
   ${setupHTML(b)}${howtoHTML(main)}
   <div class="card"><div class="kpis"><div class="kpi"><b>${e1f(B.e1)}</b><span>best e1RM ${infoBtn('e1rm')}</span></div><div class="kpi"><b>${B.maxW ? dw(B.maxW) : '—'}</b><span>heaviest</span></div><div class="kpi"><b>${B.vol ? dvol(B.vol) : '—'}</b><span>best set (${U()}) ${infoBtn('volume')}</span></div></div>
@@ -3118,6 +3121,23 @@ function viewExercise(v) {
 </div>`;
 }
 
+// Exercise page filters (Job, 24 Nov: cleaner screens): one pill for equipment, one for attachment, each opens a short list.
+function exFiltRow(b, info, h) {
+  const eqs = eqMain(b, h), ao = attOpts(b, info.equip), ca = attOf(b);
+  if (eqs.length < 2 && !ao.length) return '';
+  const chev = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  return `<div class="ex-filt">${eqs.length > 1 ? `<button class="pl-chip" data-a="exFilt" data-k="eq" data-n="${esc(b)}">${esc(eqTxt(info.equip))}${chev}</button>` : ''}${ao.length ? `<button class="pl-chip${ca ? '' : ' off'}" data-a="exFilt" data-k="att" data-n="${esc(b)}">${ca ? esc(ATT_LBL[ca]) : 'Any attachment'}${chev}</button>` : ''}</div>`;
+}
+function openExFilt(b, kind) {
+  const h = ix().hist, info = exInfo(b), cnt = n => (h[n] || []).length + (h[n + ' (L)'] || []).length;
+  const lift = liftName(b), base = mkName(lift, info.equip, null, null);
+  const items = kind === 'eq' ? eqMain(b, h).map(q => [withEq(b, q), eqTxt(q), q === info.equip])
+    : ['', ...attOpts(b, info.equip)].map(a => [a ? mkName(lift, info.equip, a, null) : base, a ? ATT_LBL[a] : 'Any attachment', (attOf(b) || '') === a]);
+  const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(lift)}</h2><div class="cap">${kind === 'eq' ? 'Show the history for' : 'Attachment'}</div><div class="mgrp mt3">${items.map(([n, l, on]) => `<button class="mi eqp ${on ? 'on' : ''}" data-n="${esc(n)}" aria-pressed="${on}"><span class="grow"><b>${esc(l)}</b><span class="cap">${cnt(n) ? plural(cnt(n), 'session') : 'Nothing logged yet'}</span></span>${on ? `<span class="mi-v">${I.check}</span>` : ''}</button>`).join('')}</div></div>`, {
+    label: kind === 'eq' ? 'Equipment' : 'Attachment',
+    mount: el => { el.onclick = ev => { const x = ev.target.closest('[data-n]'); if (!x) return; closeSheet(sh); const t = NAV.stack[NAV.stack.length - 1]; if (t) { t.name = x.dataset.n; delete t.sel; rerender(); } }; },
+  });
+}
 // ---------- workout detail (history) ----------
 function viewWorkout(v) {
   const w = S.workouts[v.id]; if (!w) return backBtn();
@@ -5890,7 +5910,7 @@ function openRotation() {
 }
 // Machine setup notes (seat height, pin, bench angle…) kept per exercise, with older versions.
 const setupOf = name => { const l = (S.setup || {})[baseName(name)]; return l && l.length ? l[l.length - 1] : null; };
-const setupHTML = name => { const s = setupOf(name); if (!s && ['barbell', 'dumbbell', 'kettlebell', 'bodyweight'].includes(exInfo(name).equip)) return ''; return `<button class="setup ${s ? '' : 'empty'}" data-a="setup" data-name="${esc(baseName(name))}">${I.wrench}<span>${s ? esc(s.t) : 'Add machine setup notes'}</span></button>`; };
+const setupHTML = name => { const s = setupOf(name); if (!s && ['barbell', 'ez', 'trap', 'dumbbell', 'kettlebell', 'bodyweight'].includes(exInfo(name).equip)) return ''; return `<button class="setup ${s ? '' : 'empty'}" data-a="setup" data-name="${esc(baseName(name))}">${I.wrench}<span>${s ? esc(s.t) : 'Add machine setup notes'}</span></button>`; };
 function openSetup(name) {
   const hist = ((S.setup || {})[name] || []).slice().reverse();
   const sh = openSheet(`<div class="stack"><div class="eyebrow">Machine setup notes · ${esc(name)}</div>
@@ -6065,7 +6085,7 @@ function exMenu(ei) {
     hist: sv('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'), taken: sv('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>'), howto: sv('<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/>') };
   const row = (m, label, v = '') => `<button class="mi" data-m="${m}">${ic[m]}<span class="grow">${label}</span>${v ? `<span class="mi-v">${v}</span>` : ''}</button>`;
   const inf = exInfo(e.name), work = e.sets.filter(x => x.t !== 'warm').length;
-  const sub = [inf.equip && inf.equip !== 'other' ? inf.equip.charAt(0).toUpperCase() + inf.equip.slice(1) : '', inf.muscle && inf.muscle !== 'Other' ? inf.muscle : '', plural(work, 'set')].filter(Boolean).join(' · ');
+  const sub = [inf.equip && inf.equip !== 'other' ? (eqTxt(inf.equip) || inf.equip) : '', inf.muscle && inf.muscle !== 'Other' ? inf.muscle : '', plural(work, 'set')].filter(Boolean).join(' · ');
   const sh = openSheet(`<div class="exm"><h2 class="exm-h">${esc(e.name)}</h2><div class="cap">${esc(sub)}</div>
     <div class="sgh exm-l">This workout</div><div class="mgrp">
     ${row('note', e.note ? 'Edit note' : 'Add note')}
@@ -6802,6 +6822,7 @@ const ACT = {
   exEq: el => openEqPick(+el.dataset.e),
   gymRem: el => { const e = A && A.ex[+el.dataset.e], g = curBucket(); if (!e || g === 'main') return; const k = baseName(e.name), all = Object.assign({}, S.profile.gymW), m = Object.assign({}, all[g]);
     if (el.checked) m[k] = +el.dataset.w; else delete m[k]; all[g] = m; S.profile.gymW = all; persist('jd/meta'); toast(el.checked ? 'Saved for this gym' : 'Back to your last weight here', 2000); },
+  exFilt: el => openExFilt(el.dataset.n, el.dataset.k),
   exVar: el => { const t = NAV.stack[NAV.stack.length - 1]; t.name = el.dataset.k; delete t.sel; rerender(); },
   swapEx: el => openSwap(+el.dataset.e),
   foldEx: el => { const ei = +el.dataset.e, e = A.ex[ei], shut = !!document.querySelector('#ex-' + ei + '.folded'); e.fold = !shut; persist('jd/active'); renderWorkout(); },

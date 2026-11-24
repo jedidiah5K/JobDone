@@ -2561,3 +2561,5 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .pl-ic[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .pl-gym { border-radius: var(--r2); background: var(--raised); padding: 12px; }
 :root[data-theme="mono"] .xsw.on#pl-inc { background: #B3122A; }
+.ex-filt { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ex-filt .pl-chip { background: var(--surface, var(--raised)); box-shadow: inset 0 0 0 1px var(--border); }
