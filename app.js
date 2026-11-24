@@ -45,7 +45,7 @@ const buzz = ms => {
 const LIB_RAW = `Chest Fly|Chest|machine;Incline Press|Chest|machine;Bench Press|Chest|barbell;Incline Bench Press|Chest|barbell;Decline Bench Press|Chest|barbell;Dumbbell Bench Press|Chest|dumbbell;Incline Dumbbell Press|Chest|dumbbell;Chest Press|Chest|machine;Smith Bench Press|Chest|smith;Cable Crossover|Chest|cable;Low-to-High Cable Fly|Chest|cable;Dumbbell Fly|Chest|dumbbell;Pec Deck|Chest|machine;Push-Up|Chest|bodyweight;Dip|Chest|bodyweight;
 Lat Pulldown|Back|cable;Wide-Grip Row|Back|cable;Close-Grip Row|Back|cable;Seated Cable Row|Back|cable;Barbell Row|Back|barbell;Pendlay Row|Back|barbell;Dumbbell Row|Back|dumbbell;Chest-Supported Row|Back|machine;T-Bar Row|Back|machine;Machine Row|Back|machine;Pull-Up|Back|bodyweight;Chin-Up|Back|bodyweight;Assisted Pull-Up|Back|machine;Straight-Arm Pulldown|Back|cable;Single-Arm Pulldown|Back|cable;Deadlift|Back|barbell;Rack Pull|Back|barbell;Back Extension|Back|bodyweight;Shrug|Back|dumbbell;Face Pull|Shoulders|cable;
 Shoulder Press|Shoulders|machine;Overhead Press|Shoulders|barbell;Dumbbell Shoulder Press|Shoulders|dumbbell;Arnold Press|Shoulders|dumbbell;Lateral Raise|Shoulders|cable;Dumbbell Lateral Raise|Shoulders|dumbbell;Machine Lateral Raise|Shoulders|machine;Front Raise|Shoulders|dumbbell;Rear Delt Fly|Shoulders|machine;Reverse Pec Deck|Shoulders|machine;Upright Row|Shoulders|cable;
-Preacher Curl|Biceps|machine;Hammer Curl|Biceps|dumbbell;Barbell Curl|Biceps|barbell;EZ-Bar Curl|Biceps|barbell;Dumbbell Curl|Biceps|dumbbell;Incline Dumbbell Curl|Biceps|dumbbell;Cable Curl|Biceps|cable;Bayesian Curl|Biceps|cable;Concentration Curl|Biceps|dumbbell;Spider Curl|Biceps|dumbbell;Forearm Curl|Forearms|cable;Reverse Curl|Forearms|barbell;Wrist Curl|Forearms|dumbbell;Farmer's Carry|Forearms|dumbbell;
+Preacher Curl|Biceps|barbell;Hammer Curl|Biceps|dumbbell;Barbell Curl|Biceps|barbell;EZ-Bar Curl|Biceps|barbell;Dumbbell Curl|Biceps|dumbbell;Incline Dumbbell Curl|Biceps|dumbbell;Cable Curl|Biceps|cable;Bayesian Curl|Biceps|cable;Concentration Curl|Biceps|dumbbell;Spider Curl|Biceps|dumbbell;Forearm Curl|Forearms|cable;Reverse Curl|Forearms|barbell;Wrist Curl|Forearms|dumbbell;Farmer's Carry|Forearms|dumbbell;
 Single-Arm Tricep|Triceps|cable;Tricep Bar|Triceps|cable;Tricep Pushdown|Triceps|cable;Rope Pushdown|Triceps|cable;Overhead Tricep Extension|Triceps|cable;Skull Crusher|Triceps|barbell;Close-Grip Bench Press|Triceps|barbell;Dumbbell Kickback|Triceps|dumbbell;Tricep Dip Machine|Triceps|machine;
 Cable Crunch|Abs|cable;Oblique Crunch|Abs|cable;Hanging Leg Raise|Abs|bodyweight;Ab Wheel|Abs|bodyweight;Crunch Machine|Abs|machine;Plank|Abs|bodyweight;Russian Twist|Abs|bodyweight;Pallof Press|Abs|cable;Woodchopper|Abs|cable;
 Leg Press|Quads|machine;Leg Extension|Quads|machine;Back Squat|Quads|barbell;Front Squat|Quads|barbell;Hack Squat|Quads|machine;Smith Squat|Quads|smith;Goblet Squat|Quads|dumbbell;Bulgarian Split Squat|Quads|dumbbell;Walking Lunge|Quads|dumbbell;Pendulum Squat|Quads|machine;Step-Up|Quads|dumbbell;Sissy Squat|Quads|bodyweight;
@@ -5349,7 +5349,7 @@ const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 1
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: ['machine', 'plate', 'cable'].includes(exInfo(e.name).equip), alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: ['machine', 'plate', 'cable'].includes(exInfo(e.name).equip), toBar: eqFit(e.name).includes('barbell') ? () => openEqPick(ei) : null, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 // Bars (v191, Job 14 Nov): "Include the bar" plus which bar, remembered per lift. Curls and skull crushers start on the
 // EZ bar, anything named trap/hex bar on the trap bar, the rest on an Olympic bar. Machines and cables never have one.
@@ -5360,6 +5360,7 @@ const barDefault = n => /\b(EZ|Preacher|Skull|Spider|Reverse Curl)\b/i.test(n) ?
 function barFor(name) { // a BARS key, or 'none' for plates only
   const n = name && baseName(name), by = S.profile.barBy || {};
   if (n && by[n]) return by[n];
+  const at = n && { ez: 'ez', olympic: 'oly', trap: 'trap' }[attOf(n)]; if (at && S.profile.barW !== 0) return at; // the attachment picked under the lift's name
   const g = S.profile.barW; if (g === 0) return 'none'; // plates-only accounts (Job's) keep that everywhere
   if (!n && g === 15) return 'womens'; if (!n && g === 10) return 'ez';
   return n ? barDefault(n) : 'oly';
@@ -5393,7 +5394,7 @@ function openPlates(target, onUse, o = {}) {
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
   const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
     <div class="cap" id="pl-msg"></div>
-    ${o.machine ? '' : `<div class="pl-bars"><button class="pl-inc" id="pl-inc" role="checkbox" aria-checked="${bar ? 'true' : 'false'}"><i class="pl-box"></i>Include the bar</button><div class="chips pl-barlist" id="pl-barlist" ${bar ? '' : 'hidden'}>${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} <span class="num">${trim(barKg(k))}</span></button>`).join('')}</div><label class="pl-bw" ${bar ? '' : 'hidden'}>This bar weighs <input class="input num" id="pl-bw" inputmode="decimal" value="${trim(bar)}" aria-label="Bar weight in ${U()}"> ${U()}</label></div>`}
+    ${o.machine ? (o.toBar ? `<div class="pl-nobar row between"><span class="cap">${esc(eqTxt(exInfo(o.ex).equip) || 'Machine')}, so no bar is counted.</span><button class="link cap" id="pl-tobar">Use a bar</button></div>` : '') : `<div class="pl-bars"><button class="pl-inc" id="pl-inc" role="checkbox" aria-checked="${bar ? 'true' : 'false'}"><i class="pl-box"></i>Include the bar</button><div class="chips pl-barlist" id="pl-barlist" ${bar ? '' : 'hidden'}>${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} <span class="num">${trim(barKg(k))}</span></button>`).join('')}</div><label class="pl-bw" ${bar ? '' : 'hidden'}>This bar weighs <input class="input num" id="pl-bw" inputmode="decimal" value="${trim(bar)}" aria-label="Bar weight in ${U()}"> ${U()}</label></div>`}
     <div class="bar-wrap" id="pl-bar"></div>
     <div class="plate-tray" id="pl-tray">${tray()}</div>
     <details class="pl-more"><summary class="link">Plates your gym has, custom plates, load a total</summary><div class="g3 stack mt3">
@@ -5432,6 +5433,7 @@ function openPlates(target, onUse, o = {}) {
     b.querySelector('#pl-cadd').onclick = () => { const v = parseFloat(b.querySelector('#pl-cw').value); if (!(v > 0 && v < 100)) { toast('Enter a plate weight'); return; } const c = new Set(custom()); c.add(v); S.profile.customPlates = [...c].sort((a, d) => d - a); persist('jd/meta'); b.querySelector('#pl-tray').innerHTML = tray(); b.querySelector('#pl-cw').value = ''; add(v); };
     const u = b.querySelector('#pl-use'); if (u) u.onclick = () => { closeSheet(sh); onUse(total()); };
     const al = b.querySelector('#pl-alt'); if (al) al.onclick = () => { closeSheet(sh); o.alt(); };
+    const tb = b.querySelector('#pl-tobar'); if (tb) tb.onclick = () => { closeSheet(sh); o.toBar(); };
     // drag from tray: a ghost plate follows the finger; drop over the bar to load it
     const trayEl = b.querySelector('#pl-tray'), barEl = b.querySelector('#pl-bar');
     let drag = null;
