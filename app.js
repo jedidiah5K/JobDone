@@ -45,8 +45,8 @@ const buzz = ms => {
 const LIB_RAW = `Chest Fly|Chest|machine;Incline Press|Chest|machine;Bench Press|Chest|barbell;Incline Bench Press|Chest|barbell;Decline Bench Press|Chest|barbell;Dumbbell Bench Press|Chest|dumbbell;Incline Dumbbell Press|Chest|dumbbell;Chest Press|Chest|machine;Smith Bench Press|Chest|smith;Cable Crossover|Chest|cable;Low-to-High Cable Fly|Chest|cable;Dumbbell Fly|Chest|dumbbell;Pec Deck|Chest|machine;Push-Up|Chest|bodyweight;Dip|Chest|bodyweight;
 Lat Pulldown|Back|cable;Wide-Grip Row|Back|cable;Close-Grip Row|Back|cable;Seated Cable Row|Back|cable;Barbell Row|Back|barbell;Pendlay Row|Back|barbell;Dumbbell Row|Back|dumbbell;Chest-Supported Row|Back|machine;T-Bar Row|Back|machine;Machine Row|Back|machine;Pull-Up|Back|bodyweight;Chin-Up|Back|bodyweight;Assisted Pull-Up|Back|machine;Straight-Arm Pulldown|Back|cable;Single-Arm Pulldown|Back|cable;Deadlift|Back|barbell;Rack Pull|Back|barbell;Back Extension|Back|bodyweight;Shrug|Back|dumbbell;Face Pull|Shoulders|cable;
 Shoulder Press|Shoulders|machine;Overhead Press|Shoulders|barbell;Dumbbell Shoulder Press|Shoulders|dumbbell;Arnold Press|Shoulders|dumbbell;Lateral Raise|Shoulders|cable;Dumbbell Lateral Raise|Shoulders|dumbbell;Machine Lateral Raise|Shoulders|machine;Front Raise|Shoulders|dumbbell;Rear Delt Fly|Shoulders|machine;Reverse Pec Deck|Shoulders|machine;Upright Row|Shoulders|cable;
-Preacher Curl|Biceps|barbell;Hammer Curl|Biceps|dumbbell;Barbell Curl|Biceps|barbell;EZ-Bar Curl|Biceps|barbell;Dumbbell Curl|Biceps|dumbbell;Incline Dumbbell Curl|Biceps|dumbbell;Cable Curl|Biceps|cable;Bayesian Curl|Biceps|cable;Concentration Curl|Biceps|dumbbell;Spider Curl|Biceps|dumbbell;Forearm Curl|Forearms|cable;Reverse Curl|Forearms|barbell;Wrist Curl|Forearms|dumbbell;Farmer's Carry|Forearms|dumbbell;
-Single-Arm Tricep|Triceps|cable;Tricep Bar|Triceps|cable;Tricep Pushdown|Triceps|cable;Rope Pushdown|Triceps|cable;Overhead Tricep Extension|Triceps|cable;Skull Crusher|Triceps|barbell;Close-Grip Bench Press|Triceps|barbell;Dumbbell Kickback|Triceps|dumbbell;Tricep Dip Machine|Triceps|machine;
+Preacher Curl|Biceps|ez;Hammer Curl|Biceps|dumbbell;Barbell Curl|Biceps|barbell;EZ-Bar Curl|Biceps|ez;Dumbbell Curl|Biceps|dumbbell;Incline Dumbbell Curl|Biceps|dumbbell;Cable Curl|Biceps|cable;Bayesian Curl|Biceps|cable;Concentration Curl|Biceps|dumbbell;Spider Curl|Biceps|dumbbell;Forearm Curl|Forearms|cable;Reverse Curl|Forearms|barbell;Wrist Curl|Forearms|dumbbell;Farmer's Carry|Forearms|dumbbell;
+Single-Arm Tricep|Triceps|cable;Tricep Bar|Triceps|cable;Tricep Pushdown|Triceps|cable;Rope Pushdown|Triceps|cable;Overhead Tricep Extension|Triceps|cable;Skull Crusher|Triceps|ez;Close-Grip Bench Press|Triceps|barbell;Dumbbell Kickback|Triceps|dumbbell;Tricep Dip Machine|Triceps|machine;
 Cable Crunch|Abs|cable;Oblique Crunch|Abs|cable;Hanging Leg Raise|Abs|bodyweight;Ab Wheel|Abs|bodyweight;Crunch Machine|Abs|machine;Plank|Abs|bodyweight;Russian Twist|Abs|bodyweight;Pallof Press|Abs|cable;Woodchopper|Abs|cable;
 Leg Press|Quads|machine;Leg Extension|Quads|machine;Back Squat|Quads|barbell;Front Squat|Quads|barbell;Hack Squat|Quads|machine;Smith Squat|Quads|smith;Goblet Squat|Quads|dumbbell;Bulgarian Split Squat|Quads|dumbbell;Walking Lunge|Quads|dumbbell;Pendulum Squat|Quads|machine;Step-Up|Quads|dumbbell;Sissy Squat|Quads|bodyweight;
 Stiff-Leg Deadlift|Hamstrings|barbell;Romanian Deadlift|Hamstrings|barbell;Dumbbell RDL|Hamstrings|dumbbell;Leg Curl|Hamstrings|machine;Seated Leg Curl|Hamstrings|machine;Lying Leg Curl|Hamstrings|machine;Nordic Curl|Hamstrings|bodyweight;Good Morning|Hamstrings|barbell;
@@ -55,12 +55,12 @@ Calf Raise|Calves|machine;Seated Calf Raise|Calves|machine;Standing Calf Raise|C
 const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [name, muscle, equip] = s.split('|'); return { name, muscle, equip }; });
 // Equipment each built-in lift can really be done with (b barbell, d dumbbell, m machine, c cable, s smith, w bodyweight, n band, k kettlebell).
 // Built-in lifts keep their muscle group; only custom exercises can be re-grouped (Job, 16 Oct).
-const EQ_CODE = { b: 'barbell', d: 'dumbbell', m: 'machine', c: 'cable', s: 'smith', w: 'bodyweight', n: 'band', k: 'kettlebell' };
+const EQ_CODE = { e: 'ez', t: 'trap', b: 'barbell', d: 'dumbbell', m: 'machine', c: 'cable', s: 'smith', w: 'bodyweight', n: 'band', k: 'kettlebell' };
 const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:bs;Incline Bench Press:bs;Decline Bench Press:bs;Dumbbell Bench Press:d;Incline Dumbbell Press:d;Chest Press:m;Smith Bench Press:s;Cable Crossover:c;Low-to-High Cable Fly:c;Dumbbell Fly:d;Pec Deck:m;Push-Up:w;Dip:wm;
 Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:b;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:b;Rack Pull:b;Back Extension:wm;Shrug:dbsm;Face Pull:cn;
 Shoulder Press:ms;Overhead Press:bs;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
-Preacher Curl:mbdc;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:b;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
-Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:bd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
+Preacher Curl:ebmdc;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:e;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
+Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:ebd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
 Cable Crunch:c;Oblique Crunch:cw;Hanging Leg Raise:w;Ab Wheel:w;Crunch Machine:m;Plank:w;Russian Twist:wdk;Pallof Press:cn;Woodchopper:cn;
 Leg Press:m;Leg Extension:mcn;Back Squat:bs;Front Squat:b;Hack Squat:ms;Smith Squat:s;Goblet Squat:dk;Bulgarian Split Squat:dbsw;Walking Lunge:dbw;Pendulum Squat:m;Step-Up:dbw;Sissy Squat:wm;
 Stiff-Leg Deadlift:bdsk;Romanian Deadlift:b;Dumbbell RDL:d;Leg Curl:mcdn;Seated Leg Curl:m;Lying Leg Curl:m;Nordic Curl:w;Good Morning:bs;
@@ -69,13 +69,13 @@ Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:
 // Equipment variants (Job, 23 Nov): one lift, its own history per equipment. The name carries it like a side does:
 // "Incline Press (Smith)", "Incline Press (Smith) (L)". The plain name is the lift's usual equipment, so old history stays put.
 // Plate-loaded vs pin-stack machines (Job, 23 Nov): the same lift on each keeps its own numbers.
-const EQ_LBL = { machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
+const EQ_LBL = { ez: 'EZ curl bar', trap: 'Trap bar', machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
 // What people read: the name tag stays short, the label says it in full.
 const eqTxt = q => ({ machine: 'Pin-loaded machine', plate: 'Plate-loaded machine' })[q] || EQ_LBL[q];
-const VAR_RE = /\s*\((Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
+const VAR_RE = /\s*\((EZ curl bar|Trap bar|Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
 // Attachments (Job, 23 Nov): which handle or bar is on the cable, or which bar for barbell lifts. Own history each, like equipment.
 // Name order: lift, equipment, attachment, side: "Tricep Pushdown (Rope) (L)", "Lateral Raise (Cable) (Cuff)". Dumbbell versions have none.
-const ATT_LBL = { rope: 'Rope', bar: 'Straight bar', vbar: 'V-bar', ez: 'EZ bar', single: 'Single handle', cuff: 'Cuff', wide: 'Wide bar', close: 'Close-grip bar', vhandle: 'V-handle', neutral: 'Neutral grip', olympic: 'Olympic bar', trap: 'Trap bar' };
+const ATT_LBL = { rope: 'Rope', bar: 'Straight bar', vbar: 'V-bar', ez: 'EZ bar', single: 'Single handle', cuff: 'Cuff', wide: 'Wide bar', close: 'Close-grip bar', vhandle: 'V-handle', neutral: 'Neutral grip', olympic: 'Olympic bar' };
 const ATT_RE = new RegExp('\\s*\\((' + Object.values(ATT_LBL).join('|') + ')\\)$');
 const ATT_FOR = {
   'Tricep Pushdown': { cable: ['rope', 'bar', 'vbar', 'single'] }, 'Overhead Tricep Extension': { cable: ['rope', 'bar', 'single'] },
@@ -89,6 +89,12 @@ const ATT_FOR = {
   'Cable Kickback': { cable: ['cuff', 'single'] }, 'Abductor': { cable: ['cuff'] }, 'Adductor': { cable: ['cuff'] },
   'Stiff-Leg Deadlift': { barbell: ['olympic', 'trap'] }, 'Romanian Deadlift': { barbell: ['olympic', 'trap'] },
 };
+// EZ curl bar and trap bar are their own equipment (Job, 24 Nov), not barbell attachments: lifts that offered them get them as equipment.
+for (const [l, m] of Object.entries(ATT_FOR)) if (m.barbell) { const o = EQ_OK[l]; if (o) {
+  if (m.barbell.includes('ez') && !o.includes('ez')) o.splice(o.indexOf('barbell') + 1, 0, 'ez');
+  if (m.barbell.includes('trap') && !o.includes('trap')) o.splice(o.indexOf('barbell') + 1, 0, 'trap');
+  }
+  m.barbell = m.barbell.filter(a => !['ez', 'olympic', 'trap'].includes(a)); if (!m.barbell.length) delete m.barbell; }
 const noSide = n => n.replace(/\s*\((L|R)\)$/, '');
 const liftName = n => noSide(n).replace(ATT_RE, '').replace(VAR_RE, '');
 const libEx = n => LIB.find(e => e.name === n) || (n !== liftName(n) ? LIB.find(e => e.name === liftName(n)) : undefined);
@@ -111,7 +117,7 @@ const eqPref = n => { const q = ((S.profile || {}).eqLast || {})[liftName(n)]; l
 // ...and the attachment you used last time on that equipment.
 const attPref = n => { if (attOf(n)) return n; const q = exInfo(n).equip, a = ((S.profile || {}).attLast || {})[liftName(n) + '|' + q]; return a && attOpts(n, q).includes(a) ? withAtt(n, a) : n; };
 const eqOptions = n => { if (!libEx(n)) return EQUIP; const o = EQ_OK[n] || [libEx(n).equip]; return o.includes('machine') ? o.flatMap(q => q === 'machine' ? ['machine', 'plate'] : [q]) : o; };
-const EQUIP = ['barbell', 'dumbbell', 'machine', 'plate', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
+const EQUIP = ['barbell', 'ez', 'trap', 'dumbbell', 'machine', 'plate', 'cable', 'smith', 'bodyweight', 'band', 'kettlebell', 'other'];
 const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Other'];
 const baseName = n => n.replace(/\s*\((L|R)\)$/, '');
 // Left and right versions of one lift (unilateral) are shown together as one row (Job, 15 Oct).
@@ -415,6 +421,17 @@ function renameLifts(st, act) {
   }
   // 24 Nov (Job): back to plates only on Job's account; Job ticks "Include the bar" per lift. Undoes the short-lived barFix1.
   if (st.profile.barFix1 && !st.profile.barFix2) { st.profile.barFix2 = 1; n++; if (st.profile.barW === 20) st.profile.barW = 0; }
+  // 24 Nov (Job): EZ curl bar and trap bar became equipment; sessions logged with them as a barbell attachment move with them.
+  if (!st.profile.eqFix4) {
+    st.profile.eqFix4 = 1; n++;
+    const bars = e => { if (!e || !e.name) return; const m = noSide(e.name).match(/^(.*?)(\s*\(Barbell\))?\s*\((EZ bar|Trap bar|Olympic bar)\)$/); if (!m) return;
+      if (!m[2] && (/\)$/.test(m[1]) || !['barbell', 'ez', 'trap'].includes(eqDefault(m[1])))) return; // a cable's EZ bar handle stays an attachment
+      const sd = e.name.slice(noSide(e.name).length), q = { 'EZ bar': 'ez', 'Trap bar': 'trap' }[m[3]];
+      e.name = (q ? m[1] + ' (' + EQ_LBL[q] + ')' : m[1] + (m[2] ? ' (Barbell)' : '')) + sd; };
+    for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(bars);
+    if (act) (act.ex || []).forEach(bars);
+    for (const k of ['barBy', 'eqLast', 'attLast']) { const o = st.profile[k]; if (!o) continue; for (const x of Object.keys(o)) if (/\((EZ bar|Trap bar|Olympic bar)\)/.test(x) || /\|barbell$/.test(x) && ['ez', 'olympic', 'trap'].includes(o[x])) delete o[x]; }
+  }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(plain);
@@ -5348,23 +5365,23 @@ const PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5
 const PLATE_COL = { 25: '#D8312B', 20: '#2F62C9', 15: '#E8B524', 10: '#2E8B4E', 5: '#DCD8CE', 2.5: '#7A7F88', 1.25: '#9EA3AA', 45: '#2F62C9', 35: '#E8B524' };
 const plateH = w => { const m = U() === 'lb' ? 45 : 25; return Math.round(46 + 104 * Math.sqrt(w / m)); };
 // Weight entry starts on the plate loader; "Dial / keypad" switches to the number pad.
-// Only bar equipment (barbell, Smith) counts a bar; machines, cables, dumbbells never do (Job, 24 Nov).
+// Only bar equipment (barbell, EZ curl bar, trap bar, Smith) counts a bar; machines, cables, dumbbells never do (Job, 24 Nov).
 function openSetPlates(ei, si) {
   const e = A.ex[ei], s = e.sets[si];
   openPlates(s.w == null ? 0 : +dw(s.w), v => { s.w = Math.round(toKg(v) * 1000) / 1000; s.ed = true; touchA(); openKeypad(ei, si, 'r'); },
-    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: !['barbell', 'smith'].includes(exInfo(e.name).equip), toBar: eqFit(e.name).includes('barbell') ? () => openEqPick(ei) : null, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
+    { title: `${e.name} · set ${si + 1}`, ex: e.name, machine: !['barbell', 'smith', 'ez', 'trap'].includes(exInfo(e.name).equip), toBar: eqFit(e.name).includes('barbell') ? () => openEqPick(ei) : null, alt: () => { UI.kgPad = true; lsSave(); openKeypad(ei, si, 'w'); } });
 }
 // Bars (v191, Job 14 Nov): "Include the bar" plus which bar, remembered per lift. Curls and skull crushers start on the
 // EZ bar, anything named trap/hex bar on the trap bar, the rest on an Olympic bar. Machines and cables never have one.
 // EZ bars are usually about 11 kg (Job, 14 Nov); every bar's weight can be changed to match your gym's (profile.barKgs).
 const BARS = [['oly', 'Olympic', 20, 45], ['womens', 'Women’s', 15, 35], ['ez', 'EZ curl', 11, 25], ['trap', 'Trap bar', 25, 55]];
 const barKg = k => { const b = BARS.find(x => x[0] === k); if (!b) return 0; const o = ((S.profile.barKgs || {})[U()] || {})[k]; return o > 0 ? o : (U() === 'lb' ? b[3] : b[2]); };
-const barDefault = n => /\b(EZ|Preacher|Skull|Spider|Reverse Curl)\b/i.test(n) ? 'ez' : /\b(Trap|Hex) Bar\b/i.test(n) ? 'trap' : 'oly';
+const barDefault = n => /\b(Trap|Hex) Bar\b/i.test(n) ? 'trap' : 'oly'; // EZ and trap bars are equipment now (24 Nov), picked under the lift's name
 function barFor(name) { // a BARS key, or 'none' for plates only
   const n = name && baseName(name), by = S.profile.barBy || {};
   if (n && by[n]) return by[n];
-  const at = n && { ez: 'ez', olympic: 'oly', trap: 'trap' }[attOf(n)]; if (at && S.profile.barW !== 0) return at; // the attachment picked under the lift's name
   const g = S.profile.barW; if (g === 0) return 'none'; // plates-only accounts (Job's) keep that everywhere
+  const q = n && exInfo(n).equip; if (q === 'ez' || q === 'trap') return q; // the bar is the equipment picked under the lift's name
   if (!n && g === 15) return 'womens'; if (!n && g === 10) return 'ez';
   return n ? barDefault(n) : 'oly';
 }
