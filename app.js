@@ -413,6 +413,12 @@ function renameLifts(st, act) {
     if (act) (act.ex || []).forEach(lp);
     if (st.profile.eqLast && st.profile.eqLast['Leg Press'] === 'machine') delete st.profile.eqLast['Leg Press'];
   }
+  // 24 Nov (Job picked "Count it"): bar lifts count the bar on Job's account too; untick per lift in the loader.
+  if (!st.profile.barFix1) {
+    st.profile.barFix1 = 1; n++;
+    if (st.profile.barW === 0) st.profile.barW = 20;
+    const by = st.profile.barBy; if (by) for (const k of Object.keys(by)) if (by[k] === 'none') delete by[k];
+  }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(plain);
