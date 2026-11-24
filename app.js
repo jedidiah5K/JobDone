@@ -57,13 +57,13 @@ const LIB = LIB_RAW.split(';').map(s => s.trim()).filter(Boolean).map(s => { con
 // Built-in lifts keep their muscle group; only custom exercises can be re-grouped (Job, 16 Oct).
 const EQ_CODE = { e: 'ez', t: 'trap', b: 'barbell', d: 'dumbbell', m: 'machine', c: 'cable', s: 'smith', w: 'bodyweight', n: 'band', k: 'kettlebell' };
 const EQ_OK = Object.fromEntries(`Chest Fly:mcd;Incline Press:mbds;Bench Press:bs;Incline Bench Press:bs;Decline Bench Press:bs;Dumbbell Bench Press:d;Incline Dumbbell Press:d;Chest Press:m;Smith Bench Press:s;Cable Crossover:c;Low-to-High Cable Fly:c;Dumbbell Fly:d;Pec Deck:m;Push-Up:w;Dip:wm;
-Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:b;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:b;Rack Pull:b;Back Extension:wm;Shrug:dbsm;Face Pull:cn;
-Shoulder Press:ms;Overhead Press:bs;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
-Preacher Curl:ebmdc;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:e;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:db;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
-Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cd;Skull Crusher:ebd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
+Lat Pulldown:cm;Wide-Grip Row:cm;Close-Grip Row:cm;Seated Cable Row:c;Barbell Row:bs;Pendlay Row:b;Dumbbell Row:dk;Chest-Supported Row:md;T-Bar Row:mb;Machine Row:m;Pull-Up:w;Chin-Up:w;Assisted Pull-Up:mn;Straight-Arm Pulldown:c;Single-Arm Pulldown:cm;Deadlift:bt;Rack Pull:b;Back Extension:wm;Shrug:dbtsm;Face Pull:cn;
+Shoulder Press:msdb;Overhead Press:bsd;Dumbbell Shoulder Press:d;Arnold Press:d;Lateral Raise:cdmn;Dumbbell Lateral Raise:d;Machine Lateral Raise:m;Front Raise:dcbn;Rear Delt Fly:mcd;Reverse Pec Deck:m;Upright Row:cbds;
+Preacher Curl:ebmdc;Hammer Curl:dc;Barbell Curl:b;EZ-Bar Curl:e;Dumbbell Curl:d;Incline Dumbbell Curl:d;Cable Curl:c;Bayesian Curl:c;Concentration Curl:d;Spider Curl:dbe;Forearm Curl:cdb;Reverse Curl:bdc;Wrist Curl:dbc;Farmer's Carry:dk;
+Single-Arm Tricep:c;Tricep Bar:c;Tricep Pushdown:c;Rope Pushdown:c;Overhead Tricep Extension:cde;Skull Crusher:ebd;Close-Grip Bench Press:bs;Dumbbell Kickback:d;Tricep Dip Machine:m;
 Cable Crunch:c;Oblique Crunch:cw;Hanging Leg Raise:w;Ab Wheel:w;Crunch Machine:m;Plank:w;Russian Twist:wdk;Pallof Press:cn;Woodchopper:cn;
-Leg Press:m;Leg Extension:mcn;Back Squat:bs;Front Squat:b;Hack Squat:ms;Smith Squat:s;Goblet Squat:dk;Bulgarian Split Squat:dbsw;Walking Lunge:dbw;Pendulum Squat:m;Step-Up:dbw;Sissy Squat:wm;
-Stiff-Leg Deadlift:bdsk;Romanian Deadlift:b;Dumbbell RDL:d;Leg Curl:mcdn;Seated Leg Curl:m;Lying Leg Curl:m;Nordic Curl:w;Good Morning:bs;
+Leg Press:m;Leg Extension:mcn;Back Squat:bs;Front Squat:bs;Hack Squat:ms;Smith Squat:s;Goblet Squat:dk;Bulgarian Split Squat:dbsw;Walking Lunge:dbw;Pendulum Squat:m;Step-Up:dbw;Sissy Squat:wm;
+Stiff-Leg Deadlift:bdsk;Romanian Deadlift:bds;Dumbbell RDL:d;Leg Curl:mcdn;Seated Leg Curl:m;Lying Leg Curl:m;Nordic Curl:w;Good Morning:bs;
 Hip Thrust:bms;Glute Bridge:bwd;Cable Kickback:c;Abductor:mcn;Glute Drive:m;Adductor:mcn;Copenhagen Plank:w;
 Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:m;Donkey Calf Raise:mw`.split(';').map(s => s.trim()).filter(Boolean).map(s => { const i = s.lastIndexOf(':'); return [s.slice(0, i), [...s.slice(i + 1)].map(c => EQ_CODE[c])]; }));
 // Equipment variants (Job, 23 Nov): one lift, its own history per equipment. The name carries it like a side does:
@@ -5735,7 +5735,9 @@ const PICK_HIDE = new Set(['Single-Arm Pulldown', 'Single-Arm Tricep', 'Tricep B
 // buttons that open a grid of tiles, and rows with a small body map of the main muscle (no exercise pictures).
 const PK_UPPER = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs'], PK_LOWER = ['Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves'];
 const PK_MUS = { Chest: ['f', 'chest'], Shoulders: ['f', 'deltoids'], Biceps: ['f', 'biceps'], Forearms: ['f', 'forearm'], Abs: ['f', 'abs', 'obliques'], Quads: ['f', 'quadriceps'], Adductors: ['f', 'adductors'], Back: ['b', 'upper-back', 'trapezius', 'lower-back'], Triceps: ['b', 'triceps'], Hamstrings: ['b', 'hamstring'], Glutes: ['b', 'gluteal'], Calves: ['b', 'calves'] };
-const PK_EQ = { barbell: 'Barbell', dumbbell: 'Dumbbell', machine: 'Machine', cable: 'Cable', smith: 'Smith machine', bodyweight: 'Bodyweight' };
+const PK_EQ = { barbell: 'Barbell', dumbbell: 'Dumbbell', machine: 'Machine', cable: 'Cable', smith: 'Smith machine', ez: 'EZ curl bar', bodyweight: 'Bodyweight' };
+// Picker equipment filter (Job, 24 Nov): any lift that can be done on it, not only lifts that start on it. Machine covers pin and plate-loaded.
+const eqCan = (n, q) => { const o = eqOptions(n); return o.includes(q) || (q === 'machine' && o.includes('plate')); };
 // Equipment icons (Job, 8 Nov): Hugeicons (MIT) and Tabler's barbell (MIT), not hand-drawn
 const PK_EQI = { barbell: ['0 0 24 24', '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 12h1m3-4H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2m0-9v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1m3 5h6m0-5v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1m3 1h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2m4-4h-1"/>'], dumbbell: ['0 0 24 24', '<g fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.734 13.732s.906-1.222 1.5-1.5c1.795-.84 2.16-1.206 3-3.001c.279-.595 1.5-1.5 1.5-1.5m-3.5 8.502s1.222-.906 1.5-1.5c.84-1.796 1.206-2.16 3-3.001c.595-.279 1.5-1.5 1.5-1.5"/><path d="M14.431 2.892a1.3 1.3 0 0 1 1.839-.003l4.811 4.798a1.3 1.3 0 0 1 .003 1.84l-1.528 1.533a1.3 1.3 0 0 1-1.839.003l-4.812-4.798a1.3 1.3 0 0 1-.002-1.839zM4.414 12.902a1.3 1.3 0 0 1 1.838-.003l4.812 4.798a1.3 1.3 0 0 1 .003 1.84L9.538 21.07a1.3 1.3 0 0 1-1.838.003l-4.812-4.798a1.3 1.3 0 0 1-.003-1.839z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17.938 3.453c1.882-2.468 5.202.387 2.605 2.576M3.378 17.977c-2.38 1.992.62 5.182 2.69 2.489"/></g>'], machine: ['0 0 24 24', '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M13.91 8.368c.302.233.364.621.49 1.398l.457 2.849c.163 1.008.244 1.512-.076 1.84c-.756.774-4.9.678-5.562 0c-.32-.328-.239-.832-.077-1.84L9.6 9.766c.125-.777.188-1.165.49-1.398c.62-.478 3.167-.503 3.82 0M7.5 19c.042-.127.063-.19.086-.246a2 2 0 0 1 1.735-1.25c.06-.004.127-.004.26-.004h4.838c.133 0 .2 0 .26.004a2 2 0 0 1 1.735 1.25c.023.056.044.12.086.246M12 17.5V22m0 0h7m-7 0H5"/><path d="M21 14v-3.597c0-.695 0-1.042-.113-1.363c-.113-.322-.33-.593-.764-1.136l-1.922-2.403c-.59-.737-.885-1.106-1.296-1.304C16.495 4 16.022 4 15.077 4H8.923c-.944 0-1.416 0-1.827.197c-.41.198-.706.567-1.296 1.304L3.877 7.904c-.434.543-.652.814-.764 1.136C3 9.36 3 9.708 3 10.403V14m0-2h3m15 0h-3m-6-4V2"/></g>'], cable: ['0 0 24 24', '<g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"><path stroke-linecap="round" d="M3 3h18"/><circle cx="15.5" cy="10.5" r="3.5" stroke-linecap="round"/><circle cx="8.5" cy="17.5" r="3.5" stroke-linecap="round"/><path stroke-linecap="round" d="M5 17.5V3m7 14.5v-7M15.5 7V3M19 17v-6.5"/><path d="M19 17c-.714 0-1.097.2-1.383.896c-.373.908-.826 2.254-.511 2.807c.168.297.554.297 1.325.297h1.137c.772 0 1.158 0 1.326-.297c.315-.553-.138-1.9-.51-2.807C20.11 17.232 19.741 17 19 17Z"/></g>'], smith: ['0 0 24 24', '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 3v5M6 3v5m14.5-4v1.5m0 0V7m0-1.5H22M3.5 4v1.5m0 0V7m0-1.5H2m16 0H6M7.277 19h9.447c1.237 0 1.856 0 2.112-.303c.58-.686-.532-1.594-.938-2.051c-.457-.516-.792-.646-1.468-.646H7.57c-.676 0-1.01.13-1.468.646c-.406.457-1.518 1.365-.938 2.051C5.42 19 6.04 19 7.277 19M9 8v8m6-8v8m1 3v2m-8-2v2"/>'], bodyweight: ['0 0 24 24', '<g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 4.5a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m10.948 21l1.13-3.41c.404-1.215.606-1.823.304-2.244c-.301-.42-.94-.42-2.215-.42H8.933m0 0H7.925c-.948 0-1.423 0-1.725-.373c-.302-.374-.216-.793-.043-1.633c.29-1.406.872-3.153 1.935-4.341c.294-.328.44-.492.763-.56s.581.05 1.097.286l1.862.85l.783.358c.92.42 1.38.63 1.865.608s.924-.275 1.802-.779L18 8.345m-9.067 6.58c.241-1.315 1.155-4.312 2.88-5.77"/></g>'] };
 const pkEqIcon = k => PK_EQI[k] ? `<svg viewBox="${PK_EQI[k][0]}" aria-hidden="true">${PK_EQI[k][1]}</svg>` : '<span class="pk-ini">…</span>';
@@ -5762,7 +5764,7 @@ function pickExercise(onPick, opts = {}) {
   // typos: below every real match, so "pec" still lists exact hits first
   const score = e => exact0(e) || Math.min(9, fuzzy([e.name, ...(NICK[e.name] || []), e.muscle].join(' '), q)) / 10;
   const list = () => {
-    let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || e.equip === ef) && (!scoped || pm.has(e.muscle))).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
+    let l = all().filter(e => (!mf || e.muscle === mf) && (!ef || eqCan(e.name, ef)) && (!scoped || pm.has(e.muscle))).map(e => ({ e, s: score(e) })).filter(x => x.s > 0);
     l.sort((a, b) => (pm ? pm.has(b.e.muscle) - pm.has(a.e.muscle) : 0) || b.s - a.s || (recent.indexOf(a.e.name) + 1 || 999) - (recent.indexOf(b.e.name) + 1 || 999) || a.e.name.localeCompare(b.e.name));
     return l.map(x => x.e);
   };
@@ -5782,7 +5784,7 @@ function pickExercise(onPick, opts = {}) {
     const create = q.trim() && !exact ? `<button class="li pk-row" data-pick-new="1"><span class="pk-av pk-plus">${I.plus}</span><div class="grow"><div class="t">Create “${esc(q.trim())}”</div><div class="s">Your own exercise${mf ? ' · ' + esc(mf) : ''}</div></div></button>` : '';
     const typo = l.length && !l.some(e => exact0(e) > 0); // only typo matches: suggest them first, Create last
     return (typo ? '<div class="grp">Did you mean</div>' : create) + (l.length ? '' : '<div class="empty">No exercises match. Try another filter.</div>') +
-      l.slice(0, typo ? 5 : 120).map(e => row(e, ' · ' + (PK_EQ[e.equip] || e.equip) + (recent.includes(e.name) ? ' · used before' : '') + (!opts.title && lastSided(e.name) ? ' · left and right' : ''))).join('') + (typo ? create : '');
+      l.slice(0, typo ? 5 : 120).map(e => row(e, ' · ' + (ef ? PK_EQ[ef] : PK_EQ[e.equip] || eqTxt(e.equip) || e.equip) + (recent.includes(e.name) ? ' · used before' : '') + (!opts.title && lastSided(e.name) ? ' · left and right' : ''))).join('') + (typo ? create : '');
   };
   const sh = openSheet(`<div class="stack pk"><div class="pk-top"><button class="pk-pill" id="pk-x">Cancel</button><b>${esc(opts.title || 'Add exercise')}</b><button class="pk-pill" id="pk-new">Create</button></div>
     <label class="pk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pk-q" placeholder="Search exercises" autocomplete="off"></label>
@@ -5802,12 +5804,12 @@ function pickExercise(onPick, opts = {}) {
       const filt = kind => {
         const isEq = kind === 'eq', keys = isEq ? Object.keys(PK_EQ) : [...PK_UPPER, ...PK_LOWER, 'Other'];
         let pick = isEq ? ef : mf;
-        const count = v => all().filter(e => (!scoped || pm.has(e.muscle)) && (isEq ? (!v || e.equip === v) && (!mf || e.muscle === mf) : (!v || e.muscle === v) && (!ef || e.equip === ef))).length;
+        const count = v => all().filter(e => (!scoped || pm.has(e.muscle)) && (isEq ? (!v || eqCan(e.name, v)) && (!mf || e.muscle === mf) : (!v || e.muscle === v) && (!ef || eqCan(e.name, ef)))).length;
         const tile = k => `<button class="pk-tile${pick === k ? ' on' : ''}" data-k="${esc(k)}"><span class="pk-av">${isEq ? pkEqIcon(k) : k === 'Other' ? '<span class="pk-ini">…</span>' : pkBody(k)}</span><span>${esc(isEq ? PK_EQ[k] : k)}</span></button>`;
         const grid = ks => `<div class="pk-grid">${ks.map(tile).join('')}</div>`;
         const fs = openSheet(`<div class="stack"><h2 class="pk-ft">${isEq ? 'Equipment' : 'Muscle group'}</h2>
           ${isEq ? grid(keys) : `<div class="grp">Upper body</div>${grid(PK_UPPER)}<div class="grp">Lower body</div>${grid(PK_LOWER)}<div class="grp">Other</div>${grid(['Other'])}`}
-          <div class="sheet-foot grid2"><button class="btn block" id="pf-clear">Clear filters</button><button class="btn primary block" id="pf-go">Show ${count(pick)} results</button></div></div>`, { label: isEq ? 'Equipment' : 'Muscle group', mount: fb => {
+          <div class="sheet-foot grid2"><button class="btn block" id="pf-clear">Clear filters</button><button class="btn primary block" id="pf-go">Show ${count(pick)} results</button></div></div>`, { label: isEq ? 'Equipment' : 'Muscle group', over: true, mount: fb => {
           fb.querySelectorAll('.pk-tile').forEach(t => t.onclick = () => { pick = pick === t.dataset.k ? null : t.dataset.k; fb.querySelectorAll('.pk-tile').forEach(x => x.classList.toggle('on', x.dataset.k === pick)); fb.querySelector('#pf-go').textContent = `Show ${count(pick)} results`; });
           fb.querySelector('#pf-clear').onclick = () => { ef = null; mf = null; closeSheet(fs); redraw(); };
           fb.querySelector('#pf-go').onclick = () => { if (isEq) ef = pick; else mf = pick; closeSheet(fs); redraw(); };
@@ -5818,11 +5820,11 @@ function pickExercise(onPick, opts = {}) {
       L.onclick = ev => {
         if (ev.target.closest('[data-only]')) { scoped = !scoped; redraw(); return; }
         const inf = ev.target.closest('[data-info]');
-        if (inf) { ev.stopPropagation(); const nm = inf.dataset.info, h = howtoHTML(nm, true); openSheet(`<div class="stack"><h2>${esc(nm)}</h2><div class="cap">${esc(exInfo(nm).muscle)} · ${esc(PK_EQ[exInfo(nm).equip] || exInfo(nm).equip)}</div>${h || '<div class="cap">No how-to for this one yet.</div>'}</div>`, { label: nm }); return; }
+        if (inf) { ev.stopPropagation(); const nm = inf.dataset.info, h = howtoHTML(nm, true); openSheet(`<div class="stack"><h2>${esc(nm)}</h2><div class="cap">${esc(exInfo(nm).muscle)} · ${esc(PK_EQ[exInfo(nm).equip] || exInfo(nm).equip)}</div>${h || '<div class="cap">No how-to for this one yet.</div>'}</div>`, { label: nm, over: true }); return; }
         const p = ev.target.closest('[data-pick]'), nw = ev.target.closest('[data-pick-new]');
         if (nw) { openExForm(q.trim().replace(/\s+/g, ' '), { muscle: mf, onSave: created }); return; }
         if (!p) return;
-        const name = p.dataset.pick, sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
+        const name = ef && ef !== exInfo(p.dataset.pick).equip && eqOptions(p.dataset.pick).includes(ef) ? withEq(p.dataset.pick, ef) : p.dataset.pick, sides = b.querySelector('#pk-side').checked || (!opts.title && lastSided(name));
         closeSheet(sh);
         if (sides) { onPick(name + ' (L)'); onPick(name + ' (R)'); } else onPick(name);
       };
@@ -5861,7 +5863,7 @@ function openExForm(name, o = {}) {
   const eqLbl = q => q === 'other' ? 'Other' : eqTxt(q) || q;
   const muChips = MU_GROUPS.map(([g, ms]) => `<div class="ef-g"><span class="cap">${g}</span><div class="chips wrap">${ms.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>`).join('');
   const sh = openSheet(`<div class="stack ef"><h2 class="exm-h">${known ? esc(name) : 'New exercise'}</h2>
-    ${known ? '' : `<div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(o.preset || '')}" placeholder="e.g. Cable Y Raise" autocomplete="off"></div><div id="ef-dupe"></div>`}
+    ${known ? '' : `<div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(o.preset || name || '')}" placeholder="e.g. Cable Y Raise" autocomplete="off"></div><div id="ef-dupe"></div>`}
     ${lib ? `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap"><span class="chip on" aria-disabled="true">${esc(mu)}</span></div><p class="cap m0">Built-in lifts keep their muscle group.</p></div>`
       : `<div class="field"><span class="lbl">What does it work?</span><div id="ef-m" class="ef-mu">${muChips}</div></div>`}
     <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${eqList.map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${esc(eqLbl(m))}</button>`).join('')}</div>${lib && eqList.length === 1 ? `<p class="cap m0">This lift only uses this equipment.</p>` : ''}</div>
