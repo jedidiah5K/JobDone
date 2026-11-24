@@ -2542,3 +2542,22 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Edit workout: Delete / Save stay on screen while scrolling (Job, 23 Nov) */
 .wk-bar { position: sticky; bottom: calc(26px - var(--s10)); z-index: 4; display: flex; gap: var(--s2); padding: var(--s2); border-radius: 18px; background: var(--surface-solid, var(--raised)); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
 .wk-bar .btn { margin: 0; }
+/* Plate loader, cleaner layout (Job, 24 Nov) */
+.pl2 .pl-head .cap { margin-top: 2px; min-height: 1.3em; }
+.pl-card { padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; padding: 0 2px; }
+.pl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); font: inherit; font-size: calc(14px * var(--ts, 1)); font-weight: 600; }
+.pl-chip b { font-weight: 600; color: var(--text2); }
+.pl-chip.off { color: var(--muted); }
+.pl-chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .7; }
+.pl-chip[aria-expanded="true"] svg { transform: rotate(180deg); }
+.pl-sw { display: inline-flex; align-items: center; gap: 8px; }
+.xsw.on#pl-inc { background: var(--accent); }
+.pl-pick { display: flex; flex-direction: column; gap: 8px; padding: 4px 2px 2px; }
+.pl-pick[hidden], .pl-gym[hidden] { display: none; }
+.pl-cap { text-align: center; color: var(--text2); font-size: calc(14px * var(--ts, 1)); font-weight: 600; min-height: 1.3em; }
+.pl-ic { width: 40px; padding: 0; display: inline-grid; place-items: center; }
+.pl-ic svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.pl-ic[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.pl-gym { border-radius: var(--r2); background: var(--raised); padding: 12px; }
+:root[data-theme="mono"] .xsw.on#pl-inc { background: #B3122A; }

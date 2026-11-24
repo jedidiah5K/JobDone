@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-O1b1q0iWASjkyPS3z/bCSchTklu6q0Gzr+yaLRpYVBY='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-prp3ojNU2KM/+ynj5AvsO9rfOwiy9YHldM5bvMNto1k='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2579,6 +2579,25 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Edit workout: Delete / Save stay on screen while scrolling (Job, 23 Nov) */
 .wk-bar { position: sticky; bottom: calc(26px - var(--s10)); z-index: 4; display: flex; gap: var(--s2); padding: var(--s2); border-radius: 18px; background: var(--surface-solid, var(--raised)); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
 .wk-bar .btn { margin: 0; }
+/* Plate loader, cleaner layout (Job, 24 Nov) */
+.pl2 .pl-head .cap { margin-top: 2px; min-height: 1.3em; }
+.pl-card { padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; padding: 0 2px; }
+.pl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); font: inherit; font-size: calc(14px * var(--ts, 1)); font-weight: 600; }
+.pl-chip b { font-weight: 600; color: var(--text2); }
+.pl-chip.off { color: var(--muted); }
+.pl-chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .7; }
+.pl-chip[aria-expanded="true"] svg { transform: rotate(180deg); }
+.pl-sw { display: inline-flex; align-items: center; gap: 8px; }
+.xsw.on#pl-inc { background: var(--accent); }
+.pl-pick { display: flex; flex-direction: column; gap: 8px; padding: 4px 2px 2px; }
+.pl-pick[hidden], .pl-gym[hidden] { display: none; }
+.pl-cap { text-align: center; color: var(--text2); font-size: calc(14px * var(--ts, 1)); font-weight: 600; min-height: 1.3em; }
+.pl-ic { width: 40px; padding: 0; display: inline-grid; place-items: center; }
+.pl-ic svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.pl-ic[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.pl-gym { border-radius: var(--r2); background: var(--raised); padding: 12px; }
+:root[data-theme="mono"] .xsw.on#pl-inc { background: #B3122A; }
 
 body { margin: 0; box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -8007,22 +8026,32 @@ function openPlates(target, onUse, o = {}) {
     return `<svg viewBox="0 0 ${W} ${H}" class="barsvg">${shaft}${mid}<rect x="${cx - 64}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/><rect x="${cx + 58}" y="${cy - 14}" width="6" height="28" rx="2" fill="#6B7178"/>${out}</svg>`;
   };
   const tray = () => [...den, ...custom()].map(p => `<button class="plate-chip" data-p="${p}" style="--pc:${PLATE_COL[p] || 'var(--accent)'};--ph:${Math.max(34, plateH(p) * .42)}px"><i></i><b>${trim(p)}</b></button>`).join('');
-  const sh = openSheet(`<div class="g3 stack"><div class="row between"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div></div><button class="btn sm" id="pl-clear">Clear</button></div>
-    <div class="cap" id="pl-msg"></div>
-    ${o.machine ? (o.toBar ? `<div class="pl-nobar row between"><span class="cap">${esc(eqTxt(exInfo(o.ex).equip) || 'Machine')}, so no bar is counted.</span><button class="link cap" id="pl-tobar">Use a bar</button></div>` : '') : `<div class="pl-bars"><button class="pl-inc" id="pl-inc" role="checkbox" aria-checked="${bar ? 'true' : 'false'}"><i class="pl-box"></i>Include the bar</button><div class="chips pl-barlist" id="pl-barlist" ${bar ? '' : 'hidden'}>${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} <span class="num">${trim(barKg(k))}</span></button>`).join('')}</div><label class="pl-bw" ${bar ? '' : 'hidden'}>This bar weighs <input class="input num" id="pl-bw" inputmode="decimal" value="${trim(bar)}" aria-label="Bar weight in ${U()}"> ${U()}</label></div>`}
-    <div class="bar-wrap" id="pl-bar"></div>
+  const barName = k => (BARS.find(x => x[0] === k) || [0, 'Bar'])[1] + (k === 'ez' || k === 'trap' ? '' : ' bar');
+  const chipTxt = () => bar ? `${esc(barName(barK))} <b class="num">${trim(bar)} ${U()}</b>` : 'Bar not counted';
+  // Cleaner loader (Job, 24 Nov): total and what it's made of on top, bar label and switch inside the picture, gym plates behind the sliders button.
+  const sh = openSheet(`<div class="g3 stack pl2"><div class="row between pl-head"><div><div class="eyebrow">${esc(o.title || 'Plate loader')}</div><div class="big num" id="pl-tot">${trim(total())}<span class="unit">${U()}</span></div><div class="cap num" id="pl-sum"></div></div>
+      <div class="row g2"><button class="btn sm pl-ic" id="pl-set" aria-label="Plates your gym has" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button><button class="btn sm" id="pl-clear">Clear</button></div></div>
+    <div class="bar-wrap pl-card" id="pl-wrap">
+      <div class="pl-top">${o.machine ? `<span class="cap">${esc(eqTxt(exInfo(o.ex || '').equip) || 'Machine')} · no bar</span>${o.toBar ? '<button class="link cap" id="pl-tobar">Use a bar</button>' : ''}`
+        : `<button class="pl-chip${bar ? '' : ' off'}" id="pl-bk" aria-expanded="false">${chipTxt()}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><span class="pl-sw"><span class="cap">Bar</span><button class="xsw${bar ? ' on' : ''}" id="pl-inc" role="switch" aria-checked="${bar ? 'true' : 'false'}" aria-label="Count the bar"></button></span>`}</div>
+      ${o.machine ? '' : `<div class="pl-pick" id="pl-pick" hidden><div class="chips pl-barlist" id="pl-barlist">${BARS.map(([k, n]) => `<button class="chip${k === barK ? ' on' : ''}" data-bk="${k}" aria-pressed="${k === barK}">${n} <span class="num">${trim(barKg(k))}</span></button>`).join('')}</div><label class="pl-bw">This bar weighs <input class="input num" id="pl-bw" inputmode="decimal" value="${trim(bar || barKg(lastBar))}" aria-label="Bar weight in ${U()}"> ${U()}</label></div>`}
+      <div id="pl-bar"></div>
+      <div class="pl-cap num" id="pl-msg"></div>
+    </div>
     <div class="plate-tray" id="pl-tray">${tray()}</div>
-    <details class="pl-more"><summary class="link">Plates your gym has, custom plates, load a total</summary><div class="g3 stack mt3">
+    <div class="pl-gym" id="pl-gym" hidden><div class="g3 stack">
     <div class="field"><span class="lbl">Plates your gym has</span><div class="chips" id="pl-have">${PLATES[U()].map(x => `<button class="chip${den.includes(x) ? ' on' : ''}" data-hv="${x}" aria-pressed="${den.includes(x)}">${trim(x)}</button>`).join('')}</div></div>
     <div class="g2 row"><input class="flex1 input num" id="pl-cw" inputmode="decimal" placeholder="Custom plate (${U()})"><button class="btn" id="pl-cadd">Add plate</button></div>
-    <div class="g2 row"><input class="flex1 input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}"><button class="btn" id="pl-auto">Load it</button></div></div></details>
-    ${onUse ? `<div class="g2 row">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Dial / keypad</button>` : ''}<button class="flex1 btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
+    <div class="g2 row"><input class="flex1 input num" id="pl-t" inputmode="decimal" placeholder="Target total" value="${target ? trim(target) : ''}"><button class="btn" id="pl-auto">Load it</button></div></div></div>
+    ${onUse ? `<div class="g2 row">${o.alt ? `<button class="btn" id="pl-alt" style="flex:none">Keypad</button>` : ''}<button class="flex1 btn primary block" id="pl-use">Use <span id="pl-use-v">${trim(total())}</span> ${U()}${o.useLabel ? ', ' + esc(o.useLabel) : ''}</button></div>` : ''}
   </div>`, { label: 'Plate loader', mount: b => {
     const draw = () => {
       b.querySelector('#pl-bar').innerHTML = svg(); fresh = -1;
       b.querySelector('#pl-tot').firstChild.textContent = trim(total());
       const u = b.querySelector('#pl-use-v'); if (u) u.textContent = trim(total());
-      b.querySelector('#pl-msg').textContent = side.length ? `Each side: ${side.map(trim).join(' + ')} ${U()}${left > 0.001 ? ` · closest to your ${trim(target)} ${U()} with these plates` : ''}${bar ? '' : ' · plates only'}` : (bar ? `Empty ${bar} ${U()} bar · tap or drag plates on` : 'Tap or drag plates on');
+      const pk = Math.round(2 * side.reduce((a, c) => a + c, 0) * 1000) / 1000;
+      b.querySelector('#pl-msg').textContent = side.length ? `${side.map(trim).join(' + ')} ${U()} each side${left > 0.001 ? ` · closest to ${trim(target)} ${U()} with these plates` : ''}` : 'Tap or drag plates on';
+      b.querySelector('#pl-sum').textContent = o.machine ? '' : bar && pk ? `${trim(pk)} ${U()} plates + ${trim(bar)} ${U()} bar` : bar ? `Empty ${trim(bar)} ${U()} bar` : pk ? 'Plates only' : '';
     };
     const add = p => { side.push(p); side.sort((a, c) => c - a); fresh = side.lastIndexOf(p); left = 0; buzz(8); clank(p / 25); draw(); };
     draw();
@@ -8030,14 +8059,17 @@ function openPlates(target, onUse, o = {}) {
     b.querySelector('#pl-clear').onclick = () => { side = []; left = 0; draw(); };
     const setBar = k => { barK = k; bar = barKg(k); if (k !== 'none') lastBar = k;
       if (o.ex) S.profile.barBy = { ...(S.profile.barBy || {}), [baseName(o.ex)]: k }; else S.profile.barW = bar;
-      persist('jd/meta'); const inc = b.querySelector('#pl-inc'), list = b.querySelector('#pl-barlist');
-      const bw = b.querySelector('#pl-bw'); if (bw) { bw.value = trim(bar); bw.closest('.pl-bw').hidden = !bar; }
-      if (inc) inc.setAttribute('aria-checked', bar ? 'true' : 'false'); if (list) { list.hidden = !bar; list.querySelectorAll('[data-bk]').forEach(y => { y.classList.toggle('on', y.dataset.bk === k); y.setAttribute('aria-pressed', y.dataset.bk === k); }); }
+      persist('jd/meta'); const inc = b.querySelector('#pl-inc'), list = b.querySelector('#pl-barlist'), bk = b.querySelector('#pl-bk'); if (bk) { bk.firstChild && (bk.innerHTML = chipTxt() + bk.querySelector('svg').outerHTML); bk.classList.toggle('off', !bar); } if (inc) inc.classList.toggle('on', !!bar);
+      const bw = b.querySelector('#pl-bw'); if (bw && bar) bw.value = trim(bar);
+      if (inc) inc.setAttribute('aria-checked', bar ? 'true' : 'false'); if (list) { list.querySelectorAll('[data-bk]').forEach(y => { y.classList.toggle('on', y.dataset.bk === k); y.setAttribute('aria-pressed', y.dataset.bk === k); }); }
       draw(); };
     const inc = b.querySelector('#pl-inc'); if (inc) inc.onclick = () => setBar(bar ? 'none' : lastBar);
     const bwIn = b.querySelector('#pl-bw'); if (bwIn) bwIn.onchange = () => { const v = parseFloat(bwIn.value); if (!(v > 0 && v < 60) || barK === 'none') { bwIn.value = trim(bar); return toast('Enter the bar’s weight'); }
       const all = { ...(S.profile.barKgs || {}) }; all[U()] = { ...(all[U()] || {}), [barK]: Math.round(v * 100) / 100 }; S.profile.barKgs = all; persist('jd/meta'); bar = barKg(barK);
-      const chip = b.querySelector(`[data-bk="${barK}"] .num`); if (chip) chip.textContent = trim(bar); draw(); };
+      const chip = b.querySelector(`[data-bk="${barK}"] .num`); if (chip) chip.textContent = trim(bar); setBar(barK); };
+    const tog = (btn, el) => { const open = el.hidden; el.hidden = !open; btn.setAttribute('aria-expanded', open); };
+    const bk = b.querySelector('#pl-bk'); if (bk) bk.onclick = () => tog(bk, b.querySelector('#pl-pick'));
+    b.querySelector('#pl-set').onclick = ev => tog(ev.currentTarget, b.querySelector('#pl-gym'));
     const bl = b.querySelector('#pl-barlist'); if (bl) bl.onclick = ev => { const x = ev.target.closest('[data-bk]'); if (x) setBar(x.dataset.bk); };
     b.querySelector('#pl-have').onclick = ev => { const x = ev.target.closest('[data-hv]'); if (!x) return; const v = +x.dataset.hv, cur = new Set(den);
       if (cur.has(v)) { if (cur.size === 1) return toast('Keep at least one plate'); cur.delete(v); } else cur.add(v);
@@ -8050,7 +8082,7 @@ function openPlates(target, onUse, o = {}) {
     const al = b.querySelector('#pl-alt'); if (al) al.onclick = () => { closeSheet(sh); o.alt(); };
     const tb = b.querySelector('#pl-tobar'); if (tb) tb.onclick = () => { closeSheet(sh); o.toBar(); };
     // drag from tray: a ghost plate follows the finger; drop over the bar to load it
-    const trayEl = b.querySelector('#pl-tray'), barEl = b.querySelector('#pl-bar');
+    const trayEl = b.querySelector('#pl-tray'), barEl = b.querySelector('#pl-wrap');
     let drag = null;
     trayEl.addEventListener('pointerdown', ev => {
       const chip = ev.target.closest('[data-p]'); if (!chip) return;
