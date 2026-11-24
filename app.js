@@ -2598,7 +2598,7 @@ function resolveVars(html) {
 const rerender = () => { NAV.keepScroll = true; render(); };
 function go(v) { NAV.stack.push(v); render(); }
 function back() { NAV.stack.pop(); render(); }
-const backBtn = (label = 'Back') => `<button class="back" data-a="back">${I.left}${esc(label)}</button>`;
+const backBtn = (label = 'Back') => `<button class="back" data-a="back" aria-label="Back to ${esc(label)}">${I.left}</button>`; // round arrow on every screen and theme (Job, 24 Nov)
 
 // ---------- Today ----------
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'; }
@@ -2728,7 +2728,7 @@ function viewSplits() {
     return `<div class="swipe"><button class="swipe-del" data-a="spDelete" data-id="${sp.id}" tabindex="-1">Delete</button><button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${plural(sp.ex.length, 'exercise')} · ${l ? relDay(l.date) : 'not done yet'}</div>${splitMuscles(sp)}</div>${I.right}</button></div>`;
   };
   return `<div class="stack">
-  <button class="back" data-a="tab" data-k="today">${I.left}Today</button>
+  <button class="back" data-a="tab" data-k="today" aria-label="Back to Today">${I.left}</button>
   <div class="top pt0"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
   <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div><div class="mt1 cap">Next up is the split after your last one.</div></div><span class="cap">Edit</span></button>
   ${act.map(card).join('')}
@@ -4556,7 +4556,7 @@ function summaryHTML() {
   const d = summaryData(); const sp = A.splitId && splitById(A.splitId);
   const changed = sp && JSON.stringify(A.ex.map(e => e.name)) !== JSON.stringify(sp.ex.map(e => e.name));
   return `<div class="wk-body" style="padding-top:calc(16px + env(safe-area-inset-top, 0px))">
-    <button class="back back-ic" data-a="sumBack" aria-label="Back to workout">${I.left}</button>
+    <button class="back" data-a="sumBack" aria-label="Back to workout">${I.left}</button>
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card sum-cmp"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>

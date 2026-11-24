@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-pmL5Rq461WfRLKidM+7xN5pJLkI+bSBe86az5Tuo5js='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-7lH5XblXOAb+vfwbiyMWEVSx+KfilBWn/chg32cJim4='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -1886,7 +1886,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Skyline (Job, 15 Nov): red buttons and links vanish on the navy and on the red recap art, so controls are white there.
    Red stays for highlights (active tab, + button, PRs, targets). */
 :root[data-theme="spidey"] #recap .rc-home, :root[data-theme="spidey"]:not([data-tod="day"]) .link, :root[data-theme="spidey"]:not([data-tod="day"]) .btn.ghost,
-:root[data-theme="spidey"]:not([data-tod="day"]) .icon-btn, :root[data-theme="spidey"]:not([data-tod="day"]) #wk .back, :root[data-theme="spidey"]:not([data-tod="day"]) .fold-btn.shut,
+:root[data-theme="spidey"]:not([data-tod="day"]) .icon-btn, :root[data-theme="spidey"]:not([data-tod="day"]) .fold-btn.shut,
 :root[data-theme="spidey"]:not([data-tod="day"]) #wk .link.add-set, :root[data-theme="spidey"]:not([data-tod="day"]) .lr-go, :root[data-theme="spidey"]:not([data-tod="day"]) .si-age a,
 :root[data-theme="spidey"]:not([data-tod="day"]) .legal a, :root[data-theme="spidey"]:not([data-tod="day"]) .me-ic { color: #FFFFFF; }
 #recap .rc-home svg { width: 30px; height: 30px; stroke-width: 3; }
@@ -2373,7 +2373,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Admin page (owner only, v184): its own dark dashboard look in every theme */
 .admx { --ax-bg: #0E1013; --ax-card: #171A1F; --ax-line: #262A31; --ax-tx: #E8EAED; --ax-dim: #8B919A; --ax-g: #3FBF6F; --ax-a: #E0A526; --ax-r: #E5534B; --ax-b: #5AA9E6;
   background: var(--ax-bg); color: var(--ax-tx); margin: 0 calc(var(--s4) * -1); padding: var(--s4); min-height: 100vh; font-variant-numeric: tabular-nums; }
-.admx .back, .admx h1 { color: var(--ax-tx); }
+.admx h1 { color: var(--ax-tx); }
 .ax-hd { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .ax-hd h1 { margin: 0; font-size: calc(30px * var(--ts, 1)); }
 .ax-dim { color: var(--ax-dim); font-size: calc(12px * var(--ts, 1)); margin: 6px 0 0; display: block; }
@@ -2609,12 +2609,11 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .eq-chip.eq-ro::after { content: none; } .eq-chip.eq-ro { display: flex; }
 
 /* Smaller back pill and recap rows (Job, 24 Nov: text too big) */
-#wk .back { padding: 4px 12px 4px 6px; }
-#wk .back svg { width: 18px; height: 18px; }
 .sum-cmp .li .t { font-size: calc(15px * var(--ts, 1)); line-height: calc(20px * var(--ts, 1)); }
 .sum-cmp .li { padding-block: 10px; min-height: 46px; }
-#wk .back.back-ic { width: 40px; height: 40px; min-height: 40px; padding: 0; justify-content: center; }
-#wk .back.back-ic svg { width: 22px; height: 22px; }
+/* Back = a round arrow button, same on every screen and theme (Job, 24 Nov) */
+.back, #wk .back { width: 40px; height: 40px; min-height: 40px; padding: 0; gap: 0; justify-content: center; align-self: flex-start; flex: none; border-radius: 999px; color: var(--accent); background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); text-shadow: none; font-size: 0; }
+.back svg, #wk .back svg { width: 22px; height: 22px; margin: 0; }
 
 body { margin: 0; box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -2794,7 +2793,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v228';
+const APP_VER = 'v229';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -5229,7 +5228,7 @@ function resolveVars(html) {
 const rerender = () => { NAV.keepScroll = true; render(); };
 function go(v) { NAV.stack.push(v); render(); }
 function back() { NAV.stack.pop(); render(); }
-const backBtn = (label = 'Back') => `<button class="back" data-a="back">${I.left}${esc(label)}</button>`;
+const backBtn = (label = 'Back') => `<button class="back" data-a="back" aria-label="Back to ${esc(label)}">${I.left}</button>`; // round arrow on every screen and theme (Job, 24 Nov)
 
 // ---------- Today ----------
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'; }
@@ -5359,7 +5358,7 @@ function viewSplits() {
     return `<div class="swipe"><button class="swipe-del" data-a="spDelete" data-id="${sp.id}" tabindex="-1">Delete</button><button class="card split" data-a="openSplit" data-id="${sp.id}" style="--split:${sp.color}"><span class="tag" style="background:${sp.color}"></span><div class="grow"><div class="g2 row"><h3>${esc(sp.name)}</h3>${nx && nx.id === sp.id ? '<span class="pill">Next up</span>' : ''}</div><div class="mt1 cap">${plural(sp.ex.length, 'exercise')} · ${l ? relDay(l.date) : 'not done yet'}</div>${splitMuscles(sp)}</div>${I.right}</button></div>`;
   };
   return `<div class="stack">
-  <button class="back" data-a="tab" data-k="today">${I.left}Today</button>
+  <button class="back" data-a="tab" data-k="today" aria-label="Back to Today">${I.left}</button>
   <div class="top pt0"><h1>Splits</h1><button class="btn sm" data-a="newSplit">New split</button></div>
   <button class="tl card tight row between" data-a="rotation"><div><div class="eyebrow">Rotation</div><div class="mt1 fw6">${esc(S.rotation.map(splitById).filter(Boolean).map(s => s.name).join(' → ') || 'Not set')}</div><div class="mt1 cap">Next up is the split after your last one.</div></div><span class="cap">Edit</span></button>
   ${act.map(card).join('')}
@@ -7187,7 +7186,7 @@ function summaryHTML() {
   const d = summaryData(); const sp = A.splitId && splitById(A.splitId);
   const changed = sp && JSON.stringify(A.ex.map(e => e.name)) !== JSON.stringify(sp.ex.map(e => e.name));
   return `<div class="wk-body" style="padding-top:calc(16px + env(safe-area-inset-top, 0px))">
-    <button class="back back-ic" data-a="sumBack" aria-label="Back to workout">${I.left}</button>
+    <button class="back" data-a="sumBack" aria-label="Back to workout">${I.left}</button>
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
     <div class="card sum-cmp"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>

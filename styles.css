@@ -1849,7 +1849,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Skyline (Job, 15 Nov): red buttons and links vanish on the navy and on the red recap art, so controls are white there.
    Red stays for highlights (active tab, + button, PRs, targets). */
 :root[data-theme="spidey"] #recap .rc-home, :root[data-theme="spidey"]:not([data-tod="day"]) .link, :root[data-theme="spidey"]:not([data-tod="day"]) .btn.ghost,
-:root[data-theme="spidey"]:not([data-tod="day"]) .icon-btn, :root[data-theme="spidey"]:not([data-tod="day"]) #wk .back, :root[data-theme="spidey"]:not([data-tod="day"]) .fold-btn.shut,
+:root[data-theme="spidey"]:not([data-tod="day"]) .icon-btn, :root[data-theme="spidey"]:not([data-tod="day"]) .fold-btn.shut,
 :root[data-theme="spidey"]:not([data-tod="day"]) #wk .link.add-set, :root[data-theme="spidey"]:not([data-tod="day"]) .lr-go, :root[data-theme="spidey"]:not([data-tod="day"]) .si-age a,
 :root[data-theme="spidey"]:not([data-tod="day"]) .legal a, :root[data-theme="spidey"]:not([data-tod="day"]) .me-ic { color: #FFFFFF; }
 #recap .rc-home svg { width: 30px; height: 30px; stroke-width: 3; }
@@ -2336,7 +2336,7 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 /* Admin page (owner only, v184): its own dark dashboard look in every theme */
 .admx { --ax-bg: #0E1013; --ax-card: #171A1F; --ax-line: #262A31; --ax-tx: #E8EAED; --ax-dim: #8B919A; --ax-g: #3FBF6F; --ax-a: #E0A526; --ax-r: #E5534B; --ax-b: #5AA9E6;
   background: var(--ax-bg); color: var(--ax-tx); margin: 0 calc(var(--s4) * -1); padding: var(--s4); min-height: 100vh; font-variant-numeric: tabular-nums; }
-.admx .back, .admx h1 { color: var(--ax-tx); }
+.admx h1 { color: var(--ax-tx); }
 .ax-hd { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .ax-hd h1 { margin: 0; font-size: calc(30px * var(--ts, 1)); }
 .ax-dim { color: var(--ax-dim); font-size: calc(12px * var(--ts, 1)); margin: 6px 0 0; display: block; }
@@ -2572,9 +2572,8 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .eq-chip.eq-ro::after { content: none; } .eq-chip.eq-ro { display: flex; }
 
 /* Smaller back pill and recap rows (Job, 24 Nov: text too big) */
-#wk .back { padding: 4px 12px 4px 6px; }
-#wk .back svg { width: 18px; height: 18px; }
 .sum-cmp .li .t { font-size: calc(15px * var(--ts, 1)); line-height: calc(20px * var(--ts, 1)); }
 .sum-cmp .li { padding-block: 10px; min-height: 46px; }
-#wk .back.back-ic { width: 40px; height: 40px; min-height: 40px; padding: 0; justify-content: center; }
-#wk .back.back-ic svg { width: 22px; height: 22px; }
+/* Back = a round arrow button, same on every screen and theme (Job, 24 Nov) */
+.back, #wk .back { width: 40px; height: 40px; min-height: 40px; padding: 0; gap: 0; justify-content: center; align-self: flex-start; flex: none; border-radius: 999px; color: var(--accent); background: var(--surface-solid, var(--surface)); box-shadow: var(--shadow); text-shadow: none; font-size: 0; }
+.back svg, #wk .back svg { width: 22px; height: 22px; margin: 0; }
