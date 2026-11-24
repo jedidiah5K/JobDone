@@ -69,7 +69,7 @@ Calf Raise:msdw;Seated Calf Raise:m;Standing Calf Raise:ms;Leg Press Calf Raise:
 // Equipment variants (Job, 23 Nov): one lift, its own history per equipment. The name carries it like a side does:
 // "Incline Press (Smith)", "Incline Press (Smith) (L)". The plain name is the lift's usual equipment, so old history stays put.
 // Plate-loaded vs pin-stack machines (Job, 23 Nov): the same lift on each keeps its own numbers.
-const EQ_LBL = { ez: 'EZ curl bar', trap: 'Trap bar', machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
+const EQ_LBL = { machine: 'Machine', plate: 'Plate-loaded', smith: 'Smith', barbell: 'Barbell', ez: 'EZ curl bar', trap: 'Trap bar', dumbbell: 'Dumbbell', cable: 'Cable', bodyweight: 'Bodyweight', band: 'Band', kettlebell: 'Kettlebell' };
 // What people read: the name tag stays short, the label says it in full.
 const eqTxt = q => ({ machine: 'Pin-loaded machine', plate: 'Plate-loaded machine' })[q] || EQ_LBL[q];
 const VAR_RE = /\s*\((EZ curl bar|Trap bar|Machine|Plate-loaded|Smith|Barbell|Dumbbell|Cable|Bodyweight|Band|Kettlebell)\)$/;
