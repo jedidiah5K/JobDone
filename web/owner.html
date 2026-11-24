@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-+AO/DaflM2ylETa1Y9z2NJapxOV2ZZjHtVxolx58QTs='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-5t6/yFJOAMfNJb3J4HL9wW5C/vIfp9TJZ7VhjBqCuY8='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2600,6 +2600,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 :root[data-theme="mono"] .xsw.on#pl-inc { background: #B3122A; }
 .ex-filt { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .ex-filt .pl-chip { background: var(--surface, var(--raised)); box-shadow: inset 0 0 0 1px var(--border); }
+/* New exercise form (Job, 24 Nov) */
+.ef-mu { display: flex; flex-direction: column; gap: 10px; }
+.ef-g { display: flex; flex-direction: column; gap: 6px; }
+.ef-dupe { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r2); background: color-mix(in srgb, var(--accent) 14%, var(--raised)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+.ef-dupe b { display: block; }
+.ef-dupe .cap { display: block; margin-top: 2px; }
 
 body { margin: 0; box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -8447,26 +8453,60 @@ function pickExercise(onPick, opts = {}) {
 }
 
 // Create a custom exercise, or change its muscle group and equipment. Built-in lifts only swap between equipment that fits them.
+// Guess the muscle and equipment from a typed name (Job, 24 Nov: smarter create-your-own). Only fills what the person hasn't picked.
+const GUESS_MU = [[/adduct/, 'Adductors'], [/abduct|glute|hip thrust|bridge/, 'Glutes'], [/calf|calves/, 'Calves'], [/leg curl|hamstring|rdl|sldl|stiff|romanian|good morning|nordic/, 'Hamstrings'],
+  [/squat|leg press|leg extension|lunge|split squat|quad|hack|step.?up/, 'Quads'], [/crunch|plank|sit.?up|leg raise|ab\b|abs\b|core|oblique/, 'Abs'], [/wrist|forearm|grip/, 'Forearms'],
+  [/tricep|pushdown|push.?down|skull|kickback|dip|close.?grip bench/, 'Triceps'], [/curl/, 'Biceps'], [/bench|chest|fly|pec|push.?up|crossover|incline|decline/, 'Chest'],
+  [/row|pulldown|pull.?down|pull.?up|chin|lat\b|lats|pullover|back ext/, 'Back'], [/shoulder|lateral|delt|overhead|ohp|military|raise|shrug|face pull|upright/, 'Shoulders'], [/deadlift/, 'Hamstrings'], [/press/, 'Chest']];
+const GUESS_EQ = [[/smith/, 'smith'], [/ez\b|ez.?bar|ez.?curl/, 'ez'], [/trap bar|hex bar/, 'trap'], [/cable|rope/, 'cable'], [/dumbbell|\bdb\b/, 'dumbbell'], [/kettlebell|\bkb\b/, 'kettlebell'],
+  [/band/, 'band'], [/plate.?loaded|hammer strength/, 'plate'], [/machine|pec dec|pec deck/, 'machine'], [/barbell|\bbb\b/, 'barbell'], [/push.?up|pull.?up|chin.?up|\bdip|plank|bodyweight/, 'bodyweight']];
+const guessIn = (list, n) => { const t = n.toLowerCase(); const g = list.find(([re]) => re.test(t)); return g ? g[1] : null; };
+// Words that only say which equipment, so "smith incline press" still finds Incline Press.
+const EQ_WORDS = /\b(smith|machine|cable|dumbbells?|db|barbell|bb|ez|ez.?bar|trap bar|plate.?loaded|kettlebell|kb|band|seated|standing|rope|cuff|v.?bar|straight bar|single.?arm|one.?arm)\b/gi;
+function exDupe(n) {
+  const q = n.replace(EQ_WORDS, ' ').replace(/\s+/g, ' ').trim(); if (q.length < 3) return null;
+  const names = [...LIB.map(e => e.name).filter(x => !PICK_HIDE.has(x)), ...(S.customEx || []).map(e => e.name)];
+  const exact = names.find(x => x.toLowerCase() === n.toLowerCase().trim()); if (exact) return { name: exact, eq: null };
+  const nick = names.find(x => (NICK[x] || []).some(a => a.toLowerCase() === q.toLowerCase())) || names.find(x => x.toLowerCase() === q.toLowerCase());
+  // Both ways round, so "Cable Y Raise" isn't taken for Lateral Raise: every word of the match must be in the typed name too.
+  const strip = x => x.replace(/[-()]/g, ' ').replace(EQ_WORDS, ' ').replace(/\s+/g, ' ').trim();
+  const flat = x => x.toLowerCase().replace(/[^a-z]/g, '').replace(/s$/, ''), joined = names.find(x => flat(strip(x)) === flat(q));
+  const g = nick || joined || fzBest(q, names.filter(x => fuzzy(q.replace(/-/g, ' '), strip(x), true)), x => [x, ...(NICK[x] || [])].join(' '));
+  if (!g) return null; const q2 = guessIn(GUESS_EQ, n); return { name: g, eq: q2 && q2 !== exInfo(g).equip && eqOptions(g).includes(q2) ? q2 : null };
+}
+const MU_GROUPS = [['Upper body', ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms']], ['Legs', ['Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves']], ['Core', ['Abs']]];
 function openExForm(name, o = {}) {
   const cur = name ? exInfo(name) : null, known = name && (LIB.some(e => e.name === name) || (S.customEx || []).some(e => e.name === name));
   const lib = !!(name && libEx(name));
-  let mu = lib ? cur.muscle : o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : null;
-  const sh = openSheet(`<div class="stack"><div class="eyebrow">${known ? 'Exercise group' : 'New exercise'}</div>
-    <div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(name || o.preset || '')}" placeholder="e.g. Hammer Curl" ${known ? 'disabled' : ''}></div>
+  let mu = lib ? cur.muscle : o.muscle || (known ? cur.muscle : null), eq = known ? cur.equip : null, muSet = !!mu, eqSet = !!eq;
+  const eqList = lib ? eqOptions(name) : ['machine', 'plate', 'cable', 'dumbbell', 'barbell', 'ez', 'smith', 'trap', 'bodyweight', 'kettlebell', 'band', 'other'];
+  const eqLbl = q => q === 'other' ? 'Other' : eqTxt(q) || q;
+  const muChips = MU_GROUPS.map(([g, ms]) => `<div class="ef-g"><span class="cap">${g}</span><div class="chips wrap">${ms.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>`).join('');
+  const sh = openSheet(`<div class="stack ef"><h2 class="exm-h">${known ? esc(name) : 'New exercise'}</h2>
+    ${known ? '' : `<div class="field"><label for="ef-n">Name</label><input class="input" id="ef-n" value="${esc(o.preset || '')}" placeholder="e.g. Cable Y Raise" autocomplete="off"></div><div id="ef-dupe"></div>`}
     ${lib ? `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap"><span class="chip on" aria-disabled="true">${esc(mu)}</span></div><p class="cap m0">Built-in lifts keep their muscle group.</p></div>`
-      : `<div class="field"><span class="lbl">Muscle group</span><div class="chips wrap" id="ef-m">${MUSCLES.map(m => `<button class="chip ${mu === m ? 'on' : ''}" data-m="${m}">${m}</button>`).join('')}</div></div>`}
-    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${eqOptions(lib ? name : '').map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</div>${lib && eqOptions(name).length === 1 ? `<p class="cap m0">This lift only uses this equipment.</p>` : ''}</div>
+      : `<div class="field"><span class="lbl">What does it work?</span><div id="ef-m" class="ef-mu">${muChips}</div></div>`}
+    <div class="field"><span class="lbl">Equipment</span><div class="chips wrap" id="ef-e">${eqList.map(m => `<button class="chip ${eq === m ? 'on' : ''}" data-m="${m}">${esc(eqLbl(m))}</button>`).join('')}</div>${lib && eqList.length === 1 ? `<p class="cap m0">This lift only uses this equipment.</p>` : ''}</div>
     <button class="btn primary block" id="ef-ok">Save</button>
-    ${known && (S.customEx || []).some(e => e.name === name) && !LIB.some(e => e.name === name) ? '' : ''}
     <button class="btn ghost block" data-a="closeSheet">Cancel</button></div>`, { label: 'Exercise', mount: b => {
-    const pick = (id, set) => b.querySelector(id).onclick = ev => { const c = ev.target.closest('[data-m]'); if (!c) return; set(c.dataset.m); b.querySelectorAll(id + ' .chip').forEach(x => x.classList.toggle('on', x === c)); };
-    if (!lib) pick('#ef-m', v => mu = v); pick('#ef-e', v => eq = v);
+    const mark = (id, v) => b.querySelectorAll(id + ' .chip').forEach(x => x.classList.toggle('on', x.dataset.m === v));
+    const pick = (id, set) => b.querySelector(id).onclick = ev => { const c = ev.target.closest('[data-m]'); if (!c) return; set(c.dataset.m); mark(id, c.dataset.m); };
+    if (!lib) pick('#ef-m', v => { mu = v; muSet = true; }); pick('#ef-e', v => { eq = v; eqSet = true; });
+    const nIn = b.querySelector('#ef-n'), dupe = b.querySelector('#ef-dupe');
+    const use = d => { closeSheet(sh); const n = d.eq ? withEq(d.name, d.eq) : d.name; if (d.eq) S.profile.eqLast = Object.assign({}, S.profile.eqLast, { [d.name]: d.eq }); persist('jd/meta'); o.onSave ? o.onSave(n) : toast(esc(n) + ' is ready to pick'); };
+    const live = () => { const n = nIn.value.trim();
+      if (!muSet && !lib) { mu = guessIn(GUESS_MU, n); mark('#ef-m', mu); }
+      if (!eqSet) { eq = guessIn(GUESS_EQ, n); mark('#ef-e', eq); }
+      const d = n.length >= 3 && !o.typoOk ? exDupe(n) : null;
+      dupe.innerHTML = d ? `<div class="ef-dupe"><div class="grow"><b>Already in the list: ${esc(d.name)}${d.eq ? ' on ' + esc(eqTxt(d.eq).toLowerCase().replace(/^smith$/, 'the Smith')) : ''}</b><span class="cap">${esc(exInfo(d.name).muscle)}. ${d.eq ? 'Same lift, its own history for this equipment.' : 'Pick it instead of making a copy.'}</span></div><button class="btn sm primary" id="ef-use">Use it</button></div>` : '';
+      const u = dupe.querySelector('#ef-use'); if (u) u.onclick = () => use(d); };
+    if (nIn) { nIn.oninput = live; if (nIn.value) live(); setTimeout(() => nIn.focus(), 250); }
     b.querySelector('#ef-ok').onclick = () => {
-      const n = (b.querySelector('#ef-n').value || '').trim().replace(/\s+/g, ' ');
+      const n = known ? name : (nIn.value || '').trim().replace(/\s+/g, ' ');
       if (!n) { toast('Give it a name'); return; }
-      // Typo in a new name (Job, 5 Nov): "bencj pres" → offer Bench Press before making a duplicate
-      if (!known && !o.typoOk && !LIB.some(e => e.name.toLowerCase() === n.toLowerCase())) { const g = fzBest(n, LIB.map(e => e.name).filter(x => !PICK_HIDE.has(x)), x => [x, ...(NICK[x] || [])].join(' ')); if (g) { closeSheet(sh); return confirmSheet({ title: 'Did you mean ' + g + '?', body: 'It’s already in the list.', ok: 'Use ' + g, no: 'Keep “' + esc(n) + '”', key: false, onOk: () => o.onSave ? o.onSave(g) : toast(esc(g) + ' is ready to pick'), onNo: () => openExForm('', { ...o, typoOk: true, preset: n, muscle: mu }) }); } }
-      if (!mu) { toast('Pick a muscle group'); return; }
+      // A name that's already in the list (Job, 5 Nov and 24 Nov): ask before making a duplicate
+      if (!known && !o.typoOk) { const d = exDupe(n); if (d) { closeSheet(sh); return confirmSheet({ title: `Are you making ${d.name}?`, body: 'It’s already in the list, so you can pick it and keep one history.', ok: 'Use ' + d.name, no: 'Make “' + esc(n) + '”', key: false, onOk: () => use(d), onNo: () => openExForm('', { ...o, typoOk: true, preset: n, muscle: mu }) }); } }
+      if (!mu) { toast('Pick what it works'); return; }
       S.customEx = (S.customEx || []).filter(e => e.name !== n);
       if (!lib || eq !== libEx(n).equip) S.customEx.push({ name: n, muscle: mu, equip: eq || (lib ? libEx(n).equip : 'other') });
       persist('jd/meta'); invalidate(); closeSheet(sh);

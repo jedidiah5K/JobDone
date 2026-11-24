@@ -2563,3 +2563,9 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 :root[data-theme="mono"] .xsw.on#pl-inc { background: #B3122A; }
 .ex-filt { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .ex-filt .pl-chip { background: var(--surface, var(--raised)); box-shadow: inset 0 0 0 1px var(--border); }
+/* New exercise form (Job, 24 Nov) */
+.ef-mu { display: flex; flex-direction: column; gap: 10px; }
+.ef-g { display: flex; flex-direction: column; gap: 6px; }
+.ef-dupe { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r2); background: color-mix(in srgb, var(--accent) 14%, var(--raised)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+.ef-dupe b { display: block; }
+.ef-dupe .cap { display: block; margin-top: 2px; }
