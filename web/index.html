@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-ewsQqgKBPkdhWp3jvIO/B41Y9P5iWPeITYXyUS3AH+8='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-ZgNWGkVa+jY6CEa8H7QGH/jeEGF/xpBexMFKwTKQYm4='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -714,7 +714,7 @@ a.xr { text-decoration: none; }
 .top .btn.sm { background: var(--surface-solid, var(--surface)); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .xr-in::placeholder, .input::placeholder, textarea::placeholder { color: var(--muted); font-style: italic; opacity: .8; }
 .plate-tray { padding-right: 24px; scroll-padding-right: 24px; }
-#wk .back { color: var(--accent); background: var(--surface-solid, var(--surface)); border-radius: 999px; padding: 6px 12px 6px 8px; box-shadow: var(--shadow); align-self: flex-start; }
+#wk .back { font-size: calc(15px * var(--ts, 1)); min-height: 34px; color: var(--accent); background: var(--surface-solid, var(--surface)); border-radius: 999px; padding: 6px 12px 6px 8px; box-shadow: var(--shadow); align-self: flex-start; }
 :root[data-theme="cliffs"] { --hdr-ink2: rgba(255,255,255,.96); }
 :root[data-theme="cliffs"] .top .eyebrow, :root[data-theme="cliffs"] .top .cap, :root[data-theme="cliffs"] .top p, :root[data-theme="cliffs"] .top .back, :root[data-theme="cliffs"] .top > div > div:not(.btn) { text-shadow: 0 1px 6px rgba(20,40,70,.45); }
 .info { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 4px; border-radius: 50%; font: 700 11px/1 var(--font-display, inherit); font-style: italic; color: var(--text2); background: color-mix(in srgb, var(--text) 10%, transparent); vertical-align: 1px; text-transform: none; letter-spacing: 0; position: relative; }
@@ -2608,6 +2608,12 @@ body:has(#wk:not([hidden]) .restbar) .cele { bottom: calc(env(safe-area-inset-bo
 .ef-dupe .cap { display: block; margin-top: 2px; }
 .eq-chip.eq-ro::after { content: none; } .eq-chip.eq-ro { display: flex; }
 
+/* Smaller back pill and recap rows (Job, 24 Nov: text too big) */
+#wk .back { padding: 4px 12px 4px 6px; }
+#wk .back svg { width: 18px; height: 18px; }
+.sum-cmp .li .t { font-size: calc(15px * var(--ts, 1)); line-height: calc(20px * var(--ts, 1)); }
+.sum-cmp .li { padding-block: 10px; min-height: 46px; }
+
 body { margin: 0; box-sizing: border-box; }
 [hidden] { display: none !important; }
 img { max-width: 100%; }
@@ -2786,7 +2792,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v227';
+const APP_VER = 'v228';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -7170,7 +7176,7 @@ function summaryHTML() {
     <button class="back" data-a="sumBack">${I.left}Back to workout</button>
     <div><div class="eyebrow">Workout complete</div><h1>${esc(A.splitName)}</h1><button class="mt2 cap daychip" data-a="wkDay">${A.date ? esc(fmtDate(A.date, { wd: true })) : 'Today'} ▾ change day</button></div>
     <div class="card"><div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><b>${fmtDur((A.endAt || Date.now()) - A.start)}</b><span>time</span></div><div class="kpi"><b>${dvol(d.vol)}</b><span>${U()} volume</span></div><div class="kpi"><b>${d.sets}</b><span>sets</span></div><div class="kpi"><b class="${d.prs ? 'acc' : ''}">${d.prs}</b><span>PRs</span></div></div></div>
-    <div class="card"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
+    <div class="card sum-cmp"><div class="mb1 eyebrow">${d.rows.some(r => r.last) ? 'Compared with last time' : `Your first ${esc(A.splitName)}`}</div><div class="list">${d.rows.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.e.name)} ${r.types.length ? `<span class="pill pr">PR · ${esc(r.types[0])}</span>` : ''}</div><div class="s num">${r.e.sets.map(setStr).join(', ')}</div></div>${r.last ? `<div class="tr f13 num"><div>top ${delta(r.top ? r.top.w : null, r.last.top ? r.last.top.w : null, v => dw(v))}</div><div>vol ${delta(r.vol, r.last.vol, v => dvol(v))}</div></div>` : d.rows.some(x => x.last) ? '<div class="tr f13 sec">first time</div>' : ''}</div>`).join('') || '<div class="empty">No sets logged. Go back and tick some sets, or discard the workout.</div>'}</div></div>
     ${partySum(d)}
     ${(() => { const lt = liftTimes(); return lt && lt.rows.length > 1 ? `<div class="card"><div class="card-h"><span class="eyebrow">Time per lift</span>${lt.rest ? `<span class="cap num">avg rest ${clock(lt.rest)}</span>` : ''}</div><div class="list">${lt.rows.map(([n, m]) => `<div class="li"><div class="grow t ell">${esc(n)}</div><span class="num cap">${m} min</span></div>`).join('')}</div></div>` : ''; })()}
     <div class="field"><label for="sum-note">Note</label><textarea class="input" id="sum-note" data-in="sumNote" placeholder="How did it go?">${esc(A.note || '')}</textarea></div>
