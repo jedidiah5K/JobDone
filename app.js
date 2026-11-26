@@ -2234,12 +2234,19 @@ function snapStart() {
       catch (e) { ok.disabled = false; postErr(e); } }; } }); });
 }
 // Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
+// 26 Nov (Job didn't get one): the friends list is dropped every 2 min and only reloads on the Friends screens, so mid-workout
+// it was usually empty and the ask never came. Remember that you have friends, reload quietly, and wait for a free moment to ask.
+let FR_HAS = false;
 function snapMaybe() {
-  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap || !(FRIENDS && FRIENDS.length)) return;
+  if (FRIENDS && FRIENDS.length) FR_HAS = true;
+  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap) return;
+  if (!FR_HAS) { if (FRIENDS == null && USER) { FRIENDS = undefined; friendsLoad(true); } return; } // checked again on the next set
   if (!A.snapAt) A.snapAt = 3 + Math.floor(Math.random() * 6);
   const n = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0); if (n < A.snapAt) return;
   A.snapAsked = true; persist('jd/active');
-  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick story?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
+  const ask = k => { if (!A) return; if (SHEETS.length || document.getElementById('composer')) return k < 40 && setTimeout(() => ask(k + 1), 3000); // a pop-up is open: try again shortly
+    confirmSheet({ title: 'Quick story?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); };
+  setTimeout(() => ask(0), 2500);
 }
 // Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
 const STAMP = {};

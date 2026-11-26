@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-2VdqNRAMp/E+AoxvpBVRpW0bcwnMF5O/rRNAkrEdDtY='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-EtaRmXN/wI41HAmeHYnAjWkMXui790IB6PLUA/cunMg='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2797,7 +2797,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v232';
+const APP_VER = 'v233';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -4868,12 +4868,19 @@ function snapStart() {
       catch (e) { ok.disabled = false; postErr(e); } }; } }); });
 }
 // Once a workout, after a random 3rd to 8th working set, ask for a snap. Skipped in practice runs and when you have no friends.
+// 26 Nov (Job didn't get one): the friends list is dropped every 2 min and only reloads on the Friends screens, so mid-workout
+// it was usually empty and the ask never came. Remember that you have friends, reload quietly, and wait for a free moment to ask.
+let FR_HAS = false;
 function snapMaybe() {
-  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap || !(FRIENDS && FRIENDS.length)) return;
+  if (FRIENDS && FRIENDS.length) FR_HAS = true;
+  if (!A || A.practice || A.snapAsked || !soOn() || SO().noSnap) return;
+  if (!FR_HAS) { if (FRIENDS == null && USER) { FRIENDS = undefined; friendsLoad(true); } return; } // checked again on the next set
   if (!A.snapAt) A.snapAt = 3 + Math.floor(Math.random() * 6);
   const n = A.ex.reduce((a, e) => a + e.sets.filter(s => s.done && s.t !== 'warm').length, 0); if (n < A.snapAt) return;
   A.snapAsked = true; persist('jd/active');
-  setTimeout(() => { if (!A || SHEETS.length) return; confirmSheet({ title: 'Quick story?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); }, 2500);
+  const ask = k => { if (!A) return; if (SHEETS.length || document.getElementById('composer')) return k < 40 && setTimeout(() => ask(k + 1), 3000); // a pop-up is open: try again shortly
+    confirmSheet({ title: 'Quick story?', body: 'Friends see it for 24 hours. You can turn this off in Friends.', ok: 'Take one', no: 'Not now', key: false, onOk: snapStart }); };
+  setTimeout(() => ask(0), 2500);
 }
 // Done Stamp: sent to friends when you save a workout (if sharing is on). The photo is optional and can be added on the finish page.
 const STAMP = {};
