@@ -437,6 +437,15 @@ function renameLifts(st, act) {
     st.profile.eqFix5 = 1; n++;
     for (const w of Object.values(st.workouts || {})) if (w.date < '2026-11-24') (w.ex || []).forEach(e => { if (e && e.name && liftName(e.name) === 'Preacher Curl') e.name = mkName('Preacher Curl', 'machine', null, sideOf(e.name)); });
   }
+  // 26 Nov (Job): Incline Press before 25 Nov was on the Smith machine; 25 and 26 Nov were the plate-loaded machine.
+  if (!st.profile.eqFix6) {
+    st.profile.eqFix6 = 1; n++;
+    const ip = (e, d) => { if (!e || !e.name || liftName(e.name) !== 'Incline Press') return; if (['dumbbell', 'barbell'].includes(eqOf(e.name))) return; // plain = the machine
+      e.name = mkName('Incline Press', d < '2026-11-25' ? 'smith' : 'plate', null, sideOf(e.name)); };
+    for (const w of Object.values(st.workouts || {})) if (w.date <= '2026-11-26') (w.ex || []).forEach(e => ip(e, w.date));
+    if (act && (!act.date || act.date >= '2026-11-25')) (act.ex || []).forEach(e => ip(e, act.date || '2026-11-26'));
+    st.profile.eqLast = { ...(st.profile.eqLast || {}), 'Incline Press': 'plate' };
+  }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(plain);
