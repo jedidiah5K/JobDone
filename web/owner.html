@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-sYxdsrGXlS0AW2IRnkuUTgaZYwzUCYtBv79x1EtgoAI='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com 'sha256-OLc/rBoohPPnWK4gVRJepcPdZ8t6WNZmkOWG8/4ZVYM=' 'sha256-2VdqNRAMp/E+AoxvpBVRpW0bcwnMF5O/rRNAkrEdDtY='; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://xvyibgnjibzopwtxajin.supabase.co wss://xvyibgnjibzopwtxajin.supabase.co https://o4512430782480384.ingest.us.sentry.io; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Job’s Done</title>
 <meta name="description" content="Log your lifts fast and beat last time. Free, works offline.">
@@ -2797,7 +2797,7 @@ const SEED_WEIGHTS = SEED.weights, MOVED = SEED.moved, NONAME = SEED.noname, ASS
 let LS_KEY = 'jobdone.v1';
 // Hosted version (own website): config.js sets window.JOBDONE_CONFIG with Supabase keys.
 const CFG = window.JOBDONE_CONFIG || null;
-const APP_VER = 'v231';
+const APP_VER = 'v232';
 const HOSTED = !!(CFG && CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let SB = null, USER = null;
 // Rest-done notifications (Web Push, Home Screen app only). The server sends the push when rest ends, even with the phone locked.
@@ -3079,6 +3079,11 @@ function renameLifts(st, act) {
     for (const w of Object.values(st.workouts || {})) if (w.date <= '2026-11-26') (w.ex || []).forEach(e => ip(e, w.date));
     if (act && (!act.date || act.date >= '2026-11-25')) (act.ex || []).forEach(e => ip(e, act.date || '2026-11-26'));
     st.profile.eqLast = { ...(st.profile.eqLast || {}), 'Incline Press': 'plate' };
+  }
+  // 26 Nov (Job): correction, the Smith never went past 60 kg; the 23 Nov session (90 kg) was the plate-loaded machine too.
+  if (!st.profile.eqFix7) {
+    st.profile.eqFix7 = 1; n++;
+    for (const w of Object.values(st.workouts || {})) if (w.date >= '2026-11-21' && w.date <= '2026-11-26') (w.ex || []).forEach(e => { if (e && e.name && liftName(e.name) === 'Incline Press' && eqOf(e.name) === 'smith') e.name = mkName('Incline Press', 'plate', null, sideOf(e.name)); });
   }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };

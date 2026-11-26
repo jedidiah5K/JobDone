@@ -446,6 +446,11 @@ function renameLifts(st, act) {
     if (act && (!act.date || act.date >= '2026-11-25')) (act.ex || []).forEach(e => ip(e, act.date || '2026-11-26'));
     st.profile.eqLast = { ...(st.profile.eqLast || {}), 'Incline Press': 'plate' };
   }
+  // 26 Nov (Job): correction, the Smith never went past 60 kg; the 23 Nov session (90 kg) was the plate-loaded machine too.
+  if (!st.profile.eqFix7) {
+    st.profile.eqFix7 = 1; n++;
+    for (const w of Object.values(st.workouts || {})) if (w.date >= '2026-11-21' && w.date <= '2026-11-26') (w.ex || []).forEach(e => { if (e && e.name && liftName(e.name) === 'Incline Press' && eqOf(e.name) === 'smith') e.name = mkName('Incline Press', 'plate', null, sideOf(e.name)); });
+  }
   // A variant that matches the lift's usual equipment is just the plain lift.
   const plain = e => { if (!e || !e.name) return; const q = eqOf(e.name); if (q && q === eqDefault(e.name)) { e.name = withEq(e.name, q); n++; } };
   for (const w of Object.values(st.workouts || {})) (w.ex || []).forEach(plain);
